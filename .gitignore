@@ -1,0 +1,34 @@
+.venv/
+venv/
+__pycache__/
+*.pyc
+
+# Data and notebooks
+data/
+alerts.json
+test.py
+update_stocks.log
+work.ipynb
+
+# System and tool caches
+.DS_Store
+.ruff_cache/
+.env
+deployment/.env.production
+
+# Logs and runtime outputs
+*.log
+*.out
+*.err
+
+# Databases and lock files
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+hourly_scheduler.lock
+scheduler_v2.lock
+
+# Generated state files
+hourly_scheduler_status.json
+missing_tickers_report.json

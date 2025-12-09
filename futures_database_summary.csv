@@ -1,0 +1,79 @@
+Symbol,Name,Exchange,Category,Subcategory,Multiplier,Min Tick,Tick Value,Currency,Settlement,Trading Hours,Country
+CL,WTI Crude Oil,NYMEX,Energy,Crude Oil,1000.0,0.01,10.0,USD,Physical,Nearly 24 hours (Sun-Fri),UNITED STATES
+QM,E-mini Crude Oil,NYMEX,Energy,Crude Oil,500.0,0.025,12.5,USD,Physical,Nearly 24 hours (Sun-Fri),UNITED STATES
+BZ,Brent Crude Oil,NYMEX,Energy,Crude Oil,1000.0,0.01,10.0,USD,Physical,Nearly 24 hours (Sun-Fri),UNITED STATES
+NG,Natural Gas,NYMEX,Energy,Natural Gas,10000.0,0.001,10.0,USD,Physical,Nearly 24 hours (Sun-Fri),UNITED STATES
+QG,E-mini Natural Gas,NYMEX,Energy,Natural Gas,2500.0,0.005,12.5,USD,Physical,Nearly 24 hours (Sun-Fri),UNITED STATES
+HO,Heating Oil,NYMEX,Energy,Refined Products,42000.0,0.0001,4.2,USD,Physical,Nearly 24 hours (Sun-Fri),UNITED STATES
+RB,RBOB Gasoline,NYMEX,Energy,Refined Products,42000.0,0.0001,4.2,USD,Physical,Nearly 24 hours (Sun-Fri),UNITED STATES
+GC,Gold,COMEX,Metals,Precious,100.0,0.1,10.0,USD,Physical,Nearly 24 hours (Sun-Fri),UNITED STATES
+MGC,Micro Gold,COMEX,Metals,Precious,10.0,0.1,1.0,USD,Physical,Nearly 24 hours (Sun-Fri),UNITED STATES
+QO,E-mini Gold,COMEX,Metals,Metals,50.0,0.01,0.5,USD,Physical,Nearly 24 hours (Sun-Fri),UNITED STATES
+SI,Silver,COMEX,Metals,Precious,5000.0,0.005,25.0,USD,Physical,Nearly 24 hours (Sun-Fri),UNITED STATES
+SIL,Micro Silver,COMEX,Metals,Precious,1000.0,0.005,5.0,USD,Physical,Nearly 24 hours (Sun-Fri),UNITED STATES
+QI,E-mini Silver,COMEX,Metals,Metals,2500.0,0.01,25.0,USD,Physical,Nearly 24 hours (Sun-Fri),UNITED STATES
+HG,Copper,COMEX,Metals,Base,25000.0,0.0005,12.5,USD,Physical,Nearly 24 hours (Sun-Fri),UNITED STATES
+QC,E-mini Copper,COMEX,Metals,Base,12500.0,0.0005,6.25,USD,Physical,Nearly 24 hours (Sun-Fri),UNITED STATES
+PL,Platinum,NYMEX,Metals,Precious,50.0,0.1,5.0,USD,Physical,Nearly 24 hours (Sun-Fri),UNITED STATES
+PA,Palladium,NYMEX,Metals,Precious,100.0,0.05,5.0,USD,Physical,Nearly 24 hours (Sun-Fri),UNITED STATES
+ES,E-mini S&P 500,CME,Indices,Indices,50.0,0.25,12.5,USD,Cash,Nearly 24 hours (Sun-Fri),UNITED STATES
+MES,Micro E-mini S&P 500,CME,Indices,Indices,5.0,0.25,1.25,USD,Cash,Nearly 24 hours (Sun-Fri),UNITED STATES
+NQ,E-mini Nasdaq 100,CME,Indices,Indices,20.0,0.25,5.0,USD,Cash,Nearly 24 hours (Sun-Fri),UNITED STATES
+MNQ,Micro E-mini Nasdaq,CME,Indices,Indices,2.0,0.25,0.5,USD,Cash,Nearly 24 hours (Sun-Fri),UNITED STATES
+YM,E-mini Dow Jones,CBOT,Indices,Indices,5.0,1.0,5.0,USD,Cash,Nearly 24 hours (Sun-Fri),UNITED STATES
+MYM,Micro E-mini Dow,CBOT,Indices,Indices,0.5,1.0,0.5,USD,Cash,Nearly 24 hours (Sun-Fri),UNITED STATES
+RTY,E-mini Russell 2000,CME,Indices,Indices,50.0,0.1,5.0,USD,Cash,Nearly 24 hours (Sun-Fri),UNITED STATES
+M2K,Micro E-mini Russell,CME,Indices,Indices,5.0,0.1,0.5,USD,Cash,Nearly 24 hours (Sun-Fri),UNITED STATES
+ZC,Corn,CBOT,Agriculture,Grains,50.0,0.25,12.5,USD,Physical,Nearly 24 hours (Sun-Fri),UNITED STATES
+YC,Mini Corn,CBOT,Agriculture,Grains,10.0,0.125,1.25,USD,Physical,Nearly 24 hours (Sun-Fri),UNITED STATES
+ZW,Chicago Wheat,CBOT,Agriculture,Grains,50.0,0.25,12.5,USD,Physical,Nearly 24 hours (Sun-Fri),UNITED STATES
+YW,Mini Wheat,CBOT,Agriculture,Grains,10.0,0.125,1.25,USD,Physical,Nearly 24 hours (Sun-Fri),UNITED STATES
+ZS,Soybeans,CBOT,Agriculture,Grains,50.0,0.25,12.5,USD,Physical,Nearly 24 hours (Sun-Fri),UNITED STATES
+YK,Mini Soybeans,CBOT,Agriculture,Grains,10.0,0.125,1.25,USD,Physical,Nearly 24 hours (Sun-Fri),UNITED STATES
+ZM,Soybean Meal,CBOT,Agriculture,Grains,100.0,0.1,10.0,USD,Physical,Nearly 24 hours (Sun-Fri),UNITED STATES
+ZL,Soybean Oil,CBOT,Agriculture,Grains,60000.0,0.01,600.0,USD,Physical,Nearly 24 hours (Sun-Fri),UNITED STATES
+KE,KC Wheat,CBOT,Agriculture,Agriculture,50.0,0.01,0.5,USD,Physical,Nearly 24 hours (Sun-Fri),UNITED STATES
+CT,Cotton,NYBOT,Agriculture,Softs,50000.0,0.01,500.0,USD,Physical,Regular hours,UNITED STATES
+SB,Sugar #11,NYBOT,Agriculture,Softs,112000.0,0.01,1120.0,USD,Physical,Regular hours,UNITED STATES
+KC,Coffee,NYBOT,Agriculture,Softs,37500.0,0.05,1875.0,USD,Physical,Regular hours,UNITED STATES
+CC,Cocoa,NYBOT,Agriculture,Softs,10.0,1.0,10.0,USD,Physical,Regular hours,UNITED STATES
+OJ,Orange Juice,NYBOT,Agriculture,Softs,15000.0,0.05,750.0,USD,Physical,Regular hours,UNITED STATES
+LE,Live Cattle,CME,Livestock,Livestock,40000.0,0.01,400.0,USD,Physical,Nearly 24 hours (Sun-Fri),UNITED STATES
+GF,Feeder Cattle,CME,Livestock,Livestock,50000.0,0.01,500.0,USD,Physical,Nearly 24 hours (Sun-Fri),UNITED STATES
+HE,Lean Hogs,CME,Livestock,Livestock,40000.0,0.01,400.0,USD,Physical,Nearly 24 hours (Sun-Fri),UNITED STATES
+6E,Euro FX,CME,Currencies,Currencies,125000.0,5e-05,6.25,USD,Physical,Nearly 24 hours (Sun-Fri),UNITED STATES
+M6E,Micro Euro FX,CME,Currencies,Currencies,12500.0,0.0001,1.25,USD,Physical,Nearly 24 hours (Sun-Fri),UNITED STATES
+6B,British Pound,CME,Currencies,Currencies,62500.0,0.0001,6.25,USD,Physical,Nearly 24 hours (Sun-Fri),UNITED STATES
+M6B,Micro British Pound,CME,Currencies,Currencies,6250.0,0.0001,0.625,USD,Physical,Nearly 24 hours (Sun-Fri),UNITED STATES
+6J,Japanese Yen,CME,Currencies,Currencies,12500000.0,5e-07,6.25,USD,Physical,Nearly 24 hours (Sun-Fri),UNITED STATES
+MJY,Micro Japanese Yen,CME,Currencies,Currencies,1250000.0,1e-06,1.25,USD,Physical,Nearly 24 hours (Sun-Fri),UNITED STATES
+6C,Canadian Dollar,CME,Currencies,Currencies,100000.0,5e-05,5.0,USD,Physical,Nearly 24 hours (Sun-Fri),UNITED STATES
+MCD,Micro Canadian Dollar,CME,Currencies,Currencies,10000.0,0.0001,1.0,USD,Physical,Nearly 24 hours (Sun-Fri),UNITED STATES
+6A,Australian Dollar,CME,Currencies,Currencies,100000.0,0.0001,10.0,USD,Physical,Nearly 24 hours (Sun-Fri),UNITED STATES
+M6A,Micro Australian Dollar,CME,Currencies,Currencies,10000.0,0.0001,1.0,USD,Physical,Nearly 24 hours (Sun-Fri),UNITED STATES
+6S,Swiss Franc,CME,Currencies,Currencies,125000.0,0.0001,12.5,USD,Physical,Nearly 24 hours (Sun-Fri),UNITED STATES
+MSF,Micro Swiss Franc,CME,Currencies,Currencies,12500.0,0.0001,1.25,USD,Physical,Nearly 24 hours (Sun-Fri),UNITED STATES
+6N,New Zealand Dollar,CME,Currencies,Currencies,100000.0,0.0001,10.0,USD,Physical,Nearly 24 hours (Sun-Fri),UNITED STATES
+6M,Mexican Peso,CME,Currencies,Currencies,500000.0,1e-05,5.0,USD,Physical,Nearly 24 hours (Sun-Fri),UNITED STATES
+DX,US Dollar Index,NYBOT,Currencies,Currencies,1000.0,0.005,5.0,USD,Cash,Regular hours,UNITED STATES
+ZN,10-Year T-Note,CBOT,Bonds,Bonds,1000.0,0.015625,15.625,USD,Physical,Nearly 24 hours (Sun-Fri),UNITED STATES
+10Y,Micro 10-Year Note,CBOT,Bonds,Bonds,100.0,0.001,0.1,USD,Physical,Nearly 24 hours (Sun-Fri),UNITED STATES
+ZB,30-Year T-Bond,CBOT,Bonds,Bonds,1000.0,0.03125,31.25,USD,Physical,Nearly 24 hours (Sun-Fri),UNITED STATES
+UB,Ultra T-Bond,CBOT,Bonds,Bonds,1000.0,0.03125,31.25,USD,Physical,Nearly 24 hours (Sun-Fri),UNITED STATES
+ZF,5-Year T-Note,CBOT,Bonds,Bonds,1000.0,0.0078125,7.8125,USD,Physical,Nearly 24 hours (Sun-Fri),UNITED STATES
+5YR,Micro 5-Year Note,CBOT,Bonds,Bonds,100.0,0.001,0.1,USD,Physical,Nearly 24 hours (Sun-Fri),UNITED STATES
+ZT,2-Year T-Note,CBOT,Bonds,Bonds,2000.0,0.00390625,7.8125,USD,Physical,Nearly 24 hours (Sun-Fri),UNITED STATES
+2YR,Micro 2-Year Note,CBOT,Bonds,Bonds,200.0,0.001,0.2,USD,Physical,Nearly 24 hours (Sun-Fri),UNITED STATES
+ZQ,30-Day Fed Funds,CBOT,Bonds,Bonds,4167.0,0.01,41.67,USD,Physical,Nearly 24 hours (Sun-Fri),UNITED STATES
+GE,Eurodollar,CME,Bonds,Bonds,2500.0,0.01,25.0,USD,Physical,Nearly 24 hours (Sun-Fri),UNITED STATES
+VX,VIX Futures,CFE,Volatility,Volatility,1000.0,0.05,50.0,USD,Cash,Nearly 24 hours (Sun-Fri),UNITED STATES
+VXM,Mini VIX,CFE,Volatility,Volatility,100.0,0.05,5.0,USD,Cash,Nearly 24 hours (Sun-Fri),UNITED STATES
+FDAX,DAX,EUREX,European Indices,European Indices,25.0,0.5,12.5,EUR,Cash,Extended hours (Mon-Fri),GERMANY
+FDXM,Mini DAX,EUREX,European Indices,European Indices,5.0,0.5,2.5,EUR,Cash,Extended hours (Mon-Fri),GERMANY
+FESX,Euro Stoxx 50,EUREX,European Indices,European Indices,10.0,1.0,10.0,EUR,Cash,Extended hours (Mon-Fri),GERMANY
+FESB,Micro Euro Stoxx 50,EUREX,European Indices,European Indices,1.0,1.0,1.0,EUR,Cash,Extended hours (Mon-Fri),GERMANY
+FGBL,Euro Bund,EUREX,European Indices,European Indices,1000.0,0.01,10.0,EUR,Physical,Extended hours (Mon-Fri),GERMANY
+Z,FTSE 100,LIFFE,European Indices,European Indices,10.0,0.5,5.0,GBP,Cash,Extended hours (Mon-Fri),UNITED KINGDOM
+NIY,Nikkei 225,OSE,Asian Indices,Asian Indices,500.0,5.0,2500.0,JPY,Cash,Regular hours,JAPAN
+HSI,Hang Seng,HKFE,Asian Indices,Asian Indices,50.0,1.0,50.0,HKD,Cash,Regular hours,HONG KONG
+MHI,Mini Hang Seng,HKFE,Asian Indices,Asian Indices,10.0,1.0,10.0,HKD,Cash,Regular hours,HONG KONG

@@ -1,0 +1,69 @@
+
+====================================================================================================
+EXCHANGE TRADING HOURS (UTC TIME)
+====================================================================================================
+
+** UNITED STATES & CANADA
+----------------------------------------------------------------------------------------------------
+AMEX                      | 13:30 - 20:00 UTC | Hourly candles at :30     | 
+CBOE BZX                  | 13:30 - 20:00 UTC | Hourly candles at :30     | 
+NASDAQ                    | 13:30 - 20:00 UTC | Hourly candles at :30     | 
+NYSE                      | 13:30 - 20:00 UTC | Hourly candles at :30     | 
+NYSE AMERICAN             | 13:30 - 20:00 UTC | Hourly candles at :30     | 
+NYSE ARCA                 | 13:30 - 20:00 UTC | Hourly candles at :30     | 
+TORONTO                   | 14:30 - 21:00 UTC | Hourly candles at :00     | 9:30 AM - 4:00 PM ET
+
+** LATIN AMERICA
+----------------------------------------------------------------------------------------------------
+BUENOS AIRES              | 14:00 - 20:00 UTC | Hourly candles at :00     | 11:00 AM - 5:00 PM ART
+COLOMBIA                  | 14:00 - 20:00 UTC | Hourly candles at :00     | 9:00 AM - 3:00 PM COT
+MEXICO                    | 14:30 - 21:00 UTC | Hourly candles at :00     | 8:30 AM - 3:00 PM CST
+SANTIAGO                  | 13:00 - 20:00 UTC | Hourly candles at :00     | 9:00 AM - 4:00 PM CLT
+SAO PAULO                 | 13:00 - 20:00 UTC | Hourly candles at :30     | 
+
+** ASIA-PACIFIC
+----------------------------------------------------------------------------------------------------
+ASX                       | 00:00 - 06:00 UTC | Hourly candles at :00     | 10:00 AM - 4:00 PM AEST
+BSE INDIA                 | 03:45 - 10:00 UTC | Hourly candles at :00     | 9:15 AM - 3:30 PM IST
+HONG KONG                 | 01:30 - 08:00 UTC | Hourly candles at :00     | 9:30 AM - 4:00 PM HKT
+INDONESIA                 | 01:00 - 07:00 UTC | Hourly candles at :00     | 9:00 AM - 3:00 PM WIB
+MALAYSIA                  | 01:00 - 08:00 UTC | Hourly candles at :00     | 9:00 AM - 5:00 PM MYT
+NSE INDIA                 | 03:45 - 10:00 UTC | Hourly candles at :00     | 9:15 AM - 3:30 PM IST
+SINGAPORE                 | 01:00 - 08:00 UTC | Hourly candles at :00     | 9:00 AM - 5:00 PM SGT
+TAIWAN                    | 01:00 - 05:30 UTC | Hourly candles at :00     | 9:00 AM - 1:30 PM CST
+THAILAND                  | 02:30 - 09:30 UTC | Hourly candles at :00     | 9:30 AM - 4:30 PM ICT
+TOKYO                     | 00:00 - 06:00 UTC | Hourly candles at :00     | 9:00 AM - 3:00 PM JST
+
+** EUROPE
+----------------------------------------------------------------------------------------------------
+ATHENS                    | 08:00 - 15:30 UTC | Hourly candles at :00     | 10:00 AM - 5:30 PM EET
+BUDAPEST                  | 08:00 - 15:30 UTC | Hourly candles at :00     | 9:00 AM - 4:30 PM CET
+EURONEXT AMSTERDAM        | 08:00 - 16:30 UTC | Hourly candles at :00     | 9:00 AM - 5:30 PM CET
+EURONEXT BRUSSELS         | 08:00 - 16:30 UTC | Hourly candles at :00     | 9:00 AM - 5:30 PM CET
+EURONEXT DUBLIN           | 08:00 - 16:30 UTC | Hourly candles at :00     | 8:00 AM - 4:30 PM GMT
+EURONEXT LISBON           | 08:00 - 16:30 UTC | Hourly candles at :00     | 9:00 AM - 5:30 PM CET
+EURONEXT PARIS            | 08:00 - 16:30 UTC | Hourly candles at :00     | 9:00 AM - 5:30 PM CET
+ISTANBUL                  | 07:00 - 15:00 UTC | Hourly candles at :00     | 10:00 AM - 6:00 PM TRT
+LONDON                    | 08:00 - 16:30 UTC | Hourly candles at :00     | 8:00 AM - 4:30 PM GMT
+MILAN                     | 08:00 - 16:30 UTC | Hourly candles at :00     | 9:00 AM - 5:30 PM CET
+OMX NORDIC COPENHAGEN     | 08:00 - 16:30 UTC | Hourly candles at :00     | 9:00 AM - 5:00 PM CET
+OMX NORDIC HELSINKI       | 08:00 - 16:30 UTC | Hourly candles at :00     | 10:00 AM - 6:30 PM EET
+OMX NORDIC ICELAND        | 09:00 - 15:30 UTC | Hourly candles at :00     | 9:00 AM - 3:30 PM GMT
+OMX NORDIC STOCKHOLM      | 08:00 - 16:30 UTC | Hourly candles at :00     | 9:00 AM - 5:30 PM CET
+OSLO                      | 08:00 - 15:15 UTC | Hourly candles at :00     | 9:00 AM - 4:15 PM CET
+PRAGUE                    | 08:00 - 15:30 UTC | Hourly candles at :00     | 9:00 AM - 4:30 PM CET
+SIX                       | 08:00 - 16:30 UTC | Hourly candles at :00     | 9:00 AM - 5:30 PM CET
+SIX SWISS                 | 08:00 - 16:30 UTC | Hourly candles at :00     | 9:00 AM - 5:30 PM CET
+SPAIN                     | 08:00 - 16:30 UTC | Hourly candles at :00     | 9:00 AM - 5:30 PM CET
+VIENNA                    | 08:00 - 16:30 UTC | Hourly candles at :00     | 9:00 AM - 5:30 PM CET
+WARSAW                    | 08:00 - 15:30 UTC | Hourly candles at :00     | 9:00 AM - 4:30 PM CET
+XETRA                     | 08:00 - 16:30 UTC | Hourly candles at :00     | 9:00 AM - 5:30 PM CET
+
+** AFRICA / MIDDLE EAST
+----------------------------------------------------------------------------------------------------
+JSE                       | 07:00 - 15:00 UTC | Hourly candles at :00     | 9:00 AM - 5:00 PM SAST
+
+====================================================================================================
+NOTE: Hourly candles at :30 are updated at :35 past each hour
+      Hourly candles at :00 are updated at :05 past each hour
+====================================================================================================

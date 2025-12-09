@@ -1,0 +1,139 @@
+-- PostgreSQL schema for Stock Alert App
+-- -------------------------------------
+-- This file mirrors the SQLite structures currently used by the app and
+-- introduces the indexes/constraints we rely on for performance.
+
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+CREATE TABLE IF NOT EXISTS daily_prices (
+    ticker          TEXT        NOT NULL,
+    date            DATE        NOT NULL,
+    open            DOUBLE PRECISION,
+    high            DOUBLE PRECISION,
+    low             DOUBLE PRECISION,
+    close           DOUBLE PRECISION NOT NULL,
+    volume          BIGINT,
+    updated_at      TIMESTAMPTZ DEFAULT NOW(),
+    PRIMARY KEY (ticker, date)
+);
+
+CREATE INDEX IF NOT EXISTS idx_daily_prices_date
+    ON daily_prices (date DESC);
+
+
+CREATE TABLE IF NOT EXISTS hourly_prices (
+    ticker          TEXT        NOT NULL,
+    datetime        TIMESTAMPTZ NOT NULL,
+    open            DOUBLE PRECISION,
+    high            DOUBLE PRECISION,
+    low             DOUBLE PRECISION,
+    close           DOUBLE PRECISION NOT NULL,
+    volume          BIGINT,
+    updated_at      TIMESTAMPTZ DEFAULT NOW(),
+    PRIMARY KEY (ticker, datetime)
+);
+
+CREATE INDEX IF NOT EXISTS idx_hourly_prices_ticker_datetime
+    ON hourly_prices (ticker, datetime DESC);
+
+
+CREATE TABLE IF NOT EXISTS weekly_prices (
+    ticker          TEXT        NOT NULL,
+    week_ending     DATE        NOT NULL,
+    open            DOUBLE PRECISION,
+    high            DOUBLE PRECISION,
+    low             DOUBLE PRECISION,
+    close           DOUBLE PRECISION NOT NULL,
+    volume          BIGINT,
+    updated_at      TIMESTAMPTZ DEFAULT NOW(),
+    PRIMARY KEY (ticker, week_ending)
+);
+
+CREATE INDEX IF NOT EXISTS idx_weekly_prices_ticker_week
+    ON weekly_prices (ticker, week_ending DESC);
+
+
+CREATE TABLE IF NOT EXISTS ticker_metadata (
+    ticker          TEXT PRIMARY KEY,
+    first_date      DATE,
+    last_date       DATE,
+    total_records   INTEGER,
+    last_update     TIMESTAMPTZ,
+    exchange        TEXT,
+    asset_type      TEXT
+);
+
+
+CREATE TABLE IF NOT EXISTS daily_move_stats (
+    ticker          TEXT        NOT NULL,
+    date            DATE        NOT NULL,
+    pct_change      DOUBLE PRECISION,
+    mean_change     DOUBLE PRECISION,
+    std_change      DOUBLE PRECISION,
+    zscore          DOUBLE PRECISION,
+    sigma_level     INTEGER,
+    direction       TEXT,
+    magnitude       TEXT,
+    updated_at      TIMESTAMPTZ DEFAULT NOW(),
+    PRIMARY KEY (ticker, date)
+);
+
+
+CREATE TABLE IF NOT EXISTS alert_audits (
+    id                      BIGSERIAL PRIMARY KEY,
+    timestamp               TIMESTAMPTZ NOT NULL,
+    alert_id                TEXT NOT NULL,
+    ticker                  TEXT NOT NULL,
+    stock_name              TEXT,
+    exchange                TEXT,
+    timeframe               TEXT,
+    action                  TEXT,
+    evaluation_type         TEXT NOT NULL,
+    price_data_pulled       BOOLEAN,
+    price_data_source       TEXT,
+    conditions_evaluated    BOOLEAN,
+    alert_triggered         BOOLEAN,
+    trigger_reason          TEXT,
+    execution_time_ms       INTEGER,
+    cache_hit               BOOLEAN,
+    error_message           TEXT,
+    additional_data         JSONB
+);
+
+CREATE INDEX IF NOT EXISTS idx_alert_audits_ticker_ts
+    ON alert_audits (ticker, timestamp DESC);
+
+
+CREATE TABLE IF NOT EXISTS continuous_prices (
+    symbol              TEXT        NOT NULL,
+    date                DATE        NOT NULL,
+    open                DOUBLE PRECISION,
+    high                DOUBLE PRECISION,
+    low                 DOUBLE PRECISION,
+    close               DOUBLE PRECISION,
+    volume              BIGINT,
+    adjustment_method   TEXT DEFAULT 'panama',
+    front_month         TEXT,
+    roll_date           DATE,
+    created_at          TIMESTAMPTZ DEFAULT NOW(),
+    PRIMARY KEY (symbol, date)
+);
+
+CREATE INDEX IF NOT EXISTS idx_continuous_prices_symbol_date
+    ON continuous_prices (symbol, date DESC);
+
+
+CREATE TABLE IF NOT EXISTS futures_metadata (
+    symbol                  TEXT PRIMARY KEY,
+    name                    TEXT,
+    exchange                TEXT,
+    category                TEXT,
+    multiplier              DOUBLE PRECISION,
+    min_tick                DOUBLE PRECISION,
+    currency                TEXT,
+    contract_id             INTEGER,
+    last_update             TIMESTAMPTZ,
+    front_month             TEXT,
+    next_roll_date          DATE,
+    data_quality_score      DOUBLE PRECISION DEFAULT 1.0
+);

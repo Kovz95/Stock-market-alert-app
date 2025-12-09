@@ -1,0 +1,19 @@
+{
+  "processing": {
+    "batch_size": 1000,
+    "max_workers": 20,
+    "parallel_stocks": 50,
+    "use_batching": true
+  },
+  "api_strategy": {
+    "primary": "FMP",
+    "fallback": "Yahoo Finance",
+    "batch_symbols": true,
+    "cache_results": true
+  },
+  "performance": {
+    "expected_checks_per_minute": 3000,
+    "expected_time_all_alerts": "2-3 minutes",
+    "bottleneck": "None - API limit is very high"
+  }
+}
