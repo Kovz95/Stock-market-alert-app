@@ -18,6 +18,9 @@ import pandas as pd
 import re
 import numpy as np
 from indicators_lib import (
+    EMA,
+    HMA,
+    SMA,
     EWO,
     MA_SPREAD_ZSCORE,
     ICHIMOKU_BASE,
@@ -191,6 +194,45 @@ def apply_function(df, ind, vals=None, debug_mode=False):
 
         series = EWO(df, sma1_length=sma1, sma2_length=sma2, source=source, use_percent=use_percent)
         if series is None or series.empty:
+            return None
+
+        if "specifier" in ind:
+            try:
+                idx = int(ind.get("specifier", -1))
+            except Exception:
+                return None
+            if idx < -len(series) or idx >= len(series):
+                return None
+            value = series.iloc[idx]
+            return None if pd.isna(value) else value
+        return series
+
+    if func_lower in ("sma", "ema", "hma") and "input" in ind:
+        def _as_int(value, default):
+            try:
+                return int(value)
+            except Exception:
+                return default
+
+        period = _as_int(ind.get("period", 20), 20)
+        input_series = ind.get("input", "Close")
+        if isinstance(input_series, _SeriesIndexer):
+            input_series = input_series.series
+
+        series = None
+        try:
+            if func_lower == "sma":
+                series = SMA(df, period, input_series)
+            elif func_lower == "ema":
+                series = EMA(df, period, input_series)
+            elif func_lower == "hma":
+                series = HMA(df, period, input_series)
+        except Exception:
+            series = None
+
+        if series is None:
+            return None
+        if hasattr(series, "empty") and series.empty:
             return None
 
         if "specifier" in ind:
@@ -381,6 +423,30 @@ def _try_evaluate_ichimoku(df, exp: str):
         return None
 
 
+def _compute_zscore(val, lookback, df):
+    """
+    Compute rolling z-score of a series-like value over the provided lookback.
+    """
+    try:
+        win = int(lookback)
+    except Exception:
+        win = 20
+    series = val
+    if isinstance(series, _SeriesIndexer):
+        series = series.series
+    if isinstance(series, str) and series in df.columns:
+        series = df[series]
+    if not hasattr(series, "rolling"):
+        return None
+    try:
+        mean = series.rolling(win).mean()
+        std = series.rolling(win).std()
+        z = (series - mean) / std
+        return _SeriesIndexer(z)
+    except Exception:
+        return None
+
+
 _SIMPLE_PERIOD_FUNCS = {
     "sma",
     "ema",
@@ -503,6 +569,7 @@ def _try_evaluate_python(df, exp: str):
         }
         for name in indicator_names:
             ctx[name] = _make_indicator_func(df, name)
+        ctx["zscore"] = lambda val, lookback=20: _compute_zscore(val, lookback, df)
 
         result = eval(exp, {"__builtins__": {}}, ctx)
     except Exception:

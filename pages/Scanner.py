@@ -224,6 +224,24 @@ def _extract_condition_values(df: pd.DataFrame, condition_list):
     return values
 
 
+def apply_zscore_indicator(indicator_expr: str, use_zscore: bool, lookback: int) -> str:
+    """Optionally wrap a numeric indicator expression in a z-score call."""
+    if not use_zscore or not indicator_expr:
+        return indicator_expr
+    if any(op in indicator_expr for op in [">", "<", "=", " and ", " or ", ":"]):
+        return indicator_expr
+    import re
+    base = indicator_expr.strip()
+    match = re.match(r"(.+)\[(-?\d+)\]$", base)
+    if match:
+        base = match.group(1)
+    try:
+        lb = int(lookback)
+    except Exception:
+        lb = 20
+    return f"zscore({base}, lookback={lb})[-1]"
+
+
 def _format_condition_values(values):
     """Format condition values for table display."""
     if not values:
@@ -1023,7 +1041,77 @@ with col1:
                     min_value=1, max_value=500, value=20,
                     key="ma_period_value"
                 )
-                indicator = f"{ma_type.lower()}({ma_period})[-1]"
+                ma_input_source = st.selectbox(
+                    "Input Source:",
+                    [
+                        "Close (default)",
+                        "Open",
+                        "High",
+                        "Low",
+                        "EWO (Elliott Wave Oscillator)",
+                        "RSI",
+                        "MACD (Line)",
+                        "MACD (Signal)",
+                        "MACD (Histogram)"
+                    ],
+                    key="ma_input_source"
+                )
+
+                ma_input_expr = ""
+                if ma_input_source == "Close (default)":
+                    ma_input_expr = ""
+                elif ma_input_source in ["Open", "High", "Low", "Close"]:
+                    ma_input_expr = f"'{ma_input_source}'"
+                elif ma_input_source == "EWO (Elliott Wave Oscillator)":
+                    ewo_sma1 = st.number_input(
+                        "EWO Fast SMA Period:",
+                        min_value=1, max_value=100, value=5,
+                        key="ma_input_ewo_sma1"
+                    )
+                    ewo_sma2 = st.number_input(
+                        "EWO Slow SMA Period:",
+                        min_value=1, max_value=200, value=35,
+                        key="ma_input_ewo_sma2"
+                    )
+                    ewo_source = st.selectbox(
+                        "EWO Source:",
+                        ["Close", "Open", "High", "Low"],
+                        index=0,
+                        key="ma_input_ewo_source"
+                    )
+                    ewo_use_percent = st.checkbox(
+                        "EWO as % of price",
+                        value=True,
+                        key="ma_input_ewo_use_percent"
+                    )
+                    ma_input_expr = f"EWO(sma1_length={ewo_sma1}, sma2_length={ewo_sma2}, source='{ewo_source}', use_percent={ewo_use_percent})"
+                elif ma_input_source == "RSI":
+                    ma_rsi_period = st.number_input(
+                        "RSI Period (for input):",
+                        min_value=2, max_value=100, value=14,
+                        key="ma_input_rsi_period"
+                    )
+                    ma_input_expr = f"rsi({ma_rsi_period})"
+                elif ma_input_source.startswith("MACD"):
+                    col_m1, col_m2, col_m3 = st.columns(3)
+                    with col_m1:
+                        ma_macd_fast = st.number_input("MACD Fast:", min_value=5, max_value=50, value=12, key="ma_input_macd_fast")
+                    with col_m2:
+                        ma_macd_slow = st.number_input("MACD Slow:", min_value=10, max_value=100, value=26, key="ma_input_macd_slow")
+                    with col_m3:
+                        ma_macd_signal = st.number_input("MACD Signal:", min_value=5, max_value=50, value=9, key="ma_input_macd_signal")
+
+                    macd_type = "line"
+                    if "Signal" in ma_input_source:
+                        macd_type = "signal"
+                    elif "Histogram" in ma_input_source:
+                        macd_type = "histogram"
+                    ma_input_expr = f"macd(fast_period={ma_macd_fast}, slow_period={ma_macd_slow}, signal_period={ma_macd_signal}, type='{macd_type}')"
+
+                if ma_input_expr:
+                    indicator = f"{ma_type.lower()}(period={ma_period}, input={ma_input_expr})[-1]"
+                else:
+                    indicator = f"{ma_type.lower()}({ma_period})[-1]"
     elif indicator_category == "MA Z-Score":
         st.markdown("**Price vs MA Z-Score**")
 
@@ -1963,11 +2051,29 @@ with col1:
                "• HARSI_Flip(period = 14, smoothing = 1)[-1] == 2")
         indicator = ""
 
-with col2:
-    st.markdown("<br>", unsafe_allow_html=True)  # Add spacing
-    if st.button("➕ Add Condition", key="add_condition"):
-        if indicator and indicator.strip():
-            st.session_state.scanner_conditions.append(indicator.strip())
+    # Optional z-score transform for numeric indicator values
+    if indicator:
+        use_zscore = st.checkbox(
+            "Transform to Z-score (rolling)",
+            value=False,
+            key="zscore_option_scanner",
+            help="Use the z-score of this indicator over a rolling lookback window"
+        )
+        if use_zscore:
+            zscore_lookback = st.number_input(
+                "Z-score Lookback:",
+                min_value=5, max_value=500, value=20,
+                key="zscore_lookback_scanner"
+            )
+        else:
+            zscore_lookback = 20
+        indicator = apply_zscore_indicator(indicator, use_zscore, zscore_lookback)
+
+    with col2:
+        st.markdown("<br>", unsafe_allow_html=True)  # Add spacing
+        if st.button("➕ Add Condition", key="add_condition"):
+            if indicator and indicator.strip():
+                st.session_state.scanner_conditions.append(indicator.strip())
             st.success(f"✅ Added: {indicator.strip()}")
             st.rerun()
 
