@@ -2,6 +2,7 @@ import os
 import time
 import streamlit as st
 import traceback
+from pathlib import Path
 
 st.set_page_config(
     page_title="Add Alert",
@@ -526,55 +527,6 @@ def get_indicator_guide():
                 }
             }
         },
-        "Deviation Trend Profile (DTP)": {
-            "description": "Advanced trend and volatility analysis indicator",
-            "conditions": {
-                "price_above_ma": {
-                    "description": "Price is above the moving average",
-                    "example": "price_above_ma: 20 (SMA)"
-                },
-                "trend_up": {
-                    "syntax": "momentum > 0",
-                    "description": "Trend is moving upward",
-                    "example": "trend_up"
-                },
-                "trend_down": {
-                    "syntax": "momentum < 0",
-                    "description": "Trend is moving downward",
-                    "example": "trend_down"
-                },
-                "price_above_stdv1": {
-                    "syntax": "price > MA + 1*ATR",
-                    "description": "Price is above 1 standard deviation band",
-                    "example": "price_above_stdv1"
-                },
-                "price_below_stdv1": {
-                    "syntax": "price < MA - 1*ATR",
-                    "description": "Price is below 1 standard deviation band",
-                    "example": "price_below_stdv1"
-                },
-                "price_above_stdv2": {
-                    "syntax": "price > MA + 2*ATR",
-                    "description": "Price is above 2 standard deviation band",
-                    "example": "price_above_stdv2"
-                },
-                "price_below_stdv2": {
-                    "syntax": "price < MA - 2*ATR",
-                    "description": "Price is below 2 standard deviation band",
-                    "example": "price_below_stdv2"
-                },
-                "volatility_high": {
-                    "syntax": "ATR > threshold",
-                    "description": "High volatility detected",
-                    "example": "volatility_high: 2.0"
-                },
-                "volatility_low": {
-                    "syntax": "ATR < threshold",
-                    "description": "Low volatility detected",
-                    "example": "volatility_low: 0.5"
-                }
-            }
-        },
         "Cross-Exchange Ratio": {
             "description": "Ratio between two stocks from different exchanges",
             "conditions": {
@@ -707,6 +659,16 @@ def display_indicator_guide():
                         st.caption(f"Example: {details['example']}")
             
             st.markdown("---")
+
+    catalog_path = Path(__file__).resolve().parent.parent / "docs" / "add_alert_indicator_catalog.md"
+    with st.expander("📄 Dropdown Catalog (Add Alert)", expanded=False):
+        if catalog_path.exists():
+            try:
+                st.markdown(catalog_path.read_text(encoding="utf-8"))
+            except Exception:
+                st.warning("Could not load the dropdown catalog file.")
+        else:
+            st.warning("Catalog file not found.")
 
 # Cache market data loading for better performance
 @st.cache_data(ttl=60)  # Cache for 1 minute to ensure fresh data
@@ -1230,11 +1192,6 @@ with tab1:
             st.markdown("- `macd_bullish_crossover` - MACD line > Signal line")
             st.markdown("- `macd_bearish_crossover` - MACD line < Signal line")
             
-            st.markdown("**DTP Conditions**")
-            st.markdown("- `trend_up` - Upward trend detected")
-            st.markdown("- `trend_down` - Downward trend detected")
-            st.markdown("- `price_above_stdv1` - Price above 1st deviation band")
-            
             st.markdown("**Multi-Timeframe**")
             st.markdown("- `daily_price_above_weekly_ma: 20` - Daily price > Weekly MA")
             st.markdown("- `daily_price_above_weekly_high` - Daily price > Weekly high")
@@ -1254,7 +1211,6 @@ with tab1:
             "📊 **MACD**": "Trend and momentum (crossovers, histogram)",
             "📈 **Bollinger Bands**": "Volatility and price levels",
             "📊 **Donchian Channels**": "Highest high/lowest low breakout system",
-            "🎯 **Deviation Trend Profile**": "Advanced trend and volatility analysis",
             "⚖️ **Cross-Exchange Ratio**": "Ratio between different market stocks",
             "🔄 **Multi-Timeframe Analysis**": "Compare daily vs weekly trends and values"
         }
@@ -1677,7 +1633,7 @@ with tab1:
         indicator_category = st.selectbox(
             "Select Indicator Category:",
             ["", "Price Data", "Moving Averages", "RSI", "MACD", "Bollinger Bands",
-             "Volume", "ATR", "CCI", "Williams %R", "ROC", "EWO", "HARSI", "OBV MACD",
+             "Volume", "ATR", "CCI", "Williams %R", "ROC", "EWO", "MA Z-Score", "HARSI", "OBV MACD",
              "SAR", "SuperTrend", "Trend Magic", "Ichimoku Cloud", "Kalman ROC Stoch", "Pivot S/R", "Donchian Channels", "Custom"],
             key="indicator_category"
         )
@@ -2106,6 +2062,71 @@ with tab1:
                 )
 
                 indicator = f"EWO(sma1_length={ewo_sma1}, sma2_length={ewo_sma2}, source='{ewo_source}', use_percent={ewo_use_percent})[-1] {ewo_operator} {ewo_value}"
+
+        elif indicator_category == "MA Z-Score":
+            st.markdown("**Price vs MA Z-Score**")
+
+            ma_type = st.selectbox(
+                "MA Type:",
+                ["SMA", "EMA", "HMA"],
+                index=0,
+                key="ma_zs_alert_ma_type",
+                help="Choose SMA, EMA, or HMA as the baseline moving average"
+            )
+
+            ma_period = st.number_input(
+                "MA Period:",
+                min_value=1, max_value=500, value=20,
+                key="ma_zs_alert_period"
+            )
+
+            spread_mean_window = st.number_input(
+                "Spread Mean Window (lookback for average spread):",
+                min_value=1, max_value=500, value=ma_period,
+                key="ma_zs_alert_mean_window"
+            )
+
+            spread_std_window = st.number_input(
+                "Spread Std Dev Window:",
+                min_value=1, max_value=500, value=spread_mean_window,
+                key="ma_zs_alert_std_window"
+            )
+
+            price_col = st.selectbox(
+                "Price Column:",
+                ["Close", "Open", "High", "Low"],
+                index=0,
+                key="ma_zs_alert_price_col"
+            )
+
+            use_percent = st.checkbox(
+                "Use percent spread ((Price - MA)/MA * 100)",
+                value=True,
+                key="ma_zs_alert_use_percent",
+                help="If unchecked, uses absolute price minus moving average"
+            )
+
+            operator = st.selectbox(
+                "Z-Score Condition:",
+                [">", ">=", "<", "<="],
+                index=0,
+                key="ma_zs_alert_operator"
+            )
+
+            threshold = st.number_input(
+                "Z-Score Threshold:",
+                value=2.0,
+                step=0.1,
+                format="%.2f",
+                key="ma_zs_alert_threshold"
+            )
+
+            zs_expr = (
+                f"MA_SPREAD_ZSCORE(price_col='{price_col}', ma_length={ma_period}, "
+                f"spread_mean_window={spread_mean_window}, spread_std_window={spread_std_window}, "
+                f"ma_type='{ma_type}', use_percent={use_percent}, output='zscore')[-1]"
+            )
+            indicator = f"{zs_expr} {operator} {threshold}"
 
         elif indicator_category == "HARSI":
             harsi_type = st.selectbox(
