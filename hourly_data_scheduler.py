@@ -9,9 +9,10 @@ import os
 import sys
 import time
 from collections import defaultdict
+from collections.abc import Iterable
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Tuple
+from typing import Any
 
 import pandas as pd
 import psutil
@@ -26,15 +27,19 @@ from auto_scheduler_v2 import run_alert_checks  # noqa: E402
 from calendar_adapter import (  # noqa: E402
     get_hourly_alignment,
     get_session_bounds,
+)
+from calendar_adapter import (
     is_exchange_open as calendar_is_open,
 )
+from data_access.document_store import delete_document, load_document, save_document  # noqa: E402
 from exchange_schedule_config_v2 import EXCHANGE_SCHEDULES  # noqa: E402
 from hourly_price_collector import HourlyPriceCollector  # noqa: E402
 from hourly_scheduler_discord import HourlySchedulerDiscord  # noqa: E402
-from redis_support import build_key, delete_key, get_json, set_json  # noqa: E402
-from data_access.document_store import delete_document, load_document, save_document  # noqa: E402
+from redis_support import build_key, delete_key, set_json  # noqa: E402
 
-os.environ.setdefault("FMP_API_KEY", "8BulhGx0fCwLpA48qCwy8r9cx5n6fya7")
+# Ensure FMP_API_KEY is set in environment
+if not os.getenv("FMP_API_KEY"):
+    raise ValueError("FMP_API_KEY environment variable is required. Please set it in .env file")
 
 logger = logging.getLogger("hourly_data_scheduler")
 logger.setLevel(logging.INFO)
@@ -115,7 +120,7 @@ def update_status(
     stats: dict | None = None,
     current_progress: dict | None = None,
 ) -> None:
-    payload: Dict[str, Any] = {}
+    payload: dict[str, Any] = {}
     try:
         payload = load_document(
             DOCUMENT_STATUS_KEY,
@@ -185,14 +190,16 @@ def update_status(
 # ---------------------------------------------------------------------------
 
 
-def get_exchange_market_hours(exchanges: Iterable[str] | None = None) -> Dict[str, Tuple[float, float, str]]:
+def get_exchange_market_hours(
+    exchanges: Iterable[str] | None = None,
+) -> dict[str, tuple[float, float, str]]:
     """
     Return mapping of exchange -> (open_hour_utc, close_hour_utc, alignment).
 
     open/close are floats representing UTC hours (e.g. 13.5 for 13:30).
     """
     now = pd.Timestamp.utcnow()
-    hours: Dict[str, Tuple[float, float, str]] = {}
+    hours: dict[str, tuple[float, float, str]] = {}
     for exchange in exchanges or EXCHANGE_SCHEDULES.keys():
         try:
             open_dt, close_dt = get_session_bounds(exchange, now, next_if_closed=True)
@@ -241,8 +248,8 @@ def determine_candle_description(exchanges: Iterable[str]) -> str:
     return "Mixed cadence"
 
 
-def exchanges_grouped_by_style() -> Dict[str, List[str]]:
-    mapping: Dict[str, List[str]] = defaultdict(list)
+def exchanges_grouped_by_style() -> dict[str, list[str]]:
+    mapping: dict[str, list[str]] = defaultdict(list)
     for exchange in EXCHANGE_SCHEDULES.keys():
         mapping[get_hourly_alignment(exchange)].append(exchange)
     return mapping
@@ -302,11 +309,12 @@ def update_hourly_data(exchange_filter: Iterable[str] | None = None) -> None:
             )
             return
 
-        open_exchanges = sorted({info.get("exchange") for info in open_tickers.values() if info.get("exchange")})
+        open_exchanges = sorted(
+            {info.get("exchange") for info in open_tickers.values() if info.get("exchange")}
+        )
         exchange_hours = get_exchange_market_hours(open_exchanges)
         close_lines = [
-            f"{exchange}: {close:.2f}h UTC"
-            for exchange, (_, close, _) in exchange_hours.items()
+            f"{exchange}: {close:.2f}h UTC" for exchange, (_, close, _) in exchange_hours.items()
         ]
 
         discord_logger.notify_start(
@@ -368,7 +376,9 @@ def update_hourly_data(exchange_filter: Iterable[str] | None = None) -> None:
             elapsed,
         )
 
-        discord_logger.notify_complete(run_started, elapsed, stats, alert_stats, open_exchanges or ["Unknown"])
+        discord_logger.notify_complete(
+            run_started, elapsed, stats, alert_stats, open_exchanges or ["Unknown"]
+        )
         update_status(
             status="running",
             last_run=datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"),

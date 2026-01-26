@@ -1,0 +1,68 @@
+# Pre-commit hooks for Stock Market Alert App
+# Install: pre-commit install
+# Run manually: pre-commit run --all-files
+
+repos:
+  # Ruff - Fast Python linter and formatter
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.8.4
+    hooks:
+      # Run the linter
+      - id: ruff
+        args: [--fix]
+        types_or: [python, pyi]
+      # Run the formatter
+      - id: ruff-format
+        types_or: [python, pyi]
+
+  # Standard pre-commit hooks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      # Remove trailing whitespace
+      - id: trailing-whitespace
+        args: [--markdown-linebreak-ext=md]
+      # Ensure files end with a newline
+      - id: end-of-file-fixer
+      # Validate YAML files
+      - id: check-yaml
+        exclude: ^.github/workflows/
+      # Validate JSON files
+      - id: check-json
+      # Detect private keys
+      - id: detect-private-key
+      # Check for merge conflict markers
+      - id: check-merge-conflict
+      # Check for large files
+      - id: check-added-large-files
+        args: [--maxkb=1000]
+      # Prevent commits to main branch
+      - id: no-commit-to-branch
+        args: [--branch, main, --branch, master]
+
+  # Check for common security issues
+  - repo: https://github.com/pycqa/bandit
+    rev: 1.8.0
+    hooks:
+      - id: bandit
+        args: [-c, pyproject.toml]
+        additional_dependencies: ["bandit[toml]"]
+        exclude: ^tests/
+
+# Configuration for specific hooks
+default_language_version:
+  python: python3.13
+
+# Files to exclude from all hooks
+exclude: |
+  (?x)^(
+      \.venv/|
+      \.git/|
+      __pycache__/|
+      \.pytest_cache/|
+      \.mypy_cache/|
+      \.ruff_cache/|
+      build/|
+      dist/|
+      .*\.egg-info/
+  )

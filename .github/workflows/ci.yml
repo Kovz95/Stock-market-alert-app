@@ -1,0 +1,147 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop, bugfix/**]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  lint:
+    name: Code Quality Checks
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          cache: 'pip'
+
+      - name: Install uv
+        run: curl -LsSf https://astral.sh/uv/install.sh | sh
+
+      - name: Install dependencies
+        run: |
+          uv sync --all-extras
+
+      - name: Run Ruff linter
+        run: |
+          uv run ruff check .
+
+      - name: Run Ruff formatter check
+        run: |
+          uv run ruff format --check .
+
+      - name: Run MyPy type checking
+        run: |
+          uv run mypy src/ --ignore-missing-imports
+        continue-on-error: true  # Don't fail build on type errors initially
+
+  test:
+    name: Tests
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.13']
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: 'pip'
+
+      - name: Install uv
+        run: curl -LsSf https://astral.sh/uv/install.sh | sh
+
+      - name: Install dependencies
+        run: |
+          uv sync --all-extras
+
+      - name: Create test .env file
+        run: |
+          cat > .env << EOF
+          FMP_API_KEY=test_fmp_api_key_12345
+          WEBHOOK_URL_LOGGING=https://discord.com/api/webhooks/test/test_webhook_1
+          WEBHOOK_URL_LOGGING_2=https://discord.com/api/webhooks/test/test_webhook_2
+          ENVIRONMENT=testing
+          DEBUG=true
+          EOF
+
+      - name: Run tests with coverage
+        run: |
+          uv run pytest
+        env:
+          PYTHONPATH: ${{ github.workspace }}/src:${{ github.workspace }}
+
+      - name: Upload coverage reports
+        uses: codecov/codecov-action@v4
+        if: matrix.python-version == '3.13'
+        with:
+          file: ./coverage.xml
+          fail_ci_if_error: false
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
+      - name: Archive coverage HTML report
+        if: matrix.python-version == '3.13'
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: htmlcov/
+
+  security:
+    name: Security Checks
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Install uv
+        run: curl -LsSf https://astral.sh/uv/install.sh | sh
+
+      - name: Install dependencies
+        run: |
+          uv sync --all-extras
+
+      - name: Run Bandit security checks
+        run: |
+          uv run pip install bandit[toml]
+          uv run bandit -r src/ -f json -o bandit-report.json
+        continue-on-error: true
+
+      - name: Check for secrets in code
+        run: |
+          if grep -r "discord.com/api/webhooks" --include="*.py" --exclude-dir=".venv" --exclude-dir=".git" .; then
+            echo "ERROR: Found hardcoded Discord webhook URLs!"
+            exit 1
+          fi
+          if grep -r "fmp_api.*=.*['\"].*[a-zA-Z0-9]\{20,\}" --include="*.py" --exclude-dir=".venv" --exclude-dir=".git" .; then
+            echo "ERROR: Found hardcoded FMP API keys!"
+            exit 1
+          fi
+
+  build-status:
+    name: Build Status
+    runs-on: ubuntu-latest
+    needs: [lint, test, security]
+    if: always()
+
+    steps:
+      - name: Check build status
+        run: |
+          if [ "${{ needs.lint.result }}" != "success" ] || [ "${{ needs.test.result }}" != "success" ]; then
+            echo "Build failed!"
+            exit 1
+          fi
+          echo "All checks passed!"
