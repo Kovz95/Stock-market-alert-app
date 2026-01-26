@@ -12,7 +12,7 @@ from pathlib import Path
 import sys
 import numpy as np
 
-from db_config import db_config
+from src.stock_alert.data_access.database import db_config
 
 # Add parent directory for imports
 sys.path.append(str(Path(__file__).parent.parent))

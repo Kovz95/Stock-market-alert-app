@@ -15,7 +15,7 @@ from typing import Any, Dict, List, Optional, Sequence
 import pandas as pd
 
 from db_config import db_config
-from data_access.alert_repository import list_alerts as repo_list_alerts
+from src.stock_alert.data_access.alert_repository import list_alerts as repo_list_alerts
 
 class AlertAuditLogger:
     """

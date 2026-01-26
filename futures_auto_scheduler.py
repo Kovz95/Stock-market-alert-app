@@ -14,7 +14,7 @@ import threading
 import traceback
 import psutil
 from futures_scheduler_discord import futures_discord
-from data_access.document_store import load_document, save_document
+from src.stock_alert.data_access.document_store import load_document, save_document
 from pprint import pprint
 
 # Configure logging

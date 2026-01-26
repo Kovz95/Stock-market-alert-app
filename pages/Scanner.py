@@ -13,8 +13,8 @@ import pandas as pd
 import streamlit as st
 
 from backend import evaluate_expression_list, indicator_calculation, simplify_conditions
-from data_access.metadata_repository import fetch_portfolios, fetch_stock_metadata_map
-from db_config import db_config
+from src.stock_alert.data_access.metadata_repository import fetch_portfolios, fetch_stock_metadata_map
+from src.stock_alert.data_access.database import db_config
 
 # MUST be the first Streamlit command after imports
 st.set_page_config(page_title="Scanner", page_icon="🔍", layout="wide")

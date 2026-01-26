@@ -5,7 +5,7 @@ import pandas as pd
 import streamlit as st
 
 from utils import load_market_data
-from db_config import db_config
+from src.stock_alert.data_access.database import db_config
 
 st.set_page_config(
     page_title="Daily Move Tracker",

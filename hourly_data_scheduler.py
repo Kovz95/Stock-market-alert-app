@@ -31,7 +31,7 @@ from calendar_adapter import (  # noqa: E402
 from calendar_adapter import (
     is_exchange_open as calendar_is_open,
 )
-from data_access.document_store import delete_document, load_document, save_document  # noqa: E402
+from src.stock_alert.data_access.document_store import delete_document, load_document, save_document  # noqa: E402
 from exchange_schedule_config_v2 import EXCHANGE_SCHEDULES  # noqa: E402
 from hourly_price_collector import HourlyPriceCollector  # noqa: E402
 from hourly_scheduler_discord import HourlySchedulerDiscord  # noqa: E402

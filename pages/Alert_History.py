@@ -5,8 +5,8 @@ Allows users to search for a company by name or ticker and view alert trigger hi
 
 import streamlit as st
 import json
-from db_config import db_config
-from data_access.metadata_repository import (
+from src.stock_alert.data_access.database import db_config
+from src.stock_alert.data_access.metadata_repository import (
     fetch_alerts_list,
     fetch_portfolios,
     fetch_stock_metadata_map,

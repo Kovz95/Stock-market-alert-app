@@ -20,7 +20,7 @@ from typing import Any, Dict
 from datetime import datetime
 
 import requests
-from data_access.metadata_repository import fetch_stock_metadata_df
+from src.stock_alert.data_access.metadata_repository import fetch_stock_metadata_df
 
 _LEGACY_BYTECODE = Path(__file__).parent / "__pycache__/auto_scheduler_v2_legacy.cpython-311.pyc"
 _PYC_HEADER_SIZE = 16

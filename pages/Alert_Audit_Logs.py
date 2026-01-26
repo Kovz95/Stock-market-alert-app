@@ -14,7 +14,7 @@ from alert_audit_logger import (
     get_audit_summary, get_alert_history, get_performance_metrics,
     get_daily_evaluation_stats, get_evaluation_coverage, get_expected_daily_evaluations
 )
-from db_config import db_config
+from src.stock_alert.data_access.database import db_config
 
 
 @st.cache_data(ttl=30, show_spinner=False)

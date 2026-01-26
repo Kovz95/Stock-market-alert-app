@@ -25,7 +25,7 @@ import streamlit as st
 BASE_DIR = Path(__file__).resolve().parents[1]
 sys.path.append(str(BASE_DIR))
 
-from db_config import db_config  # noqa: E402
+from src.stock_alert.data_access.database import db_config  # noqa: E402
 from auto_scheduler_v2 import get_scheduler_info, start_auto_scheduler, stop_auto_scheduler  # noqa: E402
 from exchange_schedule_config_v2 import (  # noqa: E402
     EXCHANGE_SCHEDULES,
