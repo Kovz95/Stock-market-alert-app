@@ -19,11 +19,12 @@ logger = logging.getLogger(__name__)
 
 class OptimizedFMPDataFetcher:
     """Optimized FMP data fetcher that only fetches missing data"""
-    
+
     def __init__(self):
-        self.api_key = os.getenv('FMP_API_KEY', '8BulhGx0fCwLpA48qCwy8r9cx5n6fya7')
+        # This api key was removed for safety in a public repo. It will be retrieved from the environment in a later version.
+        self.api_key = os.getenv('FMP_API_KEY', '')
         self.base_url = "https://financialmodelingprep.com/api/v3"
-        
+
     def get_missing_dates(self, ticker: str) -> tuple[Optional[datetime], int]:
         """
         Determine what dates are missing for a ticker
@@ -34,7 +35,7 @@ class OptimizedFMPDataFetcher:
                 result = db_config.execute_with_retry(
                     conn,
                     """
-                    SELECT MAX(date) FROM daily_prices 
+                    SELECT MAX(date) FROM daily_prices
                     WHERE ticker = ?
                     """,
                     (ticker,),
@@ -48,32 +49,32 @@ class OptimizedFMPDataFetcher:
                     last_date = last_date.tz_convert(None)
                 # Normalize to tz-naive to avoid tz-aware comparisons
                 today = pd.Timestamp.utcnow().tz_localize(None).normalize()
-                
+
                 # Calculate business days missing (excluding weekends)
                 days_missing = pd.bdate_range(start=last_date, end=today).shape[0] - 1
-                
+
                 # If we have today's data already (after market close), no update needed
                 if last_date >= today:
                     return last_date, 0
-                
+
                 # Fetch a few extra days for safety (holidays, etc)
                 days_to_fetch = min(days_missing + 5, 30)  # Max 30 days
-                
+
                 return last_date, days_to_fetch
             else:
                 # No data for this ticker, fetch initial dataset
                 # For new tickers, get 3 years (750 trading days) for comprehensive history
                 return None, 750
-                
+
         except Exception as e:
             logger.error(f"Error checking missing dates for {ticker}: {e}")
             # On error, fetch 3 years as fallback
             return None, 750
-    
+
     def get_historical_data_optimized(self, ticker: str, force_days: Optional[int] = None) -> Optional[pd.DataFrame]:
         """
         Fetch only missing historical data for a ticker
-        
+
         Args:
             ticker: Stock symbol
             force_days: Override the number of days to fetch (for testing)
@@ -85,45 +86,45 @@ class OptimizedFMPDataFetcher:
                 last_date = None
             else:
                 last_date, days_to_fetch = self.get_missing_dates(ticker)
-            
+
             # Skip if no update needed
             if days_to_fetch == 0:
                 logger.debug(f"{ticker}: Already up to date")
                 return pd.DataFrame()  # Return empty df to indicate no update needed
-            
+
             # Log what we're fetching
             if last_date:
                 logger.info(f"{ticker}: Fetching {days_to_fetch} days (last: {last_date.strftime('%Y-%m-%d')})")
             else:
                 logger.info(f"{ticker}: Fetching initial {days_to_fetch} days")
-            
+
             # Use ticker directly from main_database_with_etfs.json (no mapping)
             logger.debug(f"Using symbol directly: {ticker}")
-            
+
             # Build API request with appropriate limit
             url = f"{self.base_url}/historical-price-full/{ticker}"
             params = {
                 "apikey": self.api_key,
                 "limit": days_to_fetch
             }
-            
+
             # Make API request
             response = requests.get(url, params=params, timeout=10)
-            
+
             if response.status_code == 200:
                 data = response.json()
-                
+
                 if "historical" in data and data["historical"]:
                     df = pd.DataFrame(data["historical"])
-                    
+
                     # Process the data
                     df['date'] = pd.to_datetime(df['date'])
                     df = df.sort_values('date')
-                    
+
                     # Standardize column names
                     column_mapping = {
                         'open': 'Open',
-                        'high': 'High', 
+                        'high': 'High',
                         'low': 'Low',
                         'close': 'Close',
                         'volume': 'Volume',
@@ -134,15 +135,15 @@ class OptimizedFMPDataFetcher:
                         'changeOverTime': 'Change Over Time'
                     }
                     df = df.rename(columns=column_mapping)
-                    
+
                     # If we have existing data, filter to only new dates
                     if last_date:
                         df = df[df['date'] > last_date]
                         logger.info(f"{ticker}: Fetched {len(df)} new records")
-                    
+
                     # Set date as index (required by store_daily_prices)
                     df = df.set_index('date')
-                    
+
                     return df
                 else:
                     logger.warning(f"{ticker}: No historical data in response")
@@ -150,11 +151,11 @@ class OptimizedFMPDataFetcher:
             else:
                 logger.error(f"{ticker}: API error {response.status_code}")
                 return None
-                
+
         except Exception as e:
             logger.error(f"Error fetching data for {ticker}: {e}")
             return None
-    
+
     def get_quote(self, symbol: str) -> Optional[Dict[str, Any]]:
         """
         Get real-time quote for a symbol (for live checks)
@@ -163,7 +164,7 @@ class OptimizedFMPDataFetcher:
         # Use symbol directly (no mapping)
         url = f"{self.base_url}/quote/{symbol}"
         params = {"apikey": self.api_key}
-        
+
         try:
             response = requests.get(url, params=params, timeout=10)
             if response.status_code == 200:
@@ -180,7 +181,7 @@ class OptimizedDailyPriceCollector:
     """
     Optimized version that only fetches missing data
     """
-    
+
     def __init__(self):
         self.fetcher = OptimizedFMPDataFetcher()
         self.db = self._get_db()
@@ -195,12 +196,12 @@ class OptimizedDailyPriceCollector:
             'api_calls': 0,
             'weekly_updated': 0  # Track weekly price updates
         }
-    
+
     def _get_db(self):
         """Get database instance with proper imports"""
         from daily_price_collector import DailyPriceDatabase
         return DailyPriceDatabase()
-    
+
     def update_ticker(self, ticker: str, resample_weekly: bool = False) -> bool:
         """
         Update daily prices for a single ticker (optimized version)
@@ -279,20 +280,20 @@ class OptimizedDailyPriceCollector:
                             logger.info(f"{ticker}: Generated {len(weekly_df)} weekly records")
                     else:
                         logger.debug(f"{ticker}: Skipping weekly resample - no current week data (latest: {latest_date})")
-            
+
             if last_update:
                 self.stats['updated'] += 1
             else:
                 self.stats['new'] += 1
-            
+
             logger.info(f"{ticker}: Added {records} new records")
             return True
-            
+
         except Exception as e:
             logger.error(f"Error updating {ticker}: {e}")
             self.stats['failed'] += 1
             return False
-    
+
     def _resample_to_weekly(self, df: pd.DataFrame, ticker: str) -> Optional[pd.DataFrame]:
         """Resample daily data to weekly using ACTUAL last trading day"""
         try:
@@ -354,11 +355,11 @@ class OptimizedDailyPriceCollector:
 
             logger.info(f"{ticker}: Generated {len(weekly_df)} weekly records using actual trading dates")
             return weekly_df
-            
+
         except Exception as e:
             logger.error(f"Error resampling {ticker} to weekly: {e}")
             return None
-    
+
     def get_statistics(self) -> Dict:
         """Get collection statistics"""
         return {
@@ -367,7 +368,7 @@ class OptimizedDailyPriceCollector:
                 self.stats['records_fetched'] / max(self.stats['updated'] + self.stats['new'], 1)
             )
         }
-    
+
     def close(self):
         """Close database connection"""
         self.db.close()
