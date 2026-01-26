@@ -8,6 +8,7 @@ dependencies = [
     "ib-insync>=0.9.86",
     "numpy>=2.4.1",
     "pandas>=2.3.3",
+    "pandas-stubs~=2.3.3",
     "psycopg2-binary>=2.9.11",
     "redis>=7.1.0",
     "streamlit>=1.53.1",
