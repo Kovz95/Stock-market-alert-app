@@ -5,6 +5,7 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
+    "fmpsdk>=20250102.0",
     "ib-insync>=0.9.86",
     "numpy>=2.4.1",
     "pandas>=2.3.3",
