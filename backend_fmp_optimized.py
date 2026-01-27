@@ -185,7 +185,7 @@ class OptimizedDailyPriceCollector:
     def __init__(self):
         self.fetcher = OptimizedFMPDataFetcher()
         self.db = self._get_db()
-        self.stats = {
+        self.stats : dict[str, Any] = {
             'updated': 0,
             'skipped': 0,
             'skipped_tickers': [],

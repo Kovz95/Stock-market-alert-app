@@ -304,7 +304,7 @@ def apply_function(df, ind, vals=None, debug_mode=False):
 
     if _legacy_apply_function:
         return _legacy_apply_function(df, ind, vals, debug_mode)
-    
+
     # Fallback implementation for common indicators when legacy is not available
     return _apply_function_fallback(df, ind, vals, debug_mode)
 
@@ -315,16 +315,16 @@ def _apply_function_fallback(df, ind, vals=None, debug_mode=False):
     """
     if not ind or not isinstance(ind, dict):
         return None
-    
+
     func = ind.get("ind", "")
     if not func:
         # Handle numeric values
         if ind.get("isNum"):
             return ind.get("number")
         return None
-    
+
     func_lower = func.lower()
-    
+
     # Handle price columns
     if func_lower in ("close", "open", "high", "low", "volume"):
         col_name = func_lower.capitalize()
@@ -341,10 +341,10 @@ def _apply_function_fallback(df, ind, vals=None, debug_mode=False):
             except Exception:
                 return None
         return series
-    
+
     # Handle common indicators
     period = ind.get("period", 20)
-    
+
     if func_lower == "sma":
         input_col = ind.get("input", "Close")
         series = SMA(df, period, input_col)
@@ -357,7 +357,8 @@ def _apply_function_fallback(df, ind, vals=None, debug_mode=False):
     elif func_lower == "rsi":
         try:
             from indicators_lib import RSI
-            series = RSI(df, period)
+            input_col = ind.get("input", "Close")
+            series = RSI(df, period, input_col)
         except Exception:
             import talib
             series = talib.RSI(df["Close"], timeperiod=period)
@@ -390,10 +391,10 @@ def _apply_function_fallback(df, ind, vals=None, debug_mode=False):
             series = macd_line
     else:
         return None
-    
+
     if series is None or (hasattr(series, "empty") and series.empty):
         return None
-    
+
     # Apply specifier (index) if provided
     if "specifier" in ind:
         try:
@@ -404,19 +405,19 @@ def _apply_function_fallback(df, ind, vals=None, debug_mode=False):
             return None if pd.isna(value) else value
         except Exception:
             return None
-    
+
     return series
 
 
 def ind_to_dict(ind, debug_mode=False):
     """
     Parse an indicator expression string into a dictionary format.
-    
+
     Handles:
     - Numeric values: "150", "-2.0"
     - Indicators with brackets: "Close[-1]", "rsi(14)[-1]"
     - Simple indicator names: "Close", "Open"
-    
+
     Returns a dict with structure like:
     {
         "isNum": bool,
@@ -448,13 +449,13 @@ def ind_to_dict(ind, debug_mode=False):
             }
         except Exception:
             pass
-    
+
     # Fallback implementation when legacy is not available
     if not ind or not isinstance(ind, str):
         return None
-    
+
     ind = ind.strip()
-    
+
     # Check if it's a numeric value
     try:
         num_val = float(ind)
@@ -468,27 +469,27 @@ def ind_to_dict(ind, debug_mode=False):
         }
     except ValueError:
         pass
-    
+
     # Parse indicator with bracket notation like "Close[-1]" or "rsi(14)[-1]"
     result = {
         "isNum": False,
         "operable": True,
         "specifier": -1,
     }
-    
+
     # Extract bracket specifier like [-1]
     bracket_match = re.search(r'\[(-?\d+)\]', ind)
     if bracket_match:
         result["specifier"] = int(bracket_match.group(1))
         ind = re.sub(r'\[(-?\d+)\]', '', ind)
-    
+
     # Extract function parameters like rsi(14) or sma(20)
     func_match = re.match(r'(\w+)\((.*?)\)', ind)
     if func_match:
         func_name = func_match.group(1)
         params_str = func_match.group(2)
         result["ind"] = func_name
-        
+
         # Parse parameters
         if params_str:
             # Simple case: single numeric parameter
@@ -513,7 +514,7 @@ def ind_to_dict(ind, debug_mode=False):
     else:
         # Simple column name like "Close", "Open", "High", "Low", "Volume"
         result["ind"] = ind
-    
+
     return result
 
 
@@ -770,13 +771,13 @@ def _try_evaluate_python(df, exp: str):
 def evaluate_expression(df, exp, debug_mode=False):
     """
     Evaluate a conditional expression against a DataFrame.
-    
+
     Handles expressions like:
     - "Close[-1] > sma(20)[-1]"
     - "rsi(14)[-1] < 30"
     - "(EWO(...)[-1] > 0) & (EWO(...)[-2] <= 0)"
     - Complex Ichimoku expressions
-    
+
     Returns:
         bool: True if condition is met, False otherwise
     """
@@ -809,19 +810,19 @@ def evaluate_expression(df, exp, debug_mode=False):
     if _legacy_evaluate_expression:
         # Surface the original error if the fallback could not resolve it.
         return _legacy_evaluate_expression(df, exp, debug_mode=debug_mode)
-    
+
     # Final fallback for simple comparisons
     result = _evaluate_simple_comparison(df, exp, debug_mode)
     if result is not None:
         return result
-    
+
     return False
 
 
 def _evaluate_simple_comparison(df, exp, debug_mode=False):
     """
     Evaluate a simple binary comparison expression.
-    
+
     Handles: "indicator1 operator indicator2"
     where operator is one of: >, <, >=, <=, ==, !=
     """
@@ -829,28 +830,28 @@ def _evaluate_simple_comparison(df, exp, debug_mode=False):
         parsed = simplify_conditions(exp)
         if not parsed:
             return None
-        
+
         ind1 = parsed.get("ind1")
         ind2 = parsed.get("ind2")
         op = parsed.get("comparison")
-        
+
         if not op or ind1 is None or ind2 is None:
             return None
-        
+
         # Get values
         val1 = indicator_calculation(df, ind1, None, debug_mode)
         val2 = indicator_calculation(df, ind2, None, debug_mode)
-        
+
         # Extract scalar values if needed
         if hasattr(val1, "iloc"):
             val1 = val1.iloc[-1]
         if hasattr(val2, "iloc"):
             val2 = val2.iloc[-1]
-        
+
         # Handle NaN values
         if pd.isna(val1) or pd.isna(val2):
             return False
-        
+
         # Perform comparison
         if op == ">":
             return val1 > val2
@@ -864,7 +865,7 @@ def _evaluate_simple_comparison(df, exp, debug_mode=False):
             return val1 == val2
         elif op == "!=":
             return val1 != val2
-        
+
         return False
     except Exception:
         return None
@@ -875,12 +876,12 @@ def _evaluate_simple_comparison(df, exp, debug_mode=False):
 def simplify_conditions(cond):
     """
     Parse a condition string into a structured dictionary.
-    
+
     Handles simple binary comparisons like:
     - "Close[-1] > sma(20)[-1]"
     - "rsi(14)[-1] < 30"
     - "Close[-1] > 150"
-    
+
     Returns:
         dict: {
             "ind1": parsed left side (indicator dict or value),
@@ -890,16 +891,16 @@ def simplify_conditions(cond):
     """
     if not cond or not isinstance(cond, str):
         return None
-    
+
     # Clean the condition string
     cond = cond.strip()
-    
+
     # Find comparison operators (check >= and <= before > and <)
     operators = [">=", "<=", "==", "!=", ">", "<"]
     operator = None
     left_part = None
     right_part = None
-    
+
     for op in operators:
         if op in cond:
             parts = cond.split(op, 1)
@@ -908,21 +909,21 @@ def simplify_conditions(cond):
                 left_part = parts[0].strip()
                 right_part = parts[1].strip()
                 break
-    
+
     if not operator or left_part is None or right_part is None:
         return None
-    
+
     # Parse left and right sides
     try:
         ind1 = ind_to_dict(left_part, debug_mode=False)
     except Exception:
         ind1 = None
-    
+
     try:
         ind2 = ind_to_dict(right_part, debug_mode=False)
     except Exception:
         ind2 = None
-    
+
     return {
         "ind1": ind1,
         "ind2": ind2,
@@ -933,15 +934,15 @@ def simplify_conditions(cond):
 def indicator_calculation(df, ind, vals=None, debug_mode=False):
     """
     Calculate an indicator value from a parsed indicator dictionary.
-    
+
     This is essentially a wrapper around apply_function.
-    
+
     Args:
         df: DataFrame with price data
         ind: Indicator dictionary from ind_to_dict or simplify_conditions
         vals: Optional values dictionary (legacy parameter)
         debug_mode: Enable debug output
-    
+
     Returns:
         Indicator value (scalar or Series)
     """
@@ -951,24 +952,24 @@ def indicator_calculation(df, ind, vals=None, debug_mode=False):
 def evaluate_expression_list(df, exps, combination="1"):
     """
     Evaluate a list of expressions with combination logic.
-    
+
     Args:
         df: DataFrame with price data
         exps: List of condition strings
         combination: How to combine conditions:
             - "AND" or "1" - all conditions must be True
-            - "OR" - any condition must be True  
+            - "OR" - any condition must be True
             - "1 AND 2" - conditions 1 and 2 must be True
             - "1 OR 2" - condition 1 or 2 must be True
             - "(1 AND 2) OR 3" - complex logic expressions
             - Custom expression like "1 AND (2 OR 3)"
-    
+
     Returns:
         bool: True if the combination logic evaluates to True, False otherwise
     """
     if not exps:
         return False
-    
+
     # Evaluate each expression
     results = []
     for exp in exps:
@@ -977,23 +978,23 @@ def evaluate_expression_list(df, exps, combination="1"):
             results.append(bool(result))
         except Exception:
             results.append(False)
-    
+
     # Handle single condition
     if len(results) == 1:
         return results[0]
-    
+
     # Normalize combination logic
     if not combination or combination == "1":
         combination = "AND"
-    
+
     combination_upper = combination.upper().strip()
-    
+
     # Handle simple AND/OR
     if combination_upper == "AND":
         return all(results)
     elif combination_upper == "OR":
         return any(results)
-    
+
     # Handle complex expressions like "1 AND 2", "(1 OR 2) AND 3", etc.
     try:
         # Replace condition numbers with their boolean values
@@ -1003,13 +1004,13 @@ def evaluate_expression_list(df, exps, combination="1"):
             # Replace condition number with its boolean value
             # Use word boundaries to avoid replacing "10" when looking for "1"
             eval_expr = re.sub(r'\b' + str(i) + r'\b', str(result), eval_expr)
-        
+
         # Replace logical operators with Python syntax
         eval_expr = eval_expr.upper()
         eval_expr = eval_expr.replace("AND", "and")
         eval_expr = eval_expr.replace("OR", "or")
         eval_expr = eval_expr.replace("NOT", "not")
-        
+
         # Evaluate the expression
         result = eval(eval_expr, {"__builtins__": {}}, {})
         return bool(result)
