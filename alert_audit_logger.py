@@ -21,7 +21,7 @@ class AlertAuditLogger:
     """
     Comprehensive logging system for tracking alert evaluations
     """
-    
+
     def __init__(self, db_path: str = "alert_audit.db", log_file: str = "alert_audit.log"):
         self.db_path = db_path
         self.log_file = log_file
@@ -65,7 +65,7 @@ class AlertAuditLogger:
     def _execute(self, query: str, params: Optional[Sequence[Any]] = None):
         with self._connection() as conn:
             return db_config.execute_with_retry(conn, query, params)
-        
+
     def setup_database(self):
         """
         Initialize the audit database.
@@ -112,7 +112,7 @@ class AlertAuditLogger:
             logging.getLogger(__name__).error(
                 "Error setting up audit database: %s", exc, exc_info=True
             )
-    
+
     def setup_file_logging(self):
         """Setup file-based logging for debugging"""
         logging.basicConfig(
@@ -122,7 +122,7 @@ class AlertAuditLogger:
         )
         # Create a logger instance for this class
         self.file_logger = logging.getLogger(__name__)
-    
+
     def log_no_data_available(self, audit_id: str, ticker: str):
         """Log when price data is not available for a ticker"""
         try:
@@ -146,23 +146,23 @@ class AlertAuditLogger:
             self._execute(query, params)
 
             self.file_logger.warning(f"No data available for ticker {ticker} (audit_id: {audit_id})")
-            
+
         except Exception as e:
             self.file_logger.error(f"Failed to log no data available: {e}")
-    
-    def log_alert_check_start(self, alert: Dict, evaluation_type: str = "scheduled") -> str:
+
+    def log_alert_check_start(self, alert: Dict, evaluation_type: str = "scheduled") -> str | None:
         """
         Log the start of an alert evaluation
-        
+
         Args:
             alert: Alert dictionary
             evaluation_type: Type of evaluation (scheduled, manual, test)
-            
+
         Returns:
             Audit ID for tracking this evaluation
         """
         try:
-            audit_data = {
+            audit_data : dict[str, Any] = {
                 "timestamp": datetime.now(timezone.utc).isoformat(),
                 "alert_id": alert.get("alert_id", alert.get("id", "unknown")),
                 "ticker": alert.get("ticker", alert.get("ticker1", "unknown")),
@@ -253,15 +253,15 @@ class AlertAuditLogger:
                 audit_data["ticker"],
             )
             return str(audit_id_value)
-            
+
         except Exception as e:
             logging.error(f"Error logging alert check start: {e}")
             return None
-    
+
     def log_price_data_pulled(self, audit_id: str, price_source: str, cache_hit: bool = False):
         """
         Log when price data is successfully pulled
-        
+
         Args:
             audit_id: Audit ID from log_alert_check_start
             price_source: Source of price data (FMP, etc.)
@@ -270,21 +270,21 @@ class AlertAuditLogger:
         try:
             self._execute(
                 '''
-                UPDATE alert_audits 
+                UPDATE alert_audits
                 SET price_data_pulled = ?, price_data_source = ?, cache_hit = ?
                 WHERE id = ?
             ''',
                 (self._bool(True), price_source, self._bool(cache_hit), audit_id),
             )
             logging.info(f"Price data pulled for audit {audit_id}: {price_source} (cache: {cache_hit})")
-            
+
         except Exception as e:
             logging.error(f"Error logging price data pulled: {e}")
-    
-    def log_conditions_evaluated(self, audit_id: str, conditions_result: bool, trigger_reason: str = None):
+
+    def log_conditions_evaluated(self, audit_id: str, conditions_result: bool, trigger_reason: str | None = None):
         """
         Log when conditions are evaluated
-        
+
         Args:
             audit_id: Audit ID from log_alert_check_start
             conditions_result: Whether conditions were successfully evaluated
@@ -293,7 +293,7 @@ class AlertAuditLogger:
         try:
             self._execute(
                 '''
-                UPDATE alert_audits 
+                UPDATE alert_audits
                 SET conditions_evaluated = ?, alert_triggered = ?, trigger_reason = ?
                 WHERE id = ?
             ''',
@@ -305,14 +305,14 @@ class AlertAuditLogger:
                 ),
             )
             logging.info(f"Conditions evaluated for audit {audit_id}: triggered={conditions_result}, reason={trigger_reason}")
-            
+
         except Exception as e:
             logging.error(f"Error logging conditions evaluated: {e}")
-    
+
     def log_error(self, audit_id: str, error_message: str):
         """
         Log errors during alert evaluation
-        
+
         Args:
             audit_id: Audit ID from log_alert_check_start
             error_message: Error description
@@ -320,21 +320,21 @@ class AlertAuditLogger:
         try:
             self._execute(
                 '''
-                UPDATE alert_audits 
+                UPDATE alert_audits
                 SET error_message = ?
                 WHERE id = ?
             ''',
                 (error_message, audit_id),
             )
             logging.error(f"Error logged for audit {audit_id}: {error_message}")
-            
+
         except Exception as e:
             logging.error(f"Error logging error: {e}")
-    
+
     def log_completion(self, audit_id: str, execution_time_ms: int):
         """
         Log completion of alert evaluation
-        
+
         Args:
             audit_id: Audit ID from log_alert_check_start
             execution_time_ms: Total execution time in milliseconds
@@ -342,31 +342,31 @@ class AlertAuditLogger:
         try:
             self._execute(
                 '''
-                UPDATE alert_audits 
+                UPDATE alert_audits
                 SET execution_time_ms = ?
                 WHERE id = ?
             ''',
                 (execution_time_ms, audit_id),
             )
             logging.info(f"Alert evaluation completed for audit {audit_id}: {execution_time_ms}ms")
-            
+
         except Exception as e:
             logging.error(f"Error logging completion: {e}")
-    
+
     def get_audit_summary(self, days: int = 7) -> pd.DataFrame:
         """
         Get summary of alert audits for analysis
-        
+
         Args:
             days: Number of days to look back
-            
+
         Returns:
             DataFrame with audit summary
         """
         try:
             cutoff = self._cutoff_timestamp(days)
             query = '''
-                SELECT 
+                SELECT
                     alert_id,
                     ticker,
                     stock_name,
@@ -381,7 +381,7 @@ class AlertAuditLogger:
                     AVG(execution_time_ms) as avg_execution_time_ms,
                     MAX(timestamp) as last_check,
                     MIN(timestamp) as first_check
-                FROM alert_audits 
+                FROM alert_audits
                 WHERE timestamp >= ?
                 GROUP BY alert_id, ticker, stock_name, exchange, timeframe, action, evaluation_type
                 ORDER BY last_check DESC
@@ -390,45 +390,45 @@ class AlertAuditLogger:
             with self._connection() as conn:
                 df = pd.read_sql_query(query, conn, params=(cutoff,))
             return df
-            
+
         except Exception as e:
             logging.error(f"Error getting audit summary: {e}")
             return pd.DataFrame()
-    
-    def get_alert_history(self, alert_id: str, limit: int = 100) -> pd.DataFrame:
+
+    def get_alert_history(self, alert_id: str | None, limit: int = 100) -> pd.DataFrame:
         """
         Get detailed history for a specific alert
-        
+
         Args:
             alert_id: Alert ID to get history for
             limit: Maximum number of records to return
-            
+
         Returns:
             DataFrame with alert history
         """
         try:
             query = '''
-                SELECT * FROM alert_audits 
+                SELECT * FROM alert_audits
                 WHERE alert_id = ?
                 ORDER BY timestamp DESC
                 LIMIT ?
             '''
-            
+
             with self._connection() as conn:
-                df = pd.read_sql_query(query, conn, params=(alert_id, limit))
+                df = pd.read_sql_query(query, conn, params=(alert_id or "", limit))
             return df
-            
+
         except Exception as e:
             logging.error(f"Error getting alert history: {e}")
             return pd.DataFrame()
-    
+
     def get_performance_metrics(self, days: int = 7) -> Dict:
         """
         Get performance metrics for alert system
-        
+
         Args:
             days: Number of days to analyze
-            
+
         Returns:
             Dictionary with performance metrics
         """
@@ -451,10 +451,10 @@ class AlertAuditLogger:
 
             cache_result = self._execute(
                 """
-                SELECT 
+                SELECT
                     SUM(CASE WHEN cache_hit = ? THEN 1 ELSE 0 END) as cache_hits,
                     COUNT(*) as total_pulls
-                FROM alert_audits 
+                FROM alert_audits
                 WHERE timestamp >= ? AND price_data_pulled = ?
                 """,
                 (self._bool(True), cutoff, self._bool(True)),
@@ -464,7 +464,7 @@ class AlertAuditLogger:
 
             avg_execution_result = self._execute(
                 """
-                SELECT AVG(execution_time_ms) FROM alert_audits 
+                SELECT AVG(execution_time_ms) FROM alert_audits
                 WHERE timestamp >= ? AND execution_time_ms IS NOT NULL
                 """,
                 (cutoff,),
@@ -476,8 +476,8 @@ class AlertAuditLogger:
 
             total_errors_result = self._execute(
                 """
-                SELECT COUNT(*) FROM alert_audits 
-                WHERE timestamp >= ? 
+                SELECT COUNT(*) FROM alert_audits
+                WHERE timestamp >= ?
                 AND (
                     price_data_pulled = ?
                     OR error_message LIKE '%No data available%'
@@ -488,7 +488,7 @@ class AlertAuditLogger:
             )
             total_errors = total_errors_result[0][0] if total_errors_result else 0
             error_rate = (total_errors / total_checks * 100) if total_checks else 0
-            
+
             return {
                 'total_checks': total_checks,
                 'successful_price_pulls': successful_pulls,
@@ -499,15 +499,15 @@ class AlertAuditLogger:
                 'error_rate': error_rate,
                 'analysis_period_days': days
             }
-            
+
         except Exception as e:
             logging.error(f"Error getting performance metrics: {e}")
             return {}
-    
+
     def cleanup_old_records(self, days_to_keep: int = 30):
         """
         Clean up old audit records to prevent database bloat
-        
+
         Args:
             days_to_keep: Number of days of records to keep (0 to delete all)
         """
@@ -520,7 +520,7 @@ class AlertAuditLogger:
                 cutoff = self._cutoff_timestamp(days_to_keep)
                 deleted = self._execute(
                     '''
-                    DELETE FROM alert_audits 
+                    DELETE FROM alert_audits
                     WHERE timestamp < ?
                     ''',
                     (cutoff,),
@@ -529,7 +529,7 @@ class AlertAuditLogger:
 
             logging.info(f"Cleaned up {deleted_count} old audit records")
             return deleted_count
-            
+
         except Exception as e:
             logging.error(f"Error cleaning up old records: {e}")
             return 0
@@ -538,11 +538,11 @@ class AlertAuditLogger:
         """Get daily evaluation statistics comparing expected vs actual evaluations"""
         if date is None:
             date = datetime.now().date()
-        
+
         # Get all evaluations for the specified date
         date_str = date.strftime('%Y-%m-%d')
         query = """
-            SELECT 
+            SELECT
                 COUNT(*) as total_evaluations,
                 SUM(CASE WHEN alert_triggered THEN 1 ELSE 0 END) as triggered_alerts,
                 SUM(CASE WHEN NOT alert_triggered THEN 1 ELSE 0 END) as non_triggered_alerts,
@@ -551,10 +551,10 @@ class AlertAuditLogger:
                 AVG(execution_time_ms) as avg_execution_time,
                 SUM(CASE WHEN cache_hit THEN 1 ELSE 0 END) as cache_hits,
                 SUM(CASE WHEN NOT cache_hit THEN 1 ELSE 0 END) as cache_misses
-            FROM alert_audits 
+            FROM alert_audits
             WHERE DATE(timestamp) = ?
         """
-        
+
         try:
             result_rows = self._execute(query, (date_str,))
             result = result_rows[0] if result_rows else None
@@ -578,37 +578,37 @@ class AlertAuditLogger:
         """Get evaluation coverage statistics for a specific date"""
         if date is None:
             date = datetime.now().date()
-        
+
         # Get unique alerts that should have been evaluated
         # This assumes alerts are checked at least once per day
         date_str = date.strftime('%Y-%m-%d')
-        
+
         try:
             query_unique = """
                 SELECT COUNT(DISTINCT alert_id) as unique_alerts_evaluated
-                FROM alert_audits 
+                FROM alert_audits
                 WHERE DATE(timestamp) = ?
             """
-            
+
             unique_rows = self._execute(query_unique, (date_str,))
             unique_alerts_evaluated = unique_rows[0][0] if unique_rows else 0
-            
+
             query_frequency = """
-                SELECT 
+                SELECT
                     alert_id,
                     COUNT(*) as evaluation_count
-                FROM alert_audits 
+                FROM alert_audits
                 WHERE DATE(timestamp) = ?
                 GROUP BY alert_id
                 ORDER BY evaluation_count DESC
             """
-            
+
             frequency_results = self._execute(query_frequency, (date_str,)) or []
-            
+
             # Calculate coverage metrics
             total_evaluations = sum(row[1] for row in frequency_results)
             avg_evaluations_per_alert = total_evaluations / max(unique_alerts_evaluated, 1)
-            
+
             return {
                 'date': date_str,
                 'unique_alerts_evaluated': unique_alerts_evaluated,
@@ -616,7 +616,7 @@ class AlertAuditLogger:
                 'avg_evaluations_per_alert': round(avg_evaluations_per_alert, 2),
                 'evaluation_frequency': frequency_results
             }
-            
+
         except Exception as e:
             logging.error(f"Error getting evaluation coverage: {e}")
             return None
@@ -625,21 +625,21 @@ class AlertAuditLogger:
         """Estimate how many evaluations should happen per day based on total alerts"""
         try:
             total_alerts = len(repo_list_alerts())
-            
+
             # For manual checks, we expect 1 evaluation per alert per manual run
             # For scheduled checks, alerts are checked based on exchange closing times
             # Since the user can manually check all alerts at once, we'll show both scenarios
-            
+
             # Manual check scenario (like when user clicks "Check All Alerts Now")
             manual_evaluations = total_alerts  # One check per alert
-            
+
             # Scheduled check scenario (based on exchange times, not all at once)
             # Most exchanges close once per day, so daily alerts get checked once
             # Weekly alerts only on Fridays
             scheduled_daily_evaluations = total_alerts * 0.9  # Assume 90% are daily
             scheduled_weekly_evaluations = total_alerts * 0.1 / 5  # 10% weekly, only on Friday
             scheduled_evaluations = scheduled_daily_evaluations + scheduled_weekly_evaluations
-            
+
             return {
                 'total_alerts': total_alerts,
                 'manual_check_evaluations': manual_evaluations,
@@ -655,7 +655,7 @@ class AlertAuditLogger:
 audit_logger = AlertAuditLogger()
 
 # Convenience functions for easy logging
-def log_alert_check_start(alert: Dict, evaluation_type: str = "scheduled") -> str:
+def log_alert_check_start(alert: Dict, evaluation_type: str = "scheduled") -> str | None:
     """Start logging an alert check"""
     return audit_logger.log_alert_check_start(alert, evaluation_type)
 
@@ -667,7 +667,7 @@ def log_no_data_available(audit_id: str, ticker: str):
     """Log when price data is not available"""
     audit_logger.log_no_data_available(audit_id, ticker)
 
-def log_conditions_evaluated(audit_id: str, conditions_result: bool, trigger_reason: str = None):
+def log_conditions_evaluated(audit_id: str, conditions_result: bool, trigger_reason: str | None = None):
     """Log conditions evaluation result"""
     audit_logger.log_conditions_evaluated(audit_id, conditions_result, trigger_reason)
 
@@ -695,7 +695,7 @@ def get_expected_daily_evaluations():
 def get_audit_summary(days=7):
     return audit_logger.get_audit_summary(days)
 
-def get_alert_history(alert_id=None, limit=100):
+def get_alert_history(alert_id: str | None = None, limit: int = 100):
     return audit_logger.get_alert_history(alert_id, limit)
 
 def get_performance_metrics(days=7):
