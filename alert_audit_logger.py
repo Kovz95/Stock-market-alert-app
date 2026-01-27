@@ -43,7 +43,7 @@ class AlertAuditLogger:
             return None
         if self.use_postgres:
             try:
-                from psycopg2.extras import Json  # type: ignore
+                from psycopg2.extras import Json
 
                 return Json(data)
             except ImportError:

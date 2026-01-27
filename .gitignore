@@ -3,7 +3,7 @@ venv/
 __pycache__/
 *.pyc
 .idea
-
+.claude
 # Data and notebooks
 data/
 alerts.json

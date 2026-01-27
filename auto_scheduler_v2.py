@@ -325,7 +325,7 @@ def update_scheduler_status(
 
         # Update fields
         existing_status["status"] = status
-        existing_status["heartbeat"] = datetime.utcnow().isoformat()
+        existing_status["heartbeat"] = datetime.now().isoformat()
 
         if current_job is not None:
             existing_status["current_job"] = current_job
@@ -352,7 +352,7 @@ def update_scheduler_status(
         if LOCK_FILE.exists():
             try:
                 lock_data = json.loads(LOCK_FILE.read_text())
-                lock_data["heartbeat"] = datetime.utcnow().isoformat()
+                lock_data["heartbeat"] = datetime.now().isoformat()
                 LOCK_FILE.write_text(json.dumps(lock_data, indent=2))
             except Exception:
                 pass
@@ -426,9 +426,9 @@ def _acquire_process_lock() -> bool:
 
     payload = {
         "pid": os.getpid(),
-        "timestamp": datetime.utcnow().isoformat(),
-        "heartbeat": datetime.utcnow().isoformat(),
-        "started_at": datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"),
+        "timestamp": datetime.now().isoformat(),
+        "heartbeat": datetime.now().isoformat(),
+        "started_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         "type": "auto_scheduler_v2",
     }
     LOCK_FILE.write_text(json.dumps(payload, indent=2))
@@ -531,7 +531,7 @@ def execute_exchange_job(exchange_name: str, job_type: str):
                     f"🚀 **{job_type.title()} job started**",
                     f"• Exchange: {exchange_name}",
                     f"• Job ID: `{job_id}`",
-                    f"• Start (UTC): {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')}Z",
+                    f"• Start (UTC): {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}Z",
                     f"• Timeout: {job_timeout}s",
                 ]
             ),
@@ -545,7 +545,7 @@ def execute_exchange_job(exchange_name: str, job_type: str):
                 "id": job_id,
                 "exchange": exchange_name,
                 "job_type": job_type,
-                "started": datetime.utcnow().isoformat(),
+                "started": datetime.now().isoformat(),
             },
         )
 
@@ -568,7 +568,7 @@ def execute_exchange_job(exchange_name: str, job_type: str):
                 "job_id": job_id,
                 "exchange": exchange_name,
                 "job_type": job_type,
-                "completed_at": datetime.utcnow().isoformat(),
+                "completed_at": datetime.now().isoformat(),
                 "duration_seconds": duration,
             },
             last_result={
@@ -615,7 +615,7 @@ def execute_exchange_job(exchange_name: str, job_type: str):
             status="error",
             current_job=None,
             last_error={
-                "time": datetime.utcnow().isoformat(),
+                "time": datetime.now().isoformat(),
                 "job_id": job_id,
                 "exchange": exchange_name,
                 "job_type": job_type,
@@ -720,7 +720,7 @@ def _heartbeat_job():
     try:
         if LOCK_FILE.exists():
             lock_data = json.loads(LOCK_FILE.read_text())
-            lock_data["heartbeat"] = datetime.utcnow().isoformat()
+            lock_data["heartbeat"] = datetime.now().isoformat()
             LOCK_FILE.write_text(json.dumps(lock_data, indent=2))
 
         update_scheduler_status(status="running")
