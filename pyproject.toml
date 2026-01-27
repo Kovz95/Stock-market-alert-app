@@ -5,12 +5,17 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
+    "apscheduler>=3.11.2",
     "fmpsdk>=20250102.0",
     "ib-insync>=0.9.86",
     "numpy>=2.4.1",
     "pandas>=2.3.3",
     "pandas-stubs~=2.3.3",
+    "plotly>=6.5.2",
+    "psutil>=7.2.1",
     "psycopg2-binary>=2.9.11",
     "redis>=7.1.0",
     "streamlit>=1.53.1",
+    "streamlit-tags>=1.2.8",
+    "ta-lib>=0.6.8",
 ]
