@@ -8,7 +8,7 @@ import pandas as pd
 import json
 import os
 from datetime import datetime, timedelta
-from typing import Dict, List, Tuple, Optional
+from typing import Dict, List, Tuple, Optional, Any
 
 class PivotSupportResistance:
     def __init__(self, ticker: str, left_bars: int = 5, right_bars: int = 5,
@@ -62,7 +62,7 @@ class PivotSupportResistance:
     def save_levels(self):
         """Save support/resistance levels to storage"""
         # Convert datetime objects to strings for JSON serialization
-        data_to_save = {
+        data_to_save : dict[str, Any] = {
             'support': [],
             'resistance': [],
             'last_update': datetime.now().isoformat()
@@ -191,7 +191,7 @@ class PivotSupportResistance:
         }
         levels.append(new_level)
 
-    def clean_old_levels(self, current_date: pd.Timestamp, earliest_data_date: pd.Timestamp = None):
+    def clean_old_levels(self, current_date: pd.Timestamp, earliest_data_date: pd.Timestamp | None = None):
         """
         Remove levels older than lookback_years (or earliest available data)
 

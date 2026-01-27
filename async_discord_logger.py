@@ -1,39 +1,224 @@
 """
-Shim loader for async_discord_logger.
+Asynchronous Discord Logger
 
-This auto-generated file loads the preserved bytecode so imports keep
-working until the original source is restored.
+Provides non-blocking Discord webhook logging using a background thread and queue.
+This prevents Discord API calls from blocking the main application thread.
+
+Functions:
+- log_to_discord_async(message): Queue a message for async Discord logging
+- flush_discord_logs(): Flush all queued messages to Discord
+- shutdown_discord_logger(): Gracefully shutdown the background thread
 """
 
-from __future__ import annotations
+import os
+import queue
+import threading
+import time
+import requests
+from typing import List, Optional
+from dotenv import load_dotenv
 
-import marshal
-from pathlib import Path
-from types import CodeType
-from typing import Any, Dict
+# Load environment variables
+load_dotenv()
 
-_LEGACY_BYTECODE = Path(__file__).parent / "__pycache__/async_discord_logger_legacy.cpython-311.pyc"
-_PYC_HEADER_SIZE = 16
-_BOOTSTRAPPED = False
+# Discord Configuration
+WEBHOOK_URL_LOGGING = os.getenv("WEBHOOK_URL_LOGGING", "https://discord.com/api/webhooks/1403827120978788482/jI7kxmHWIy_Gwe5XMjqbG6GCik_r70-AlsqPbA8BecWa2vpv2yyZytsmxSkRZdw_JYSn")
+WEBHOOK_URL_LOGGING_2 = os.getenv("WEBHOOK_URL_LOGGING_2", "https://discord.com/api/webhooks/1403827120978788482/jI7kxmHWIy_Gwe5XMjqbG6GCik_r70-AlsqPbA8BecWa2vpv2yyZytsmxSkRZdw_JYSn")
+MAX_DISCORD_MESSAGE_LENGTH = 2000
+BATCH_DELAY = 0.5  # Delay in seconds before sending batched messages
+MAX_BATCH_SIZE = 10  # Maximum number of messages to batch together
 
-
-def _load_legacy_code() -> CodeType:
-    if not _LEGACY_BYTECODE.exists():
-        raise FileNotFoundError(
-            f"Missing legacy bytecode for async_discord_logger at {_LEGACY_BYTECODE}."
-        )
-    with _LEGACY_BYTECODE.open("rb") as fh:
-        fh.read(_PYC_HEADER_SIZE)
-        return marshal.load(fh)
+# Message Queue and Threading
+_message_queue = queue.Queue()
+_worker_thread: Optional[threading.Thread] = None
+_shutdown_event = threading.Event()
+_thread_lock = threading.Lock()
 
 
-def _bootstrap(namespace: Dict[str, Any]) -> None:
-    global _BOOTSTRAPPED
-    if _BOOTSTRAPPED:
+def split_message(message: str, max_length: int = MAX_DISCORD_MESSAGE_LENGTH) -> List[str]:
+    """
+    Split a long message into multiple chunks that fit Discord's message length limit.
+    
+    Args:
+        message: The message to split
+        max_length: Maximum length per chunk (default: 2000)
+        
+    Returns:
+        List of message chunks
+    """
+    lines = message.split("\n")
+    chunks = []
+    current_chunk = ""
+    
+    for line in lines:
+        # Reserve 6 characters for code block fences
+        if len(current_chunk) + len(line) + 1 < max_length - 6:
+            current_chunk += line + "\n"
+        else:
+            if current_chunk:
+                chunks.append(f"```{current_chunk.strip()}```")
+            current_chunk = line + "\n"
+    
+    if current_chunk:
+        chunks.append(f"```{current_chunk.strip()}```")
+    
+    return chunks if chunks else [""]
+
+
+def _send_to_discord(message: str) -> bool:
+    """
+    Send a message to Discord webhook(s).
+    
+    Args:
+        message: Message to send
+        
+    Returns:
+        True if sent successfully, False otherwise
+    """
+    if not WEBHOOK_URL_LOGGING:
+        return False
+    
+    # Check if webhook is configured
+    if WEBHOOK_URL_LOGGING == "YOUR_WEBHOOK_URL_HERE" or "YOUR_" in WEBHOOK_URL_LOGGING:
+        return False
+    
+    success = False
+    
+    # Split message if it's too long
+    messages = split_message(message, MAX_DISCORD_MESSAGE_LENGTH)
+    
+    for msg in messages:
+        payload = {"content": msg}
+        
+        # Try primary webhook
+        try:
+            response = requests.post(WEBHOOK_URL_LOGGING, json=payload, timeout=10)
+            if response.status_code == 204:
+                success = True
+            else:
+                print(f"Discord webhook error: {response.status_code} - {response.text}")
+        except Exception as e:
+            print(f"Error sending to primary Discord webhook: {e}")
+            
+            # Try secondary webhook if primary fails
+            if WEBHOOK_URL_LOGGING_2 and WEBHOOK_URL_LOGGING_2 != WEBHOOK_URL_LOGGING:
+                try:
+                    response_2 = requests.post(WEBHOOK_URL_LOGGING_2, json=payload, timeout=10)
+                    if response_2.status_code == 204:
+                        success = True
+                except Exception as e2:
+                    print(f"Error sending to secondary Discord webhook: {e2}")
+        
+        # Small delay between messages to avoid rate limiting
+        if len(messages) > 1:
+            time.sleep(0.5)
+    
+    return success
+
+
+def _worker_loop():
+    """
+    Background worker thread that processes queued Discord messages.
+    Batches multiple messages together to reduce API calls.
+    """
+    buffer = []
+    last_send_time = time.time()
+    
+    while not _shutdown_event.is_set():
+        try:
+            # Try to get a message with a short timeout
+            try:
+                message = _message_queue.get(timeout=0.1)
+                buffer.append(message)
+                _message_queue.task_done()
+            except queue.Empty:
+                pass
+            
+            # Send if buffer is full or enough time has passed
+            current_time = time.time()
+            should_send = (
+                len(buffer) >= MAX_BATCH_SIZE or
+                (buffer and (current_time - last_send_time) >= BATCH_DELAY)
+            )
+            
+            if should_send and buffer:
+                # Combine messages with newlines
+                combined_message = "\n".join(buffer)
+                _send_to_discord(combined_message)
+                buffer.clear()
+                last_send_time = current_time
+                
+        except Exception as e:
+            print(f"Error in Discord logger worker thread: {e}")
+            buffer.clear()  # Clear buffer on error to prevent infinite loop
+    
+    # Send any remaining messages before shutdown
+    if buffer:
+        combined_message = "\n".join(buffer)
+        _send_to_discord(combined_message)
+
+
+def _ensure_worker_thread():
+    """
+    Ensure the background worker thread is running.
+    Thread-safe initialization.
+    """
+    global _worker_thread
+    
+    with _thread_lock:
+        if _worker_thread is None or not _worker_thread.is_alive():
+            _shutdown_event.clear()
+            _worker_thread = threading.Thread(target=_worker_loop, daemon=True, name="DiscordLogger")
+            _worker_thread.start()
+
+
+def log_to_discord_async(message: str):
+    """
+    Queue a message for asynchronous Discord logging.
+    This function returns immediately without blocking.
+    
+    Args:
+        message: Message to log to Discord
+    """
+    if not message:
         return
-    code = _load_legacy_code()
-    exec(code, namespace)
-    _BOOTSTRAPPED = True
+    
+    # Ensure worker thread is running
+    _ensure_worker_thread()
+    
+    # Queue the message
+    _message_queue.put(str(message))
 
 
-_bootstrap(globals())
+def flush_discord_logs():
+    """
+    Flush all queued Discord log messages.
+    Blocks until all messages in the queue have been sent.
+    """
+    # Ensure worker thread is running
+    _ensure_worker_thread()
+    
+    # Wait for queue to be empty
+    _message_queue.join()
+
+
+def shutdown_discord_logger():
+    """
+    Gracefully shutdown the Discord logger background thread.
+    Flushes all pending messages before shutting down.
+    """
+    global _worker_thread
+    
+    # Signal shutdown
+    _shutdown_event.set()
+    
+    # Wait for thread to finish
+    if _worker_thread and _worker_thread.is_alive():
+        _worker_thread.join(timeout=5.0)
+    
+    _worker_thread = None
+
+
+# Ensure clean shutdown on exit
+import atexit
+atexit.register(shutdown_discord_logger)

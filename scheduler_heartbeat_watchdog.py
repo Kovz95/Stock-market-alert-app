@@ -51,7 +51,7 @@ def _kill_process(pid: int) -> None:
         pass
     time.sleep(2)
     try:
-        os.kill(pid, signal.SIGKILL)
+        os.kill(pid, signal.SIGTERM)
     except Exception:
         pass
 
