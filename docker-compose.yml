@@ -1,4 +1,4 @@
-version: '3.8'
+version: "3.8"
 
 services:
   postgres:
@@ -20,8 +20,6 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-    networks:
-      - stockalert-network
 
   redis:
     image: redis:7-alpine
@@ -37,15 +35,9 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-    networks:
-      - stockalert-network
 
 volumes:
   postgres_data:
     driver: local
   redis_data:
     driver: local
-
-networks:
-  stockalert-network:
-    driver: bridge

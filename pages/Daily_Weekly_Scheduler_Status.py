@@ -92,7 +92,9 @@ def _format_timedelta(delta: timedelta) -> str:
     return f"{minutes}m"
 
 
-def _region_from_tz(tz_name: str) -> str:
+def _region_from_tz(tz_name: Optional[str]) -> str:
+    if not tz_name:
+        return "Unknown"
     if tz_name.startswith(("Asia/", "Australia/", "Pacific/")):
         return "Asia-Pacific"
     if tz_name.startswith(("America/", "Atlantic/")):
@@ -115,7 +117,7 @@ def build_schedule_dataframe(
             run_et = run_utc.tz_convert(eastern_tz)
             close_utc = pd.Timestamp(info.get("close_utc"))
             tz_name = get_calendar_timezone(exchange)
-            close_local = close_utc.tz_convert(tz_name)
+            close_local = close_utc.tz_convert(tz_name) if tz_name else close_utc
 
             rows.append(
                 {

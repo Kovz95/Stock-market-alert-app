@@ -22,7 +22,7 @@ class OptimizedFMPDataFetcher:
 
     def __init__(self):
         # This api key was removed for safety in a public repo. It will be retrieved from the environment in a later version.
-        self.api_key = os.getenv('FMP_API_KEY', '')
+        self.api_key = os.getenv('FMP_API_KEY', '8BulhGx0fCwLpA48qCwy8r9cx5n6fya7')
         self.base_url = "https://financialmodelingprep.com/api/v3"
 
     def get_missing_dates(self, ticker: str) -> tuple[Optional[datetime], int]:

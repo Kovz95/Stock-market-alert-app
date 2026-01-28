@@ -769,7 +769,7 @@ def main():
             with col1:
                 scheduler_webhook_url = st.text_input(
                     "Discord Webhook URL for Scheduler Status",
-                    value=scheduler_config['scheduler_webhook']['url'] if scheduler_config['scheduler_webhook']['url'] else "",
+                    value=scheduler_config.get('scheduler_webhook', {}).get('url', ''),
                     placeholder="https://discord.com/api/webhooks/...",
                     help="Create a webhook in your Discord channel: Server Settings → Integrations → Webhooks → New Webhook",
                     key="scheduler_webhook_url"
@@ -808,7 +808,7 @@ def main():
             # Enable/Disable scheduler notifications
             scheduler_enabled = st.checkbox(
                 "Enable Scheduler Notifications",
-                value=scheduler_config['scheduler_webhook'].get('enabled', False),
+                value=scheduler_config.get('scheduler_webhook', {}).get('enabled', False),
                 help="Enable or disable scheduler status notifications to Discord",
                 key="scheduler_enabled"
             )
@@ -821,14 +821,14 @@ def main():
             with col1:
                 send_start = st.checkbox(
                     "🚀 Send Start Notifications",
-                    value=scheduler_config['notification_settings']['send_start_notification'],
+                    value=scheduler_config.get('notification_settings', {}).get('send_start_notification', True),
                     help="Send a notification when a market check begins",
                     key="send_start"
                 )
                 
                 send_progress = st.checkbox(
                     "⏳ Send Progress Updates",
-                    value=scheduler_config['notification_settings']['send_progress_updates'],
+                    value=scheduler_config.get('notification_settings', {}).get('send_progress_updates', True),
                     help="Send periodic updates during alert processing",
                     key="send_progress"
                 )
@@ -838,31 +838,37 @@ def main():
                         "Progress Update Interval (alerts)",
                         min_value=100,
                         max_value=2000,
-                        value=scheduler_config['notification_settings']['progress_update_interval'],
+                        value=scheduler_config.get('notification_settings', {}).get('progress_update_interval', 500),
                         step=100,
                         help="Send a progress update every N alerts processed",
                         key="progress_interval"
                     )
                 else:
-                    progress_interval = scheduler_config['notification_settings']['progress_update_interval']
+                    progress_interval = scheduler_config.get('notification_settings', {}).get('progress_update_interval', 500)
             
             with col2:
                 send_completion = st.checkbox(
                     "🏁 Send Completion Notifications",
-                    value=scheduler_config['notification_settings']['send_completion_notification'],
+                    value=scheduler_config.get('notification_settings', {}).get('send_completion_notification', True),
                     help="Send a notification when a market check completes",
                     key="send_completion"
                 )
                 
                 include_stats = st.checkbox(
                     "📊 Include Summary Statistics",
-                    value=scheduler_config['notification_settings']['include_summary_stats'],
+                    value=scheduler_config.get('notification_settings', {}).get('include_summary_stats', True),
                     help="Include detailed statistics in completion notifications",
                     key="include_stats"
                 )
             
             # Save scheduler settings button
             if st.button("💾 Save Scheduler Settings", type="primary", key="save_scheduler_settings"):
+                # Ensure nested dictionaries exist
+                if 'scheduler_webhook' not in scheduler_config:
+                    scheduler_config['scheduler_webhook'] = {}
+                if 'notification_settings' not in scheduler_config:
+                    scheduler_config['notification_settings'] = {}
+                
                 # Update configuration
                 scheduler_config['scheduler_webhook']['url'] = scheduler_webhook_url
                 scheduler_config['scheduler_webhook']['enabled'] = scheduler_enabled and bool(scheduler_webhook_url)
@@ -995,7 +1001,7 @@ def main():
             st.markdown(schedule_info)
             
             # Status indicator
-            if scheduler_config['scheduler_webhook'].get('enabled') and scheduler_config['scheduler_webhook'].get('url'):
+            if scheduler_config.get('scheduler_webhook', {}).get('enabled') and scheduler_config.get('scheduler_webhook', {}).get('url'):
                 st.success("✅ Scheduler notifications are configured and active")
             else:
                 st.warning("⚠️ Scheduler notifications are not configured. Configure a webhook URL above to receive notifications.")
