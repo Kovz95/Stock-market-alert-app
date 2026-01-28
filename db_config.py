@@ -85,6 +85,13 @@ class PostgresCursorProxy:
     def close(self) -> None:
         self._cursor.close()
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
+        return False
+
 
 class PostgresConnectionProxy:
     """Return connections to the pool when closed while mimicking DB-API."""

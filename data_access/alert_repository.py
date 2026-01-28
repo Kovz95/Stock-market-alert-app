@@ -217,7 +217,7 @@ def create_alert(alert: Dict[str, Any]) -> Dict[str, Any]:
                     mixed_timeframe_params,
                     raw_payload
                 )
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 ON CONFLICT (alert_id) DO NOTHING
                 """,
                 row,
@@ -270,7 +270,7 @@ def update_alert(alert_id: str, updates: Dict[str, Any]) -> Optional[Dict[str, A
                     updated_at = NOW()
                 WHERE alert_id = %s
                 """,
-                (*row, alert_id),
+                (*row[1:], alert_id),  # Skip alert_id at index 0, it's in WHERE clause
             )
         conn.commit()
     finally:

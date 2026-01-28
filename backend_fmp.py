@@ -28,7 +28,7 @@ class FMPDataFetcher:
         Args:
             api_key: Optional FMP API key. If not provided, uses environment variable.
         """
-        self.api_key = api_key or os.getenv('FMP_API_KEY', '')
+        self.api_key = api_key or os.getenv('FMP_API_KEY', '8BulhGx0fCwLpA48qCwy8r9cx5n6fya7')
         self.base_url = "https://financialmodelingprep.com/api/v3"
         
         if not self.api_key:

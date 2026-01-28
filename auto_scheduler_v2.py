@@ -52,6 +52,7 @@ from exchange_schedule_config_v2 import (  # noqa: E402
     get_market_days_for_exchange,
 )
 from scheduled_price_updater import update_prices_for_exchanges  # noqa: E402
+from stock_alert_checker import StockAlertChecker  # noqa: E402
 
 # Constants
 LOCK_FILE = BASE_DIR / "scheduler_v2.lock"
@@ -248,24 +249,36 @@ def run_alert_checks(
             # Check if alert matches the exchange filter
             if alert_exchange in exchanges or alert_ticker in exchange_tickers:
                 # Check if alert matches the timeframe
-                if timeframe_key == "weekly" and alert_timeframe.lower() == "weekly":
+                if timeframe_key == "weekly" and alert_timeframe.lower() in ("weekly", "1wk"):
                     relevant_alerts.append(alert)
                 elif timeframe_key == "daily" and alert_timeframe.lower() in ("daily", "1d"):
                     relevant_alerts.append(alert)
 
         stats["total"] = len(relevant_alerts)
 
-        # Note: Actual alert evaluation would be done by a separate alert processor
-        # This function primarily counts and categorizes alerts for the exchange
         logger.info(
-            "Found %d %s alerts for exchanges %s",
+            "Evaluating %d %s alerts for exchanges %s",
             len(relevant_alerts),
             timeframe_key,
             exchanges,
         )
 
-        # Mark as successful count (actual evaluation happens elsewhere)
-        stats["success"] = len(relevant_alerts)
+        # Create stock alert checker and evaluate alerts
+        checker = StockAlertChecker()
+        check_stats = checker.check_alerts(relevant_alerts, timeframe_key)
+
+        # Update stats from checker results
+        stats["success"] = check_stats.get("success", 0)
+        stats["triggered"] = check_stats.get("triggered", 0)
+        stats["errors"] = check_stats.get("errors", 0)
+        stats["no_data"] = check_stats.get("no_data", 0)
+
+        logger.info(
+            "Alert evaluation complete: %d triggered, %d errors, %d no_data",
+            stats["triggered"],
+            stats["errors"],
+            stats["no_data"],
+        )
 
     except Exception as exc:
         logger.error("Error running alert checks: %s", exc)
