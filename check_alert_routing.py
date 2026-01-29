@@ -8,6 +8,12 @@ import logging
 import sys
 from typing import Dict, Any, List
 
+# Set UTF-8 encoding for Windows console
+if sys.platform == 'win32':
+    import codecs
+    sys.stdout = codecs.getwriter('utf-8')(sys.stdout.buffer, 'strict')
+    sys.stderr = codecs.getwriter('utf-8')(sys.stderr.buffer, 'strict')
+
 from discord_routing import discord_router
 from data_access.alert_repository import list_alerts
 
