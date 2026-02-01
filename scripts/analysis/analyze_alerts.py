@@ -20,7 +20,7 @@ BASE_DIR = Path(__file__).resolve().parent
 sys.path.append(str(BASE_DIR))
 
 import pandas as pd
-from alert_audit_logger import AlertAuditLogger
+from src.services.alert_audit_logger import AlertAuditLogger
 
 
 def get_evaluation_summary(hours=24):

@@ -2885,7 +2885,7 @@ with tab1:
             st.error("Please select both assets for the ratio alert")
         else:
             # Import exchange mapping
-            from exchange_country_mapping import get_country_for_exchange
+            from src.utils.reference_data import get_country_for_exchange
             
             # Format conditions for saving
             conditions_dict = {

@@ -17,11 +17,11 @@ from typing import Any, Dict, List, Optional
 
 import pandas as pd
 
-from backend import evaluate_expression, evaluate_expression_list
-from backend_fmp import FMPDataFetcher
-from data_access.alert_repository import list_alerts, update_alert
-from discord_routing import send_economy_discord_alert
-from alert_audit_logger import (
+from src.services.backend import evaluate_expression, evaluate_expression_list
+from src.services.backend_fmp import FMPDataFetcher
+from src.data_access.alert_repository import list_alerts, update_alert
+from src.services.discord_routing import send_economy_discord_alert
+from src.services.alert_audit_logger import (
     log_alert_check_start,
     log_price_data_pulled,
     log_no_data_available,

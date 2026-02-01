@@ -14,7 +14,7 @@ if sys.platform == 'win32':
     sys.stdout = codecs.getwriter('utf-8')(sys.stdout.buffer, 'strict')
     sys.stderr = codecs.getwriter('utf-8')(sys.stderr.buffer, 'strict')
 
-from discord_routing import discord_router
+from src.services.discord_routing import discord_router
 from data_access.alert_repository import list_alerts
 
 # Configure logging

@@ -56,7 +56,7 @@ class PostgresCursorProxy:
                 logger.debug(
                     "Placeholder mismatch: %s placeholders vs %s params in query %s",
                     placeholder_count,
-                    len(params),  # type: ignore[arg-type]
+                    len(params),
                     query,
                 )
             query = query.replace("?", "%s")

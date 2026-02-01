@@ -10,7 +10,7 @@ import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Import the new functions
-from alert_audit_logger import (
+from src.services.alert_audit_logger import (
     get_audit_summary, get_alert_history, get_performance_metrics,
     get_daily_evaluation_stats, get_evaluation_coverage, get_expected_daily_evaluations
 )
@@ -147,7 +147,7 @@ with col2:
     
     if st.button("🧹 Clear All Audit Data", help="Clear all audit logs and start fresh"):
         with st.spinner("Clearing all audit records..."):
-            from alert_audit_logger import audit_logger
+            from src.services.alert_audit_logger import audit_logger
             # Clear all records by setting days_to_keep to 0
             deleted_count = audit_logger.cleanup_old_records(0)
             if deleted_count > 0:

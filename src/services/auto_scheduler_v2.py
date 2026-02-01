@@ -52,6 +52,7 @@ from exchange_schedule_config_v2 import (  # noqa: E402
     get_market_days_for_exchange,
 )
 from scheduled_price_updater import update_prices_for_exchanges  # noqa: E402
+from src.services.daily_price_service import run_full_daily_update  # noqa: E402
 from stock_alert_checker import StockAlertChecker  # noqa: E402
 
 # Constants
@@ -788,6 +789,16 @@ def start_auto_scheduler() -> bool:
             seconds=HEARTBEAT_INTERVAL,
             id="heartbeat",
             replace_existing=True,
+        )
+
+        # Full daily price update (all tickers) at 11 PM UTC
+        scheduler.add_job(
+            run_full_daily_update,
+            CronTrigger(hour=23, minute=0, timezone="UTC"),
+            id="daily_full_update",
+            name="Daily Full Database Update",
+            replace_existing=True,
+            misfire_grace_time=3600,
         )
 
         # Start scheduler

@@ -4,6 +4,8 @@ If an exchange is missing, the lookup returns None and callers should handle
 the fallback gracefully.
 """
 
+from typing import Optional
+
 EXCHANGE_COUNTRY_MAP = {
     # Asia-Pacific
     "TOKYO": "Japan",
@@ -62,7 +64,8 @@ EXCHANGE_COUNTRY_MAP = {
 }
 
 
-def get_country_for_exchange(exchange: str):
+def get_country_for_exchange(exchange: str) -> Optional[str]:
+    """Return country name for an exchange code, or None if unknown."""
     if not exchange:
         return None
     return EXCHANGE_COUNTRY_MAP.get(exchange.upper())

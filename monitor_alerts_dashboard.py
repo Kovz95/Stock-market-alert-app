@@ -22,7 +22,7 @@ sys.path.append(str(BASE_DIR))
 
 import pandas as pd
 from auto_scheduler_v2 import get_scheduler_info, is_scheduler_running
-from alert_audit_logger import AlertAuditLogger
+from src.services.alert_audit_logger import AlertAuditLogger
 from data_access.document_store import load_document
 
 

@@ -1002,7 +1002,7 @@ def _derive_country(country: Optional[str], exchange: str) -> str:
     if country:
         return country
     try:
-        from exchange_country_mapping import get_country_for_exchange
+        from src.utils.reference_data import get_country_for_exchange
         return get_country_for_exchange(exchange) or exchange
     except ImportError:
         return exchange
@@ -1285,9 +1285,9 @@ def send_alert(stock, alert, condition_str, df):
     timeframe = alert['timeframe']
 
     # Get proper exchange name from country
-    from exchange_name_mapping import get_exchange_name
+    from src.utils.reference_data import get_exchange_from_country
     country = alert.get('exchange', 'Unknown')
-    exchange = get_exchange_name(country)
+    exchange = get_exchange_from_country(country)
 
     # Send the alert via Discord
     send_stock_alert(WEBHOOK_URL, timeframe, alert["name"], stock, condition_str, current_price, action, exchange)

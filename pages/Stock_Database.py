@@ -8,8 +8,7 @@ import json
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from utils import load_market_data
-from country_mapping import get_country_display_name
-from exchange_mapping import get_exchange_display_name
+from src.utils.reference_data import get_country_display_name, get_exchange_display_name
 from data_access.metadata_repository import fetch_stock_metadata_df
 
 st.set_page_config(

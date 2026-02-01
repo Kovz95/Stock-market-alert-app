@@ -7,7 +7,7 @@ from datetime import datetime
 # Add the parent directory to the path for imports
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from discord_routing import DiscordEconomyRouter
+from src.services.discord_routing import DiscordEconomyRouter
 
 st.set_page_config(
     page_title="Discord Management",
@@ -175,8 +175,8 @@ def main():
             )
             
             if test_ticker and st.button("🔍 Test Economy Detection"):
-                from discord_routing import get_stock_economy_classification
-                
+                from src.services.discord_routing import get_stock_economy_classification
+
                 economy = get_stock_economy_classification(test_ticker)
                 if economy:
                     st.success(f"✅ **{test_ticker}** detected as **{economy}**")

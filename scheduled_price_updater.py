@@ -18,7 +18,7 @@ from data_access.metadata_repository import fetch_stock_metadata_map
 from price_update_monitor import PriceUpdateMonitor
 
 try:
-    from exchange_country_mapping import EXCHANGE_COUNTRY_MAP as EXCHANGE_TO_COUNTRY
+    from src.utils.reference_data import EXCHANGE_COUNTRY_MAP as EXCHANGE_TO_COUNTRY
 except ImportError:
     EXCHANGE_TO_COUNTRY = {}
 

@@ -6,7 +6,7 @@ import sys
 # Ensure project root on path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from discord_routing import DiscordEconomyRouter, get_stock_economy_classification  # noqa: E402
+from src.services.discord_routing import DiscordEconomyRouter, get_stock_economy_classification  # noqa: E402
 
 st.set_page_config(
     page_title="Hourly Discord Management",

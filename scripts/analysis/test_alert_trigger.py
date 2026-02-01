@@ -18,7 +18,7 @@ from typing import Dict, Any, Optional
 from stock_alert_checker import StockAlertChecker
 from futures_alert_checker import FuturesAlertChecker
 from data_access.alert_repository import list_alerts, update_alert, create_alert
-from discord_routing import send_economy_discord_alert, discord_router
+from src.services.discord_routing import send_economy_discord_alert, discord_router
 
 # Configure logging
 logging.basicConfig(

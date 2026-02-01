@@ -1,6 +1,7 @@
 """Data access layer for database operations."""
 
 from src.data_access.alert_repository import list_alerts, refresh_alert_cache
+from src.data_access.daily_price_repository import DailyPriceRepository
 from src.data_access.daily_move_stats_repository import (
     ensure_table as ensure_daily_move_stats_table,
     fetch_daily_prices,
@@ -31,6 +32,8 @@ __all__ = [
     # alert_repository
     "list_alerts",
     "refresh_alert_cache",
+    # daily_price_repository
+    "DailyPriceRepository",
     # daily_move_stats_repository
     "ensure_daily_move_stats_table",
     "fetch_daily_prices",
