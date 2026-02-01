@@ -315,7 +315,7 @@ def main():
     if not recent_dates:
         st.warning("Not enough historical data to display.")
         return
-    date_labels = [d.strftime("%Y-%m-%d") for d in recent_dates]
+    date_labels = [d.strftime("%Y-%m-%d") for d in reversed(recent_dates)]
 
     filtered = filtered[filtered["date"].isin(recent_dates)].copy()
     filtered["date_str"] = filtered["date"].dt.strftime("%Y-%m-%d")
@@ -334,7 +334,7 @@ def main():
     meta_fields = filtered[["ticker"] + meta_columns].drop_duplicates()
     meta_fields.set_index("ticker", inplace=True)
 
-    latest_date_label = date_labels[-1]
+    latest_date_label = date_labels[0]
     pct_pivot = pct_pivot.reindex(meta_fields.index)
     sigma_pivot = sigma_pivot.reindex(meta_fields.index)
     direction_pivot = direction_pivot.reindex(meta_fields.index)

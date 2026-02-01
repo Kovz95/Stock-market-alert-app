@@ -76,18 +76,38 @@ def check_scheduler_info():
     print("\n" + "=" * 70)
     print("SCHEDULER DETAILED STATUS")
     print("=" * 70)
-    
+
     try:
         info = get_scheduler_info()
-        
+
         if info is None:
             print("⚠️  No scheduler status information available")
             return False
-        
+
+        # Check if status data is stale (older than 1 hour)
+        is_stale = False
+        last_run = info.get('last_run', {})
+        if isinstance(last_run, dict) and last_run.get('completed_at'):
+            try:
+                completed_str = last_run['completed_at']
+                completed_time = datetime.fromisoformat(completed_str.replace('Z', '+00:00'))
+                # Make datetime comparable (handle naive vs aware)
+                if completed_time.tzinfo is None:
+                    age_hours = (datetime.now() - completed_time).total_seconds() / 3600
+                else:
+                    from datetime import timezone
+                    age_hours = (datetime.now(timezone.utc) - completed_time).total_seconds() / 3600
+                if age_hours > 1:
+                    is_stale = True
+                    print(f"\n⚠️  WARNING: Status data is STALE ({age_hours:.1f} hours old)")
+                    print("   The scheduler may have crashed or stopped unexpectedly")
+            except Exception:
+                pass
+
         # Main status
         status = info.get('status', 'Unknown')
-        status_icon = "✅" if status == "running" else "⚠️"
-        print(f"\n{status_icon} Status: {status}")
+        status_icon = "✅" if status == "running" and not is_stale else "⚠️"
+        print(f"\n{status_icon} Status: {status}" + (" (STALE)" if is_stale else ""))
         
         # Heartbeat
         heartbeat = info.get('heartbeat')
@@ -163,9 +183,10 @@ def check_scheduler_info():
         next_run = info.get('next_run')
         if next_run:
             print(f"\n⏰ Next Scheduled Run: {next_run}")
-        
-        return status == "running"
-        
+
+        # Return True only if status is running AND data is fresh
+        return status == "running" and not is_stale
+
     except Exception as e:
         print(f"❌ Error getting scheduler info: {e}")
         import traceback

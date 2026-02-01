@@ -80,7 +80,7 @@ class FuturesAlertChecker:
             )
             if not isinstance(alerts, list):
                 alerts = []
-            self.alerts = [a for a in alerts if a.get('action', 'on') == 'on']
+            self.alerts = [a for a in alerts if a.get('action', 'on') != 'off']
             logger.info(f"Loaded {len(self.alerts)} active futures alerts")
             return True
         except Exception as e:

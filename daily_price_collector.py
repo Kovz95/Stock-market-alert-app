@@ -45,7 +45,41 @@ class DailyPriceDatabase:
         self.db_path = db_path
         self.conn = None
         self.use_postgres = db_config.db_type == "postgresql"
+        self._sqlalchemy_engine = None
         self.initialize_database()
+
+    def _get_sqlalchemy_engine(self):
+        """Get SQLAlchemy engine for pandas operations (avoids UserWarning)"""
+        if self._sqlalchemy_engine is not None:
+            return self._sqlalchemy_engine
+        if self.use_postgres:
+            self._sqlalchemy_engine = db_config.get_sqlalchemy_engine()
+        else:
+            # For SQLite, use the connection string
+            from sqlalchemy import create_engine
+            self._sqlalchemy_engine = create_engine(f"sqlite:///{self.db_path}")
+        return self._sqlalchemy_engine
+
+    def _read_sql(self, query, params=None, parse_dates=None):
+        """
+        Execute SQL query using SQLAlchemy engine (preferred by pandas).
+        Handles both ? (SQLite) and %s (PostgreSQL) placeholders.
+        """
+        engine = self._get_sqlalchemy_engine()
+        if params:
+            from sqlalchemy import text
+            # Convert placeholders to named parameters
+            query_modified = query
+            param_count = query.count('?')
+            if param_count > 0:
+                param_names = [f'p{i}' for i in range(param_count)]
+                for name in param_names:
+                    query_modified = query_modified.replace('?', f':{name}', 1)
+                params_dict = dict(zip(param_names, params))
+                # Use connection from engine for proper parameter binding
+                with engine.connect() as conn:
+                    return pd.read_sql_query(text(query_modified), conn, params=params_dict, parse_dates=parse_dates)
+        return pd.read_sql_query(query, engine, parse_dates=parse_dates)
 
     @staticmethod
     def _sanitize_value(value):
@@ -151,12 +185,12 @@ class DailyPriceDatabase:
         """
         if df.empty:
             return 0
-        
+
         # Ensure the DataFrame has a proper date index
         if not isinstance(df.index, pd.DatetimeIndex):
             logger.error(f"{ticker}: DataFrame index is not DatetimeIndex, type: {type(df.index)}")
             return 0
-        
+
         # Prepare data for insertion
         records = []
         for date, row in df.iterrows():
@@ -170,7 +204,7 @@ class DailyPriceDatabase:
             else:
                 logger.error(f"{ticker}: Invalid date format: {date} (type: {type(date)})")
                 continue  # Skip this record
-            
+
             records.append((
                 ticker,
                 date_str,  # Always store as string in YYYY-MM-DD format
@@ -180,40 +214,46 @@ class DailyPriceDatabase:
                 self._sanitize_value(row.get('Close', row.get('close'))),
                 self._sanitize_value(row.get('Volume', row.get('volume', None)))
             ))
-        
-        # Insert or update records using UPSERT logic
-        upsert_query = """
-            INSERT INTO daily_prices 
-            (ticker, date, open, high, low, close, volume)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-            ON CONFLICT (ticker, date) DO UPDATE SET
-                open = excluded.open,
-                high = excluded.high,
-                low = excluded.low,
-                close = excluded.close,
-                volume = excluded.volume,
-                updated_at = CURRENT_TIMESTAMP
-        """
-        self.conn.executemany(upsert_query, records)
-        
-        # Update metadata - only if we have valid records
-        if records:
-            first_date = df.index.min().strftime('%Y-%m-%d') if isinstance(df.index.min(), pd.Timestamp) else str(df.index.min())
-            last_date = df.index.max().strftime('%Y-%m-%d') if isinstance(df.index.max(), pd.Timestamp) else str(df.index.max())
-            
-            self.conn.execute("""
-                INSERT INTO ticker_metadata
-                (ticker, first_date, last_date, total_records, last_update)
-                VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
-                ON CONFLICT (ticker) DO UPDATE SET
-                    first_date = excluded.first_date,
-                    last_date = excluded.last_date,
-                    total_records = excluded.total_records,
-                    last_update = CURRENT_TIMESTAMP
-            """, (ticker, first_date, last_date, len(records)))
-        
-        self.conn.commit()
-        return len(records)
+
+        try:
+            # Insert or update records using UPSERT logic
+            upsert_query = """
+                INSERT INTO daily_prices
+                (ticker, date, open, high, low, close, volume)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT (ticker, date) DO UPDATE SET
+                    open = excluded.open,
+                    high = excluded.high,
+                    low = excluded.low,
+                    close = excluded.close,
+                    volume = excluded.volume,
+                    updated_at = CURRENT_TIMESTAMP
+            """
+            self.conn.executemany(upsert_query, records)
+
+            # Update metadata - only if we have valid records
+            if records:
+                first_date = df.index.min().strftime('%Y-%m-%d') if isinstance(df.index.min(), pd.Timestamp) else str(df.index.min())
+                last_date = df.index.max().strftime('%Y-%m-%d') if isinstance(df.index.max(), pd.Timestamp) else str(df.index.max())
+
+                self.conn.execute("""
+                    INSERT INTO ticker_metadata
+                    (ticker, first_date, last_date, total_records, last_update)
+                    VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+                    ON CONFLICT (ticker) DO UPDATE SET
+                        first_date = excluded.first_date,
+                        last_date = excluded.last_date,
+                        total_records = excluded.total_records,
+                        last_update = CURRENT_TIMESTAMP
+                """, (ticker, first_date, last_date, len(records)))
+
+            self.conn.commit()
+            return len(records)
+        except Exception as e:
+            logger.error(f"{ticker}: Error storing daily prices: {e}")
+            # Roll back the transaction to clear the aborted state
+            self.conn.rollback()
+            raise
     
     def get_daily_prices(self, ticker: str, 
                         start_date: Optional[datetime] = None,
@@ -239,8 +279,8 @@ class DailyPriceDatabase:
             query += f" DESC LIMIT {limit}"
             # Need to re-sort after limit
             query = f"SELECT * FROM ({query}) AS limited ORDER BY date"
-        
-        df = pd.read_sql_query(query, self.conn, params=params, parse_dates=['date'])
+
+        df = self._read_sql(query, params=params, parse_dates=['date'])
         
         if not df.empty:
             df.set_index('date', inplace=True)
@@ -255,12 +295,12 @@ class DailyPriceDatabase:
         """
         if df.empty:
             return 0
-        
+
         # Ensure the DataFrame has a proper date index
         if not isinstance(df.index, pd.DatetimeIndex):
             logger.error(f"{ticker}: Weekly DataFrame index is not DatetimeIndex, type: {type(df.index)}")
             return 0
-        
+
         records = []
         for date, row in df.iterrows():
             # Validate date before storing
@@ -273,7 +313,7 @@ class DailyPriceDatabase:
             else:
                 logger.error(f"{ticker}: Invalid weekly date format: {date} (type: {type(date)})")
                 continue  # Skip this record
-            
+
             records.append((
                 ticker,
                 date_str,  # Always store as string in YYYY-MM-DD format
@@ -283,23 +323,29 @@ class DailyPriceDatabase:
                 self._sanitize_value(row.get('Close', row.get('close'))),
                 self._sanitize_value(row.get('Volume', row.get('volume', None)))
             ))
-        
-        upsert_query = """
-            INSERT INTO weekly_prices 
-            (ticker, week_ending, open, high, low, close, volume)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-            ON CONFLICT (ticker, week_ending) DO UPDATE SET
-                open = excluded.open,
-                high = excluded.high,
-                low = excluded.low,
-                close = excluded.close,
-                volume = excluded.volume,
-                updated_at = CURRENT_TIMESTAMP
-        """
-        self.conn.executemany(upsert_query, records)
-        
-        self.conn.commit()
-        return len(records)
+
+        try:
+            upsert_query = """
+                INSERT INTO weekly_prices
+                (ticker, week_ending, open, high, low, close, volume)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT (ticker, week_ending) DO UPDATE SET
+                    open = excluded.open,
+                    high = excluded.high,
+                    low = excluded.low,
+                    close = excluded.close,
+                    volume = excluded.volume,
+                    updated_at = CURRENT_TIMESTAMP
+            """
+            self.conn.executemany(upsert_query, records)
+
+            self.conn.commit()
+            return len(records)
+        except Exception as e:
+            logger.error(f"{ticker}: Error storing weekly prices: {e}")
+            # Roll back the transaction to clear the aborted state
+            self.conn.rollback()
+            raise
     
     def get_weekly_prices(self, ticker: str,
                          start_date: Optional[datetime] = None,
@@ -324,8 +370,8 @@ class DailyPriceDatabase:
         if limit:
             query += f" DESC LIMIT {limit}"
             query = f"SELECT * FROM ({query}) AS limited ORDER BY week_ending"
-        
-        df = pd.read_sql_query(query, self.conn, params=params, parse_dates=['week_ending'])
+
+        df = self._read_sql(query, params=params, parse_dates=['week_ending'])
         
         if not df.empty:
             df.set_index('week_ending', inplace=True)
@@ -364,22 +410,28 @@ class DailyPriceDatabase:
                 self._sanitize_value(row.get('Volume', row.get('volume', None)))
             ))
 
-        upsert_query = """
-            INSERT INTO hourly_prices
-            (ticker, datetime, open, high, low, close, volume)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-            ON CONFLICT (ticker, datetime) DO UPDATE SET
-                open = excluded.open,
-                high = excluded.high,
-                low = excluded.low,
-                close = excluded.close,
-                volume = excluded.volume,
-                updated_at = CURRENT_TIMESTAMP
-        """
-        self.conn.executemany(upsert_query, records)
+        try:
+            upsert_query = """
+                INSERT INTO hourly_prices
+                (ticker, datetime, open, high, low, close, volume)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT (ticker, datetime) DO UPDATE SET
+                    open = excluded.open,
+                    high = excluded.high,
+                    low = excluded.low,
+                    close = excluded.close,
+                    volume = excluded.volume,
+                    updated_at = CURRENT_TIMESTAMP
+            """
+            self.conn.executemany(upsert_query, records)
 
-        self.conn.commit()
-        return len(records)
+            self.conn.commit()
+            return len(records)
+        except Exception as e:
+            logger.error(f"{ticker}: Error storing hourly prices: {e}")
+            # Roll back the transaction to clear the aborted state
+            self.conn.rollback()
+            raise
 
     def get_hourly_prices(self, ticker: str,
                          start_datetime: Optional[datetime] = None,
@@ -405,7 +457,7 @@ class DailyPriceDatabase:
             query += f" DESC LIMIT {limit}"
             query = f"SELECT * FROM ({query}) AS limited ORDER BY datetime"
 
-        df = pd.read_sql_query(query, self.conn, params=params, parse_dates=['datetime'])
+        df = self._read_sql(query, params=params, parse_dates=['datetime'])
 
         if not df.empty:
             df.set_index('datetime', inplace=True)

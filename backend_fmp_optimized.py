@@ -239,8 +239,14 @@ class OptimizedDailyPriceCollector:
                 return True
 
             # Store only the new data
-            records = self.db.store_daily_prices(ticker, df)
-            self.stats['records_fetched'] += records
+            try:
+                records = self.db.store_daily_prices(ticker, df)
+                self.stats['records_fetched'] += records
+            except Exception as e:
+                logger.error(f"{ticker}: Failed to store daily prices: {e}", exc_info=True)
+                self.stats['failed'] += 1
+                self.stats['failed_tickers'].append(ticker)
+                return False
 
             # Update weekly data on Fridays (when resample_weekly is True)
             # Resample if: new daily data was fetched OR weekly data is missing/incomplete
@@ -274,10 +280,14 @@ class OptimizedDailyPriceCollector:
                     if latest_date >= current_week_start:
                         weekly_df = self._resample_to_weekly(recent_df, ticker)
                         if weekly_df is not None and not weekly_df.empty:
-                            weekly_records = self.db.store_weekly_prices(ticker, weekly_df)
-                            if weekly_records > 0:
-                                self.stats['weekly_updated'] += 1
-                            logger.info(f"{ticker}: Generated {len(weekly_df)} weekly records")
+                            try:
+                                weekly_records = self.db.store_weekly_prices(ticker, weekly_df)
+                                if weekly_records > 0:
+                                    self.stats['weekly_updated'] += 1
+                                logger.info(f"{ticker}: Generated {len(weekly_df)} weekly records")
+                            except Exception as e:
+                                logger.error(f"{ticker}: Failed to store weekly prices: {e}", exc_info=True)
+                                # Don't fail the entire update just because weekly failed
                     else:
                         logger.debug(f"{ticker}: Skipping weekly resample - no current week data (latest: {latest_date})")
 

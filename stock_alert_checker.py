@@ -252,8 +252,8 @@ class StockAlertChecker:
         audit_id = log_alert_check_start(alert, "scheduled")
 
         try:
-            # Check if alert is disabled
-            if alert.get("action", "on") != "on":
+            # Check if alert is disabled (only skip if explicitly set to "off")
+            if alert.get("action", "on") == "off":
                 result["skipped"] = True
                 result["skip_reason"] = "disabled"
                 return result

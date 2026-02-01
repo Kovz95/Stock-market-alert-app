@@ -4,6 +4,8 @@ __pycache__/
 *.pyc
 .idea
 .claude
+nul
+NUL
 # Data and notebooks
 data/
 alerts.json

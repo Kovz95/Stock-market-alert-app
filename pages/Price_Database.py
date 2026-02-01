@@ -158,7 +158,7 @@ def _compute_hourly_data_quality(conn) -> Dict[str, Any]:
     """
 
     try:
-        stale_df = pd.read_sql_query(stale_query, conn)
+        stale_df = read_sql_with_engine(stale_query)
         if not stale_df.empty:
             row = stale_df.iloc[0]
             results["total_tickers"] = int(row.get("total_tickers") or 0)
@@ -168,7 +168,7 @@ def _compute_hourly_data_quality(conn) -> Dict[str, Any]:
         st.error(f"Error calculating stale hourly tickers: {exc}")
 
     try:
-        gap_df = pd.read_sql_query(gap_query, conn)
+        gap_df = read_sql_with_engine(gap_query)
         if not gap_df.empty:
             row = gap_df.iloc[0]
             results["gap_tickers"] = int(row.get("gap_tickers") or 0)
@@ -210,6 +210,44 @@ def get_database_connection():
         yield conn
     finally:
         db_config.close_connection(conn)
+
+def read_sql_with_engine(query, params=None):
+    """
+    Execute a SQL query using SQLAlchemy engine (preferred by pandas).
+    This eliminates the pandas UserWarning about using raw DBAPI connections.
+    Handles both ? (SQLite-style) and %s (PostgreSQL-style) placeholders.
+    """
+    from sqlalchemy import text
+
+    engine = db_config.get_sqlalchemy_engine()
+    if params:
+        # Convert placeholders to named parameters for SQLAlchemy
+        # Handle both ? (SQLite) and %s (PostgreSQL) styles
+        query_modified = query
+        param_count = query.count('?')
+
+        if param_count > 0:
+            # SQLite-style placeholders (?)
+            param_names = [f'param{i}' for i in range(param_count)]
+            for name in param_names:
+                query_modified = query_modified.replace('?', f':{name}', 1)
+            params_dict = dict(zip(param_names, params))
+        elif '%s' in query:
+            # PostgreSQL-style placeholders (%s) - convert to named parameters
+            param_count = query.count('%s')
+            param_names = [f'param{i}' for i in range(param_count)]
+            for name in param_names:
+                query_modified = query_modified.replace('%s', f':{name}', 1)
+            params_dict = dict(zip(param_names, params))
+        else:
+            # No placeholders, use params as-is (might be a dict already)
+            params_dict = params if isinstance(params, dict) else {}
+
+        # Use connection from engine for proper parameter binding
+        with engine.connect() as conn:
+            return pd.read_sql_query(text(query_modified), conn, params=params_dict)
+
+    return pd.read_sql_query(query, engine)
 
 def get_unique_exchanges(main_db):
     """Get unique exchanges from main database"""
@@ -286,7 +324,7 @@ def load_price_data(
         query += f" LIMIT {int(limit)}"
 
     try:
-        df = pd.read_sql_query(query, conn, params=params)
+        df = read_sql_with_engine(query, params=params if params else None)
         if not df.empty and date_col in df.columns:
             df['date'] = pd.to_datetime(df[date_col])
         return df
@@ -420,13 +458,12 @@ def fetch_stale_hourly_data(limit: int | None = None, main_db: Dict[str, Dict[st
             return pd.DataFrame(), meta
 
         meta["table_exists"] = True
-    per_ticker = pd.read_sql_query(
+    per_ticker = read_sql_with_engine(
         """
         SELECT ticker, MAX(datetime) AS last_hour
         FROM hourly_prices
         GROUP BY ticker
-        """,
-        conn,
+        """
     )
 
     if per_ticker.empty:
@@ -582,9 +619,8 @@ def fetch_stale_ticker_dataframe(
                     return (now_local - timedelta(days=3)).date()
                 return (now_local - timedelta(days=1)).date()
 
-            last_df = pd.read_sql_query(
-                f"SELECT ticker, MAX({date_col}) AS last_date FROM {table_name} GROUP BY ticker",
-                conn,
+            last_df = read_sql_with_engine(
+                f"SELECT ticker, MAX({date_col}) AS last_date FROM {table_name} GROUP BY ticker"
             )
             if last_df.empty:
                 return pd.DataFrame()
@@ -639,7 +675,7 @@ def fetch_stale_ticker_dataframe(
             query += " LIMIT %s"
             params = (*params, limit)
 
-        df = pd.read_sql_query(query, conn, params=params)
+        df = read_sql_with_engine(query, params=list(params))
 
     if df.empty:
         return df
@@ -1756,7 +1792,7 @@ def main():
                 FROM hourly_prices
             """
             try:
-                hourly_stats = pd.read_sql_query(hourly_stats_query, conn)
+                hourly_stats = read_sql_with_engine(hourly_stats_query)
             except Exception as exc:
                 st.error(f"Error loading hourly stats: {exc}")
                 hourly_stats = pd.DataFrame()

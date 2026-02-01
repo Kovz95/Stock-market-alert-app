@@ -222,9 +222,10 @@ class DatabaseConfig:
         self._pg_pool_lock = threading.Lock()
         self._pg_pool_min = int(os.getenv("POSTGRES_POOL_MIN", "5"))
         self._pg_pool_max = int(os.getenv("POSTGRES_POOL_MAX", "50"))
-        # Limit concurrent checkouts so threads don’t hammer the pool/server.
+        # Limit concurrent checkouts so threads don't hammer the pool/server.
         self._pg_conn_sema = threading.Semaphore(int(os.getenv("POSTGRES_CONN_LIMIT", "40")))
         self._configured_connections = set()
+        self._sqlalchemy_engine = None
 
     # --------------------------------------------------------------------- #
     # SQLite helpers
@@ -375,6 +376,32 @@ class DatabaseConfig:
             return result
 
         return _execute()
+
+    def get_sqlalchemy_engine(self):
+        """
+        Get a SQLAlchemy engine for pandas operations.
+        This is preferred over raw psycopg2 connections for pandas operations.
+        """
+        if self._sqlalchemy_engine is not None:
+            return self._sqlalchemy_engine
+
+        try:
+            from sqlalchemy import create_engine
+            from sqlalchemy.pool import NullPool
+        except ImportError:
+            logger.error(
+                "SQLAlchemy is required for pandas operations. "
+                "Install with: pip install sqlalchemy"
+            )
+            raise
+
+        # Create engine with NullPool (no connection pooling - we manage our own pool)
+        self._sqlalchemy_engine = create_engine(
+            self.database_url,
+            poolclass=NullPool,  # No pooling - create/dispose connections as needed
+            echo=False,
+        )
+        return self._sqlalchemy_engine
 
 
 # Global instance

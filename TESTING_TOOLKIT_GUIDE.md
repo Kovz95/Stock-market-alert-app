@@ -517,6 +517,7 @@ python analyze_alerts.py --all
 # Check specific ticker
 python analyze_alerts.py --ticker AAPL --days 7
 
+
 # Find errors
 python analyze_alerts.py --errors 24
 ```

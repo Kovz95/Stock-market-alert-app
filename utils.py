@@ -78,28 +78,28 @@ _BASE_FMP_TICKER_MAPPING = {
     "939.HK": "939.HK",      # China Construction Bank
     "9988.HK": "9988.HK",    # Alibaba
     "1299.HK": "1299.HK",    # AIA Group
-    
+
     # London stocks - FMP uses different symbols
     "HSBC.L": "HSBA.L",      # HSBC Holdings (FMP uses HSBA.L)
     "BP.L": "BP.L",          # BP
     "VOD.L": "VOD.L",        # Vodafone
-    
+
     # European stocks - Some work with suffixes, some don't
     "ASML.AS": "ASML.AS",    # ASML Holding (Amsterdam) - FMP supports .AS
     "SAP.DE": "SAP.DE",      # SAP SE (Frankfurt) - FMP supports .DE
     "LVMH.PA": "LVMHF",      # LVMH (Paris) - FMP uses OTC symbol LVMHF
     "NESN.SW": "NESN.SW",    # Nestle (Switzerland)
-    
+
     # US stocks (usually same)
     "AAPL": "AAPL",
     "MSFT": "MSFT",
     "GOOGL": "GOOGL",
     "AMZN": "AMZN",
-    
+
     # Special cases - May need ADR alternatives
     "BRK.A": "BRK.A",
     "BRK.B": "BRK.B",
-    
+
     # ADR alternatives for international stocks
     "TCEHY": "TCEHY",       # Tencent ADR (OTC)
     "LVMHF": "LVMHF",       # LVMH OTC alternative
@@ -141,11 +141,11 @@ def get_fmp_ticker(ticker):
     Returns the FMP ticker if mapping exists, otherwise applies transformation rules
     """
     import re
-    
+
     # First check the main FMP ticker mapping (includes HK fixes)
     if ticker in FMP_TICKER_MAPPING:
         return FMP_TICKER_MAPPING[ticker]
-    
+
     enhanced_mappings = _get_enhanced_fmp_mappings()
 
     local_exchange_doc = _get_local_exchange_mappings()
@@ -153,36 +153,36 @@ def get_fmp_ticker(ticker):
     for category in local_exchange_doc.get('local_exchange_corrections', {}).values():
         if isinstance(category, dict):
             local_mappings.update(category)
-    
+
     # Check local exchange mappings first (highest priority for failed tickers)
     if ticker in local_mappings:
         return local_mappings[ticker]
-    
+
     # Check enhanced mappings
     if ticker in enhanced_mappings:
         return enhanced_mappings[ticker]
-    
+
     # Check original mappings
     if ticker in FMP_TICKER_MAPPING:
         return FMP_TICKER_MAPPING[ticker]
-    
+
     # Load exchange transforms from document store data
     exchange_transforms = {}
     for old_suffix, new_suffix in local_exchange_doc.get('exchange_suffix_transforms', {}).items():
         exchange_transforms[f'.{old_suffix}'] = f'.{new_suffix}'
-    
+
     # Fallback to default transforms if file loading fails
     if not exchange_transforms:
         exchange_transforms = {
             '.JP': '.T',      # Japan: .JP -> .T
-            '.UK': '.L',      # UK: .UK -> .L  
+            '.UK': '.L',      # UK: .UK -> .L
             '.CA': '.TO',     # Canada: .CA -> .TO
             '.AU': '.AX',     # Australia: .AU -> .AX
             '.NL': '.AS',     # Netherlands: .NL -> .AS (Amsterdam)
             '.CH': '.SW',     # Switzerland: .CH -> .SW (SIX Swiss Exchange)
             '.FR': '.PA',     # France: .FR -> .PA (Paris)
         }
-    
+
     # Special case: Hong Kong stocks misclassified as Shanghai
     # Convert short .SS codes (≤4 digits) to .HK format with 4-digit padding
     if ticker.endswith('.SS'):
@@ -191,33 +191,33 @@ def get_fmp_ticker(ticker):
             # Hong Kong stocks need 4-digit padding with leading zeros
             padded_code = base_code.zfill(4)
             return f"{padded_code}.HK"
-    
+
     # Apply exchange transformations
     for old_suffix, new_suffix in exchange_transforms.items():
         if ticker.endswith(old_suffix):
             base_ticker = ticker.replace(old_suffix, '')
             return f"{base_ticker}{new_suffix}"
-    
+
     # Special cases for individual tickers
     special_cases = {
         'HSBC.L': 'HSBA.L',
-        'HSBC.UK': 'HSBA.L', 
+        'HSBC.UK': 'HSBA.L',
         'LVMH.PA': 'LVMHF',
     }
-    
+
     if ticker in special_cases:
         return special_cases[ticker]
-    
+
     # Check for invalid ticker patterns (likely bonds/derivatives)
     invalid_patterns = [
         r'^\d{4}[A-Z]\d$',  # Pattern like 0000J0, 0008T0
         # Removed 6-digit pattern - these are international ETFs
     ]
-    
+
     for pattern in invalid_patterns:
         if re.match(pattern, ticker):
             return None  # Mark as invalid - don't try to fetch
-    
+
     # Handle Hong Kong stocks (both .HK and -HK formats)
     if ticker.endswith('.HK') or ticker.endswith('-HK'):
         # Hong Kong stocks need 4-digit padding with leading zeros
@@ -226,7 +226,7 @@ def get_fmp_ticker(ticker):
             padded_code = base_code.zfill(4)
             return f"{padded_code}.HK"
         return ticker.replace('-HK', '.HK')  # Non-numeric, just change format
-    
+
     # Handle Malaysian stocks (both .MY and -MY formats)
     elif ticker.endswith('.MY') or ticker.endswith('-MY'):
         # Malaysian stocks need .KL suffix
@@ -235,7 +235,7 @@ def get_fmp_ticker(ticker):
             padded_code = base_code.zfill(4)
             return f"{padded_code}.KL"
         return ticker.replace('-MY', '.KL').replace('.MY', '.KL')
-    
+
     # Handle special cases with dots in the base ticker (e.g., SRU.UT-CA, NOVO.B-DK)
     elif '-' in ticker:
         parts = ticker.rsplit('-', 1)  # Split from the right to handle dots in ticker
@@ -244,10 +244,10 @@ def get_fmp_ticker(ticker):
         else:
             base = ticker
             suffix = None
-        
+
         if not suffix:
             return ticker  # Can't process without suffix
-        
+
         # For US stocks with dual-class shares (.A, .B, etc.), convert period to hyphen for FMP
         if suffix == 'US' and '.' in base:
             # Check if it's a dual-class share pattern (e.g., MOG.A, BRK.B)
@@ -255,7 +255,7 @@ def get_fmp_ticker(ticker):
             if len(base_parts) == 2 and len(base_parts[1]) == 1 and base_parts[1].isalpha():
                 # Convert MOG.A to MOG-A for FMP
                 return f"{base_parts[0]}-{base_parts[1]}"
-        
+
         # Map common suffixes to FMP equivalents
         suffix_mapping = {
             'US': '',        # US stocks don't need suffix (except dual-class handled above)
@@ -306,7 +306,7 @@ def get_fmp_ticker(ticker):
             'CO': '.CN',     # Colombia
             'PE': '.LM',     # Peru -> Lima
         }
-        
+
         if suffix in suffix_mapping:
             if suffix_mapping[suffix] == '':
                 return base  # US stocks
@@ -324,13 +324,13 @@ def get_fmp_ticker(ticker):
                     elif base.endswith('.UT'):
                         # Remove .UT suffix for FMP (e.g., BEI.UT -> BEI)
                         base = base[:-3]
-                
+
                 # Special handling for Turkish stocks with .E suffix
                 # FMP doesn't use the .E equity class indicator
                 if suffix == 'TR' and base.endswith('.E'):
                     # Remove .E suffix (e.g., BIMAS.E -> BIMAS)
                     base = base[:-2]
-                
+
                 # For numeric codes, pad to 4 digits for certain exchanges
                 if base.isdigit() and suffix in ['MY', 'HK', 'JP', 'KR', 'TW', 'TH', 'ID', 'PH']:
                     base = base.zfill(4)
@@ -338,7 +338,7 @@ def get_fmp_ticker(ticker):
         else:
             # Unknown suffix, just convert dash to dot
             return ticker.replace('-', '.')
-    
+
     elif ticker.endswith('.L'):
         return ticker  # London stocks - FMP supports .L suffix
     elif ticker.endswith('.AS') or ticker.endswith('.DE') or ticker.endswith('.PA'):
@@ -347,14 +347,14 @@ def get_fmp_ticker(ticker):
         return ticker  # Taiwan stocks - FMP supports .TW suffix
     elif ticker.endswith(('.BR', '.MC', '.MI', '.OL', '.HE', '.ST')):
         return ticker  # Other European exchanges that work well
-    
+
     # Brazilian stock pattern detection - add .SA suffix
     # Brazilian companies typically end with 3, 4, or 11 (share class indicators)
     if ('.' not in ticker and len(ticker) >= 4 and len(ticker) <= 7 and
         (ticker.endswith('3') or ticker.endswith('4') or ticker.endswith('11')) and
         (ticker[:-1].isalpha() or ticker[:-2].isalpha())):
         return f"{ticker}.SA"
-    
+
     # Default case - return original ticker
     return ticker
 
@@ -365,23 +365,23 @@ def get_fmp_ticker_with_fallback(ticker):
     """
     # First try the standard mapping
     fmp_ticker = get_fmp_ticker(ticker)
-    
+
     # For international stocks, also prepare US listing fallback
     # Based on investigation showing 46.4% recovery rate with US listings
     if '.' in ticker:
         base_ticker = ticker.split('.')[0]
         suffix = ticker.split('.')[-1]
-        
+
         # These exchanges often have US listings available
         us_fallback_exchanges = [
-            'UK', 'IE', 'NL', 'DE', 'CH', 'SI', 'HE', 'CA', 'PS', 
+            'UK', 'IE', 'NL', 'DE', 'CH', 'SI', 'HE', 'CA', 'PS',
             'MX', 'MI', 'JK', 'AU', 'TW', 'BR', 'AT', 'OL', 'VI',
             'NS', 'FR', 'CO'  # Based on investigation results
         ]
-        
+
         if suffix in us_fallback_exchanges:
             return {'primary': fmp_ticker, 'fallback': base_ticker}
-    
+
     # For other tickers, just return the standard mapping
     return {'primary': fmp_ticker, 'fallback': None}
 
@@ -393,22 +393,22 @@ def test_fmp_ticker_availability(ticker):
     try:
         if not FMP_API_KEY:
             return False
-            
+
         # Convert ticker to FMP format
         fmp_ticker = get_fmp_ticker(ticker)
-        
+
         # If ticker is marked as invalid, don't test
         if fmp_ticker is None:
             return False
-        
+
         # Test with quote endpoint (lightweight)
         quote_data = fmpsdk.quote(
             apikey=FMP_API_KEY,
             symbol=fmp_ticker
         )
-        
+
         return quote_data is not None and len(quote_data) > 0
-        
+
     except Exception as e:
         print(f"[WARNING] Error testing FMP ticker availability for {ticker}: {e}")
         return False
@@ -473,15 +473,15 @@ def get_yahoo_ticker(ticker):
     Convert ticker to Yahoo Finance format
     """
     import re
-    
+
     # Remove -US suffix as Yahoo Finance doesn't use it for US stocks
     if ticker.endswith('-US'):
         ticker = ticker[:-3]
-    
+
     # Check mapping first
     if ticker in YAHOO_TICKER_MAPPING:
         return YAHOO_TICKER_MAPPING[ticker]
-    
+
     # Default conversions if not in mapping
     # Hong Kong stocks need 4-digit format
     if ticker.endswith('.HK'):
@@ -489,13 +489,13 @@ def get_yahoo_ticker(ticker):
         if match:
             number = match.group(1)
             return f"{number.zfill(4)}.HK"
-    
+
     # Australian stocks use .AX in Yahoo
     if ticker.endswith('.AU'):
         return ticker[:-3] + '.AX'
-    
+
     # No special handling needed for stocks/ETFs
-    
+
     # Default: return as is
     return ticker
 
@@ -503,34 +503,34 @@ def get_yahoo_ticker(ticker):
 def process_alerts_in_batches(alerts, process_function, max_workers=None):
     """
     Process alerts in batches to respect rate limits
-    
+
     Args:
         alerts: List of alerts to process
         process_function: Function to process each alert
         max_workers: Maximum number of worker threads (default: batch_size)
-    
+
     Returns:
         List of results
     """
     if max_workers is None:
         max_workers = 5  # Default value
-    
+
     batch_size = 10  # Default batch size
     results = []
-    
+
     for i in range(0, len(alerts), batch_size):
         batch = alerts[i:i + batch_size]
         print(f"Processing batch {i//batch_size + 1}/{(len(alerts) + batch_size - 1)//batch_size} ({len(batch)} alerts)")
-        
+
         # Process batch with limited concurrency
         with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
             batch_results = list(executor.map(process_function, batch))
             results.extend(batch_results)
-        
+
         # Add delay between batches to respect rate limits
         if i + batch_size < len(alerts):
             time.sleep(1)  # Small delay between batches
-    
+
     return results
 
 
@@ -589,26 +589,26 @@ def load_market_data():
 # Add caching only if streamlit is available
 if STREAMLIT_AVAILABLE:
     load_market_data = st.cache_data(ttl=1800)(load_market_data)
-    
+
 # Predefined suggestions for technical indicators (Single timeframe mode)
 predefined_suggestions = [
-    "sma(period = )[-1]", 
-    "hma(period = )[-1]", 
+    "sma(period = )[-1]",
+    "hma(period = )[-1]",
     "rsi(period = )[-1]",
-    "ema(period = )[-1]", 
-    "slope_sma(period = )[-1]", 
+    "ema(period = )[-1]",
+    "slope_sma(period = )[-1]",
     "slope_ema(period = )[-1]",
-    "slope_hma(period = )[-1]", 
+    "slope_hma(period = )[-1]",
     "bb(period = , std_dev = , type = )[-1]",
-    "macd(fast_period = , slow_period = , signal_period = , type = )[-1]", 
+    "macd(fast_period = , slow_period = , signal_period = , type = )[-1]",
     "breakout",
-    "atr(period = )[-1]", 
-    "cci(period = )[-1]", 
-    "roc(period = )[-1]", 
+    "atr(period = )[-1]",
+    "cci(period = )[-1]",
+    "roc(period = )[-1]",
     "williamsr(period = )[-1]",
-    "Close[-1]", 
+    "Close[-1]",
     "Open[-1]",
-    "Low[-1]", 
+    "Low[-1]",
     "High[-1]",
     "HARSI_Flip(period = , smoothing = )[-1]",
     "SROCST(ma_type = EMA, lsma_offset = 0, smoothing_length = 12, kalman_src = Close, sharpness = 25, filter_period = 1, roc_length = 9, k_length = 14, k_smoothing = 1, d_smoothing = 3)[-1]"
@@ -642,12 +642,12 @@ def log_to_discord(message: str, *args, **kwargs):
     """Log messages to Discord using async logger for better performance"""
     # Try to use async logger first (much faster)
     try:
-        from async_discord_logger import log_to_discord_async
+        from src.services.discord_logger import log_to_discord_async
         log_to_discord_async(str(message))
         return
     except ImportError:
         pass
-    
+
     # Fallback to buffer method if async logger not available
     global LOG_BUFFER
     LOG_BUFFER.append(str(message))
@@ -657,7 +657,7 @@ def split_message(message, max_length):
     lines = message.split("\n")
     chunks = []
     current_chunk = ""
-    
+
     for line in lines:
         if len(current_chunk) + len(line) + 1 < max_length - 6:  # 6 for code block fences
             current_chunk += line + "\n"
@@ -666,7 +666,7 @@ def split_message(message, max_length):
             current_chunk = line + "\n"
     if current_chunk:
         chunks.append(f"```{current_chunk.strip()}```")
-    
+
     return chunks
 
 # Function to flush log buffer to Discord
@@ -679,12 +679,12 @@ def flush_logs_to_discord():
         return
     except ImportError:
         pass
-    
+
     # Fallback to original method
     global LOG_BUFFER
     if not LOG_BUFFER:
         return
-    
+
     # Check if webhook URLs are configured
     if not WEBHOOK_URL_LOGGING:
         LOG_BUFFER.clear()  # Clear buffer even if we can't send
@@ -721,18 +721,18 @@ def get_asset_type(ticker):
     Returns: 'us_stock' or 'international_stock'
     """
     ticker_upper = ticker.upper()
-    
+
     # International stock patterns (non-US exchanges)
     international_patterns = [
         '.HK', '.SI', '.TW', '.KL', '.KS', '.NS', '.SS', '.BK', '.JK', '.PS', '.HM',  # Asian
         '.AS', '.L', '.PA', '.DE', '.MI', '.SW', '.CH', '.NL', '.ES', '.ST', '.OL', '.CO', '.HE', '.BR', '.IE', '.LS', '.VI', '.WA', '.AT', '.BD', '.PR', '.IS'  # European
     ]
-    
+
     # Check for international stocks
     for pattern in international_patterns:
         if ticker_upper.endswith(pattern):
             return 'international_stock'
-    
+
     # Default to US stock
     return 'us_stock'
 
@@ -741,21 +741,21 @@ def is_us_stock(ticker):
     Check if a ticker is a US stock (no country suffix)
     """
     ticker_upper = ticker.upper()
-    
+
     # International stock patterns (non-US exchanges)
     international_patterns = [
         '.HK', '.SI', '.TW', '.KL', '.KS', '.NS', '.SS', '.BK', '.JK', '.PS', '.HM',  # Asian
         '.AS', '.L', '.PA', '.DE', '.MI', '.SW', '.CH', '.NL', '.ES', '.ST', '.OL', '.CO', '.HE', '.BR', '.IE', '.LS', '.VI', '.WA', '.AT', '.BD', '.PR', '.IS'  # European
     ]
-    
+
     # Check for international patterns
     for pattern in international_patterns:
         if ticker_upper.endswith(pattern):
             return False
-    
+
         if pattern in ticker_upper:
             return False
-    
+
     return True
 
 def grab_new_data_fmp(ticker, timespan="1d", period="1y"):
@@ -764,15 +764,15 @@ def grab_new_data_fmp(ticker, timespan="1d", period="1y"):
     Handles daily and weekly timeframes properly
     """
     from backend_fmp import FMPDataFetcher
-    
+
     if not FMP_API_KEY:
         print(f"[ERROR] FMP API key not available")
         return None
-    
+
     try:
         # Use the FMPDataFetcher class which handles all the complexity
         fetcher = FMPDataFetcher(api_key=FMP_API_KEY)
-        
+
         # Map timespan to proper format for backend_fmp
         if timespan in ["1wk", "weekly"]:
             # Pass timeframe parameter to get proper weekly resampling
@@ -789,13 +789,13 @@ def grab_new_data_fmp(ticker, timespan="1d", period="1y"):
                 "1hour": "1hour",
                 "4hour": "4hour"
             }
-            
+
             if timespan in timeframe_map:
                 df = fetcher.get_historical_data(ticker, period=timeframe_map[timespan])
             else:
                 print(f"[WARNING] Unsupported timespan: {timespan}")
                 return None
-        
+
         if df is not None and not df.empty:
             print(f"[INFO] Successfully fetched {len(df)} records for {ticker} (timespan: {timespan})")
             # Check if we have enough data for indicators
@@ -815,9 +815,9 @@ def grab_new_data_universal(ticker, timespan="1d", period="1y"):
     - ETFs: FMP API only
     """
     asset_type = get_asset_type(ticker)
-    
+
     print(f"[INFO] Detected asset type for {ticker}: {asset_type}")
-    
+
     # Always use FMP API for everything - no Yahoo Finance fallback
     if FMP_API_KEY:
         try:
@@ -864,22 +864,22 @@ def calculate_cross_exchange_ratio(df1, df2, ticker1, ticker2):
         # Normalize dataframes to have consistent column names
         df1_normalized = normalize_dataframe(df1, ticker1)
         df2_normalized = normalize_dataframe(df2, ticker2)
-        
+
         # Ensure both dataframes have the same date range
         common_dates = df1_normalized.index.intersection(df2_normalized.index)
         df1_aligned = df1_normalized.loc[common_dates]
         df2_aligned = df2_normalized.loc[common_dates]
-        
+
         # Calculate ratio
         ratio_df = df1_aligned.div(df2_aligned)
-        
+
         # Add metadata
         ratio_df.attrs['ticker1'] = ticker1
         ratio_df.attrs['ticker2'] = ticker2
         ratio_df.attrs['ratio_type'] = 'cross_exchange'
-        
+
         return ratio_df
-        
+
     except Exception as e:
         print(f"Error calculating cross-exchange ratio: {e}")
         return None
@@ -897,33 +897,33 @@ def normalize_dataframe(df, ticker):
                 normalized_df = df
         else:
             normalized_df = df
-        
+
         # Ensure we have the standard OHLCV columns
         required_columns = ['Open', 'High', 'Low', 'Close', 'Volume']
         available_columns = [col for col in normalized_df.columns if col in required_columns]
-        
+
         if len(available_columns) < 4:  # Need at least OHLC
             raise ValueError(f"Insufficient data columns for {ticker}")
-        
+
         # Select only the available OHLCV columns
         normalized_df = normalized_df[available_columns]
-        
+
         # Ensure numeric data
         for col in normalized_df.columns:
             normalized_df[col] = pd.to_numeric(normalized_df[col], errors='coerce')
-        
+
         # Remove any rows with NaN values
         normalized_df = normalized_df.dropna()
-        
+
         return normalized_df
-        
+
     except Exception as e:
         print(f"Error normalizing dataframe for {ticker}: {e}")
         return None
 
 def validate_conditions(entry_conditions_list):
     print("Validating conditions...")
-    
+
     # Handle dict format (from Add_Alert page)
     if isinstance(entry_conditions_list, dict):
         for key, value in entry_conditions_list.items():
@@ -970,7 +970,7 @@ def validate_conditions(entry_conditions_list):
     else:
         print(f"Unknown format for entry_conditions_list: {type(entry_conditions_list)}")
         return False
-        
+
     return True
 
 
@@ -1245,11 +1245,11 @@ def check_database(stock,timeframe):
             df.insert(0, "index", range(1, len(df) + 1))
         return df
 
-    
+
 
 def update_stock_database(stock, new_stock_data,timeframe):
     file_path = f"data/{stock}_{timeframe}.csv"
-    
+
     # Load existing data
     existing_data = check_database(stock,timeframe)
 
@@ -1259,20 +1259,20 @@ def update_stock_database(stock, new_stock_data,timeframe):
 
     df_combined = pd.concat([existing_data, new_stock_data])
     df_combined.reset_index(drop=True, inplace=True)
-        
+
     # Regenerate the "index" column to be consistent
     df_combined['index'] = range(1, len(df_combined) + 1)
     cols = df_combined.columns.tolist()
     if 'index' in cols:
         cols.insert(0, cols.pop(cols.index('index')))
     df_combined = df_combined[cols]
-    
+
     # Save the combined data consistently without using pandas' default index
     df_combined.to_csv(file_path, index=False, date_format="%Y-%m-%d")
-    
+
     return df_combined
 
-    
+
 def send_alert(stock, alert, condition_str, df):
     # Ensure the condition_str is actually a string
     if not isinstance(condition_str, str):
@@ -1283,24 +1283,24 @@ def send_alert(stock, alert, condition_str, df):
     # Add action to the alert
     action = alert['action']
     timeframe = alert['timeframe']
-    
+
     # Get proper exchange name from country
     from exchange_name_mapping import get_exchange_name
     country = alert.get('exchange', 'Unknown')
     exchange = get_exchange_name(country)
-    
+
     # Send the alert via Discord
     send_stock_alert(WEBHOOK_URL, timeframe, alert["name"], stock, condition_str, current_price, action, exchange)
-    
+
     # Only send to second webhook if it's different from the first
     if WEBHOOK_URL_2 and WEBHOOK_URL_2 != WEBHOOK_URL:
         send_stock_alert(WEBHOOK_URL_2, timeframe, alert["name"], stock, condition_str, current_price, action, exchange)
-    
+
     # Also send to ALL portfolio channels that contain this stock
     try:
         from portfolio_discord import portfolio_manager
         portfolios_with_stock = portfolio_manager.get_portfolios_for_stock(stock)
-        
+
         for portfolio_id, portfolio in portfolios_with_stock:
             webhook_url = portfolio.get("discord_webhook", "")
             if webhook_url and portfolio.get("enabled", True):
@@ -1310,7 +1310,7 @@ def send_alert(stock, alert, condition_str, df):
                 log_to_discord(f"  → Also sent to portfolio: {portfolio_name}")
     except Exception as e:
         pass  # Silently skip if portfolio system not available
-    
+
     # Send to custom Discord channels based on condition matching
     try:
         custom_channels = load_document(
@@ -1318,7 +1318,7 @@ def send_alert(stock, alert, condition_str, df):
             default={},
             fallback_path="custom_discord_channels.json",
         ) or {}
-        
+
         # Check each custom channel
         for channel_name, channel_config in custom_channels.items():
             if channel_config.get('enabled', True):
@@ -1326,7 +1326,7 @@ def send_alert(stock, alert, condition_str, df):
                 # Need to normalize the condition strings for comparison
                 triggered_condition_normalized = condition_str.replace(' ', '')
                 channel_condition_normalized = channel_config.get('condition', '').replace(' ', '')
-                
+
                 # Check if the triggered condition contains the channel's condition
                 if channel_condition_normalized in triggered_condition_normalized:
                     webhook_url = channel_config.get('webhook_url')
@@ -1336,7 +1336,7 @@ def send_alert(stock, alert, condition_str, df):
                         log_to_discord(f"  → Also sent to custom channel: {channel_config.get('channel_name', channel_name)}")
     except Exception:
         pass  # Silently skip if custom channels not configured or error occurs
-    
+
     log_to_discord(f"[Alert Triggered] '{alert['name']}' for {stock}: condition '{condition_str}' at {datetime.datetime.now()}.")
 
 
@@ -1345,10 +1345,10 @@ def send_stock_alert(webhook_url, timeframe, alert_name, ticker, triggered_condi
     if not webhook_url:
         print(f"[WARNING] No webhook URL configured for alert: {alert_name}")
         return
-    
+
     # Change the color based on the action
     color = 0x00ff00 if action == "Buy" else 0xff0000
-    
+
     # Format timeframe for display
     timeframe_display = {
         "1d": "1D (Daily)",
@@ -1359,7 +1359,7 @@ def send_stock_alert(webhook_url, timeframe, alert_name, ticker, triggered_condi
         "daily": "1D (Daily)",
         "weekly": "1W (Weekly)"
     }.get(timeframe.lower() if isinstance(timeframe, str) else timeframe, timeframe)
-    
+
     embed = {
         "title": f"[ALERT] {alert_name} ({ticker})",
         "description": f"The condition **{triggered_condition}** was triggered. \n Action: {action}",
@@ -1440,12 +1440,12 @@ period_only = ['sma','ema','rsi','hma','slope_sma','slope_ema','slope_hma','roc'
 def get_dst_adjusted_time(local_time_str, timezone_str, target_timezone="America/New_York"):
     """
     Convert local market time to target timezone with DST awareness
-    
+
     Args:
         local_time_str: Time string in local market time (e.g., "4:00 PM")
         timezone_str: Market timezone (e.g., "Asia/Hong_Kong")
         target_timezone: Target timezone for conversion (default: EST/EDT)
-    
+
     Returns:
         tuple: (hour, minute) in target timezone
     """
@@ -1464,23 +1464,23 @@ def get_dst_adjusted_time(local_time_str, timezone_str, target_timezone="America
         else:
             # Handle 24-hour format
             hour, minute = map(int, local_time_str.split(":"))
-        
+
         # Create a datetime object in the market's timezone
         market_tz = pytz.timezone(timezone_str)
         target_tz = pytz.timezone(target_timezone)
-        
+
         # Use today's date for the conversion (DST will be automatically handled)
         today = datetime.datetime.now().date()
         local_dt = datetime.datetime.combine(today, datetime.time(hour, minute))
-        
+
         # Localize to market timezone
         local_dt = market_tz.localize(local_dt)
-        
+
         # Convert to target timezone
         target_dt = local_dt.astimezone(target_tz)
-        
+
         return target_dt.hour, target_dt.minute
-        
+
     except Exception as e:
         print(f"Error converting time {local_time_str} from {timezone_str}: {e}")
         # Fallback to manual conversion
@@ -1503,7 +1503,7 @@ def convert_time_manual(local_time_str, timezone_str, target_timezone="America/N
             hour = 0
     else:
         hour, minute = map(int, local_time_str.split(":"))
-    
+
     # DST-aware conversion table
     # Format: (market_tz, local_hour, local_minute, est_hour_dst, est_minute_dst, est_hour_standard, est_minute_standard)
     conversion_table = {
@@ -1517,19 +1517,19 @@ def convert_time_manual(local_time_str, timezone_str, target_timezone="America/N
         "Europe/Berlin": (hour, minute, hour - 6, minute, hour - 7, minute),     # DE: UTC+1/+2
         "America/Toronto": (hour, minute, hour + 0, minute, hour + 0, minute),   # CA: Same as US
     }
-    
+
     # Check if current time is in DST
     now = datetime.datetime.now(pytz.timezone(target_timezone))
     is_dst = now.dst() != datetime.timedelta(0)
-    
+
     if timezone_str in conversion_table:
         _, _, _, dst_hour, dst_minute, std_hour, std_minute = conversion_table[timezone_str]
-        
+
         if is_dst:
             return dst_hour, dst_minute
         else:
             return std_hour, std_minute
-    
+
     # Default fallback
     return hour - 5, minute  # Assume UTC-5 for unknown timezones
 
@@ -1539,7 +1539,7 @@ def get_market_timezone(exchange_name):
     """
     timezone_map = {
         "Hong Kong": "Asia/Hong_Kong",
-        "Singapore": "Asia/Singapore", 
+        "Singapore": "Asia/Singapore",
         "Taiwan": "Asia/Taipei",
         "Malaysia": "Asia/Kuala_Lumpur",
         "Tokyo": "Asia/Tokyo",
@@ -1551,7 +1551,7 @@ def get_market_timezone(exchange_name):
         "NYSE": "America/New_York",
         "NYSE American": "America/New_York"
     }
-    
+
     return timezone_map.get(exchange_name, "UTC")
 
 def is_dst_active():
@@ -1567,15 +1567,15 @@ def get_dst_status():
     """
     ny_tz = pytz.timezone("America/New_York")
     now = datetime.datetime.now(ny_tz)
-    
+
     # Get next DST transitions
     transitions = ny_tz._utc_transition_times
     current_year = now.year
-    
+
     # Find next spring forward (DST starts)
     spring_forward = None
     fall_back = None
-    
+
     for transition in transitions:
         if transition.year >= current_year:
             transition_dt = datetime.datetime.fromtimestamp(transition.timestamp(), ny_tz)
@@ -1585,7 +1585,7 @@ def get_dst_status():
                 elif fall_back is None:
                     fall_back = transition_dt
                     break
-    
+
     return {
         "is_dst": now.dst() != datetime.timedelta(0),
         "current_offset": now.utcoffset(),
@@ -1610,13 +1610,13 @@ def estimate_daily_requests():
     Estimate daily request volume based on current patterns
     """
     current_time = time.time()
-    
+
     # Count requests in last hour
     requests_last_hour = 100  # Default estimate
-    
+
     # Estimate daily requests (assuming consistent pattern)
     estimated_daily = requests_last_hour * 24
-    
+
     return estimated_daily
 
 def get_rate_limit_recommendations(minute_utilization, hour_utilization):
@@ -1624,23 +1624,23 @@ def get_rate_limit_recommendations(minute_utilization, hour_utilization):
     Get recommendations based on current utilization
     """
     recommendations = []
-    
+
     if minute_utilization > 80:
         recommendations.append("[CRITICAL] Minute limit nearly reached - consider pausing processing")
     elif minute_utilization > 60:
         recommendations.append("[WARNING] High minute utilization - monitor closely")
-    
+
     if hour_utilization > 80:
         recommendations.append("[CRITICAL] Hour limit nearly reached - implement aggressive caching")
     elif hour_utilization > 60:
         recommendations.append("[WARNING] High hour utilization - consider increasing cache duration")
-    
+
     if minute_utilization < 30 and hour_utilization < 30:
         recommendations.append("[GOOD] Rate limits well within safe range")
-    
+
         recommendations.append("[SUGGESTION] Low cache usage - consider reducing cache duration")
         recommendations.append("[SUGGESTION] High cache usage - consider increasing cache cleanup")
-    
+
     return recommendations
 
     print(f"{'='*50}")
@@ -1651,12 +1651,12 @@ def get_rate_limit_recommendations(minute_utilization, hour_utilization):
     print(f"[CACHE] Cache hit rate: ~{status['cache_hit_rate']}%")
     print(f"[STATS] Estimated daily requests: {status['estimated_requests_per_day']:,}")
     print(f"[INTERVAL] Min interval: {status['min_interval']} seconds")
-    
+
     if status['recommendations']:
         print(f"\n[RECOMMENDATIONS]:")
         for rec in status['recommendations']:
             print(f"   {rec}")
-    
+
     print(f"{'='*50}\n")
 
 def emergency_rate_limit_pause():
@@ -1684,16 +1684,16 @@ def check_similar_alerts(stock_name, ticker, entry_conditions_list, combination_
     similar_alerts = []
     for alert in alerts:
         # Check if this is the same stock and ticker
-        if (alert["stock_name"] == stock_name and 
-            alert["ticker"] == ticker and 
-            alert["exchange"] == exchange and 
+        if (alert["stock_name"] == stock_name and
+            alert["ticker"] == ticker and
+            alert["exchange"] == exchange and
             alert["timeframe"] == timeframe):
-            
+
             # Check if conditions are similar (same structure but potentially different values)
-            if (alert["conditions"] == entry_conditions_list and 
+            if (alert["conditions"] == entry_conditions_list and
                 alert["combination_logic"] == combination_logic):
                 similar_alerts.append(alert)
-    
+
     return similar_alerts
 
 def check_similar_ratio_alerts(stock_name, ticker1, ticker2, entry_conditions_list, combination_logic, exchange, timeframe):
@@ -1702,22 +1702,22 @@ def check_similar_ratio_alerts(stock_name, ticker1, ticker2, entry_conditions_li
     Returns a list of similar alerts that could be updated instead of creating duplicates.
     """
     alerts = repo_list_alerts()
-    
+
     similar_alerts = []
     for alert in alerts:
         if (alert.get("ratio") == "Yes") or alert.get("is_ratio"):
             # Check if this is the same stock and tickers
-            if (alert["stock_name"] == stock_name and 
-                alert.get("ticker1") == ticker1 and 
-                alert.get("ticker2") == ticker2 and 
-                alert["exchange"] == exchange and 
+            if (alert["stock_name"] == stock_name and
+                alert.get("ticker1") == ticker1 and
+                alert.get("ticker2") == ticker2 and
+                alert["exchange"] == exchange and
                 alert["timeframe"] == timeframe):
-                
+
                 # Check if conditions are similar
-                if (alert["conditions"] == entry_conditions_list and 
+                if (alert["conditions"] == entry_conditions_list and
                     alert["combination_logic"] == combination_logic):
                     similar_alerts.append(alert)
-    
+
     return similar_alerts
 
 def suggest_alert_update(stock_name, ticker, entry_conditions_list, combination_logic, exchange, timeframe):
@@ -1726,10 +1726,10 @@ def suggest_alert_update(stock_name, ticker, entry_conditions_list, combination_
     Returns a helpful message with suggestions.
     """
     similar_alerts = check_similar_alerts(stock_name, ticker, entry_conditions_list, combination_logic, exchange, timeframe)
-    
+
     if not similar_alerts:
         return None
-    
+
     suggestions = []
     for alert in similar_alerts:
         suggestion = {
@@ -1740,7 +1740,7 @@ def suggest_alert_update(stock_name, ticker, entry_conditions_list, combination_
             "message": f"Alert '{alert['name']}' already exists with the same conditions. Consider updating it instead of creating a duplicate."
         }
         suggestions.append(suggestion)
-    
+
     return suggestions
 
 def suggest_ratio_alert_update(stock_name, ticker1, ticker2, entry_conditions_list, combination_logic, exchange, timeframe):
@@ -1749,10 +1749,10 @@ def suggest_ratio_alert_update(stock_name, ticker1, ticker2, entry_conditions_li
     Returns a helpful message with suggestions.
     """
     similar_alerts = check_similar_ratio_alerts(stock_name, ticker1, ticker2, entry_conditions_list, combination_logic, exchange, timeframe)
-    
+
     if not similar_alerts:
         return None
-    
+
     suggestions = []
     for alert in similar_alerts:
         suggestion = {
@@ -1763,7 +1763,7 @@ def suggest_ratio_alert_update(stock_name, ticker1, ticker2, entry_conditions_li
             "message": f"Ratio alert '{alert['name']}' already exists with the same conditions. Consider updating it instead of creating a duplicate."
         }
         suggestions.append(suggestion)
-    
+
     return suggestions
 
 def get_stock_alerts_summary(stock_name, ticker):
@@ -1773,7 +1773,7 @@ def get_stock_alerts_summary(stock_name, ticker):
     """
     stock_alerts = []
     for alert in repo_list_alerts():
-        if (alert["stock_name"] == stock_name and 
+        if (alert["stock_name"] == stock_name and
             alert["ticker"] == ticker):
             summary = {
                 "alert_id": alert["alert_id"],
@@ -1787,5 +1787,5 @@ def get_stock_alerts_summary(stock_name, ticker):
                 "ratio": alert.get("ratio", "No")
             }
             stock_alerts.append(summary)
-    
+
     return stock_alerts

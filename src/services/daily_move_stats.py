@@ -3,15 +3,16 @@ from typing import Iterable, List, Optional
 
 import numpy as np
 import pandas as pd
-from src.data_access.metadata_repository import fetch_stock_metadata_map
+
+from data_access.metadata_repository import fetch_stock_metadata_map
+from db_config import db_config
 from src.data_access.daily_move_stats_repository import (
+    delete_stats_before_date,
+    delete_stats_for_tickers,
     ensure_table,
     fetch_daily_prices,
-    delete_stats_for_tickers,
-    delete_stats_before_date,
     upsert_stats,
 )
-from db_config import db_config
 
 HISTORY_WINDOW_DAYS = 120
 
@@ -91,7 +92,7 @@ def _compute_ticker_stats(group: pd.DataFrame, history_window: int) -> pd.DataFr
 
 def _calculate_stats_for_tickers(conn, tickers: List[str], history_window: int) -> pd.DataFrame:
     """Calculate daily percent-change statistics for the provided ticker list."""
-    if not tickers:
+    if len(tickers) == 0:
         return pd.DataFrame()
 
     prices = fetch_daily_prices(conn, tickers)
@@ -136,7 +137,7 @@ def update_daily_move_stats(exchanges: Optional[Iterable[str]] = None) -> int:
 
         stats_df["date_str"] = stats_df["date"].dt.strftime("%Y-%m-%d")
         min_date = stats_df["date_str"].min()
-        unique_tickers = stats_df["ticker"].unique().tolist()
+        unique_tickers = list(stats_df["ticker"].unique())
 
         delete_stats_for_tickers(conn, unique_tickers, min_date)
 
