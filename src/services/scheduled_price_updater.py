@@ -8,8 +8,10 @@ Integrates with the alert system and Discord notifications for failed updates.
 from __future__ import annotations
 
 import logging
+import os
 import time as time_module
-from typing import Any, Dict, List, Optional, Set
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 from src.data_access.metadata_repository import fetch_stock_metadata_map
 from src.services.backend_fmp_optimized import OptimizedDailyPriceCollector
@@ -17,6 +19,29 @@ from src.services.price_update_monitor import PriceUpdateMonitor
 from src.utils.reference_data import EXCHANGE_COUNTRY_MAP, get_country_for_exchange
 
 logger = logging.getLogger(__name__)
+
+# Default number of parallel workers for price updates (env override: SCHEDULER_PRICE_UPDATE_WORKERS)
+DEFAULT_PRICE_UPDATE_WORKERS = int(os.getenv("SCHEDULER_PRICE_UPDATE_WORKERS", "5"))
+
+
+def _update_one_ticker(
+    ticker: str,
+    resample_weekly: bool,
+) -> Tuple[str, bool, Dict[str, Any], Optional[str]]:
+    """
+    Update a single ticker in isolation (one collector per call for thread safety).
+    Used by ThreadPoolExecutor in update_exchange_prices.
+    """
+    collector = OptimizedDailyPriceCollector()
+    try:
+        result = collector.update_ticker(ticker, resample_weekly=resample_weekly)
+        stats = collector.get_statistics()
+        return (ticker, result, stats, None)
+    except Exception as e:
+        logger.exception("Error updating %s: %s", ticker, e)
+        return (ticker, False, {}, str(e))
+    finally:
+        collector.close()
 
 # Re-export for callers that import from this module
 __all__ = [
@@ -95,19 +120,23 @@ class ScheduledPriceUpdater:
         resample_weekly: bool = False,
         batch_size: int = 50,
         rate_limit_delay: float = 0.2,
+        max_workers: Optional[int] = None,
     ) -> Dict[str, Any]:
         """
-        Update prices for a list of tickers.
+        Update prices for a list of tickers (optionally in parallel).
 
         Args:
             tickers: List of ticker symbols to update
             resample_weekly: Whether to also update weekly data
-            batch_size: Number of tickers per batch
-            rate_limit_delay: Delay between API calls in seconds
+            batch_size: Number of tickers per batch (used when max_workers <= 1)
+            rate_limit_delay: Delay between API calls in seconds (used when max_workers <= 1)
+            max_workers: Number of parallel workers (default from SCHEDULER_PRICE_UPDATE_WORKERS or 5).
+                Use 1 for sequential (original behavior).
 
         Returns:
             Statistics dictionary with update counts
         """
+        workers = max_workers if max_workers is not None else DEFAULT_PRICE_UPDATE_WORKERS
         stats: Dict[str, Any] = {
             "total": len(tickers),
             "updated": 0,
@@ -125,39 +154,65 @@ class ScheduledPriceUpdater:
 
         start_time = time_module.time()
 
-        for i in range(0, len(tickers), batch_size):
-            batch = tickers[i : i + batch_size]
-
-            for ticker in batch:
-                try:
-                    result = self.collector.update_ticker(
-                        ticker,
-                        resample_weekly=resample_weekly,
-                    )
-
-                    if result:
-                        collector_stats = self.collector.get_statistics()
-                        if ticker in collector_stats.get("skipped_tickers", []):
-                            stats["skipped"] += 1
-                            stats["skipped_tickers"].append(ticker)
+        if workers <= 1:
+            # Sequential (original behavior)
+            for i in range(0, len(tickers), batch_size):
+                batch = tickers[i : i + batch_size]
+                for ticker in batch:
+                    try:
+                        result = self.collector.update_ticker(
+                            ticker,
+                            resample_weekly=resample_weekly,
+                        )
+                        if result:
+                            collector_stats = self.collector.get_statistics()
+                            if ticker in collector_stats.get("skipped_tickers", []):
+                                stats["skipped"] += 1
+                                stats["skipped_tickers"].append(ticker)
+                            else:
+                                stats["updated"] += 1
                         else:
-                            stats["updated"] += 1
-                    else:
+                            stats["failed"] += 1
+                            stats["failed_tickers"].append({
+                                "ticker": ticker,
+                                "error": "Update returned False",
+                            })
+                        time_module.sleep(rate_limit_delay)
+                    except Exception as e:
+                        logger.error("Error updating %s: %s", ticker, e)
                         stats["failed"] += 1
-                        stats["failed_tickers"].append({
-                            "ticker": ticker,
-                            "error": "Update returned False",
-                        })
-
-                    time_module.sleep(rate_limit_delay)
-
-                except Exception as e:
-                    logger.error("Error updating %s: %s", ticker, e)
-                    stats["failed"] += 1
-                    stats["failed_tickers"].append({
-                        "ticker": ticker,
-                        "error": str(e),
-                    })
+                        stats["failed_tickers"].append({"ticker": ticker, "error": str(e)})
+        else:
+            # Parallel: one collector per ticker (each has its own DB connection)
+            logger.info("Running price update with %d workers", workers)
+            with ThreadPoolExecutor(max_workers=workers) as executor:
+                futures = {
+                    executor.submit(_update_one_ticker, ticker, resample_weekly): ticker
+                    for ticker in tickers
+                }
+                for future in as_completed(futures):
+                    try:
+                        ticker, result, coll_stats, err = future.result()
+                        if err:
+                            stats["failed"] += 1
+                            stats["failed_tickers"].append({"ticker": ticker, "error": err})
+                        elif result:
+                            stats["skipped"] += coll_stats.get("skipped", 0)
+                            stats["skipped_tickers"].extend(coll_stats.get("skipped_tickers", []))
+                            stats["updated"] += coll_stats.get("updated", 0)
+                            stats["new"] += coll_stats.get("new", 0)
+                            stats["records_fetched"] += coll_stats.get("records_fetched", 0)
+                        else:
+                            stats["failed"] += 1
+                            stats["failed_tickers"].append({
+                                "ticker": ticker,
+                                "error": "Update returned False",
+                            })
+                    except Exception as e:
+                        ticker = futures.get(future, "?")
+                        logger.exception("Worker error for %s: %s", ticker, e)
+                        stats["failed"] += 1
+                        stats["failed_tickers"].append({"ticker": str(ticker), "error": str(e)})
 
         stats["duration_seconds"] = time_module.time() - start_time
 
@@ -172,6 +227,7 @@ class ScheduledPriceUpdater:
         countries: Optional[List[str]] = None,
         *,
         resample_weekly: bool = False,
+        max_workers: Optional[int] = None,
     ) -> Dict[str, Any]:
         """
         Run a scheduled price update for the given exchanges or countries.
@@ -180,6 +236,7 @@ class ScheduledPriceUpdater:
             exchanges: List of exchange names to update
             countries: List of country names to update
             resample_weekly: Whether to also update weekly data
+            max_workers: Number of parallel workers (default from env or 5). Use 1 for sequential.
 
         Returns:
             Statistics dictionary with update counts
@@ -209,6 +266,7 @@ class ScheduledPriceUpdater:
         stats = self.update_exchange_prices(
             ticker_list,
             resample_weekly=resample_weekly,
+            max_workers=max_workers,
         )
 
         stats["exchanges"] = exchange_names
@@ -236,6 +294,7 @@ def update_prices_for_exchanges(
     exchanges: List[str],
     *,
     resample_weekly: bool = False,
+    max_workers: Optional[int] = None,
 ) -> Dict[str, Any]:
     """
     Update prices for the given exchanges.
@@ -246,6 +305,7 @@ def update_prices_for_exchanges(
     Args:
         exchanges: List of exchange names to update
         resample_weekly: Whether to also update weekly data
+        max_workers: Number of parallel workers (default from env or 5). Use 1 for sequential.
 
     Returns:
         Statistics dictionary
@@ -255,6 +315,7 @@ def update_prices_for_exchanges(
         return updater.run_scheduled_update(
             exchanges=exchanges,
             resample_weekly=resample_weekly,
+            max_workers=max_workers,
         )
     finally:
         updater.close()

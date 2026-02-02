@@ -11,7 +11,10 @@ This module processes stock alerts by:
 """
 
 import logging
+import os
 import time
+import threading
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
@@ -37,15 +40,20 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# Default number of parallel workers for alert checks (env override: SCHEDULER_ALERT_CHECK_WORKERS)
+DEFAULT_ALERT_CHECK_WORKERS = int(os.getenv("SCHEDULER_ALERT_CHECK_WORKERS", "5"))
+
 
 class StockAlertChecker:
     """
     Evaluates stock alerts and sends Discord notifications when conditions are met.
+    Thread-safe for parallel check_alerts when using a shared price cache.
     """
 
     def __init__(self):
         self.fmp = FMPDataFetcher()
         self.price_cache: Dict[str, pd.DataFrame] = {}
+        self._cache_lock = threading.Lock()
 
     def get_price_data(
         self,
@@ -54,7 +62,7 @@ class StockAlertChecker:
         days: int = 200
     ) -> Optional[pd.DataFrame]:
         """
-        Get price data for a stock ticker.
+        Get price data for a stock ticker (cache access is thread-safe).
 
         Args:
             ticker: Stock symbol (e.g., "AAPL", "MSFT")
@@ -66,10 +74,10 @@ class StockAlertChecker:
         """
         cache_key = f"{ticker}_{timeframe}"
 
-        # Check cache first
-        if cache_key in self.price_cache:
-            logger.debug(f"Using cached data for {ticker}")
-            return self.price_cache[cache_key]
+        with self._cache_lock:
+            if cache_key in self.price_cache:
+                logger.debug(f"Using cached data for {ticker}")
+                return self.price_cache[cache_key].copy()
 
         try:
             # Map timeframe to FMP period
@@ -85,7 +93,8 @@ class StockAlertChecker:
                 # Limit to requested number of days
                 if len(df) > days:
                     df = df.tail(days)
-                self.price_cache[cache_key] = df
+                with self._cache_lock:
+                    self.price_cache[cache_key] = df
                 logger.debug(f"Fetched {len(df)} price records for {ticker}")
                 return df
             else:
@@ -337,14 +346,16 @@ class StockAlertChecker:
     def check_alerts(
         self,
         alerts: List[Dict[str, Any]],
-        timeframe_filter: Optional[str] = None
+        timeframe_filter: Optional[str] = None,
+        max_workers: Optional[int] = None,
     ) -> Dict[str, Any]:
         """
-        Check multiple alerts and return statistics.
+        Check multiple alerts and return statistics (optionally in parallel).
 
         Args:
             alerts: List of alert dictionaries
             timeframe_filter: Optional filter for timeframe ("daily", "weekly")
+            max_workers: Number of parallel workers (default from env or 5). Use 1 for sequential.
 
         Returns:
             Statistics dictionary with check results
@@ -378,28 +389,49 @@ class StockAlertChecker:
             filtered_alerts.append(alert)
 
         stats["total"] = len(filtered_alerts)
-        logger.info(f"Checking {len(filtered_alerts)} {timeframe_filter or 'all'} alerts")
+        workers = max_workers if max_workers is not None else DEFAULT_ALERT_CHECK_WORKERS
+        logger.info(
+            "Checking %d %s alerts (workers=%d)",
+            len(filtered_alerts),
+            timeframe_filter or "all",
+            workers,
+        )
 
-        for alert in filtered_alerts:
-            try:
-                result = self.check_alert(alert)
-
-                if result.get("skipped"):
-                    stats["skipped"] += 1
-                elif result.get("error"):
-                    if "No price data" in str(result["error"]):
-                        stats["no_data"] += 1
-                    else:
-                        stats["errors"] += 1
-                elif result.get("triggered"):
-                    stats["triggered"] += 1
-                    stats["success"] += 1
+        def _aggregate_result(result: Dict[str, Any]) -> None:
+            if result.get("skipped"):
+                stats["skipped"] += 1
+            elif result.get("error"):
+                if "No price data" in str(result["error"]):
+                    stats["no_data"] += 1
                 else:
-                    stats["success"] += 1
+                    stats["errors"] += 1
+            elif result.get("triggered"):
+                stats["triggered"] += 1
+                stats["success"] += 1
+            else:
+                stats["success"] += 1
 
-            except Exception as e:
-                logger.error(f"Unexpected error checking alert: {e}")
-                stats["errors"] += 1
+        if workers <= 1:
+            for alert in filtered_alerts:
+                try:
+                    result = self.check_alert(alert)
+                    _aggregate_result(result)
+                except Exception as e:
+                    logger.error(f"Unexpected error checking alert: {e}")
+                    stats["errors"] += 1
+        else:
+            with ThreadPoolExecutor(max_workers=workers) as executor:
+                future_to_alert = {
+                    executor.submit(self.check_alert, alert): alert
+                    for alert in filtered_alerts
+                }
+                for future in as_completed(future_to_alert):
+                    try:
+                        result = future.result()
+                        _aggregate_result(result)
+                    except Exception as e:
+                        logger.exception("Unexpected error checking alert: %s", e)
+                        stats["errors"] += 1
 
         logger.info(
             f"Alert check complete: {stats['triggered']} triggered, "
