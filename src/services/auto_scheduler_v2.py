@@ -135,8 +135,9 @@ def send_scheduler_notification(message: str, event: str = "info") -> bool:
     if not webhook_cfg.get("enabled") or not webhook_cfg.get("url"):
         return False
 
+    from src.utils.discord_env import get_discord_environment_tag
     payload = {
-        "content": message,
+        "content": get_discord_environment_tag() + message,
         "username": webhook_cfg.get("name") or "Scheduler",
     }
 

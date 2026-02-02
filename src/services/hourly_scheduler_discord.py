@@ -85,9 +85,10 @@ class HourlySchedulerDiscord:
             logger.warning("Hourly scheduler webhook not configured; message skipped.")
             return False
         try:
+            from src.utils.discord_env import get_discord_environment_tag
             response = requests.post(
                 webhook_url,
-                json={"content": message},
+                json={"content": get_discord_environment_tag() + message},
                 timeout=10,
             )
             if response.status_code in (200, 204):

@@ -38,7 +38,8 @@ class PriceUpdateMonitor:
             return False
 
         try:
-            payload = {"content": message}
+            from src.utils.discord_env import get_discord_environment_tag
+            payload = {"content": get_discord_environment_tag() + message}
             if embeds:
                 payload["embeds"] = embeds
 

@@ -18,6 +18,8 @@ import requests
 from typing import List, Optional
 from dotenv import load_dotenv
 
+from src.utils.discord_env import get_discord_environment_tag
+
 # Load environment variables
 load_dotenv()
 
@@ -87,8 +89,9 @@ def _send_to_discord(message: str) -> bool:
     # Split message if it's too long
     messages = split_message(message, MAX_DISCORD_MESSAGE_LENGTH)
     
+    tag = get_discord_environment_tag()
     for msg in messages:
-        payload = {"content": msg}
+        payload = {"content": tag + msg}
         
         # Try primary webhook
         try:

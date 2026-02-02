@@ -13,6 +13,7 @@ import requests
 
 from src.data_access.document_store import load_document
 from src.data_access.metadata_repository import fetch_stock_metadata_map
+from src.utils.discord_env import get_discord_environment_tag
 from src.utils.discord_rate_limiter import get_rate_limiter
 
 # Set up logging
@@ -548,6 +549,7 @@ class DiscordEconomyRouter:
                 else:
                     formatted_message = f"**{channel_name}**\n{message}"
 
+                formatted_message = get_discord_environment_tag() + formatted_message
                 payload = {
                     "content": formatted_message,
                     "username": "Stock Alert Bot",
@@ -601,6 +603,7 @@ class DiscordEconomyRouter:
                     else:
                         formatted_message = f"**{custom_info.get('channel_name', custom_name)}**\n{message}"
 
+                    formatted_message = get_discord_environment_tag() + formatted_message
                     payload = {
                         "content": formatted_message,
                         "username": "Stock Alert Bot - Custom",

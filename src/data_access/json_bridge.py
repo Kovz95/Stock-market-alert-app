@@ -111,7 +111,19 @@ def _is_supported_json(path: Path) -> Optional[str]:
 
 
 def _bridge_open(file, mode="r", *args, **kwargs):
-    path = Path(file)
+    # Only intercept path-like file arguments (str, Path, or __fspath__).
+    # File descriptors (int) and other non-path args must pass through unchanged
+    # (e.g. multiprocessing on Windows uses open(wfd, 'wb') with integer wfd).
+    path = None
+    if isinstance(file, (str, Path)):
+        path = Path(file)
+    elif hasattr(file, "__fspath__"):
+        try:
+            path = Path(file.__fspath__())
+        except (TypeError, AttributeError):
+            pass
+    if path is None:
+        return _original_open(file, mode, *args, **kwargs)
     document_key = _is_supported_json(path)
     if document_key is None or "b" in mode:
         return _original_open(file, mode, *args, **kwargs)

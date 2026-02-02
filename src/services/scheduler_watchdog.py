@@ -106,8 +106,9 @@ def send_discord_notification(config: WatchdogConfig, message: str, level: str =
     }
 
     emoji = emoji_map.get(level, "📝")
+    from src.utils.discord_env import get_discord_environment_tag
     payload = {
-        "content": f"{emoji} **Scheduler Watchdog**\n{message}",
+        "content": get_discord_environment_tag() + f"{emoji} **Scheduler Watchdog**\n{message}",
         "username": "Watchdog",
     }
 

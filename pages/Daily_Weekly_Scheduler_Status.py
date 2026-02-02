@@ -26,7 +26,12 @@ BASE_DIR = Path(__file__).resolve().parents[1]
 sys.path.append(str(BASE_DIR))
 
 from src.data_access.db_config import db_config  # noqa: E402
-from src.services.auto_scheduler_v2 import get_scheduler_info, start_auto_scheduler, stop_auto_scheduler  # noqa: E402
+from src.services.auto_scheduler_v2 import (  # noqa: E402
+    get_scheduler_info,
+    run_daily_job,
+    start_auto_scheduler,
+    stop_auto_scheduler,
+)
 from src.config.exchange_schedule_config import (  # noqa: E402
     EXCHANGE_SCHEDULES,
     get_exchanges_by_closing_time,
@@ -232,6 +237,11 @@ def _fetch_last_runs(exchange_symbols: List[str]) -> Dict[str, Dict[str, pd.Time
     return results
 
 
+def _set_run_now_exchange(exchange: str) -> None:
+    """Callback: queue this exchange for 'run now' on next rerun."""
+    st.session_state["run_now_exchange"] = exchange
+
+
 def _format_last_run(
     exchange: str,
     last_runs: Dict[str, Dict[str, pd.Timestamp]],
@@ -411,6 +421,45 @@ def main() -> None:
             ].str.contains(search_term, case=False, na=False)
             filtered_df = filtered_df[mask]
 
+        # Show one-time result from a previous "Run now"
+        run_result = st.session_state.pop("run_now_result", None)
+        if run_result:
+            if run_result.get("success"):
+                st.success(
+                    f"Daily job for **{run_result.get('exchange', '')}** completed in "
+                    f"{run_result.get('duration', 0):.1f}s."
+                )
+            else:
+                st.error(
+                    f"Daily job for **{run_result.get('exchange', '')}** failed: {run_result.get('error', 'Unknown error')}"
+                )
+
+        # Execute "Run now" if a button was clicked
+        run_exchange = st.session_state.pop("run_now_exchange", None)
+        if run_exchange:
+            with st.spinner(f"Running daily job for **{run_exchange}**… This may take several minutes."):
+                try:
+                    result = run_daily_job(run_exchange)
+                    if result:
+                        st.session_state["run_now_result"] = {
+                            "success": True,
+                            "exchange": run_exchange,
+                            "duration": result.get("duration", 0),
+                        }
+                    else:
+                        st.session_state["run_now_result"] = {
+                            "success": False,
+                            "exchange": run_exchange,
+                            "error": "Job skipped (already running or lock not acquired).",
+                        }
+                except Exception as exc:
+                    st.session_state["run_now_result"] = {
+                        "success": False,
+                        "exchange": run_exchange,
+                        "error": str(exc),
+                    }
+            _trigger_rerun()
+
         columns = [
             "Exchange",
             "Symbol",
@@ -422,7 +471,26 @@ def main() -> None:
             "Time Remaining",
             "Last Run (ET)",
         ]
-        st.dataframe(filtered_df[columns], use_container_width=True, hide_index=True)
+        # Header row
+        header_cols = st.columns([2, 1, 1, 2, 2, 2, 1, 1, 2, 1])
+        for i, col_name in enumerate(columns + ["Run now"]):
+            with header_cols[i]:
+                st.markdown(f"**{col_name}**")
+        # Data rows with Run now button per exchange
+        for _, row in filtered_df.iterrows():
+            row_cols = st.columns([2, 1, 1, 2, 2, 2, 1, 1, 2, 1])
+            for i, col_name in enumerate(columns):
+                with row_cols[i]:
+                    st.write(str(row.get(col_name, "")))
+            with row_cols[-1]:
+                symbol = row["Symbol"]
+                st.button(
+                    "Run now",
+                    key=f"run_now_{symbol}",
+                    on_click=_set_run_now_exchange,
+                    args=(symbol,),
+                    type="secondary",
+                )
 
     st.markdown("---")
     st.subheader("ℹ️ How It Works")

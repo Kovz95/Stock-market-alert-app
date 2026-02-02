@@ -29,6 +29,7 @@ from src.data_access.alert_repository import (
     get_alert as repo_get_alert,
 )
 from src.data_access.metadata_repository import fetch_stock_metadata_map
+from src.utils.discord_env import get_discord_environment_tag
 
 from src.data_access.alert_repository import (
     create_alert as repo_create_alert,
@@ -692,9 +693,10 @@ def flush_logs_to_discord():
 
     full_message = "\n".join(LOG_BUFFER)
     messages = split_message(full_message, MAX_DISCORD_MESSAGE_LENGTH)
+    tag = get_discord_environment_tag()
 
     for msg in messages:
-        payload = {"content": msg}
+        payload = {"content": tag + msg}
         try:
             response = requests.post(WEBHOOK_URL_LOGGING, json=payload)
             response.raise_for_status()
@@ -1360,8 +1362,9 @@ def send_stock_alert(webhook_url, timeframe, alert_name, ticker, triggered_condi
         "weekly": "1W (Weekly)"
     }.get(timeframe.lower() if isinstance(timeframe, str) else timeframe, timeframe)
 
+    tag = get_discord_environment_tag().strip()
     embed = {
-        "title": f"[ALERT] {alert_name} ({ticker})",
+        "title": f"{tag} [ALERT] {alert_name} ({ticker})",
         "description": f"The condition **{triggered_condition}** was triggered. \n Action: {action}",
         "fields": [
             {

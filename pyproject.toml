@@ -33,4 +33,5 @@ dependencies = [
 [tool.pytest.ini_options]
 markers = [
     "e2e: end-to-end tests (real FMP, DB, Discord, audit logging); run with -m e2e",
+    "backend_e2e: backend e2e tests (live indicators, no mocks); run with -m backend_e2e",
 ]

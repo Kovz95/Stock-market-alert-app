@@ -211,7 +211,6 @@ def create_alert(alert: Dict[str, Any]) -> Dict[str, Any]:
                     raw_payload
                 )
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                ON CONFLICT (alert_id) DO NOTHING
                 """,
                 row,
             )

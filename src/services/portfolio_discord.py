@@ -7,6 +7,7 @@ import requests
 from typing import List, Tuple, Dict, Optional
 
 from src.data_access.portfolio_repository import list_portfolios as repo_list_portfolios
+from src.utils.discord_env import get_discord_environment_tag
 
 
 class PortfolioManager:
@@ -75,6 +76,7 @@ class PortfolioManager:
             if 'message' in alert_data:
                 # Use the exact same message format as industry alerts
                 formatted_message = f"**#{portfolio_name.lower().replace(' ', '-')}-alerts**\n{alert_data['message']}"
+                formatted_message = get_discord_environment_tag() + formatted_message
 
                 payload = {
                     "content": formatted_message,
@@ -84,7 +86,7 @@ class PortfolioManager:
             else:
                 # Fallback to old embed format if no message provided
                 embed = {
-                    "title": f"📊 {portfolio_name} Alert",
+                    "title": get_discord_environment_tag().strip() + f" 📊 {portfolio_name} Alert",
                     "description": f"**{alert_data.get('ticker', 'Unknown')}** - {alert_data.get('name', 'Alert')}",
                     "color": 0x00ff00,  # Green color
                     "fields": [
