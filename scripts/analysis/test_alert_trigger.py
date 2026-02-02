@@ -15,9 +15,9 @@ import sys
 from datetime import datetime
 from typing import Dict, Any, Optional
 
-from stock_alert_checker import StockAlertChecker
-from futures_alert_checker import FuturesAlertChecker
-from data_access.alert_repository import list_alerts, update_alert, create_alert
+from src.services.stock_alert_checker import StockAlertChecker
+from src.services.futures_alert_checker import FuturesAlertChecker
+from src.data_access.alert_repository import list_alerts, update_alert, create_alert
 from src.services.discord_routing import send_economy_discord_alert, discord_router
 
 # Configure logging

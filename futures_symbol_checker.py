@@ -6,7 +6,7 @@ Thread-safe and can be used in batch processing
 import logging
 from typing import Dict, Any
 
-from data_access.document_store import load_document
+from src.data_access.document_store import load_document
 
 logger = logging.getLogger(__name__)
 

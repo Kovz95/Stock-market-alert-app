@@ -6,7 +6,7 @@ import requests
 from datetime import datetime
 import logging
 
-from data_access.document_store import load_document
+from src.data_access.document_store import load_document
 
 logger = logging.getLogger(__name__)
 

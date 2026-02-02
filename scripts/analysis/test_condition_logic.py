@@ -38,7 +38,7 @@ from backend import (
     apply_function,
 )
 from backend_fmp import FMPDataFetcher
-from data_access.alert_repository import get_alert, list_alerts
+from src.data_access.alert_repository import get_alert, list_alerts
 
 # Import indicator functions directly for special handling
 from src.utils.indicators import (

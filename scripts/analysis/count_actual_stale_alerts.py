@@ -2,7 +2,7 @@
 """
 Count alerts with truly stale daily price data.
 
-Uses shared stale-data logic (stale_data_utils.is_data_stale) to determine
+Uses shared stale-data logic (src.utils.stale_data.is_data_stale) to determine
 which American daily alerts have price data older than the reference cutoff.
 Read-only analysis script for data quality audits.
 
@@ -37,7 +37,7 @@ sys.path.insert(0, str(PROJECT_ROOT))
 
 from src.data_access.alert_repository import list_alerts as repo_list_alerts
 from db_config import db_config
-from stale_data_utils import is_data_stale
+from src.utils.stale_data import is_data_stale
 
 # American exchanges from the scheduler
 AMERICAN_EXCHANGES = [

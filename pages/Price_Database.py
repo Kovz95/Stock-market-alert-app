@@ -13,7 +13,7 @@ from typing import Any, Dict, List
 from contextlib import contextmanager
 
 sys.path.append(str(Path(__file__).parent.parent))
-from stale_data_utils import is_data_stale, get_last_trading_day
+from src.utils.stale_data import is_data_stale, get_last_trading_day
 from src.services.backend_fmp_optimized import OptimizedDailyPriceCollector
 import time
 try:
@@ -22,7 +22,7 @@ try:
 except Exception:  # psycopg2 not installed or unavailable in this env
     OperationalError = Exception
 
-from data_access.metadata_repository import fetch_stock_metadata_map
+from src.data_access.metadata_repository import fetch_stock_metadata_map
 from src.data_access.db_config import db_config
 from src.services.calendar_adapter import get_session_bounds, get_hourly_alignment
 
@@ -593,7 +593,7 @@ def fetch_stale_ticker_dataframe(
         if timeframe == "daily":
             # Compute expected date per exchange using local time (approx: needs today's bar if past 6pm local)
             from calendar_adapter import get_calendar_timezone
-            from data_access.metadata_repository import fetch_stock_metadata_map
+            from src.data_access.metadata_repository import fetch_stock_metadata_map
 
             metadata = fetch_stock_metadata_map()
 

@@ -6,7 +6,7 @@ import sys
 import subprocess
 import psutil
 import time
-from data_access.document_store import load_document
+from src.data_access.document_store import load_document
 
 # Add parent directory for imports
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))

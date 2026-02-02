@@ -10,7 +10,7 @@ import time
 import sys
 import argparse
 import os
-from data_access.document_store import load_document
+from src.data_access.document_store import load_document
 from db_config import db_config
 
 # Configure logging

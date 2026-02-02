@@ -14,6 +14,7 @@ logger = logging.getLogger(__name__)
 _thread_local = threading.local()
 
 from src.data_access.db_config import db_config
+from src.utils.stale_data import is_data_stale, get_last_trading_day
 
 DAILY_ALIASES = {'1d', 'daily', 'day'}
 WEEKLY_ALIASES = {'1wk', 'weekly', '1week', 'week'}
@@ -117,8 +118,6 @@ def get_cached_stock_data_thread_safe(ticker, timeframe, adjustment_method=None)
                 most_recent_date = data.index.max()
                 today = datetime.now()
                 days_stale = (today - most_recent_date).days
-
-                from stale_data_utils import is_data_stale, get_last_trading_day
 
                 if tf in WEEKLY_ALIASES:
                     normalized_timeframe = '1w'

@@ -115,14 +115,14 @@ def elapsed(name: str) -> Optional[float]:
 
 
 @contextmanager
-def timer(name: str, record_as_metric: bool = True):
+def timer(name: str, record_metric: bool = True):
     """Context manager to time a block and optionally record duration as a metric."""
     start = time.perf_counter()
     try:
         yield
     finally:
         duration = time.perf_counter() - start
-        if record_as_metric and PERFORMANCE_MONITORING_ENABLED:
+        if record_metric and PERFORMANCE_MONITORING_ENABLED:
             record_metric(f"timer_{name}", duration * 1000.0, tags={"unit": "ms"})
 
 

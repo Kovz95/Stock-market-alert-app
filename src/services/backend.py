@@ -59,6 +59,8 @@ from src.utils.indicators import (
     KALMAN_ROC_STOCH_SIGNAL,
     OBV_MACD,
     OBV_MACD_SIGNAL,
+)
+from src.services.pivot_support_resistance import (
     PIVOT_SR,
     PIVOT_SR_CROSSOVER,
     PIVOT_SR_PROXIMITY,
@@ -377,7 +379,7 @@ def apply_function(
     specifier = ind.get("specifier")
 
     # Calculate the indicator series
-    series = _calculate_indicator(df, ind, func_lower, debug_mode)
+    series = _calculate_indicator(df, ind, func_lower, debug_mode, vals)
 
     if series is None:
         return None
@@ -393,7 +395,8 @@ def _calculate_indicator(
     df: pd.DataFrame,
     ind: Dict[str, Any],
     func_lower: str,
-    debug_mode: bool = False
+    debug_mode: bool = False,
+    vals: Optional[Dict[str, Any]] = None,
 ) -> Optional[Union[pd.Series, pd.DataFrame, float]]:
     """Calculate an indicator series from the indicator dictionary."""
 
@@ -593,19 +596,37 @@ def _calculate_indicator(
     if func_lower == "kalman_roc_stoch_signal":
         return KALMAN_ROC_STOCH_SIGNAL(df)
 
+
     # OBV MACD
     if func_lower == "obv_macd":
         return OBV_MACD(df)
     if func_lower == "obv_macd_signal":
         return OBV_MACD_SIGNAL(df)
 
-    # Pivot Support/Resistance
+    # Pivot Support/Resistance (ticker from ind or vals for per-symbol levels)
+    _vals = vals or {}
+    _ticker = ind.get("ticker") or _vals.get("ticker", "UNKNOWN")
     if func_lower == "pivot_sr":
-        return PIVOT_SR(df)
+        left_bars = _as_int(ind.get("left_bars", 5), 5)
+        right_bars = _as_int(ind.get("right_bars", 5), 5)
+        proximity_threshold = _as_float(ind.get("proximity_threshold", 1.0), 1.0)
+        buffer_percent = _as_float(ind.get("buffer_percent", 0.5), 0.5)
+        return PIVOT_SR(
+            df, _ticker, left_bars, right_bars, proximity_threshold, buffer_percent
+        )
     if func_lower == "pivot_sr_crossover":
-        return PIVOT_SR_CROSSOVER(df)
+        left_bars = _as_int(ind.get("left_bars", 5), 5)
+        right_bars = _as_int(ind.get("right_bars", 5), 5)
+        buffer_percent = _as_float(ind.get("buffer_percent", 0.5), 0.5)
+        return PIVOT_SR_CROSSOVER(df, _ticker, left_bars, right_bars, buffer_percent)
     if func_lower == "pivot_sr_proximity":
-        return PIVOT_SR_PROXIMITY(df)
+        left_bars = _as_int(ind.get("left_bars", 5), 5)
+        right_bars = _as_int(ind.get("right_bars", 5), 5)
+        proximity_threshold = _as_float(ind.get("proximity_threshold", 1.0), 1.0)
+        buffer_percent = _as_float(ind.get("buffer_percent", 0.5), 0.5)
+        return PIVOT_SR_PROXIMITY(
+            df, _ticker, left_bars, right_bars, proximity_threshold, buffer_percent
+        )
 
     # If no match found, return None
     if debug_mode:
@@ -676,7 +697,8 @@ def indicator_calculation(
 def evaluate_expression(
     df: pd.DataFrame,
     exp: str,
-    debug_mode: bool = False
+    debug_mode: bool = False,
+    vals: Optional[Dict[str, Any]] = None,
 ) -> bool:
     """
     Evaluate a conditional expression against a DataFrame.
@@ -691,6 +713,7 @@ def evaluate_expression(
         df: DataFrame with OHLCV data
         exp: The expression string to evaluate
         debug_mode: Enable debug output
+        vals: Optional context (e.g. {"ticker": "AAPL"}) for indicators that need it
 
     Returns:
         bool: True if condition is met, False otherwise
@@ -712,7 +735,7 @@ def evaluate_expression(
         return result
 
     # Try simple comparison
-    result = _evaluate_simple_comparison(df, exp, debug_mode)
+    result = _evaluate_simple_comparison(df, exp, debug_mode, vals)
     if result is not None:
         return result
 
@@ -730,7 +753,8 @@ def evaluate_expression(
 def _evaluate_simple_comparison(
     df: pd.DataFrame,
     exp: str,
-    debug_mode: bool = False
+    debug_mode: bool = False,
+    vals: Optional[Dict[str, Any]] = None,
 ) -> Optional[bool]:
     """
     Evaluate a simple binary comparison expression.
@@ -750,9 +774,9 @@ def _evaluate_simple_comparison(
         if not op or ind1 is None or ind2 is None:
             return None
 
-        # Get values
-        val1 = apply_function(df, ind1, None, debug_mode)
-        val2 = apply_function(df, ind2, None, debug_mode)
+        # Get values (pass vals for indicators that need ticker etc.)
+        val1 = apply_function(df, ind1, vals, debug_mode)
+        val2 = apply_function(df, ind2, vals, debug_mode)
 
         # Extract scalar values if needed
         if hasattr(val1, "iloc"):
@@ -762,6 +786,16 @@ def _evaluate_simple_comparison(
 
         # Handle NaN values
         if pd.isna(val1) or pd.isna(val2):
+            return False
+
+        # Coerce to numeric so threshold comparisons (e.g. RSI < 30) work correctly
+        # even if one side came through as string or mixed type
+        try:
+            if not isinstance(val1, (int, float)):
+                val1 = float(val1)
+            if not isinstance(val2, (int, float)):
+                val2 = float(val2)
+        except (TypeError, ValueError):
             return False
 
         # Perform comparison
@@ -983,7 +1017,8 @@ def _compute_zscore(val: Any, lookback: int, df: pd.DataFrame) -> Optional[_Seri
 def evaluate_expression_list(
     df: pd.DataFrame,
     exps: List[str],
-    combination: str = "1"
+    combination: str = "1",
+    vals: Optional[Dict[str, Any]] = None,
 ) -> bool:
     """
     Evaluate a list of expressions with combination logic.
@@ -998,6 +1033,7 @@ def evaluate_expression_list(
             - "1 OR 2" - condition 1 or 2 must be True
             - "(1 AND 2) OR 3" - complex logic expressions
             - Custom expression like "1 AND (2 OR 3)"
+        vals: Optional context (e.g. {"ticker": "AAPL"}) passed to indicator evaluation
 
     Returns:
         bool: True if the combination logic evaluates to True, False otherwise
@@ -1009,7 +1045,7 @@ def evaluate_expression_list(
     results = []
     for exp in exps:
         try:
-            result = evaluate_expression(df, exp, debug_mode=False)
+            result = evaluate_expression(df, exp, debug_mode=False, vals=vals)
             results.append(bool(result))
         except Exception:
             results.append(False)
@@ -1044,8 +1080,12 @@ def evaluate_expression_list(
         eval_expr = eval_expr.replace("OR", "or")
         eval_expr = eval_expr.replace("NOT", "not")
 
-        # Evaluate the expression
-        result = eval(eval_expr, {"__builtins__": {}}, {})
+        # Evaluate the expression (provide bools for str(result) after .upper())
+        result = eval(
+            eval_expr,
+            {"__builtins__": {}},
+            {"True": True, "False": False, "TRUE": True, "FALSE": False},
+        )
         return bool(result)
     except Exception:
         # If complex expression fails, default to AND

@@ -9,88 +9,22 @@ from __future__ import annotations
 
 import logging
 import time as time_module
-from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Set
 
-from backend_fmp_optimized import OptimizedDailyPriceCollector
-from daily_price_collector import DailyPriceDatabase
-from data_access.metadata_repository import fetch_stock_metadata_map
-from price_update_monitor import PriceUpdateMonitor
-
-try:
-    from src.utils.reference_data import EXCHANGE_COUNTRY_MAP as EXCHANGE_TO_COUNTRY
-except ImportError:
-    EXCHANGE_TO_COUNTRY = {}
+from src.data_access.metadata_repository import fetch_stock_metadata_map
+from src.services.backend_fmp_optimized import OptimizedDailyPriceCollector
+from src.services.price_update_monitor import PriceUpdateMonitor
+from src.utils.reference_data import EXCHANGE_COUNTRY_MAP, get_country_for_exchange
 
 logger = logging.getLogger(__name__)
 
-# Fallback exchange to country mapping if the import fails
-FALLBACK_EXCHANGE_COUNTRY_MAP = {
-    # Asia-Pacific
-    "TOKYO": "Japan",
-    "TAIWAN": "Taiwan",
-    "HONG KONG": "Hong Kong",
-    "SINGAPORE": "Singapore",
-    "MALAYSIA": "Malaysia",
-    "INDONESIA": "Indonesia",
-    "THAILAND": "Thailand",
-    "ASX": "Australia",
-    "OMX NORDIC ICELAND": "Iceland",
-    "OMX NORDIC STOCKHOLM": "Sweden",
-    "OMX NORDIC HELSINKI": "Finland",
-    "OMX NORDIC COPENHAGEN": "Denmark",
-
-    # India
-    "BSE INDIA": "India",
-    "NSE INDIA": "India",
-
-    # Europe
-    "LONDON": "United Kingdom",
-    "XETRA": "Germany",
-    "FRANKFURT": "Germany",
-    "EURONEXT AMSTERDAM": "Netherlands",
-    "EURONEXT BRUSSELS": "Belgium",
-    "EURONEXT DUBLIN": "Ireland",
-    "EURONEXT LISBON": "Portugal",
-    "EURONEXT PARIS": "France",
-    "MILAN": "Italy",
-    "MADRID": "Spain",
-    "SPAIN": "Spain",
-    "VIENNA": "Austria",
-    "WARSAW": "Poland",
-    "ATHENS": "Greece",
-    "PRAGUE": "Czech Republic",
-    "BUDAPEST": "Hungary",
-    "OSLO": "Norway",
-    "SIX SWISS": "Switzerland",
-
-    # Americas
-    "NASDAQ": "United States",
-    "NYSE": "United States",
-    "NYSE AMERICAN": "United States",
-    "NYSE ARCA": "United States",
-    "CBOE BZX": "United States",
-    "TORONTO": "Canada",
-    "SANTIAGO": "Chile",
-    "BUENOS AIRES": "Argentina",
-    "MEXICO": "Mexico",
-    "COLOMBIA": "Colombia",
-    "SAO PAULO": "Brazil",
-
-    # Middle East / Africa
-    "ISTANBUL": "Turkey",
-    "JSE": "South Africa",
-}
-
-
-def _get_exchange_mapping() -> Dict[str, str]:
-    """
-    Return the exchange->country map.
-    Falls back to local mapping if the module import failed.
-    """
-    if EXCHANGE_TO_COUNTRY:
-        return EXCHANGE_TO_COUNTRY
-    return FALLBACK_EXCHANGE_COUNTRY_MAP
+# Re-export for callers that import from this module
+__all__ = [
+    "ScheduledPriceUpdater",
+    "update_prices_for_exchanges",
+    "run_alert_checks",
+    "get_country_for_exchange",
+]
 
 
 class ScheduledPriceUpdater:
@@ -98,16 +32,14 @@ class ScheduledPriceUpdater:
     Scheduled price updater that processes stocks by exchange/country.
 
     Integrates with:
-    - OptimizedDailyPriceCollector for efficient price fetching
-    - DailyPriceDatabase for storage
+    - OptimizedDailyPriceCollector for efficient price fetching (uses DailyPriceRepository)
     - PriceUpdateMonitor for Discord notifications of failures
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.collector = OptimizedDailyPriceCollector()
-        self.db = DailyPriceDatabase()
         self.monitor = PriceUpdateMonitor()
-        self.exchange_mapping = _get_exchange_mapping()
+        self.exchange_mapping = EXCHANGE_COUNTRY_MAP
         self.metadata = fetch_stock_metadata_map()
 
     def get_tickers_for_exchange(self, exchange: str) -> List[str]:
@@ -136,7 +68,6 @@ class ScheduledPriceUpdater:
         Returns:
             List of ticker symbols
         """
-        # Get all exchanges for this country
         country_exchanges = {
             ex for ex, c in self.exchange_mapping.items()
             if c == country
@@ -195,17 +126,16 @@ class ScheduledPriceUpdater:
         start_time = time_module.time()
 
         for i in range(0, len(tickers), batch_size):
-            batch = tickers[i:i + batch_size]
+            batch = tickers[i : i + batch_size]
 
             for ticker in batch:
                 try:
                     result = self.collector.update_ticker(
                         ticker,
-                        resample_weekly=resample_weekly
+                        resample_weekly=resample_weekly,
                     )
 
                     if result:
-                        # Check collector stats to see if it was skipped or updated
                         collector_stats = self.collector.get_statistics()
                         if ticker in collector_stats.get("skipped_tickers", []):
                             stats["skipped"] += 1
@@ -216,23 +146,21 @@ class ScheduledPriceUpdater:
                         stats["failed"] += 1
                         stats["failed_tickers"].append({
                             "ticker": ticker,
-                            "error": "Update returned False"
+                            "error": "Update returned False",
                         })
 
-                    # Rate limiting
                     time_module.sleep(rate_limit_delay)
 
                 except Exception as e:
-                    logger.error(f"Error updating {ticker}: {e}")
+                    logger.error("Error updating %s: %s", ticker, e)
                     stats["failed"] += 1
                     stats["failed_tickers"].append({
                         "ticker": ticker,
-                        "error": str(e)
+                        "error": str(e),
                     })
 
         stats["duration_seconds"] = time_module.time() - start_time
 
-        # Report failures to Discord
         if stats["failed_tickers"]:
             self.monitor.report_failed_updates(stats["failed_tickers"])
 
@@ -275,18 +203,16 @@ class ScheduledPriceUpdater:
         logger.info(
             "Starting scheduled update for %d tickers from %s",
             len(ticker_list),
-            ", ".join(exchange_names) if exchange_names else "all exchanges"
+            ", ".join(exchange_names) if exchange_names else "all exchanges",
         )
 
         stats = self.update_exchange_prices(
             ticker_list,
-            resample_weekly=resample_weekly
+            resample_weekly=resample_weekly,
         )
 
-        # Add exchange info to stats
         stats["exchanges"] = exchange_names
 
-        # Report summary
         summary = {
             "exchange": ", ".join(exchange_names) if exchange_names else "Unknown",
             "total": stats["total"],
@@ -300,15 +226,11 @@ class ScheduledPriceUpdater:
 
         return stats
 
-    def close(self):
+    def close(self) -> None:
         """Clean up resources."""
         if hasattr(self.collector, "close"):
             self.collector.close()
-        if hasattr(self.db, "close"):
-            self.db.close()
 
-
-# Module-level convenience functions for use by auto_scheduler_v2
 
 def update_prices_for_exchanges(
     exchanges: List[str],
@@ -318,8 +240,8 @@ def update_prices_for_exchanges(
     """
     Update prices for the given exchanges.
 
-    This is a convenience function that creates an updater, runs the update,
-    and returns the statistics.
+    Convenience function that creates an updater, runs the update, and returns
+    the statistics. Used by auto_scheduler_v2 and maintenance scripts.
 
     Args:
         exchanges: List of exchange names to update
@@ -332,7 +254,7 @@ def update_prices_for_exchanges(
     try:
         return updater.run_scheduled_update(
             exchanges=exchanges,
-            resample_weekly=resample_weekly
+            resample_weekly=resample_weekly,
         )
     finally:
         updater.close()
@@ -362,19 +284,15 @@ def run_alert_checks(
     }
 
     try:
-        # Import alert checking functionality
-        from data_access.alert_repository import list_alerts
+        from src.data_access.alert_repository import list_alerts
 
-        # Get metadata to filter by exchange
         metadata = fetch_stock_metadata_map()
 
-        # Get tickers for these exchanges
         exchange_tickers = set()
         for symbol, info in metadata.items():
             if isinstance(info, dict) and info.get("exchange") in exchanges:
                 exchange_tickers.add(symbol)
 
-        # Get alerts that match these exchanges
         all_alerts = list_alerts()
         relevant_alerts = []
 
@@ -383,66 +301,37 @@ def run_alert_checks(
             alert_exchange = alert.get("exchange")
             alert_timeframe = alert.get("timeframe", "daily")
 
-            # Check if alert matches the exchange filter
             if alert_exchange in exchanges or alert_ticker in exchange_tickers:
-                # Check if alert matches the timeframe
-                if timeframe_key == "weekly" and alert_timeframe.lower() == "weekly":
+                if timeframe_key == "weekly" and alert_timeframe.lower() in ("weekly", "1wk"):
                     relevant_alerts.append(alert)
                 elif timeframe_key == "daily" and alert_timeframe.lower() in ("daily", "1d"):
+                    relevant_alerts.append(alert)
+                elif timeframe_key == "hourly" and alert_timeframe.lower() in ("hourly", "1h", "1hr"):
                     relevant_alerts.append(alert)
 
         stats["total"] = len(relevant_alerts)
 
-        # Note: Actual alert evaluation would be done by the alert processor
-        # This function just returns the count of relevant alerts
         logger.info(
             "Found %d alerts for exchanges %s (timeframe: %s)",
             len(relevant_alerts),
             exchanges,
-            timeframe_key
+            timeframe_key,
         )
 
+        # Actually run the alert checker (previously this only counted alerts)
+        if relevant_alerts:
+            from src.services.stock_alert_checker import StockAlertChecker
+
+            checker = StockAlertChecker()
+            check_stats = checker.check_alerts(relevant_alerts, timeframe_key)
+            stats["success"] = check_stats.get("success", 0)
+            stats["triggered"] = check_stats.get("triggered", 0)
+            stats["errors"] = check_stats.get("errors", 0)
+            stats["no_data"] = check_stats.get("no_data", 0)
+            stats["stale_data"] = check_stats.get("stale_data", 0)
+
     except Exception as e:
-        logger.error(f"Error running alert checks: {e}")
+        logger.error("Error running alert checks: %s", e)
         stats["errors"] = 1
 
     return stats
-
-
-def get_country_for_exchange(exchange: str) -> Optional[str]:
-    """
-    Get the country for a given exchange.
-
-    Args:
-        exchange: The exchange name
-
-    Returns:
-        Country name or None if not found
-    """
-    mapping = _get_exchange_mapping()
-    if not exchange:
-        return None
-    return mapping.get(exchange.upper())
-
-
-if __name__ == "__main__":
-    import sys
-
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-    )
-
-    if len(sys.argv) > 1:
-        # Update specific exchange
-        exchange = sys.argv[1]
-        resample_weekly = "--weekly" in sys.argv
-
-        print(f"Updating prices for {exchange}...")
-        stats = update_prices_for_exchanges([exchange], resample_weekly=resample_weekly)
-        print(f"Results: {stats}")
-    else:
-        # Print usage
-        print("Usage: python scheduled_price_updater.py <EXCHANGE> [--weekly]")
-        print("Example: python scheduled_price_updater.py NASDAQ")
-        print("         python scheduled_price_updater.py NYSE --weekly")

@@ -4,7 +4,7 @@ from typing import Iterable, List, Optional
 import numpy as np
 import pandas as pd
 
-from data_access.metadata_repository import fetch_stock_metadata_map
+from src.data_access.metadata_repository import fetch_stock_metadata_map
 from src.data_access.db_config import db_config
 from src.data_access.daily_move_stats_repository import (
     delete_stats_before_date,

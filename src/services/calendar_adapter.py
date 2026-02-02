@@ -219,10 +219,15 @@ def get_session_bounds(
                         session_open = cal.session_open(next_date)
                         session_close = cal.session_close(next_date)
                 except Exception:
-                    # If date is not a valid trading day, get next session
-                    next_date = cal.next_session(date)
-                    session_open = cal.session_open(next_date)
-                    session_close = cal.session_close(next_date)
+                    # If date is not a valid trading day, get next session. If calendar
+                    # rejects the date (e.g. beyond calendar end like XSES 2025-12-31),
+                    # do not call calendar again—re-raise so outer handler falls back.
+                    try:
+                        next_date = cal.next_session(date)
+                        session_open = cal.session_open(next_date)
+                        session_close = cal.session_close(next_date)
+                    except Exception:
+                        raise
             else:
                 # Get current or most recent session
                 if cal.is_session(date):
@@ -237,7 +242,19 @@ def get_session_bounds(
             return session_open, session_close
 
         except Exception as e:
-            logger.debug(f"exchange_calendars failed for {exchange}: {e}, falling back to manual calculation")
+            # Calendar can reject dates beyond its valid range (e.g. XSES only through 2025-12-31)
+            if "cannot be later than" in str(e) or "last trading minute" in str(e).lower():
+                logger.info(
+                    "exchange_calendars date range limit for %s: %s; using schedule fallback",
+                    exchange,
+                    str(e).split("\n")[0][:80],
+                )
+            else:
+                logger.debug(
+                    "exchange_calendars failed for %s: %s, falling back to manual calculation",
+                    exchange,
+                    e,
+                )
 
     # Fallback: Use EXCHANGE_SCHEDULES configuration
     return _get_session_bounds_fallback(exchange, timestamp, next_if_closed)

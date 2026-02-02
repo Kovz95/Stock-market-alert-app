@@ -32,8 +32,13 @@ from src.config.exchange_schedule_config import (  # noqa: E402
     get_exchanges_by_closing_time,
     is_dst_active,
 )
-from calendar_adapter import get_calendar_timezone  # noqa: E402
-from data_access.document_store import load_document, save_document  # noqa: E402
+from src.services.calendar_adapter import get_calendar_timezone  # noqa: E402
+from src.services.pivot_support_resistance import (
+    PIVOT_SR,
+    PIVOT_SR_CROSSOVER,
+    PIVOT_SR_PROXIMITY,
+)
+from src.data_access.document_store import load_document, save_document  # noqa: E402
 
 SCHEDULER_PREF_FILE = BASE_DIR / "scheduler_preference.json"
 SCHEDULER_PREF_DOCUMENT = "scheduler_preference"
@@ -47,10 +52,11 @@ def _trigger_rerun() -> None:
 
 
 def is_scheduler_process_running() -> bool:
+    """Match the same logic as auto_scheduler_v2.is_scheduler_running (script run as main)."""
     for proc in psutil.process_iter(["pid", "name", "cmdline"]):
         try:
             cmdline = proc.info.get("cmdline") or []
-            if any("auto_scheduler_v2.py" in part for part in cmdline):
+            if any(part.endswith("auto_scheduler_v2.py") for part in cmdline):
                 return True
         except (psutil.NoSuchProcess, psutil.AccessDenied):
             continue
@@ -305,7 +311,10 @@ def main() -> None:
                     )
                     _trigger_rerun()
                 else:
-                    st.error("Failed to start scheduler")
+                    st.error(
+                        "Failed to start scheduler. If it started then exited, check "
+                        "`src/services/auto_scheduler_v2.log` for errors."
+                    )
         with stop_btn:
             if st.button("⏹️ Stop Scheduler", disabled=not running):
                 if stop_scheduler_process():

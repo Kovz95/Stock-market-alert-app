@@ -1,7 +1,9 @@
 import talib
 import numpy as np
 import pandas as pd
-from pivot_support_resistance import PIVOT_SR, PIVOT_SR_CROSSOVER, PIVOT_SR_PROXIMITY
+
+# PIVOT_SR, PIVOT_SR_CROSSOVER, PIVOT_SR_PROXIMITY live in src.services.pivot_support_resistance
+# and are imported by backend.py directly to avoid circular import (services -> backend -> indicators -> services).
 
 # CLASSIFICATION ON BASIS OF NUMBER OF INPUTS
 

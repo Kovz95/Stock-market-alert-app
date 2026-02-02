@@ -30,7 +30,8 @@ class FMPDataFetcher:
         """
         self.api_key = api_key or os.getenv('FMP_API_KEY', '8BulhGx0fCwLpA48qCwy8r9cx5n6fya7')
         self.base_url = "https://financialmodelingprep.com/api/v3"
-        
+        self.last_error: Optional[str] = None
+
         if not self.api_key:
             logger.warning("FMP_API_KEY not set - API calls will fail")
 
@@ -310,6 +311,7 @@ class FMPDataFetcher:
             response = requests.get(url, params=params, timeout=10)
             
             if response.status_code == 200:
+                self.last_error = None
                 data = response.json()
                 
                 if data and len(data) > 0:
@@ -336,12 +338,15 @@ class FMPDataFetcher:
                     return df
                 else:
                     logger.debug(f"{ticker}: No data for chunk {from_date} to {to_date}")
+                    self.last_error = "No data for date range"
                     return pd.DataFrame()
             else:
+                self.last_error = f"API error {response.status_code}"
                 logger.error(f"{ticker}: API error {response.status_code} for chunk")
                 return None
                 
         except Exception as e:
+            self.last_error = str(e)
             logger.error(f"Error fetching hourly chunk for {ticker}: {e}")
             return None
 

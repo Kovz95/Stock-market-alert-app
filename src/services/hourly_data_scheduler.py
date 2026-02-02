@@ -20,7 +20,11 @@ from apscheduler.triggers.cron import CronTrigger
 
 # Ensure project modules are importable when run as a script
 BASE_DIR = Path(__file__).resolve().parent
-sys.path.append(str(BASE_DIR.parent))
+PROJECT_ROOT = BASE_DIR.parent.parent
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+if str(BASE_DIR) not in sys.path:
+    sys.path.insert(0, str(BASE_DIR))
 
 from auto_scheduler_v2 import run_alert_checks  # noqa: E402
 from calendar_adapter import (  # noqa: E402
@@ -32,7 +36,7 @@ from src.config.exchange_schedule_config import EXCHANGE_SCHEDULES  # noqa: E402
 from src.services.hourly_price_collector import HourlyPriceCollector  # noqa: E402
 from src.services.hourly_scheduler_discord import HourlySchedulerDiscord  # noqa: E402
 from src.data_access.redis_support import build_key, delete_key, get_json, set_json  # noqa: E402
-from data_access.document_store import delete_document, load_document, save_document  # noqa: E402
+from src.data_access.document_store import delete_document, load_document, save_document  # noqa: E402
 
 os.environ.setdefault("FMP_API_KEY", "8BulhGx0fCwLpA48qCwy8r9cx5n6fya7")
 
@@ -224,8 +228,15 @@ def is_exchange_open(exchange: str, timestamp: datetime | None = None) -> bool:
 
 
 def any_market_open() -> bool:
+    """Return True if any exchange is currently open; calendar errors for one exchange are skipped."""
     now = pd.Timestamp.utcnow()
-    return any(calendar_is_open(exchange, now) for exchange in EXCHANGE_SCHEDULES.keys())
+    for exchange in EXCHANGE_SCHEDULES.keys():
+        try:
+            if calendar_is_open(exchange, now):
+                return True
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("Skip exchange %s for open check: %s", exchange, exc)
+    return False
 
 
 def determine_candle_description(exchanges: Iterable[str]) -> str:
@@ -368,7 +379,15 @@ def update_hourly_data(exchange_filter: Iterable[str] | None = None) -> None:
             elapsed,
         )
 
-        discord_logger.notify_complete(run_started, elapsed, stats, alert_stats, open_exchanges or ["Unknown"])
+        first_failure = getattr(collector, "last_error", None) if stats.get("failed") else None
+        discord_logger.notify_complete(
+            run_started,
+            elapsed,
+            stats,
+            alert_stats,
+            open_exchanges or ["Unknown"],
+            first_failure_reason=first_failure,
+        )
         update_status(
             status="running",
             last_run=datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"),

@@ -104,6 +104,9 @@ def main():
     st.divider()
 
     st.subheader("🧪 Test Hourly Routing")
+    st.caption(
+        "Enter a ticker to see which hourly channel it would use. Use **Send test message** to post a test to that channel (e.g. tech-hourly-alerts)."
+    )
     test_ticker = st.text_input(
         "Ticker Symbol",
         placeholder="e.g., AAPL, MSFT, XOM",
@@ -116,11 +119,41 @@ def main():
             st.success(f"**{test_ticker.upper()}** detected as **{economy}**")
             hourly_cfg = config['channel_mappings_hourly'].get(economy)
             if hourly_cfg and hourly_cfg.get('webhook_url'):
-                st.info(f"Hourly channel: {hourly_cfg['channel_name']}")
+                display_name = hourly_cfg.get('channel_name', economy)
+                st.info(f"Hourly channel: **{display_name}**")
+                st.session_state['_hourly_test_economy'] = economy
+                st.session_state['_hourly_test_channel_name'] = display_name
+                st.session_state['_hourly_test_webhook'] = hourly_cfg.get('webhook_url')
             else:
-                st.warning("Hourly channel for this economy is not configured.")
+                st.warning("Hourly channel for this economy is not configured (no webhook URL).")
+                for k in ['_hourly_test_economy', '_hourly_test_channel_name', '_hourly_test_webhook']:
+                    st.session_state.pop(k, None)
         else:
             st.error("Could not determine the economy for that ticker.")
+            for k in ['_hourly_test_economy', '_hourly_test_channel_name', '_hourly_test_webhook']:
+                st.session_state.pop(k, None)
+
+    # Send test message to the channel resolved above (e.g. tech-hourly-alerts)
+    if st.session_state.get('_hourly_test_webhook') and st.button("📤 Send test message to this channel"):
+        import requests
+        from datetime import datetime
+        channel_name = st.session_state.get('_hourly_test_channel_name', 'hourly')
+        webhook_url = st.session_state['_hourly_test_webhook']
+        test_msg = (
+            f"**Test message – Hourly routing**\n"
+            f"📊 This is a test from **Hourly Discord Management** to verify the webhook for **{channel_name}**.\n"
+            f"⏰ Sent at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
+            f"✅ If you see this, the channel is configured correctly."
+        )
+        payload = {"content": test_msg, "username": "Hourly Alert Test"}
+        try:
+            response = requests.post(webhook_url, json=payload, timeout=10)
+            if response.status_code == 204:
+                st.success(f"✅ Test message sent to **{channel_name}**.")
+            else:
+                st.error(f"Failed to send: HTTP {response.status_code}. Check webhook URL.")
+        except Exception as e:
+            st.error(f"Error sending test message: {e}")
 
 
 if __name__ == "__main__":

@@ -39,21 +39,24 @@ import requests
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 
-# Ensure project modules are importable
+# Ensure project modules are importable (project root so "from src.xxx" works)
 BASE_DIR = Path(__file__).resolve().parent
+PROJECT_ROOT = BASE_DIR.parent.parent
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 sys.path.append(str(BASE_DIR))
 
-from data_access.alert_repository import list_alerts  # noqa: E402
-from data_access.document_store import load_document, save_document  # noqa: E402
-from data_access.metadata_repository import fetch_stock_metadata_df  # noqa: E402
+from src.data_access.alert_repository import list_alerts  # noqa: E402
+from src.data_access.document_store import load_document, save_document  # noqa: E402
+from src.data_access.metadata_repository import fetch_stock_metadata_df  # noqa: E402
 from src.config.exchange_schedule_config import (  # noqa: E402
     EXCHANGE_SCHEDULES,
     get_exchanges_by_closing_time,
     get_market_days_for_exchange,
 )
-from scheduled_price_updater import update_prices_for_exchanges  # noqa: E402
+from src.services.scheduled_price_updater import update_prices_for_exchanges  # noqa: E402
 from src.services.daily_price_service import run_full_daily_update  # noqa: E402
-from stock_alert_checker import StockAlertChecker  # noqa: E402
+from src.services.stock_alert_checker import StockAlertChecker  # noqa: E402
 
 # Constants
 LOCK_FILE = BASE_DIR / "scheduler_v2.lock"
@@ -253,6 +256,8 @@ def run_alert_checks(
                 if timeframe_key == "weekly" and alert_timeframe.lower() in ("weekly", "1wk"):
                     relevant_alerts.append(alert)
                 elif timeframe_key == "daily" and alert_timeframe.lower() in ("daily", "1d"):
+                    relevant_alerts.append(alert)
+                elif timeframe_key == "hourly" and alert_timeframe.lower() in ("hourly", "1h", "1hr"):
                     relevant_alerts.append(alert)
 
         stats["total"] = len(relevant_alerts)
@@ -756,15 +761,24 @@ def start_auto_scheduler() -> bool:
         logger.info("Scheduler is already running")
         return True
 
-    # If we're being called from another process, spawn a new process
+    # If we're being called from another process (e.g. Streamlit), spawn a new process
     if os.getpid() != os.getppid():
         try:
+            # Run from project root so Python can resolve "from src.xxx" (cwd on path)
+            script_path = BASE_DIR / "auto_scheduler_v2.py"
+            popen_kw: dict = {
+                "stdout": subprocess.DEVNULL,
+                "stderr": subprocess.DEVNULL,
+            }
+            if sys.platform == "win32":
+                popen_kw["creationflags"] = subprocess.CREATE_NO_WINDOW
+            else:
+                popen_kw["start_new_session"] = True
+
             subprocess.Popen(
-                [sys.executable, str(BASE_DIR / "auto_scheduler_v2.py")],
-                cwd=str(BASE_DIR),
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-                start_new_session=True,
+                [sys.executable, str(script_path)],
+                cwd=str(PROJECT_ROOT),
+                **popen_kw,
             )
             logger.info("Started scheduler in background process")
             return True

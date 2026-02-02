@@ -17,14 +17,15 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, Any, List, Optional, Hashable
 
-# Add project root to path
+# Add project root to path (script lives in scripts/analysis/)
 BASE_DIR = Path(__file__).resolve().parent
-sys.path.insert(0, str(BASE_DIR))
+PROJECT_ROOT = BASE_DIR.parent.parent
+sys.path.insert(0, str(PROJECT_ROOT))
 
-from data_access.alert_repository import list_alerts, refresh_alert_cache
-from data_access.metadata_repository import fetch_stock_metadata_df
-from scheduled_price_updater import update_prices_for_exchanges
-from stock_alert_checker import StockAlertChecker
+from src.data_access.alert_repository import list_alerts, refresh_alert_cache
+from src.data_access.metadata_repository import fetch_stock_metadata_df
+from src.services.scheduled_price_updater import update_prices_for_exchanges
+from src.services.stock_alert_checker import StockAlertChecker
 
 # Configure logging
 logging.basicConfig(

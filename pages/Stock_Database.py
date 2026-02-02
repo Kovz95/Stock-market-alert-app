@@ -9,7 +9,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from src.utils.utils import load_market_data
 from src.utils.reference_data import get_country_display_name, get_exchange_display_name
-from data_access.metadata_repository import fetch_stock_metadata_df
+from src.data_access.metadata_repository import fetch_stock_metadata_df
 
 st.set_page_config(
     page_title="Stock Database",

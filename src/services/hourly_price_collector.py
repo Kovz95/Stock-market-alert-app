@@ -37,6 +37,7 @@ class HourlyPriceCollector:
             'failed': 0,
             'new': 0,
         }
+        self.last_error: Optional[str] = None
 
     def load_stock_database(self) -> Dict[str, Dict]:
         """
@@ -112,6 +113,7 @@ class HourlyPriceCollector:
             if df is None or df.empty:
                 logger.debug(f"{ticker}: No hourly data received")
                 self.stats['failed'] += 1
+                self.last_error = getattr(self.fetcher, "last_error", None) or "No hourly data from API"
                 return False
 
             # Store hourly data
@@ -123,11 +125,13 @@ class HourlyPriceCollector:
                 return True
             else:
                 self.stats['failed'] += 1
+                self.last_error = "Store returned 0 records"
                 return False
 
         except Exception as e:
             logger.error(f"Error updating hourly data for {ticker}: {e}")
             self.stats['failed'] += 1
+            self.last_error = str(e)
             return False
 
     def update_multiple_tickers(

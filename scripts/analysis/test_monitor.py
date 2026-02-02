@@ -22,7 +22,7 @@ sys.path.append(str(BASE_DIR))
 
 import pandas as pd
 from src.services.alert_audit_logger import AlertAuditLogger
-from data_access.document_store import load_document
+from src.data_access.document_store import load_document
 
 
 def monitor_recent_checks(hours=1):

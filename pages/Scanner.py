@@ -7,10 +7,10 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime, timedelta
 import concurrent.futures
-from backend import evaluate_expression_list, simplify_conditions, indicator_calculation
-from utils import supported_indicators
-from data_access.metadata_repository import fetch_stock_metadata_map, fetch_portfolios
-from db_config import db_config
+from src.services.backend import evaluate_expression_list, simplify_conditions, indicator_calculation
+from src.utils.utils import supported_indicators
+from src.data_access.metadata_repository import fetch_stock_metadata_map, fetch_portfolios
+from src.data_access.db_config import db_config
 import threading
 
 # MUST be the first Streamlit command after imports
@@ -923,7 +923,7 @@ with col1:
         elif price_type == "Price Data Points":
             indicator = st.selectbox(
                 "Select Price Data:",
-                ["", "Close[-1]", "Open[-1]", "High[-1]", "Low[-1]", 
+                ["", "Close[-1]", "Open[-1]", "High[-1]", "Low[-1]",
                  "Close[-2]", "Open[-2]", "High[-2]", "Low[-2]",
                  "Close[0]", "Open[0]", "High[0]", "Low[0]"],
                 key="price_indicator"
@@ -1197,14 +1197,16 @@ with col1:
                 oversold_level = st.number_input(
                     "Oversold Level:",
                     min_value=10, max_value=40, value=30,
-                    key="oversold_level"
+                    key="scanner_rsi_oversold_level",
+                    help="RSI below this level is oversold. Change this value, then click 'Add Condition' so the scan uses the new level."
                 )
                 indicator = f"rsi({rsi_period})[-1] < {oversold_level}"
             elif rsi_level == "rsi_overbought":
                 overbought_level = st.number_input(
                     "Overbought Level:",
                     min_value=60, max_value=90, value=70,
-                    key="overbought_level"
+                    key="scanner_rsi_overbought_level",
+                    help="RSI above this level is overbought. Change this value, then click 'Add Condition' so the scan uses the new level."
                 )
                 indicator = f"rsi({rsi_period})[-1] > {overbought_level}"
             elif rsi_level == "rsi_neutral":
@@ -1296,7 +1298,7 @@ with col1:
         elif volume_type == "Volume Data":
             indicator = st.selectbox(
                 "Select Volume Data:",
-                ["", "volume[-1]", "volume[0]", "volume_avg(20)[-1]", 
+                ["", "volume[-1]", "volume[0]", "volume_avg(20)[-1]",
                  "volume[-1] / volume_avg(20)[-1]"],
                 key="volume_indicator"
             )
@@ -1421,7 +1423,7 @@ with col1:
                 # HARSI_FLIP returns transition codes: 0=no change, 1=green to red, 2=red to green
                 indicator_options = st.selectbox(
                     "Select HARSI_FLIP Condition:",
-                    ["", 
+                    ["",
                      f"HARSI_Flip(period = {harsi_period}, smoothing = {harsi_smoothing})[-1] == 1",  # Green to Red (Sell signal)
                      f"HARSI_Flip(period = {harsi_period}, smoothing = {harsi_smoothing})[-1] == 2",  # Red to Green (Buy signal)
                      f"HARSI_Flip(period = {harsi_period}, smoothing = {harsi_smoothing})[-1] > 0"],  # Any flip

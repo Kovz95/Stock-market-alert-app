@@ -139,6 +139,7 @@ class HourlySchedulerDiscord:
         stats: dict,
         alert_stats: Optional[dict],
         exchanges: Iterable[str],
+        first_failure_reason: Optional[str] = None,
     ) -> None:
         exchanges = list(exchanges)
         price_line = (
@@ -157,17 +158,21 @@ class HourlySchedulerDiscord:
         else:
             alert_line = "• Alerts: no hourly alerts processed"
 
-        message = "\n".join(
-            [
-                "✅ **Hourly Alert Check Complete**",
-                f"• Run Time (UTC): {_utc_str(run_time_utc)}",
-                f"• Duration: {_format_duration(duration_seconds)}",
-                "• Alert Timeframe: 1h",
-                f"• Exchanges ({len(exchanges)}): {_format_list(exchanges)}",
-                price_line,
-                alert_line,
-            ]
-        )
+        lines = [
+            "✅ **Hourly Alert Check Complete**",
+            f"• Run Time (UTC): {_utc_str(run_time_utc)}",
+            f"• Duration: {_format_duration(duration_seconds)}",
+            "• Alert Timeframe: 1h",
+            f"• Exchanges ({len(exchanges)}): {_format_list(exchanges)}",
+            price_line,
+            alert_line,
+        ]
+        failed = stats.get("failed", 0)
+        if failed > 0 and first_failure_reason:
+            # Truncate long error messages for Discord
+            reason = first_failure_reason[:200] + "..." if len(first_failure_reason) > 200 else first_failure_reason
+            lines.append(f"• First failure: {reason}")
+        message = "\n".join(lines)
         self._post(message)
 
     def notify_error(self, run_time_utc: datetime, error: str) -> None:

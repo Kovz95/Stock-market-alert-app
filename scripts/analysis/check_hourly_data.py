@@ -19,7 +19,7 @@ sys.path.append(str(BASE_DIR))
 
 import argparse
 
-from data_access.metadata_repository import fetch_stock_metadata_map
+from src.data_access.metadata_repository import fetch_stock_metadata_map
 from src.data_access.check_hourly_data_repository import CheckHourlyDataRepository
 
 

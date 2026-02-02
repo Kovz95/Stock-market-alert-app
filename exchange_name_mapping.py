@@ -121,7 +121,7 @@ def get_exchange_from_ticker(ticker):
 if __name__ == "__main__":
     # Test the mapping
     import sys
-    from data_access.alert_repository import list_alerts
+    from src.data_access.alert_repository import list_alerts
 
     # Fix Unicode output on Windows  
     if sys.platform == 'win32':

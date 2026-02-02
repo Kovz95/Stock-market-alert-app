@@ -1298,7 +1298,7 @@ def send_alert(stock, alert, condition_str, df):
 
     # Also send to ALL portfolio channels that contain this stock
     try:
-        from portfolio_discord import portfolio_manager
+        from src.services.portfolio_discord import portfolio_manager
         portfolios_with_stock = portfolio_manager.get_portfolios_for_stock(stock)
 
         for portfolio_id, portfolio in portfolios_with_stock:

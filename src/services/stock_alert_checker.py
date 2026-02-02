@@ -144,9 +144,12 @@ class StockAlertChecker:
                 return False
 
             combination = alert.get("combination_logic", "AND")
+            vals = {"ticker": alert.get("ticker", "UNKNOWN")}
 
             # Use evaluate_expression_list for multiple conditions
-            result = evaluate_expression_list(df, conditions, combination)
+            result = evaluate_expression_list(
+                df, conditions, combination, vals=vals
+            )
             return bool(result)
 
         except Exception as e:
@@ -368,6 +371,8 @@ class StockAlertChecker:
                 if timeframe_filter == "weekly" and alert_timeframe not in ("weekly", "1wk"):
                     continue
                 elif timeframe_filter == "daily" and alert_timeframe not in ("daily", "1d"):
+                    continue
+                elif timeframe_filter == "hourly" and alert_timeframe not in ("hourly", "1h", "1hr"):
                     continue
 
             filtered_alerts.append(alert)

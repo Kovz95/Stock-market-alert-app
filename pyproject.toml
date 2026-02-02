@@ -29,3 +29,8 @@ dependencies = [
     "streamlit-tags>=1.2.8",
     "ta-lib>=0.6.8",
 ]
+
+[tool.pytest.ini_options]
+markers = [
+    "e2e: end-to-end tests (real FMP, DB, Discord, audit logging); run with -m e2e",
+]

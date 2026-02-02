@@ -2,7 +2,7 @@
 Check which tickers have hourly data and which don't (PostgreSQL only)
 """
 
-from data_access.metadata_repository import fetch_stock_metadata_map
+from src.data_access.metadata_repository import fetch_stock_metadata_map
 from db_config import db_config
 
 # Load main database from PostgreSQL
