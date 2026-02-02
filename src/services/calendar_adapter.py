@@ -30,7 +30,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Import exchange schedules and configuration
-from exchange_schedule_config_v2 import (
+from src.config.exchange_schedule_config import (
     EXCHANGE_SCHEDULES,
     EXCHANGE_TIMEZONES,
     get_exchange_close_time,

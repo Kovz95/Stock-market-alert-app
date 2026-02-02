@@ -24,10 +24,10 @@ def HMA(df, timeperiod, input):
 
     half_period = timeperiod // 2
     sqrt_period = int(np.sqrt(timeperiod))
-    
+
     wma_half_period = talib.WMA(prices, timeperiod=half_period)
     wma_full_period = talib.WMA(prices, timeperiod=timeperiod)
-    
+
     wma_delta = 2 * wma_half_period - wma_full_period
     hma_values = talib.WMA(wma_delta, timeperiod=sqrt_period)
 
@@ -393,7 +393,7 @@ def HARSI_Flip(df, timeperiod, smoothing):
 def SAR(df, acceleration, max_acceleration):
     return talib.SAR(df['High'], df['Low'], acceleration= acceleration, maximum=max_acceleration)
 
-# MULTI INPUT AND MULTI OUTPUT 
+# MULTI INPUT AND MULTI OUTPUT
 
 def BBANDS(df, timeperiod, std_dev, type):
     upper, middle, lower = talib.BBANDS(df['Close'], timeperiod = timeperiod, nbdevdn= std_dev, nbdevup= std_dev, matype=0)

@@ -14,7 +14,7 @@ import pandas as pd
 import pytz
 import streamlit as st
 
-from calendar_adapter import (
+from src.services.calendar_adapter import (
     EXCHANGE_SCHEDULES,
     get_calendar_timezone,
     get_session_bounds,

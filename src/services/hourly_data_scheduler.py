@@ -28,10 +28,10 @@ from calendar_adapter import (  # noqa: E402
     get_session_bounds,
     is_exchange_open as calendar_is_open,
 )
-from exchange_schedule_config_v2 import EXCHANGE_SCHEDULES  # noqa: E402
-from hourly_price_collector import HourlyPriceCollector  # noqa: E402
-from hourly_scheduler_discord import HourlySchedulerDiscord  # noqa: E402
-from redis_support import build_key, delete_key, get_json, set_json  # noqa: E402
+from src.config.exchange_schedule_config import EXCHANGE_SCHEDULES  # noqa: E402
+from src.services.hourly_price_collector import HourlyPriceCollector  # noqa: E402
+from src.services.hourly_scheduler_discord import HourlySchedulerDiscord  # noqa: E402
+from src.data_access.redis_support import build_key, delete_key, get_json, set_json  # noqa: E402
 from data_access.document_store import delete_document, load_document, save_document  # noqa: E402
 
 os.environ.setdefault("FMP_API_KEY", "8BulhGx0fCwLpA48qCwy8r9cx5n6fya7")

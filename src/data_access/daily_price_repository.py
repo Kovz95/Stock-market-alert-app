@@ -14,7 +14,7 @@ import numpy as np
 import pandas as pd
 from sqlalchemy import text
 
-from db_config import db_config
+from src.data_access.db_config import db_config
 
 logger = logging.getLogger(__name__)
 

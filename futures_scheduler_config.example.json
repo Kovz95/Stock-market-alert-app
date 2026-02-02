@@ -1,0 +1,25 @@
+{
+  "scheduler_webhook": {
+    "url": "",
+    "enabled": false,
+    "name": "Futures Scheduler"
+  },
+  "update_times": [
+    "06:00",
+    "12:00",
+    "16:00",
+    "20:00"
+  ],
+  "ib_hours": {
+    "start": "05:00",
+    "end": "23:00"
+  },
+  "enabled": true,
+  "update_on_start": true,
+  "notification_settings": {
+    "send_start_notification": true,
+    "send_completion_notification": true,
+    "include_summary_stats": true,
+    "job_timeout_seconds": 900
+  }
+}

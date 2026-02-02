@@ -18,8 +18,8 @@ except ImportError as exc:  # pragma: no cover
         "project virtual environment (source venv/bin/activate) before running."
     ) from exc
 
-from db_config import db_config
-from redis_support import build_key, delete_key, get_json, set_json
+from src.data_access.db_config import db_config
+from src.data_access.redis_support import build_key, delete_key, get_json, set_json
 
 REDIS_PORTFOLIO_KEY = build_key("portfolios:map")
 

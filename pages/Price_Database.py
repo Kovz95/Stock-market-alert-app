@@ -14,7 +14,7 @@ from contextlib import contextmanager
 
 sys.path.append(str(Path(__file__).parent.parent))
 from stale_data_utils import is_data_stale, get_last_trading_day
-from backend_fmp_optimized import OptimizedDailyPriceCollector
+from src.services.backend_fmp_optimized import OptimizedDailyPriceCollector
 import time
 try:
     import psycopg2
@@ -23,8 +23,8 @@ except Exception:  # psycopg2 not installed or unavailable in this env
     OperationalError = Exception
 
 from data_access.metadata_repository import fetch_stock_metadata_map
-from db_config import db_config
-from calendar_adapter import get_session_bounds, get_hourly_alignment
+from src.data_access.db_config import db_config
+from src.services.calendar_adapter import get_session_bounds, get_hourly_alignment
 
 # Page config
 st.set_page_config(
@@ -883,7 +883,7 @@ def _update_hourly_batch(tickers: List[str], days_back: int, skip_existing: bool
     import sys
 
     sys.path.append(str(Path(__file__).parent.parent))
-    from hourly_price_collector import HourlyPriceCollector
+    from src.services.hourly_price_collector import HourlyPriceCollector
 
     collector = HourlyPriceCollector()
     progress_bar = st.progress(0)
@@ -915,14 +915,14 @@ def _update_hourly_batch(tickers: List[str], days_back: int, skip_existing: bool
 def create_price_chart(df, ticker, show_volume=True):
     """Create interactive price chart"""
     ticker_data = df[df['ticker'] == ticker].sort_values('date')
-    
+
     if ticker_data.empty:
         return None
-    
+
     # Create figure with subplots
     if show_volume and 'volume' in ticker_data.columns:
         fig = go.Figure()
-        
+
         # Candlestick chart
         fig.add_trace(go.Candlestick(
             x=ticker_data['date'],
@@ -933,7 +933,7 @@ def create_price_chart(df, ticker, show_volume=True):
             name='Price',
             yaxis='y'
         ))
-        
+
         # Volume bars
         fig.add_trace(go.Bar(
             x=ticker_data['date'],
@@ -942,7 +942,7 @@ def create_price_chart(df, ticker, show_volume=True):
             yaxis='y2',
             opacity=0.3
         ))
-        
+
         # Update layout
         fig.update_layout(
             title=f'{ticker} Price and Volume',
@@ -962,14 +962,14 @@ def create_price_chart(df, ticker, show_volume=True):
             name='Close Price',
             line=dict(color='blue', width=2)
         ))
-        
+
         fig.update_layout(
             title=f'{ticker} Close Price',
             xaxis_title='Date',
             yaxis_title='Price',
             height=500
         )
-    
+
     return fig
 
 # Main app
@@ -981,7 +981,7 @@ def main():
 
     all_tickers = sorted(list(main_db.keys()))
     default_filters = st.session_state.pd_filters
-    
+
     with st.sidebar.form("price_filters"):
         timeframe_input = st.radio(
             "Timeframe",
@@ -989,7 +989,7 @@ def main():
             format_func=lambda x: x.capitalize(),
             index=['hourly', 'daily', 'weekly'].index(default_filters['timeframe'])
         )
-    
+
         exchanges = get_unique_exchanges(main_db)
         selected_exchanges_input = st.multiselect(
             "Select Exchanges",
@@ -997,24 +997,24 @@ def main():
             default=default_filters['selected_exchanges'],
             help="Leave empty to show all exchanges"
         )
-    
+
         search_type_input = st.radio(
             "Search by",
             options=["Ticker", "Company Name"],
             horizontal=True,
             index=0 if default_filters['search_type'] == "Ticker" else 1,
         )
-    
+
         search_input_value = st.text_input(
             "Search" if search_type_input == "Ticker" else "Search Company",
             value=default_filters['search_input'],
             placeholder="Enter ticker symbol..." if search_type_input == "Ticker" else "Enter company name...",
         )
-    
+
         available_filtered = get_unique_tickers_by_exchange(main_db, selected_exchanges_input)
         selected_tickers_default = default_filters.get('selected_tickers', [])
         selected_tickers_input = selected_tickers_default
-    
+
         if search_input_value:
             if search_type_input == "Ticker":
                 if ',' in search_input_value:
@@ -1053,7 +1053,7 @@ def main():
                             f"({search_lower}" in lower):
                         matching.append(ticker)
                         ticker_display_map[ticker] = f"{ticker} - {name[:50]}"
-    
+
                 matching.sort()
                 display_tickers = matching[:100]
                 display_options = [ticker_display_map[t] for t in display_tickers]
@@ -1073,7 +1073,7 @@ def main():
                 default=default_selection[:100],
                 help=f"Showing first 100 of {len(available_filtered)} tickers. Use search to find specific ones."
             )
-    
+
         max_rows_input = st.number_input(
             "Maximum rows",
             min_value=100,
@@ -1091,9 +1091,9 @@ def main():
             ),
             help="Filter loaded price rows by weekdays/weekends.",
         )
-    
+
         apply_filters = st.form_submit_button("Apply Filters")
-    
+
         if apply_filters:
             st.session_state.pd_filters.update({
                 "timeframe": timeframe_input,
@@ -1104,7 +1104,7 @@ def main():
                 "max_rows": int(max_rows_input),
                 "day_filter": day_filter_input,
             })
-    
+
     filters = st.session_state.pd_filters
     timeframe = filters["timeframe"]
     selected_exchanges = filters["selected_exchanges"]
@@ -1114,7 +1114,7 @@ def main():
     max_rows = int(filters["max_rows"])
     day_filter = filters.get("day_filter", "All days")
     available_tickers = get_unique_tickers_by_exchange(main_db, selected_exchanges)
-    
+
     # Get database date range
     stats = get_database_stats()
     if timeframe == 'hourly' and stats.get('hourly_date_range'):
@@ -1125,11 +1125,11 @@ def main():
         min_date, max_date = stats['weekly_date_range']
     else:
         min_date, max_date = None, None
-    
+
     if min_date and max_date:
         min_date = pd.to_datetime(min_date).date()
         max_date = pd.to_datetime(max_date).date()
-        
+
         col1, col2 = st.sidebar.columns(2)
         with col1:
             start_date = st.date_input(
@@ -1179,11 +1179,11 @@ def main():
 
             if max_rows and len(df) == max_rows:
                 st.info(f"Showing the first {max_rows:,} rows. Increase 'Maximum rows' to retrieve more data.")
-    
+
     # Main content area
     # Database statistics
     st.subheader("📈 Database Statistics")
-    
+
     if stats:
         col1, col2, col3 = st.columns(3)
 
@@ -1198,22 +1198,22 @@ def main():
         with col3:
             st.metric("Weekly Records", f"{stats.get('weekly_records', 0):,}")
             st.metric("Weekly Tickers", f"{stats.get('weekly_tickers', 0):,}")
-    
+
     # Display data
     if 'price_data' in st.session_state and not st.session_state.price_data.empty:
         df = st.session_state.price_data
-        
+
         # Tabs for different views
         tab1, tab2, tab3, tab4 = st.tabs(["📊 Data Table", "📈 Charts", "📉 Analysis", "💾 Export"])
-        
+
         with tab1:
             st.subheader("Price Data")
-            
+
             # Add company names if available
             if not df.empty and main_db:
                 df['company'] = df['ticker'].apply(lambda x: main_db.get(x, {}).get('name', ''))
                 df['exchange'] = df['ticker'].apply(lambda x: main_db.get(x, {}).get('exchange', ''))
-            
+
             # Display options
             col1, col2, col3 = st.columns(3)
             with col1:
@@ -1234,38 +1234,38 @@ def main():
                     options=show_columns,
                     index=min(2, len(show_columns)-1) if 'date' in show_columns else 0
                 )
-            
+
             # Sort data
             df_display = df[show_columns].sort_values(sort_column, ascending=False)
-            
+
             # Pagination
             total_rows = len(df_display)
             total_pages = (total_rows - 1) // rows_per_page + 1
-            
+
             page = st.number_input(
                 f"Page (1-{total_pages})",
                 min_value=1,
                 max_value=max(1, total_pages),
                 value=1
             )
-            
+
             start_idx = (page - 1) * rows_per_page
             end_idx = min(start_idx + rows_per_page, total_rows)
-            
+
             st.dataframe(
                 df_display.iloc[start_idx:end_idx],
                 use_container_width=True,
                 hide_index=True
             )
-            
+
             st.caption(f"Showing rows {start_idx + 1} to {end_idx} of {total_rows}")
-        
+
         with tab2:
             st.subheader("Interactive Charts")
-            
+
             # Select ticker for charting
             chart_tickers = df['ticker'].unique()
-            
+
             col1, col2 = st.columns([3, 1])
             with col1:
                 selected_chart_ticker = st.selectbox(
@@ -1275,18 +1275,18 @@ def main():
                 )
             with col2:
                 show_volume = st.checkbox("Show Volume", value=True)
-            
+
             if selected_chart_ticker:
                 # Get company name
                 company_name = main_db.get(selected_chart_ticker, {}).get('name', '')
                 if company_name:
                     st.write(f"**{selected_chart_ticker}** - {company_name}")
-                
+
                 # Create and display chart
                 fig = create_price_chart(df, selected_chart_ticker, show_volume)
                 if fig:
                     st.plotly_chart(fig, use_container_width=True)
-                
+
                 # Show latest data for selected ticker
                 latest_data = df[df['ticker'] == selected_chart_ticker].iloc[0] if not df[df['ticker'] == selected_chart_ticker].empty else None
                 if latest_data is not None:
@@ -1302,25 +1302,25 @@ def main():
                             st.metric("Volume", f"{latest_data['volume']:,.0f}")
                     with col5:
                         st.metric("Date", latest_data['date'].strftime('%Y-%m-%d'))
-        
+
         with tab3:
             st.subheader("Data Analysis")
-            
+
             # Summary statistics
             if len(df['ticker'].unique()) <= 20:  # Only show for reasonable number of tickers
                 st.write("### Summary Statistics by Ticker")
-                
+
                 summary_stats = df.groupby('ticker').agg({
                     'close': ['mean', 'std', 'min', 'max'],
                     'volume': 'mean' if 'volume' in df.columns else 'count',
                     'date': ['min', 'max', 'count']
                 }).round(2)
-                
+
                 st.dataframe(summary_stats, use_container_width=True)
-            
+
             # Price changes
             st.write("### Recent Price Changes")
-            
+
             recent_changes = []
             for ticker in df['ticker'].unique()[:50]:  # Limit to 50 tickers
                 ticker_data = df[df['ticker'] == ticker].sort_values('date')
@@ -1329,7 +1329,7 @@ def main():
                     previous = ticker_data.iloc[1]
                     change = latest['close'] - previous['close']
                     change_pct = (change / previous['close']) * 100
-                    
+
                     recent_changes.append({
                         'Ticker': ticker,
                         'Company': main_db.get(ticker, {}).get('name', '')[:50],
@@ -1339,16 +1339,16 @@ def main():
                         'Change %': change_pct,
                         'Date': latest['date'].strftime('%Y-%m-%d')
                     })
-            
+
             if recent_changes:
                 changes_df = pd.DataFrame(recent_changes)
                 changes_df = changes_df.sort_values('Change %', ascending=False)
-                
+
                 # Style the dataframe
                 def color_negative_red(val):
                     color = 'red' if val < 0 else 'green'
                     return f'color: {color}'
-                
+
                 styled_df = changes_df.style.applymap(
                     color_negative_red,
                     subset=['Change', 'Change %']
@@ -1358,14 +1358,14 @@ def main():
                     'Change': '{:.2f}',
                     'Change %': '{:.2f}%'
                 })
-                
+
                 st.dataframe(styled_df, use_container_width=True, hide_index=True)
-        
+
         with tab4:
             st.subheader("Export Data")
-            
+
             col1, col2 = st.columns(2)
-            
+
             with col1:
                 # CSV export
                 csv = df.to_csv(index=False)
@@ -1376,26 +1376,26 @@ def main():
                     mime="text/csv",
                     use_container_width=True
                 )
-            
+
             with col2:
                 # Excel export - completely rewritten to avoid the empty sheet issue
                 excel_disabled = True
                 excel_data = None
-                
+
                 # Only try to create Excel if we have actual data rows
                 if df is not None and isinstance(df, pd.DataFrame) and len(df) > 0:
                     try:
                         import io
                         buffer = io.BytesIO()
-                        
+
                         # Create a copy to ensure we don't modify the original
                         export_df = df.copy()
-                        
+
                         # Write to Excel with error handling
                         try:
                             with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
                                 export_df.to_excel(writer, sheet_name='Price Data', index=False)
-                            
+
                             buffer.seek(0)
                             excel_data = buffer.getvalue()
                             excel_disabled = False
@@ -1407,12 +1407,12 @@ def main():
                             buffer.seek(0)
                             excel_data = buffer.getvalue()
                             excel_disabled = False
-                            
+
                     except Exception as e:
                         # If all else fails, just show the error
                         st.caption(f"Excel export unavailable: {str(e)[:50]}")
                         excel_disabled = True
-                
+
                 # Show the download button (enabled or disabled based on success)
                 if excel_disabled:
                     st.button("📥 Download as Excel", disabled=True, use_container_width=True)
@@ -1426,7 +1426,7 @@ def main():
                         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                         use_container_width=True
                     )
-            
+
             # Show export summary only if data exists
             if not df.empty:
                 st.info(f"""
@@ -1438,7 +1438,7 @@ def main():
                 """)
             else:
                 st.warning("No data available for export")
-    
+
     else:
         # No data loaded yet
         st.info("👈 Use the filters in the sidebar to load price data")

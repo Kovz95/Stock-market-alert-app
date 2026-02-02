@@ -22,11 +22,11 @@ except ImportError as exc:  # pragma: no cover - enforce virtualenv usage
         "virtual environment (source venv/bin/activate) before running."
     ) from exc
 
-from db_config import db_config
-from redis_support import build_key, delete_key, get_json, get_client
+from src.data_access.db_config import db_config
+from src.data_access.redis_support import build_key, delete_key, get_json, get_client
 
 try:
-    from redis_support import set_json
+    from src.data_access.redis_support import set_json
 except ImportError:  # pragma: no cover - fallback in case helpers move
     set_json = None  # type: ignore
 

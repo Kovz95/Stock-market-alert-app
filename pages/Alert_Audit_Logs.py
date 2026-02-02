@@ -5,6 +5,7 @@ import plotly.graph_objects as go
 from datetime import datetime, timedelta
 import sys
 import os
+import pytz
 
 # Add the parent directory to the path to import our modules
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -14,7 +15,8 @@ from src.services.alert_audit_logger import (
     get_audit_summary, get_alert_history, get_performance_metrics,
     get_daily_evaluation_stats, get_evaluation_coverage, get_expected_daily_evaluations
 )
-from db_config import db_config
+from src.data_access.db_config import db_config
+from src.utils.utils import load_market_data
 
 
 @st.cache_data(ttl=30, show_spinner=False)
@@ -51,9 +53,9 @@ st.sidebar.header("🔍 Filters & Options")
 
 # Date range filter
 days_back = st.sidebar.slider(
-    "Days to analyze", 
-    min_value=1, 
-    max_value=90, 
+    "Days to analyze",
+    min_value=1,
+    max_value=90,
     value=7,
     help="How many days back to analyze"
 )
@@ -92,42 +94,42 @@ col1, col2 = st.columns([2, 1])
 
 with col1:
     st.subheader("📈 Performance Overview")
-    
+
     # Get performance metrics
     metrics = cached_metrics(days_back)
-    
+
     if metrics:
         # Display key metrics
         metric_cols = st.columns(4)
-        
+
         with metric_cols[0]:
             st.metric(
-                "Total Checks", 
+                "Total Checks",
                 f"{metrics['total_checks']:,}",
                 help="Total alert evaluations in the period"
             )
-        
+
         with metric_cols[1]:
             st.metric(
-                "Success Rate", 
+                "Success Rate",
                 f"{metrics['success_rate']:.1f}%",
                 help="Percentage of successful price data pulls"
             )
-        
+
         with metric_cols[2]:
             st.metric(
-                "Cache Hit Rate", 
+                "Cache Hit Rate",
                 f"{metrics['cache_hit_rate']:.1f}%",
                 help="Percentage of requests served from cache"
             )
-        
+
         with metric_cols[3]:
             st.metric(
-                "Avg Execution", 
+                "Avg Execution",
                 f"{metrics['avg_execution_time_ms']:.0f}ms",
                 help="Average time to evaluate an alert"
             )
-        
+
         # Error rate warning
         if metrics['error_rate'] > 5:
             st.warning(f"⚠️ High error rate: {metrics['error_rate']:.1f}% of evaluations failed")
@@ -135,16 +137,16 @@ with col1:
             st.info(f"ℹ️ Error rate: {metrics['error_rate']:.1f}% of evaluations failed")
         else:
             st.success(f"✅ Low error rate: {metrics['error_rate']:.1f}% of evaluations failed")
-    
+
     else:
         st.info("No audit data available for the selected period")
 
 with col2:
     st.subheader("⚡ Quick Actions")
-    
+
     if st.button("🔄 Refresh Data", help="Refresh all audit data"):
         st.rerun()
-    
+
     if st.button("🧹 Clear All Audit Data", help="Clear all audit logs and start fresh"):
         with st.spinner("Clearing all audit records..."):
             from src.services.alert_audit_logger import audit_logger
@@ -155,10 +157,10 @@ with col2:
             else:
                 st.info("No audit records to clear.")
         st.rerun()
-    
+
     # Export options
     st.markdown("**📤 Export Options**")
-    
+
     if st.button("📊 Export Summary CSV"):
         summary_df = get_audit_summary(days_back)
         if not summary_df.empty:
@@ -193,16 +195,16 @@ if not summary_df.empty:
 
     # Apply filters
     filtered_df = summary_df.copy()
-    
+
     if alert_id_filter:
         filtered_df = filtered_df[filtered_df['alert_id'].str.contains(alert_id_filter, case=False, na=False)]
-    
+
     if ticker_filter:
         filtered_df = filtered_df[filtered_df['ticker'].str.contains(ticker_filter.upper(), case=False, na=False)]
-    
+
     if selected_evaluation_type != "All":
         filtered_df = filtered_df[filtered_df['evaluation_type'] == selected_evaluation_type]
-    
+
     if status_filter != "All":
         if status_filter == "Success":
             filtered_df = filtered_df[filtered_df['successful_evaluations'] > 0]
@@ -212,20 +214,19 @@ if not summary_df.empty:
             filtered_df = filtered_df[filtered_df['total_triggers'] > 0]
         elif status_filter == "Not Triggered":
             filtered_df = filtered_df[filtered_df['total_triggers'] == 0]
-    
+
     # Display filtered results
     if not filtered_df.empty:
         st.markdown(f"**Found {len(filtered_df)} alerts matching your filters**")
-        
+
         # Format the dataframe for display
         display_df = filtered_df.copy()
         # Convert UTC timestamps to local timezone (EST/EDT)
-        import pytz
         eastern = pytz.timezone('America/New_York')
         display_df['last_check'] = pd.to_datetime(display_df['last_check'], utc=True).dt.tz_convert(eastern).dt.strftime('%Y-%m-%d %H:%M')
         display_df['first_check'] = pd.to_datetime(display_df['first_check'], utc=True).dt.tz_convert(eastern).dt.strftime('%Y-%m-%d %H:%M')
         display_df['avg_execution_time_ms'] = display_df['avg_execution_time_ms'].round(1)
-        
+
         # Rename columns for better display
         display_df = display_df.rename(columns={
             'alert_id': 'Alert ID',
@@ -243,34 +244,34 @@ if not summary_df.empty:
             'last_check': 'Last Check',
             'first_check': 'First Check'
         })
-        
+
         # Display the table
         st.dataframe(
             display_df,
             use_container_width=True,
             hide_index=True
         )
-        
+
         # Add search functionality
         search_term = st.text_input(
             "🔍 Search in results",
             placeholder="Search by alert ID, ticker, or stock name...",
             help="Search within the filtered results"
         )
-        
+
         if search_term:
             search_results = display_df[
                 display_df.apply(
-                    lambda x: search_term.lower() in str(x).lower(), 
+                    lambda x: search_term.lower() in str(x).lower(),
                     axis=1
                 )
             ]
             st.markdown(f"**Search results: {len(search_results)} matches**")
             st.dataframe(search_results, use_container_width=True, hide_index=True)
-    
+
     else:
         st.warning("No alerts match your current filters. Try adjusting the filter criteria.")
-        
+
 else:
     st.info("No audit data available. Alerts will start appearing here once they are evaluated.")
 
@@ -279,26 +280,25 @@ st.subheader("🔍 Detailed Alert History")
 
 if alert_id_filter:
     st.markdown(f"**Detailed history for Alert ID: {alert_id_filter}**")
-    
+
     # Get detailed history
     history_df = get_alert_history(alert_id_filter, 100)
-    
+
     if not history_df.empty:
         # Format for display
         history_display = history_df.copy()
         # Convert UTC timestamps to local timezone (EST/EDT)
-        import pytz
         eastern = pytz.timezone('America/New_York')
         history_display['timestamp'] = pd.to_datetime(history_display['timestamp'], utc=True).dt.tz_convert(eastern).dt.strftime('%Y-%m-%d %H:%M:%S')
         history_display['execution_time_ms'] = history_display['execution_time_ms'].fillna('N/A')
-        
+
         # Select columns to display
         display_columns = [
             'timestamp', 'ticker', 'evaluation_type', 'price_data_pulled',
             'price_data_source', 'cache_hit', 'conditions_evaluated',
             'alert_triggered', 'trigger_reason', 'execution_time_ms', 'error_message'
         ]
-        
+
         history_display = history_display[display_columns].rename(columns={
             'timestamp': 'Timestamp',
             'ticker': 'Ticker',
@@ -312,22 +312,22 @@ if alert_id_filter:
             'execution_time_ms': 'Time (ms)',
             'error_message': 'Error'
         })
-        
+
         st.dataframe(
             history_display,
             use_container_width=True,
             hide_index=True
         )
-        
+
         # Performance trend chart
         if len(history_df) > 1:
             st.subheader("📈 Performance Trend")
-            
+
             # Convert timestamp to datetime for plotting
             plot_df = history_df.copy()
             plot_df['timestamp'] = pd.to_datetime(plot_df['timestamp'])
             plot_df = plot_df.sort_values('timestamp')
-            
+
             # Execution time trend
             fig = px.line(
                 plot_df[plot_df['execution_time_ms'].notna()],
@@ -338,19 +338,19 @@ if alert_id_filter:
             )
             fig.update_layout(xaxis_title="Time", yaxis_title="Execution Time (ms)")
             st.plotly_chart(fig, use_container_width=True)
-            
+
     else:
         st.info(f"No history found for Alert ID: {alert_id_filter}")
-        
+
 else:
     st.info("Enter an Alert ID above to view detailed history")
 
 # Charts and analytics
 if not summary_df.empty:
     st.subheader("📊 Analytics & Insights")
-    
+
     col1, col2 = st.columns(2)
-    
+
     with col1:
         # Success rate by timeframe
         if 'timeframe' in summary_df.columns:
@@ -361,7 +361,7 @@ if not summary_df.empty:
             timeframe_success['success_rate'] = (
                 timeframe_success['successful_evaluations'] / timeframe_success['total_checks'] * 100
             )
-            
+
             fig = px.bar(
                 timeframe_success,
                 x='timeframe',
@@ -370,7 +370,7 @@ if not summary_df.empty:
                 labels={'success_rate': 'Success Rate (%)', 'timeframe': 'Timeframe'}
             )
             st.plotly_chart(fig, use_container_width=True)
-    
+
     with col2:
         # Cache hit rate over time
         if 'cache_hit' in summary_df.columns:
@@ -381,7 +381,7 @@ if not summary_df.empty:
             cache_data['cache_hit_rate'] = (
                 cache_data['cache_hit'] / cache_data['total_checks'] * 100
             )
-            
+
             fig = px.scatter(
                 cache_data.head(20),  # Top 20 tickers
                 x='total_checks',
@@ -410,7 +410,7 @@ try:
     conn = db_config.get_connection(role="alert_audit_logs")
     interval_clause = f"timestamp >= NOW() - INTERVAL '{int(days_back)} days'"
     failed_query = f"""
-        SELECT 
+        SELECT
             alert_id,
             ticker,
             stock_name,
@@ -421,7 +421,7 @@ try:
             MIN(timestamp) as first_failure,
             AVG(execution_time_ms) as avg_execution_time
         FROM alert_audits
-        WHERE 
+        WHERE
             (price_data_pulled = FALSE
             OR error_message ILIKE %s
             OR error_message ILIKE %s)
@@ -433,21 +433,20 @@ try:
 
     # Get recent failed price data alerts (filtered by days_back from sidebar)
     failed_df = pd.read_sql_query(failed_query, conn, params=failed_params)
-    
+
     # Add asset type by checking market data
     if not failed_df.empty:
         # Load market data to determine asset type
-        from utils import load_market_data
         market_data = load_market_data()
-        
+
         # Function to determine asset type
         def get_asset_type(ticker):
             if market_data.empty:
                 return "Unknown"
-            
+
             # Normalize ticker for comparison
             ticker_upper = str(ticker).upper() if ticker else ""
-            
+
             # Try exact match first
             stock_matches = market_data[market_data['Symbol'].str.upper() == ticker_upper]
             if stock_matches.empty:
@@ -457,7 +456,7 @@ try:
                 # Try removing any suffix from the ticker
                 base_ticker = ticker_upper.split('-')[0]
                 stock_matches = market_data[market_data['Symbol'].str.upper().str.startswith(base_ticker)]
-            
+
             if not stock_matches.empty:
                 stock_data = stock_matches.iloc[0]
                 # Check if it's an ETF
@@ -465,17 +464,17 @@ try:
                     return "ETF"
                 else:
                     return "Stock"
-            
+
             return "Unknown"
-        
+
         # Add asset type column
         failed_df['asset_type'] = failed_df['ticker'].apply(get_asset_type)
-    
+
     if not failed_df.empty:
         # Calculate statistics
         total_failed_alerts = len(failed_df)
         total_failures = failed_df['failure_count'].sum()
-        
+
         # Display metrics
         metric_cols = st.columns(4)
         with metric_cols[0]:
@@ -486,7 +485,7 @@ try:
             )
         with metric_cols[1]:
             st.metric(
-                "Total Failures", 
+                "Total Failures",
                 f"{total_failures:,}",
                 help="Total number of failed price data attempts"
             )
@@ -500,8 +499,8 @@ try:
         with metric_cols[3]:
             # Calculate failure rate using the same days_back filter
             total_checks_query = f"""
-                SELECT COUNT(*) 
-                FROM alert_audits 
+                SELECT COUNT(*)
+                FROM alert_audits
                 WHERE timestamp >= NOW() - INTERVAL '{int(days_back)} days'
             """
             total_checks = pd.read_sql_query(total_checks_query, conn).iloc[0, 0]
@@ -511,21 +510,21 @@ try:
                 f"{failure_rate:.1f}%",
                 help=f"Percentage of checks that failed to get price data in last {days_back} days"
             )
-        
+
         # Asset type breakdown
         st.markdown("#### 📊 Failures by Asset Type")
         asset_type_stats = failed_df.groupby('asset_type').agg({
             'alert_id': 'count',
             'failure_count': 'sum'
         }).rename(columns={'alert_id': 'failed_alerts'})
-        
+
         col1, col2 = st.columns(2)
         with col1:
             st.markdown("**Asset Type Breakdown:**")
             for asset_type, row in asset_type_stats.iterrows():
                 percentage = (row['failed_alerts'] / total_failed_alerts) * 100
                 st.caption(f"• **{asset_type}**: {row['failed_alerts']} alerts ({percentage:.1f}%), {row['failure_count']} total failures")
-        
+
         with col2:
             # Create pie chart of asset types
             fig_asset = px.pie(
@@ -535,14 +534,14 @@ try:
                 title='Failed Alerts by Asset Type'
             )
             st.plotly_chart(fig_asset, use_container_width=True)
-        
+
         # Group by exchange
         st.markdown("#### 📊 Failures by Exchange")
         exchange_failures = failed_df.groupby('exchange').agg({
             'alert_id': 'count',
             'failure_count': 'sum'
         }).rename(columns={'alert_id': 'failed_alerts'}).sort_values('failure_count', ascending=False)
-        
+
         if not exchange_failures.empty:
             # Show top exchanges with failures
             col1, col2 = st.columns(2)
@@ -551,7 +550,7 @@ try:
                 top_exchanges = exchange_failures.head(10)
                 for exchange, row in top_exchanges.iterrows():
                     st.caption(f"• **{exchange}**: {row['failed_alerts']} alerts, {row['failure_count']} failures")
-            
+
             with col2:
                 # Create bar chart of failures by exchange
                 fig_exchange = px.bar(
@@ -563,14 +562,13 @@ try:
                 )
                 fig_exchange.update_layout(xaxis_tickangle=-45)
                 st.plotly_chart(fig_exchange, use_container_width=True)
-        
+
         # Group by ticker patterns
         st.markdown("#### 🔍 Most Problematic Tickers")
-        
+
         # Format the dataframe for display
         display_failed_df = failed_df.copy()
         # Convert UTC timestamps to local timezone (EST/EDT)
-        import pytz
         eastern = pytz.timezone('America/New_York')
         display_failed_df['last_failure'] = pd.to_datetime(display_failed_df['last_failure'], utc=True).dt.tz_convert(eastern).dt.strftime('%Y-%m-%d %H:%M')
         display_failed_df['first_failure'] = pd.to_datetime(display_failed_df['first_failure'], utc=True).dt.tz_convert(eastern).dt.strftime('%Y-%m-%d %H:%M')
@@ -586,7 +584,7 @@ try:
             'first_failure': 'First Failure',
             'avg_execution_time': 'Avg Time (ms)'
         })
-        
+
         # Show top 20 most problematic alerts
         st.markdown("**Top 20 Alerts with Most Failures:**")
         st.dataframe(
@@ -594,11 +592,11 @@ try:
             use_container_width=True,
             hide_index=True
         )
-        
+
         # Export functionality
         st.markdown("#### 📤 Export Failed Alerts Data")
         col1, col2 = st.columns(2)
-        
+
         with col1:
             # Prepare CSV for download
             csv_failed = display_failed_df.to_csv(index=False)
@@ -609,7 +607,7 @@ try:
                 mime="text/csv",
                 help="Download all failed alerts data as CSV"
             )
-        
+
         with col2:
             # Create summary report
             summary_text = f"""Failed Price Data Analysis Report
@@ -625,17 +623,17 @@ TOP 5 EXCHANGES WITH FAILURES:
 """
             for i, (exchange, row) in enumerate(exchange_failures.head(5).iterrows(), 1):
                 summary_text += f"{i}. {exchange}: {row['failed_alerts']} alerts, {row['failure_count']} failures\n"
-            
+
             # Add asset type breakdown to summary
             summary_text += "\n\nASSET TYPE BREAKDOWN:\n"
             for asset_type, row in asset_type_stats.iterrows():
                 percentage = (row['failed_alerts'] / total_failed_alerts) * 100
                 summary_text += f"- {asset_type}: {row['failed_alerts']} alerts ({percentage:.1f}%), {row['failure_count']} failures\n"
-            
+
             summary_text += "\nTOP 10 PROBLEMATIC TICKERS:\n"
             for i, row in enumerate(failed_df.head(10).itertuples(), 1):
                 summary_text += f"{i}. {row.ticker} ({row.asset_type}, {row.exchange}): {row.failure_count} failures\n"
-            
+
             st.download_button(
                 label="📄 Download Summary Report",
                 data=summary_text,
@@ -643,10 +641,10 @@ TOP 5 EXCHANGES WITH FAILURES:
                 mime="text/plain",
                 help="Download summary report as text file"
             )
-        
+
         # Analysis insights
         st.markdown("#### 💡 Insights & Recommendations")
-        
+
         # Check for pattern insights
         if failure_rate > 10:
             st.error(f"⚠️ **High Failure Rate**: {failure_rate:.1f}% of price data requests are failing. This requires immediate attention.")
@@ -654,26 +652,26 @@ TOP 5 EXCHANGES WITH FAILURES:
             st.warning(f"⚠️ **Moderate Failure Rate**: {failure_rate:.1f}% failure rate. Consider investigating the most problematic exchanges.")
         else:
             st.info(f"✅ **Acceptable Failure Rate**: {failure_rate:.1f}% failure rate is within normal limits.")
-        
+
         # Exchange-specific insights
         if not exchange_failures.empty:
             worst_exchange = exchange_failures.index[0]
             worst_count = exchange_failures.iloc[0]['failure_count']
             st.info(f"📊 **{worst_exchange}** has the most failures ({worst_count:,}). Consider checking FMP API coverage for this exchange.")
-        
+
         # Ticker pattern insights
         failed_tickers = failed_df['ticker'].tolist()
         if any('-' in str(ticker) for ticker in failed_tickers[:20]):
             st.info("🔍 Some failed tickers contain special characters (e.g., '-'). These may require special handling in the API.")
-        
+
         if any(str(ticker).endswith(('.TO', '.L', '.HK', '.AS')) for ticker in failed_tickers[:20]):
             st.info("🌍 Many failed tickers have international exchange suffixes. Ensure proper exchange code handling.")
-            
+
     else:
         st.success("✅ No failed price data retrievals found! All alerts are getting price data successfully.")
-    
+
     db_config.close_connection(conn)
-    
+
 except Exception as e:
     st.error(f"Error analyzing failed price data: {e}")
     st.info("Make sure alert evaluations have been running to see failed data analysis.")

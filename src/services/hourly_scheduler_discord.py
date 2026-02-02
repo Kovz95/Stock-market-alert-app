@@ -10,7 +10,7 @@ from datetime import datetime, timezone
 from typing import Iterable, Optional
 
 import requests
-from data_access.document_store import load_document
+from src.data_access.document_store import load_document
 
 logger = logging.getLogger(__name__)
 

@@ -1,21 +1,21 @@
 #!/usr/bin/env python3
 """
-Auto Scheduler V2 - Calendar-Aware Stock Alert Scheduler
+Futures Scheduler - Automated futures price updates and alert checking
 
-Automatically schedules daily and weekly alert checks for global exchanges
-based on their actual trading schedules using exchange-calendars.
+Automatically schedules futures price updates and alert checks based on
+configured intervals and Interactive Brokers trading hours.
 
 Features:
-- Calendar-aware scheduling for 39+ global exchanges
-- Daily checks after market close (with 40-minute data delay)
-- Weekly checks on last trading day of the week
+- APScheduler-based scheduling (aligned with auto_scheduler_v2.py)
+- Respects IB trading hours (configurable, default 05:00-23:00 UTC)
 - Discord notifications for job events
 - Job locking to prevent duplicate execution
 - Comprehensive status tracking
 - Heartbeat monitoring for watchdog integration
+- Subprocess-based job execution with timeout protection
 
 Usage:
-    python auto_scheduler_v2.py
+    python src/services/futures_scheduler.py
 """
 
 from __future__ import annotations
@@ -28,42 +28,31 @@ import signal
 import subprocess
 import sys
 import time
-from concurrent.futures import ThreadPoolExecutor, TimeoutError
-from datetime import datetime, timezone
+from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional
+from typing import Any, Dict, Optional
 
-import pandas as pd
 import psutil
 import requests
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 
 # Ensure project modules are importable
-BASE_DIR = Path(__file__).resolve().parent
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
 sys.path.append(str(BASE_DIR))
 
-from data_access.alert_repository import list_alerts  # noqa: E402
-from data_access.document_store import load_document, save_document  # noqa: E402
-from data_access.metadata_repository import fetch_stock_metadata_df  # noqa: E402
-from src.config.exchange_schedule_config import (  # noqa: E402
-    EXCHANGE_SCHEDULES,
-    get_exchanges_by_closing_time,
-    get_market_days_for_exchange,
-)
-from scheduled_price_updater import update_prices_for_exchanges  # noqa: E402
-from src.services.daily_price_service import run_full_daily_update  # noqa: E402
-from stock_alert_checker import StockAlertChecker  # noqa: E402
+from src.data_access.document_store import load_document, save_document  # noqa: E402
+from src.services.futures_alert_checker import FuturesAlertChecker  # noqa: E402
 
 # Constants
-LOCK_FILE = BASE_DIR / "scheduler_v2.lock"
-STATUS_DOCUMENT_KEY = "scheduler_status"
-CONFIG_DOCUMENT_KEY = "scheduler_config"
-JOB_TIMEOUT_SECONDS = int(os.getenv("SCHEDULER_JOB_TIMEOUT", "900"))  # 15 minutes
-HEARTBEAT_INTERVAL = int(os.getenv("SCHEDULER_HEARTBEAT_INTERVAL", "60"))  # 1 minute
+LOCK_FILE = BASE_DIR / "futures_scheduler.lock"
+STATUS_DOCUMENT_KEY = "futures_scheduler_status"
+CONFIG_DOCUMENT_KEY = "futures_scheduler_config"
+JOB_TIMEOUT_SECONDS = int(os.getenv("FUTURES_SCHEDULER_JOB_TIMEOUT", "900"))  # 15 minutes
+HEARTBEAT_INTERVAL = int(os.getenv("FUTURES_SCHEDULER_HEARTBEAT_INTERVAL", "60"))  # 1 minute
 
 # Logging
-logger = logging.getLogger("auto_scheduler_v2")
+logger = logging.getLogger("futures_scheduler")
 logger.setLevel(logging.INFO)
 
 if not logger.handlers:
@@ -75,7 +64,7 @@ if not logger.handlers:
     logger.addHandler(console)
 
     # File handler
-    log_file = BASE_DIR / "auto_scheduler_v2.log"
+    log_file = BASE_DIR / "futures_scheduler.log"
     file_handler = logging.FileHandler(log_file)
     file_handler.setFormatter(formatter)
     logger.addHandler(file_handler)
@@ -89,18 +78,23 @@ scheduler: Optional[BackgroundScheduler] = None
 # ---------------------------------------------------------------------------
 
 def load_scheduler_config() -> Dict[str, Any]:
-    """Load scheduler configuration from document store."""
+    """Load futures scheduler configuration from document store."""
     default_config = {
         "scheduler_webhook": {
             "url": "",
             "enabled": False,
-            "name": "Scheduler Status",
+            "name": "Futures Scheduler",
         },
+        "update_times": ["06:00", "12:00", "16:00", "20:00"],
+        "ib_hours": {
+            "start": "05:00",
+            "end": "23:00",
+        },
+        "enabled": True,
+        "update_on_start": True,
         "notification_settings": {
             "send_start_notification": True,
             "send_completion_notification": True,
-            "send_progress_updates": False,
-            "progress_update_interval": 300,
             "include_summary_stats": True,
             "job_timeout_seconds": JOB_TIMEOUT_SECONDS,
         },
@@ -110,14 +104,34 @@ def load_scheduler_config() -> Dict[str, Any]:
         config = load_document(
             CONFIG_DOCUMENT_KEY,
             default=default_config,
-            fallback_path=str(BASE_DIR / "scheduler_config.json"),
+            fallback_path=str(BASE_DIR / "futures_scheduler_config.json"),
         )
         if not isinstance(config, dict):
             return default_config
-        return config
+
+        # Merge with defaults to ensure all keys exist
+        merged = {**default_config, **config}
+        merged.setdefault("ib_hours", default_config["ib_hours"])
+        merged.setdefault("notification_settings", default_config["notification_settings"])
+
+        return merged
     except Exception as exc:
-        logger.warning("Failed to load scheduler config: %s", exc)
+        logger.warning("Failed to load futures scheduler config: %s", exc)
         return default_config
+
+
+def save_scheduler_config(config: Dict[str, Any]) -> bool:
+    """Save configuration to document store."""
+    try:
+        save_document(
+            CONFIG_DOCUMENT_KEY,
+            config,
+            fallback_path=str(BASE_DIR / "futures_scheduler_config.json"),
+        )
+        return True
+    except Exception as exc:
+        logger.error("Failed to save scheduler config: %s", exc)
+        return False
 
 
 # ---------------------------------------------------------------------------
@@ -134,7 +148,7 @@ def send_scheduler_notification(message: str, event: str = "info") -> bool:
 
     payload = {
         "content": message,
-        "username": webhook_cfg.get("name") or "Scheduler",
+        "username": webhook_cfg.get("name") or "Futures Scheduler",
     }
 
     try:
@@ -158,7 +172,6 @@ def _format_stats_for_message(price_stats, alert_stats) -> str:
     if isinstance(price_stats, dict):
         price_parts.append(f"upd {price_stats.get('updated', 0):,}")
         price_parts.append(f"fail {price_stats.get('failed', 0):,}")
-        price_parts.append(f"skip {price_stats.get('skipped', 0):,}")
     else:
         price_parts.append(str(price_stats))
 
@@ -190,102 +203,27 @@ def _format_duration(seconds: float) -> str:
 
 
 # ---------------------------------------------------------------------------
-# Alert Checking
+# IB Trading Hours Check
 # ---------------------------------------------------------------------------
 
-def run_alert_checks(
-    exchanges: List[str],
-    timeframe_key: str = "daily",
-) -> Dict[str, Any]:
-    """
-    Run alert checks for the given exchanges.
-
-    Args:
-        exchanges: List of exchange names to check alerts for
-        timeframe_key: The timeframe to check ('daily' or 'weekly')
-
-    Returns:
-        Statistics dictionary with alert check results
-    """
-    stats = {
-        "total": 0,
-        "success": 0,
-        "triggered": 0,
-        "errors": 0,
-        "no_data": 0,
-        "stale_data": 0,
-    }
-
+def is_ib_available() -> bool:
+    """Check if current time is within IB trading hours."""
     try:
-        # Get metadata to filter by exchange
-        metadata_df = fetch_stock_metadata_df()
-        if metadata_df is None or metadata_df.empty:
-            logger.warning("No metadata available for alert checks")
-            return stats
+        config = load_scheduler_config()
+        ib_hours = config.get("ib_hours", {})
 
-        # Get tickers for these exchanges
-        exchange_tickers = set()
-        for exchange in exchanges:
-            exchange_df = metadata_df[metadata_df["exchange"] == exchange]
-            if not exchange_df.empty and "symbol" in exchange_df.columns:
-                exchange_tickers.update(exchange_df["symbol"].tolist())
+        now = datetime.utcnow()
+        current_time = now.strftime("%H:%M")
 
-        # Get all alerts
-        all_alerts = list_alerts()
-        relevant_alerts = []
+        ib_start = ib_hours.get("start", "05:00")
+        ib_end = ib_hours.get("end", "23:00")
 
-        for alert in all_alerts:
-            if not isinstance(alert, dict):
-                continue
-
-            alert_ticker = alert.get("ticker")
-            alert_exchange = alert.get("exchange")
-            alert_timeframe = alert.get("timeframe", "daily")
-            alert_action = alert.get("action", "on")
-
-            # Skip disabled alerts (only skip if explicitly set to "off")
-            if alert_action == "off":
-                continue
-
-            # Check if alert matches the exchange filter
-            if alert_exchange in exchanges or alert_ticker in exchange_tickers:
-                # Check if alert matches the timeframe
-                if timeframe_key == "weekly" and alert_timeframe.lower() in ("weekly", "1wk"):
-                    relevant_alerts.append(alert)
-                elif timeframe_key == "daily" and alert_timeframe.lower() in ("daily", "1d"):
-                    relevant_alerts.append(alert)
-
-        stats["total"] = len(relevant_alerts)
-
-        logger.info(
-            "Evaluating %d %s alerts for exchanges %s",
-            len(relevant_alerts),
-            timeframe_key,
-            exchanges,
-        )
-
-        # Create stock alert checker and evaluate alerts
-        checker = StockAlertChecker()
-        check_stats = checker.check_alerts(relevant_alerts, timeframe_key)
-
-        # Update stats from checker results
-        stats["success"] = check_stats.get("success", 0)
-        stats["triggered"] = check_stats.get("triggered", 0)
-        stats["errors"] = check_stats.get("errors", 0)
-        stats["no_data"] = check_stats.get("no_data", 0)
-
-        logger.info(
-            "Alert evaluation complete: %d triggered, %d errors, %d no_data",
-            stats["triggered"],
-            stats["errors"],
-            stats["no_data"],
-        )
+        # Simple time comparison (assumes same day)
+        return ib_start <= current_time <= ib_end
 
     except Exception as exc:
-        logger.error("Error running alert checks: %s", exc)
-        stats["errors"] = 1
-
-    return stats
+        logger.error("Error checking IB availability: %s", exc)
+        return True  # Assume available if can't determine
 
 
 # ---------------------------------------------------------------------------
@@ -294,11 +232,6 @@ def run_alert_checks(
 
 _job_locks: Dict[str, bool] = {}
 _lock_lock = mp.Lock()
-
-
-def sanitize_job_id(job_type: str, exchange_name: str) -> str:
-    """Create a consistent job ID from type and exchange."""
-    return f"{job_type}_{exchange_name}".lower().replace(" ", "_")
 
 
 def acquire_job_lock(job_id: str) -> bool:
@@ -327,19 +260,21 @@ def update_scheduler_status(
     last_result: Optional[Dict[str, Any]] = None,
     last_error: Optional[Dict[str, Any]] = None,
 ) -> None:
-    """Update scheduler status in document store."""
+    """Update futures scheduler status in document store."""
     try:
         existing_status = load_document(
             STATUS_DOCUMENT_KEY,
             default={},
-            fallback_path=str(BASE_DIR / "scheduler_status.json"),
+            fallback_path=str(BASE_DIR / "futures_scheduler_status.json"),
         )
         if not isinstance(existing_status, dict):
             existing_status = {}
 
         # Update fields
         existing_status["status"] = status
-        existing_status["heartbeat"] = datetime.now().isoformat()
+        existing_status["heartbeat"] = datetime.utcnow().isoformat()
+        existing_status["pid"] = os.getpid()
+        existing_status["type"] = "futures_scheduler"
 
         if current_job is not None:
             existing_status["current_job"] = current_job
@@ -359,14 +294,14 @@ def update_scheduler_status(
         save_document(
             STATUS_DOCUMENT_KEY,
             existing_status,
-            fallback_path=str(BASE_DIR / "scheduler_status.json"),
+            fallback_path=str(BASE_DIR / "futures_scheduler_status.json"),
         )
 
         # Also update lock file with heartbeat
         if LOCK_FILE.exists():
             try:
                 lock_data = json.loads(LOCK_FILE.read_text())
-                lock_data["heartbeat"] = datetime.now().isoformat()
+                lock_data["heartbeat"] = datetime.utcnow().isoformat()
                 LOCK_FILE.write_text(json.dumps(lock_data, indent=2))
             except Exception:
                 pass
@@ -381,7 +316,7 @@ def get_scheduler_info() -> Optional[Dict[str, Any]]:
         status = load_document(
             STATUS_DOCUMENT_KEY,
             default={},
-            fallback_path=str(BASE_DIR / "scheduler_status.json"),
+            fallback_path=str(BASE_DIR / "futures_scheduler_status.json"),
         )
 
         if not isinstance(status, dict):
@@ -390,15 +325,11 @@ def get_scheduler_info() -> Optional[Dict[str, Any]]:
         # Add job counts
         if scheduler:
             jobs = scheduler.get_jobs()
-            daily_jobs = [j for j in jobs if "daily" in j.id]
-            weekly_jobs = [j for j in jobs if "weekly" in j.id]
-
-            status["total_daily_jobs"] = len(daily_jobs)
-            status["total_weekly_jobs"] = len(weekly_jobs)
+            status["total_jobs"] = len(jobs)
 
             # Get next run time
             if jobs:
-                next_job = min(jobs, key=lambda j: j.next_run_time or datetime.max)
+                next_job = min(jobs, key=lambda j: j.next_run_time or datetime.max.replace(tzinfo=None))
                 if next_job.next_run_time:
                     status["next_run"] = next_job.next_run_time.isoformat()
 
@@ -418,7 +349,7 @@ def _process_matches(pid: int) -> bool:
     try:
         process = psutil.Process(pid)
         cmdline = process.cmdline() or []
-        return any(segment.endswith("auto_scheduler_v2.py") for segment in cmdline)
+        return any(segment.endswith("futures_scheduler.py") for segment in cmdline)
     except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
         return False
 
@@ -433,17 +364,17 @@ def _acquire_process_lock() -> bool:
             existing_pid = None
 
         if existing_pid and _process_matches(existing_pid):
-            logger.warning("Another scheduler instance (PID %s) is running.", existing_pid)
+            logger.warning("Another futures scheduler instance (PID %s) is running.", existing_pid)
             return False
 
         LOCK_FILE.unlink(missing_ok=True)
 
     payload = {
         "pid": os.getpid(),
-        "timestamp": datetime.now().isoformat(),
-        "heartbeat": datetime.now().isoformat(),
-        "started_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        "type": "auto_scheduler_v2",
+        "timestamp": datetime.utcnow().isoformat(),
+        "heartbeat": datetime.utcnow().isoformat(),
+        "started_at": datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"),
+        "type": "futures_scheduler",
     }
     LOCK_FILE.write_text(json.dumps(payload, indent=2))
     return True
@@ -458,13 +389,12 @@ def _release_process_lock() -> None:
 
 
 def is_scheduler_running() -> bool:
-    """Check if scheduler is currently running as a main script."""
+    """Check if futures scheduler is currently running as a main script."""
     for proc in psutil.process_iter(["pid", "name", "cmdline"]):
         try:
             cmdline = proc.info.get("cmdline") or []
-            # Check that auto_scheduler_v2.py is being run as the main script
-            # (not just imported by another script like check_scheduler_status.py)
-            if any(part.endswith("auto_scheduler_v2.py") for part in cmdline):
+            # Check that futures_scheduler.py is being run as the main script
+            if any(part.endswith("futures_scheduler.py") for part in cmdline):
                 return True
         except (psutil.NoSuchProcess, psutil.AccessDenied):
             continue
@@ -472,27 +402,149 @@ def is_scheduler_running() -> bool:
 
 
 # ---------------------------------------------------------------------------
+# Price Update Execution
+# ---------------------------------------------------------------------------
+
+def run_price_update() -> Dict[str, Any]:
+    """
+    Run futures price update via subprocess.
+
+    Returns:
+        Statistics dictionary with update results
+    """
+    stats = {"updated": 0, "failed": 0, "error": None}
+
+    try:
+        if not is_ib_available():
+            logger.info("Skipping price update - outside IB hours")
+            stats["error"] = "Outside IB hours"
+            return stats
+
+        logger.info("Starting futures price update...")
+        start_time = time.time()
+
+        # Run the price updater
+        result = subprocess.run(
+            [sys.executable, str(BASE_DIR / "futures_price_updater.py")],
+            capture_output=True,
+            text=True,
+            timeout=600,  # 10 minute timeout
+            cwd=str(BASE_DIR),
+        )
+
+        if result.returncode == 0:
+            # Parse output for counts if available
+            updated_count = 0
+            failed_count = 0
+            if "succeeded" in result.stdout:
+                try:
+                    for line in result.stdout.split("\n"):
+                        if "succeeded" in line and "failed" in line:
+                            # Parse: "Update complete: 60 succeeded, 5 failed"
+                            parts = line.split(":")
+                            if len(parts) > 1:
+                                counts = parts[1].strip().split(",")
+                                for count in counts:
+                                    if "succeeded" in count:
+                                        updated_count = int(count.split()[0])
+                                    elif "failed" in count:
+                                        failed_count = int(count.split()[0])
+                            break
+                except Exception:
+                    pass
+
+            stats["updated"] = updated_count
+            stats["failed"] = failed_count
+            duration = time.time() - start_time
+            logger.info(
+                "Price update completed: %d updated, %d failed (%.1fs)",
+                updated_count,
+                failed_count,
+                duration,
+            )
+        else:
+            stats["error"] = result.stderr[:500] if result.stderr else "Unknown error"
+            logger.error("Price update failed: %s", stats["error"])
+
+    except subprocess.TimeoutExpired:
+        stats["error"] = "Timeout after 600s"
+        logger.error("Price update timed out")
+    except Exception as exc:
+        stats["error"] = str(exc)
+        logger.error("Error running price update: %s", exc)
+
+    return stats
+
+
+# ---------------------------------------------------------------------------
+# Alert Checking
+# ---------------------------------------------------------------------------
+
+def run_alert_checks() -> Dict[str, Any]:
+    """
+    Run futures alert checks.
+
+    Returns:
+        Statistics dictionary with alert check results
+    """
+    stats = {
+        "total": 0,
+        "triggered": 0,
+        "errors": 0,
+        "skipped": 0,
+        "no_data": 0,
+        "success": 0,
+    }
+
+    try:
+        logger.info("Starting futures alert check...")
+        start_time = time.time()
+
+        # Create alert checker and run checks
+        checker = FuturesAlertChecker()
+        check_stats = checker.check_all_alerts()
+
+        # Update stats from checker results
+        stats.update(check_stats)
+
+        duration = time.time() - start_time
+        logger.info(
+            "Alert check complete: %d total, %d triggered, %d errors (%.1fs)",
+            stats["total"],
+            stats["triggered"],
+            stats["errors"],
+            duration,
+        )
+
+    except Exception as exc:
+        logger.error("Error running alert checks: %s", exc)
+        stats["errors"] = 1
+
+    return stats
+
+
+# ---------------------------------------------------------------------------
 # Job Execution with Timeout
 # ---------------------------------------------------------------------------
 
-def _job_worker(queue, exchange_name: str, resample_weekly: bool):
+def _job_worker(queue):
     """Worker executed in a subprocess to isolate hangs/crashes."""
     try:
-        price_stats = update_prices_for_exchanges([exchange_name], resample_weekly=resample_weekly)
-        timeframe_key = "weekly" if resample_weekly else "daily"
-        alert_stats = run_alert_checks([exchange_name], timeframe_key)
+        price_stats = run_price_update()
+        time.sleep(5)  # Let database settle
+        alert_stats = run_alert_checks()
         queue.put({"ok": True, "price_stats": price_stats, "alert_stats": alert_stats})
     except Exception as exc:
         queue.put({"ok": False, "error": str(exc)})
 
 
-def _run_job_subprocess(exchange_name: str, resample_weekly: bool, timeout_seconds: int):
+def _run_job_subprocess(timeout_seconds: int):
     """
-    Run a single exchange job in a subprocess with a hard timeout.
+    Run a futures job in a subprocess with a hard timeout.
     Returns (price_stats, alert_stats, error_message)
     """
     queue: mp.Queue = mp.Queue()
-    proc = mp.Process(target=_job_worker, args=(queue, exchange_name, resample_weekly))
+    proc = mp.Process(target=_job_worker, args=(queue,))
     proc.start()
     start = time.time()
 
@@ -521,33 +573,29 @@ def _run_job_subprocess(exchange_name: str, resample_weekly: bool, timeout_secon
     return result.get("price_stats"), result.get("alert_stats"), None
 
 
-def execute_exchange_job(exchange_name: str, job_type: str):
-    """
-    Execute a single exchange job (daily or weekly).
+def execute_futures_job():
+    """Execute a combined futures price update and alert check job."""
+    job_id = "futures_combined"
 
-    Args:
-        exchange_name: Name of the exchange
-        job_type: 'daily' or 'weekly'
-    """
-    job_id = sanitize_job_id(job_type, exchange_name)
     if not acquire_job_lock(job_id):
         logger.warning("Job %s is already running; skipping duplicate execution.", job_id)
         return None
 
-    notify_settings = (load_scheduler_config() or {}).get("notification_settings", {})
+    config = load_scheduler_config()
+    notify_settings = config.get("notification_settings", {})
     send_start = notify_settings.get("send_start_notification", True)
     send_complete = notify_settings.get("send_completion_notification", True)
     job_timeout = max(int(notify_settings.get("job_timeout_seconds", JOB_TIMEOUT_SECONDS)), 60)
 
     start_time = time.time()
+
     if send_start:
         send_scheduler_notification(
             "\n".join(
                 [
-                    f"🚀 **{job_type.title()} job started**",
-                    f"• Exchange: {exchange_name}",
+                    "🚀 **Futures job started**",
                     f"• Job ID: `{job_id}`",
-                    f"• Start (UTC): {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}Z",
+                    f"• Start (UTC): {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')}Z",
                     f"• Timeout: {job_timeout}s",
                 ]
             ),
@@ -559,18 +607,28 @@ def execute_exchange_job(exchange_name: str, job_type: str):
             status="running",
             current_job={
                 "id": job_id,
-                "exchange": exchange_name,
-                "job_type": job_type,
-                "started": datetime.now().isoformat(),
+                "job_type": "futures_combined",
+                "started": datetime.utcnow().isoformat(),
             },
         )
 
-        resample_weekly = job_type == "weekly"
-        price_stats, alert_stats, worker_err = _run_job_subprocess(
-            exchange_name,
-            resample_weekly=resample_weekly,
-            timeout_seconds=job_timeout,
-        )
+        # Check IB availability before running
+        if not is_ib_available():
+            logger.info("Skipping job - outside IB hours")
+            update_scheduler_status(
+                status="running",
+                current_job=None,
+                last_run={
+                    "job_id": job_id,
+                    "completed_at": datetime.utcnow().isoformat(),
+                    "skipped": True,
+                    "skip_reason": "Outside IB hours",
+                },
+            )
+            release_job_lock(job_id)
+            return
+
+        price_stats, alert_stats, worker_err = _run_job_subprocess(timeout_seconds=job_timeout)
 
         if worker_err:
             raise TimeoutError(worker_err) if "timeout" in worker_err else RuntimeError(worker_err)
@@ -582,9 +640,7 @@ def execute_exchange_job(exchange_name: str, job_type: str):
             current_job=None,
             last_run={
                 "job_id": job_id,
-                "exchange": exchange_name,
-                "job_type": job_type,
-                "completed_at": datetime.now().isoformat(),
+                "completed_at": datetime.utcnow().isoformat(),
                 "duration_seconds": duration,
             },
             last_result={
@@ -594,9 +650,7 @@ def execute_exchange_job(exchange_name: str, job_type: str):
         )
 
         logger.info(
-            "%s job finished for %s (price updates: %s, alerts: %s)",
-            job_type.upper(),
-            exchange_name,
+            "Futures job finished (price updates: %s, alerts: %s)",
             price_stats.get("updated", 0) if isinstance(price_stats, dict) else price_stats,
             alert_stats.get("total", 0) if isinstance(alert_stats, dict) else alert_stats,
         )
@@ -605,8 +659,7 @@ def execute_exchange_job(exchange_name: str, job_type: str):
             send_scheduler_notification(
                 "\n".join(
                     [
-                        f"🏁 **{job_type.title()} job complete**",
-                        f"• Exchange: {exchange_name}",
+                        "🏁 **Futures job complete**",
                         f"• Duration: {duration}s",
                         f"• Summary: {_format_stats_for_message(price_stats, alert_stats)}",
                     ]
@@ -621,28 +674,21 @@ def execute_exchange_job(exchange_name: str, job_type: str):
         }
 
     except Exception as exc:
-        err_msg = (
-            f"Timeout after {job_timeout}s"
-            if isinstance(exc, TimeoutError)
-            else str(exc)
-        )
-        logger.exception("Error running %s job for %s: %s", job_type, exchange_name, err_msg)
+        err_msg = f"Timeout after {job_timeout}s" if isinstance(exc, TimeoutError) else str(exc)
+        logger.exception("Error running futures job: %s", err_msg)
         update_scheduler_status(
             status="error",
             current_job=None,
             last_error={
-                "time": datetime.now().isoformat(),
+                "time": datetime.utcnow().isoformat(),
                 "job_id": job_id,
-                "exchange": exchange_name,
-                "job_type": job_type,
                 "message": err_msg,
             },
         )
         send_scheduler_notification(
             "\n".join(
                 [
-                    f"❌ **{job_type.title()} job failed**",
-                    f"• Exchange: {exchange_name}",
+                    "❌ **Futures job failed**",
                     f"• Error: {err_msg}",
                     f"• Duration: {round(time.time() - start_time, 2)}s",
                 ]
@@ -654,81 +700,45 @@ def execute_exchange_job(exchange_name: str, job_type: str):
         release_job_lock(job_id)
 
 
-def run_daily_job(exchange_name: str):
-    """Execute a daily job for an exchange."""
-    return execute_exchange_job(exchange_name, "daily")
-
-
-def run_weekly_job(exchange_name: str):
-    """Execute a weekly job for an exchange."""
-    return execute_exchange_job(exchange_name, "weekly")
-
-
 # ---------------------------------------------------------------------------
 # Scheduler Setup
 # ---------------------------------------------------------------------------
 
-def _schedule_exchange_jobs():
-    """Schedule all exchange jobs based on their closing times."""
+def _schedule_futures_jobs():
+    """Schedule all futures jobs based on configured times."""
     if not scheduler:
         logger.error("Scheduler not initialized")
         return
 
-    time_groups = get_exchanges_by_closing_time()
+    config = load_scheduler_config()
+    update_times = config.get("update_times", ["06:00", "12:00", "16:00", "20:00"])
+
     scheduled_count = 0
 
-    for time_str, exchanges_info in time_groups.items():
-        for info in exchanges_info:
-            exchange = info["exchange"]
-            config = EXCHANGE_SCHEDULES.get(exchange, {})
-            market_days = get_market_days_for_exchange(config)
+    for time_str in update_times:
+        try:
+            hour, minute = map(int, time_str.split(":"))
+        except ValueError:
+            logger.warning("Invalid time format: %s", time_str)
+            continue
 
-            # Parse time string (format: "HH:MM")
-            try:
-                hour, minute = map(int, time_str.split(":"))
-            except ValueError:
-                logger.warning("Invalid time format for %s: %s", exchange, time_str)
-                continue
+        job_id = f"futures_{time_str.replace(':', '')}"
+        scheduler.add_job(
+            execute_futures_job,
+            CronTrigger(
+                hour=hour,
+                minute=minute,
+                timezone="UTC",
+            ),
+            id=job_id,
+            replace_existing=True,
+            max_instances=1,
+            misfire_grace_time=3600,
+        )
+        scheduled_count += 1
+        logger.info("Scheduled futures job at %s UTC", time_str)
 
-            # Schedule daily job
-            daily_days = market_days.get("daily", "mon-fri")
-            daily_job_id = sanitize_job_id("daily", exchange)
-            scheduler.add_job(
-                run_daily_job,
-                CronTrigger(
-                    day_of_week=daily_days,
-                    hour=hour,
-                    minute=minute,
-                    timezone="UTC",
-                ),
-                id=daily_job_id,
-                args=[exchange],
-                replace_existing=True,
-                max_instances=1,
-                misfire_grace_time=3600,
-            )
-            scheduled_count += 1
-
-            # Schedule weekly job
-            weekly_day = market_days.get("weekly", "fri")
-            weekly_job_id = sanitize_job_id("weekly", exchange)
-            scheduler.add_job(
-                run_weekly_job,
-                CronTrigger(
-                    day_of_week=weekly_day,
-                    hour=hour,
-                    minute=minute,
-                    timezone="UTC",
-                ),
-                id=weekly_job_id,
-                args=[exchange],
-                replace_existing=True,
-                max_instances=1,
-                misfire_grace_time=3600,
-            )
-            scheduled_count += 1
-
-    logger.info("Scheduled %d jobs for %d exchanges", scheduled_count, len(time_groups))
+    logger.info("Scheduled %d futures jobs", scheduled_count)
 
 
 def _heartbeat_job():
@@ -736,7 +746,7 @@ def _heartbeat_job():
     try:
         if LOCK_FILE.exists():
             lock_data = json.loads(LOCK_FILE.read_text())
-            lock_data["heartbeat"] = datetime.now().isoformat()
+            lock_data["heartbeat"] = datetime.utcnow().isoformat()
             LOCK_FILE.write_text(json.dumps(lock_data, indent=2))
 
         update_scheduler_status(status="running")
@@ -748,28 +758,28 @@ def _heartbeat_job():
 # Start/Stop Functions
 # ---------------------------------------------------------------------------
 
-def start_auto_scheduler() -> bool:
-    """Start the auto scheduler in a background process."""
+def start_futures_scheduler() -> bool:
+    """Start the futures scheduler."""
     global scheduler
 
     if is_scheduler_running():
-        logger.info("Scheduler is already running")
+        logger.info("Futures scheduler is already running")
         return True
 
     # If we're being called from another process, spawn a new process
     if os.getpid() != os.getppid():
         try:
             subprocess.Popen(
-                [sys.executable, str(BASE_DIR / "auto_scheduler_v2.py")],
+                [sys.executable, str(Path(__file__))],
                 cwd=str(BASE_DIR),
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
                 start_new_session=True,
             )
-            logger.info("Started scheduler in background process")
+            logger.info("Started futures scheduler in background process")
             return True
         except Exception as exc:
-            logger.error("Failed to start scheduler: %s", exc)
+            logger.error("Failed to start futures scheduler: %s", exc)
             return False
 
     # Otherwise, start in this process
@@ -779,8 +789,8 @@ def start_auto_scheduler() -> bool:
     try:
         scheduler = BackgroundScheduler(timezone="UTC")
 
-        # Schedule all exchange jobs
-        _schedule_exchange_jobs()
+        # Schedule all futures jobs
+        _schedule_futures_jobs()
 
         # Add heartbeat job
         scheduler.add_job(
@@ -789,16 +799,6 @@ def start_auto_scheduler() -> bool:
             seconds=HEARTBEAT_INTERVAL,
             id="heartbeat",
             replace_existing=True,
-        )
-
-        # Full daily price update (all tickers) at 11 PM UTC
-        scheduler.add_job(
-            run_full_daily_update,
-            CronTrigger(hour=23, minute=0, timezone="UTC"),
-            id="daily_full_update",
-            name="Daily Full Database Update",
-            replace_existing=True,
-            misfire_grace_time=3600,
         )
 
         # Start scheduler
@@ -810,19 +810,26 @@ def start_auto_scheduler() -> bool:
             current_job=None,
         )
 
-        logger.info("Auto scheduler v2 started successfully")
-        send_scheduler_notification("✅ Scheduler started", "success")
+        # Run initial job if configured
+        config = load_scheduler_config()
+        if config.get("update_on_start", True):
+            logger.info("Running initial futures job on startup...")
+            import threading
+            threading.Thread(target=execute_futures_job, daemon=True).start()
+
+        logger.info("Futures scheduler started successfully")
+        send_scheduler_notification("✅ Futures scheduler started", "success")
 
         return True
 
     except Exception as exc:
-        logger.exception("Failed to start scheduler: %s", exc)
+        logger.exception("Failed to start futures scheduler: %s", exc)
         _release_process_lock()
         return False
 
 
-def stop_auto_scheduler() -> bool:
-    """Stop the auto scheduler."""
+def stop_futures_scheduler() -> bool:
+    """Stop the futures scheduler."""
     global scheduler
 
     try:
@@ -833,13 +840,13 @@ def stop_auto_scheduler() -> bool:
         update_scheduler_status(status="stopped", current_job=None)
         _release_process_lock()
 
-        logger.info("Auto scheduler v2 stopped")
-        send_scheduler_notification("⏹️ Scheduler stopped", "info")
+        logger.info("Futures scheduler stopped")
+        send_scheduler_notification("⏹️ Futures scheduler stopped", "info")
 
         return True
 
     except Exception as exc:
-        logger.error("Failed to stop scheduler: %s", exc)
+        logger.error("Failed to stop futures scheduler: %s", exc)
         return False
 
 
@@ -849,15 +856,15 @@ def stop_auto_scheduler() -> bool:
 
 def main():
     """Main entry point for running scheduler as a standalone process."""
-    if not start_auto_scheduler():
-        logger.error("Failed to start scheduler")
+    if not start_futures_scheduler():
+        logger.error("Failed to start futures scheduler")
         sys.exit(1)
 
-    logger.info("Scheduler running. Press Ctrl+C to stop.")
+    logger.info("Futures scheduler running. Press Ctrl+C to stop.")
 
     def signal_handler(sig, frame):
         logger.info("Received signal %s, shutting down...", sig)
-        stop_auto_scheduler()
+        stop_futures_scheduler()
         sys.exit(0)
 
     signal.signal(signal.SIGINT, signal_handler)
@@ -869,7 +876,7 @@ def main():
             time.sleep(1)
     except KeyboardInterrupt:
         logger.info("Keyboard interrupt received")
-        stop_auto_scheduler()
+        stop_futures_scheduler()
 
 
 if __name__ == "__main__":

@@ -5,7 +5,7 @@ Repository for checking and analyzing hourly price data in the database.
 from datetime import datetime
 from typing import Optional
 
-from db_config import db_config
+from src.data_access.db_config import db_config
 
 
 class HourlyDataStats:

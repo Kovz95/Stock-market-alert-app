@@ -6,7 +6,7 @@ from datetime import timezone
 import numpy as np
 import os
 import uuid
-from indicators_lib import *
+from src.utils.indicators import *
 import requests
 import time
 import operator
@@ -17,20 +17,20 @@ from collections import defaultdict
 import concurrent.futures
 import fmpsdk
 from dotenv import load_dotenv
-from data_access.document_store import load_document, save_document
-from data_access.json_bridge import enable_json_bridge
+from src.data_access.document_store import load_document, save_document
+from src.data_access.json_bridge import enable_json_bridge
 
 enable_json_bridge()
 
-from data_access.alert_repository import (
+from src.data_access.alert_repository import (
     create_alert as repo_create_alert,
     update_alert as repo_update_alert,
     list_alerts as repo_list_alerts,
     get_alert as repo_get_alert,
 )
-from data_access.metadata_repository import fetch_stock_metadata_map
+from src.data_access.metadata_repository import fetch_stock_metadata_map
 
-from data_access.alert_repository import (
+from src.data_access.alert_repository import (
     create_alert as repo_create_alert,
     update_alert as repo_update_alert,
     delete_alert as repo_delete_alert,
@@ -674,7 +674,7 @@ def flush_logs_to_discord():
     """Flush Discord logs using async logger for better performance"""
     # Try to use async logger first (much faster)
     try:
-        from async_discord_logger import flush_discord_logs
+        from src.services.discord_logger import flush_discord_logs
         flush_discord_logs()
         return
     except ImportError:
@@ -763,7 +763,7 @@ def grab_new_data_fmp(ticker, timespan="1d", period="1y"):
     Fetch historical data from FMP API using backend_fmp module
     Handles daily and weekly timeframes properly
     """
-    from backend_fmp import FMPDataFetcher
+    from src.services.backend_fmp import FMPDataFetcher
 
     if not FMP_API_KEY:
         print(f"[ERROR] FMP API key not available")

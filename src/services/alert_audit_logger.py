@@ -12,7 +12,7 @@ from typing import Any, Dict, Optional, Sequence
 
 import pandas as pd
 
-from db_config import db_config
+from src.data_access.db_config import db_config
 from src.data_access.alert_repository import list_alerts as repo_list_alerts
 
 

@@ -19,7 +19,7 @@ st.set_page_config(
 )
 
 # Import utils
-from utils import load_market_data
+from src.utils.utils import load_market_data
 
 FUTURES_ALERTS_DOCUMENT = "futures_alerts"
 FUTURES_DATABASE_DOCUMENT = "futures_database"

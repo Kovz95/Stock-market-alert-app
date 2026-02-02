@@ -8,8 +8,8 @@ import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 # Import utils for market data
-from utils import load_market_data
-from data_access.alert_repository import (
+from src.utils.utils import load_market_data
+from src.data_access.alert_repository import (
     delete_alert as repo_delete_alert,
     list_alerts as repo_list_alerts,
     refresh_alert_cache,
@@ -90,7 +90,7 @@ def determine_asset_class_for_delete_page(ticker, ratio=None):
 try:
     df_alerts['asset_class'] = df_alerts.apply(
         lambda row: determine_asset_class_for_delete_page(
-            row.get('ticker', ''), 
+            row.get('ticker', ''),
             row.get('ratio', None)
         ), axis=1
     )
@@ -142,7 +142,7 @@ if 'Exchange' in market_data.columns:
         available_exchanges = sorted(market_data[market_data['Country'].isin(selected_countries)]['Exchange'].dropna().unique())
     else:
         available_exchanges = sorted(market_data['Exchange'].dropna().unique())
-    
+
     selected_exchanges = st.sidebar.multiselect(
         "Filter by Exchange:",
         available_exchanges,
@@ -166,20 +166,20 @@ company_filter = st.sidebar.text_input("Search by Company/Ticker:", "").strip().
 # Stock Industry Filters
 if selected_asset_type in ["All", "Stocks"] and 'RBICS_Sector' in market_data.columns:
     st.sidebar.subheader("🏭 Industry Filters")
-    
+
     # Only show stocks (not ETFs) for stock filters - use Asset_Type field
     if 'Asset_Type' in market_data.columns:
         stocks_only_data = market_data[market_data['Asset_Type'] == 'Stock']
     else:
         # Fallback to old method if Asset_Type not available
         stocks_only_data = market_data[~market_data['ETF_Issuer'].notna()] if 'ETF_Issuer' in market_data.columns else market_data
-    
+
     # Apply country and exchange filters if selected
     if selected_countries and 'Country' in stocks_only_data.columns:
         stocks_only_data = stocks_only_data[stocks_only_data['Country'].isin(selected_countries)]
     if selected_exchanges and 'Exchange' in stocks_only_data.columns:
         stocks_only_data = stocks_only_data[stocks_only_data['Exchange'].isin(selected_exchanges)]
-    
+
     # Economy filter
     available_economies = stocks_only_data['RBICS_Economy'].dropna().unique() if 'RBICS_Economy' in stocks_only_data.columns else []
     selected_economies = st.sidebar.multiselect(
@@ -188,65 +188,65 @@ if selected_asset_type in ["All", "Stocks"] and 'RBICS_Sector' in market_data.co
         default=[],
         help="Select economies to filter alerts"
     )
-    
+
     # Sector filter - cascading from economy
     if selected_economies and 'RBICS_Economy' in stocks_only_data.columns:
         available_sectors = stocks_only_data[stocks_only_data['RBICS_Economy'].isin(selected_economies)]['RBICS_Sector'].dropna().unique()
     else:
         available_sectors = stocks_only_data['RBICS_Sector'].dropna().unique() if 'RBICS_Sector' in stocks_only_data.columns else []
-    
+
     selected_sectors = st.sidebar.multiselect(
         "Filter by Sector:",
         sorted(available_sectors),
         default=[],
         help="Select sectors to filter alerts"
     )
-    
+
     # Subsector filter - cascading from sector
     if selected_sectors and 'RBICS_Sector' in stocks_only_data.columns:
         available_subsectors = stocks_only_data[stocks_only_data['RBICS_Sector'].isin(selected_sectors)]['RBICS_Subsector'].dropna().unique() if 'RBICS_Subsector' in stocks_only_data.columns else []
     else:
         available_subsectors = stocks_only_data['RBICS_Subsector'].dropna().unique() if 'RBICS_Subsector' in stocks_only_data.columns else []
-    
+
     selected_subsectors = st.sidebar.multiselect(
         "Filter by Subsector:",
         sorted(available_subsectors),
         default=[],
         help="Select subsectors to filter alerts"
     )
-    
+
     # Industry Group filter - cascading from subsector
     if selected_subsectors and 'RBICS_Subsector' in stocks_only_data.columns:
         available_industry_groups = stocks_only_data[stocks_only_data['RBICS_Subsector'].isin(selected_subsectors)]['RBICS_Industry_Group'].dropna().unique() if 'RBICS_Industry_Group' in stocks_only_data.columns else []
     else:
         available_industry_groups = stocks_only_data['RBICS_Industry_Group'].dropna().unique() if 'RBICS_Industry_Group' in stocks_only_data.columns else []
-    
+
     selected_industry_groups = st.sidebar.multiselect(
         "Filter by Industry Group:",
         sorted(available_industry_groups),
         default=[],
         help="Select industry groups to filter alerts"
     )
-    
+
     # Industry filter - cascading from industry group
     if selected_industry_groups and 'RBICS_Industry_Group' in stocks_only_data.columns:
         available_industries = stocks_only_data[stocks_only_data['RBICS_Industry_Group'].isin(selected_industry_groups)]['RBICS_Industry'].dropna().unique() if 'RBICS_Industry' in stocks_only_data.columns else []
     else:
         available_industries = stocks_only_data['RBICS_Industry'].dropna().unique() if 'RBICS_Industry' in stocks_only_data.columns else []
-    
+
     selected_industries = st.sidebar.multiselect(
         "Filter by Industry:",
         sorted(available_industries),
         default=[],
         help="Select industries to filter alerts"
     )
-    
+
     # Subindustry filter - cascading from industry
     if selected_industries and 'RBICS_Industry' in stocks_only_data.columns:
         available_subindustries = stocks_only_data[stocks_only_data['RBICS_Industry'].isin(selected_industries)]['RBICS_Subindustry'].dropna().unique() if 'RBICS_Subindustry' in stocks_only_data.columns else []
     else:
         available_subindustries = stocks_only_data['RBICS_Subindustry'].dropna().unique() if 'RBICS_Subindustry' in stocks_only_data.columns else []
-    
+
     selected_subindustries = st.sidebar.multiselect(
         "Filter by Subindustry:",
         sorted(available_subindustries),
@@ -257,20 +257,20 @@ if selected_asset_type in ["All", "Stocks"] and 'RBICS_Sector' in market_data.co
 # ETF Filters
 if selected_asset_type in ["All", "ETFs"] and 'ETF_Issuer' in market_data.columns:
     st.sidebar.subheader("📊 ETF Filters")
-    
+
     # Only show ETFs for ETF filters - use Asset_Type field
     if 'Asset_Type' in market_data.columns:
         etfs_only_data = market_data[market_data['Asset_Type'] == 'ETF']
     else:
         # Fallback to old method if Asset_Type not available
         etfs_only_data = market_data[market_data['ETF_Issuer'].notna()]
-    
+
     # Apply country and exchange filters if selected
     if selected_countries and 'Country' in etfs_only_data.columns:
         etfs_only_data = etfs_only_data[etfs_only_data['Country'].isin(selected_countries)]
     if selected_exchanges and 'Exchange' in etfs_only_data.columns:
         etfs_only_data = etfs_only_data[etfs_only_data['Exchange'].isin(selected_exchanges)]
-    
+
     # ETF Issuer filter
     available_issuers = sorted(etfs_only_data['ETF_Issuer'].dropna().unique())
     selected_issuers = st.sidebar.multiselect(
@@ -279,42 +279,42 @@ if selected_asset_type in ["All", "ETFs"] and 'ETF_Issuer' in market_data.column
         default=[],
         help="Select ETF issuers to filter alerts"
     )
-    
+
     # Asset Class filter - cascading from issuer
     if 'Asset_Class' in etfs_only_data.columns:
         if selected_issuers:
             available_asset_classes = sorted(etfs_only_data[etfs_only_data['ETF_Issuer'].isin(selected_issuers)]['Asset_Class'].dropna().unique())
         else:
             available_asset_classes = sorted(etfs_only_data['Asset_Class'].dropna().unique())
-        
+
         selected_asset_classes = st.sidebar.multiselect(
             "Filter by Asset Class:",
             available_asset_classes,
             default=[],
             help="Select asset classes to filter alerts"
         )
-    
+
     # ETF Focus filter - cascading from asset class
     if 'ETF_Focus' in etfs_only_data.columns:
         if selected_asset_classes and 'Asset_Class' in etfs_only_data.columns:
             available_focuses = sorted(etfs_only_data[etfs_only_data['Asset_Class'].isin(selected_asset_classes)]['ETF_Focus'].dropna().unique())
         else:
             available_focuses = sorted(etfs_only_data['ETF_Focus'].dropna().unique())
-        
+
         selected_focuses = st.sidebar.multiselect(
             "Filter by ETF Focus:",
             available_focuses,
             default=[],
             help="Select ETF focus areas to filter alerts"
         )
-    
+
     # ETF Niche filter - cascading from focus
     if 'ETF_Niche' in etfs_only_data.columns:
         if selected_focuses and 'ETF_Focus' in etfs_only_data.columns:
             available_niches = sorted(etfs_only_data[etfs_only_data['ETF_Focus'].isin(selected_focuses)]['ETF_Niche'].dropna().unique())
         else:
             available_niches = sorted(etfs_only_data['ETF_Niche'].dropna().unique())
-        
+
         selected_niches = st.sidebar.multiselect(
             "Filter by ETF Niche:",
             available_niches,
@@ -326,7 +326,7 @@ if selected_asset_type in ["All", "ETFs"] and 'ETF_Issuer' in market_data.column
 condition_options = [
     "All Conditions",
     "RSI",
-    "MACD", 
+    "MACD",
     "SMA",
     "EMA",
     "HMA",
@@ -380,7 +380,7 @@ with st.sidebar.expander("ℹ️ Condition Search Help"):
     - `breakout` - Find all breakout conditions
     - `slope` - Find all slope conditions
     - `close`, `open`, `high`, `low` - Find price conditions
-    
+
     **Examples:**
     - Type `rsi` to find all alerts with RSI conditions
     - Type `sma` to find all alerts with SMA conditions
@@ -438,7 +438,7 @@ def apply_filters(alert):
             base_ticker = ticker_upper.split('-')[0]
             if base_ticker in ticker_cache:
                 stock_data = ticker_cache[base_ticker]
-    
+
     # Asset type filter
     if selected_asset_type != "All":
         # Check if this is a futures alert
@@ -467,18 +467,18 @@ def apply_filters(alert):
         country = stock_data.get('Country')
         if not country or country not in selected_countries:
             return False
-    
+
     # Exchange filter
     if selected_exchanges:
         if alert.get('exchange', '') not in selected_exchanges:
             return False
-    
+
     # Timeframe filter
     if selected_timeframes:
         alert_timeframe = alert.get('timeframe', 'Daily')
         if alert_timeframe not in selected_timeframes:
             return False
-    
+
     # Industry filters for stocks
     if stock_data is not None and not stock_data.get('ETF_Issuer'):
         # Economy filter
@@ -486,37 +486,37 @@ def apply_filters(alert):
             economy = stock_data.get('RBICS_Economy')
             if not economy or economy not in selected_economies:
                 return False
-        
+
         # Sector filter
         if selected_sectors:
             sector = stock_data.get('RBICS_Sector')
             if not sector or sector not in selected_sectors:
                 return False
-        
+
         # Subsector filter
         if selected_subsectors:
             subsector = stock_data.get('RBICS_Subsector')
             if not subsector or subsector not in selected_subsectors:
                 return False
-        
+
         # Industry Group filter
         if selected_industry_groups:
             industry_group = stock_data.get('RBICS_Industry_Group')
             if not industry_group or industry_group not in selected_industry_groups:
                 return False
-        
+
         # Industry filter
         if selected_industries:
             industry = stock_data.get('RBICS_Industry')
             if not industry or industry not in selected_industries:
                 return False
-        
+
         # Subindustry filter
         if selected_subindustries:
             subindustry = stock_data.get('RBICS_Subindustry')
             if not subindustry or subindustry not in selected_subindustries:
                 return False
-    
+
     # ETF filters
     if stock_data is not None and stock_data.get('ETF_Issuer'):
         # ETF Issuer filter
@@ -524,25 +524,25 @@ def apply_filters(alert):
             issuer = stock_data.get('ETF_Issuer')
             if not issuer or issuer not in selected_issuers:
                 return False
-        
+
         # Asset Class filter
         if selected_asset_classes:
             asset_class = stock_data.get('Asset_Class')
             if not asset_class or asset_class not in selected_asset_classes:
                 return False
-        
+
         # ETF Focus filter
         if selected_focuses:
             focus = stock_data.get('ETF_Focus')
             if not focus or focus not in selected_focuses:
                 return False
-        
+
         # ETF Niche filter
         if selected_niches:
             niche = stock_data.get('ETF_Niche')
             if not niche or niche not in selected_niches:
                 return False
-    
+
     return True
 
 # Apply filters
@@ -699,12 +699,12 @@ else:
     # Pagination controls
     if total_pages > 1:
         col_page1, col_page2, col_page3 = st.columns([1, 2, 1])
-        
+
         with col_page1:
             if st.button("⬅️ Previous", disabled=(st.session_state.get('current_page', 1) <= 1)):
                 st.session_state.current_page = max(1, st.session_state.get('current_page', 1) - 1)
                 st.rerun()
-        
+
         with col_page2:
             current_page = st.selectbox(
                 "Page:",
@@ -715,42 +715,42 @@ else:
             if current_page != st.session_state.get('current_page', 1):
                 st.session_state.current_page = current_page
                 st.rerun()
-        
+
         with col_page3:
             if st.button("Next ➡️", disabled=(st.session_state.get('current_page', 1) >= total_pages)):
                 st.session_state.current_page = min(total_pages, st.session_state.get('current_page', 1) + 1)
                 st.rerun()
-        
+
         # Update current page in session state
         st.session_state.current_page = current_page
-        
+
         # Calculate start and end indices for current page
         start_idx = (current_page - 1) * ITEMS_PER_PAGE
         end_idx = min(start_idx + ITEMS_PER_PAGE, len(filtered_df))
-        
+
         # Get current page data
         current_page_df = filtered_df.iloc[start_idx:end_idx]
-        
+
         st.info(f"Showing alerts {start_idx + 1}-{end_idx} of {len(filtered_df)} (Page {current_page} of {total_pages})")
     else:
         current_page_df = filtered_df
         st.session_state.current_page = 1
-    
+
     # Display alerts in expandable sections (like home page)
     for idx, alert in current_page_df.iterrows():
         # Get the ID column name
         id_column = 'alert_id' if 'alert_id' in alert else 'id'
-        
+
         with st.expander(f"📊 {alert.get('name', 'N/A')} - {alert.get('stock_name', 'N/A')} ({alert.get('ticker', 'N/A')})"):
             col1, col2 = st.columns([3, 1])
-            
+
             with col1:
                 st.write(f"**Company:** {alert.get('stock_name', 'N/A')}")
                 st.write(f"**Ticker:** {alert.get('ticker', 'N/A')}")
                 st.write(f"**Exchange:** {alert.get('exchange', 'N/A')}")
                 st.write(f"**Timeframe:** {alert.get('timeframe', 'N/A')}")
                 st.write(f"**Action:** {alert.get('action', 'N/A')}")
-                
+
                 # Format conditions
                 try:
                     if 'conditions' in alert and alert['conditions']:
@@ -767,13 +767,13 @@ else:
                         st.write("**Conditions:** No conditions specified")
                 except:
                     st.write("**Conditions:** Error reading conditions")
-                
+
                 # Show last triggered
                 if 'last_triggered' in alert and alert['last_triggered']:
                     st.write(f"**Last Triggered:** {alert['last_triggered']}")
                 else:
                     st.write("**Last Triggered:** Never")
-            
+
             with col2:
                 # Selection checkbox - check if already selected
                 is_selected = alert[id_column] in st.session_state.selected_alert_ids
@@ -783,16 +783,16 @@ else:
                 else:
                     if alert[id_column] in st.session_state.selected_alert_ids:
                         st.session_state.selected_alert_ids.remove(alert[id_column])
-    
+
     # Select all options
     st.markdown("---")
-    
+
     # Show current selection count
     if st.session_state.selected_alert_ids:
         st.info(f"📋 Currently selected: {len(st.session_state.selected_alert_ids)} alert(s)")
-    
+
     col_select1, col_select2 = st.columns(2)
-    
+
     with col_select1:
         if st.button("✅ Select All on This Page"):
             for idx, alert in current_page_df.iterrows():
@@ -800,7 +800,7 @@ else:
                 if alert[id_column] not in st.session_state.selected_alert_ids:
                     st.session_state.selected_alert_ids.append(alert[id_column])
             st.rerun()
-    
+
     with col_select2:
         if total_pages > 1:
             if st.button("✅ Select All Filtered Alerts"):
@@ -809,7 +809,7 @@ else:
                     if alert[id_column] not in st.session_state.selected_alert_ids:
                         st.session_state.selected_alert_ids.append(alert[id_column])
                 st.rerun()
-    
+
     if st.session_state.selected_alert_ids:
         if st.button("🗑️ Clear All Selections"):
             st.session_state.selected_alert_ids.clear()
@@ -819,14 +819,14 @@ else:
 if st.session_state.selected_alert_ids:
     st.markdown("---")
     st.markdown("### 🗑️ **DELETE BUTTON - ALWAYS VISIBLE**")
-    
+
     # Get selected alerts count
     id_column = 'alert_id' if 'alert_id' in filtered_df.columns else 'id'
     selected_alerts = filtered_df[filtered_df[id_column].isin(st.session_state.selected_alert_ids)]
-    
+
     # Make the delete button very prominent
     st.markdown("🚨 **WARNING: This action cannot be undone!** 🚨")
-    
+
     col_delete1, col_delete2, col_delete3 = st.columns([1, 2, 1])
     with col_delete2:
         if st.button(f"🗑️ DELETE ALL {len(selected_alerts)} SELECTED ALERTS", type="primary", use_container_width=True):
@@ -837,7 +837,7 @@ if st.session_state.selected_alert_ids:
             # Clear selections after successful deletion
             st.session_state.selected_alert_ids.clear()
             st.rerun()
-    
+
     st.markdown("---")
 else:
     st.info("No alerts selected. Use the checkboxes above to select alerts for deletion.")
@@ -851,14 +851,14 @@ col1, col2, col3, col4 = st.columns(4)
 
 with col1:
     st.metric("Total Alerts", len(df_alerts))
-    
+
 with col2:
     st.metric("Filtered Alerts", len(filtered_df))
-    
+
 with col3:
     never_triggered = len(df_alerts[df_alerts['last_triggered'].isna()])
     st.metric("Never Triggered", never_triggered)
-    
+
 with col4:
     triggered_today = len(df_alerts[
         (df_alerts['last_triggered_date'].dt.date == pd.Timestamp.now().date()) &

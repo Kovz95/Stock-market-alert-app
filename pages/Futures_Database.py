@@ -4,7 +4,7 @@ import os
 import sys
 import json
 from datetime import datetime
-from db_config import db_config
+from src.data_access.db_config import db_config
 
 # Add the parent directory to the path for imports
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))

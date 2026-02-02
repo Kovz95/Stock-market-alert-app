@@ -17,7 +17,7 @@ import uuid
 from streamlit_tags import st_tags
 
 # Local imports
-from utils import (
+from src.utils.utils import (
     load_market_data,
     bl_sp,
     predefined_suggestions,
@@ -99,7 +99,7 @@ country_to_code = {
     "Belgium": "BE", "Ireland": "IE", "Portugal": "PT",
     "Denmark": "DK", "Finland": "FI", "Sweden": "SE",
     "Norway": "NO", "Austria": "AT", "Poland": "PL",
-    "Hungary": "HU", "Greece": "GR", "Turkey": "TR", 
+    "Hungary": "HU", "Greece": "GR", "Turkey": "TR",
     "Mexico": "MX", "Czech Republic": "CZ"
 }
 
@@ -118,11 +118,11 @@ filtered_stocks_display = [f"{row['Name']} ({row['Symbol']})" for _, row in filt
 if is_ratio_alert:
     # For ratio alerts, we need to handle two stocks
     st.write("**Ratio Alert - Select Two Stocks:**")
-    
+
     # Find the current stocks in the filtered list
     current_stock1_display = f"{alert['stock_name']} ({alert['ticker1']})"
     current_stock2_display = f"{alert['stock_name']} ({alert['ticker2']})"
-    
+
     # Default to current values if they exist in the filtered list
     default_index1 = 0
     default_index2 = 0
@@ -130,16 +130,16 @@ if is_ratio_alert:
         default_index1 = filtered_stocks_display.index(current_stock1_display)
     if current_stock2_display in filtered_stocks_display:
         default_index2 = filtered_stocks_display.index(current_stock2_display)
-    
+
     selected_stock1_display = st.selectbox("Select First Stock:", filtered_stocks_display, index=default_index1, key=f"stock1_{alert_id}")
     selected_stock2_display = st.selectbox("Select Second Stock:", filtered_stocks_display, index=default_index2, key=f"stock2_{alert_id}")
-    
+
     # Extract stock names and tickers
     stock1_name = selected_stock1_display.split(" (")[0]
     stock2_name = selected_stock2_display.split(" (")[0]
     ticker1 = selected_stock1_display.split("(")[1].split(")")[0]
     ticker2 = selected_stock2_display.split("(")[1].split(")")[0]
-    
+
 else:
     # For regular alerts
     # Find the current stock in the filtered list
@@ -147,9 +147,9 @@ else:
     default_index = 0
     if current_stock_display in filtered_stocks_display:
         default_index = filtered_stocks_display.index(current_stock_display)
-    
+
     selected_stocks_display = st.multiselect("Select Stock(s):", filtered_stocks_display, default=[filtered_stocks_display[default_index]] if default_index < len(filtered_stocks_display) else [], key=f"stocks_{alert_id}")
-    
+
     # Convert display names back to stock names for processing
     selected_stocks = []
     for display_name in selected_stocks_display:
@@ -249,10 +249,10 @@ if st.button("Update Alert", key=f"update_alert_{alert_id}"):
                 if not selected_stocks:
                     st.error("Please select at least one stock.")
                     st.stop()
-                
+
                 failures = []
                 successes = []
-                
+
                 for stock_name in selected_stocks:
                     try:
                         # Map to ticker - handle duplicate names with better logic
@@ -275,7 +275,7 @@ if st.button("Update Alert", key=f"update_alert_{alert_id}"):
                                 st.warning(f"Multiple stocks found for '{stock_name}'. Using '{ticker}'. Other options: {', '.join(other_tickers)}")
                         else:
                             ticker = matching_stocks.iloc[0]["Symbol"]
-                        
+
                         update_alert(
                             alert_id=alert_id,
                             name=alert_name,
@@ -290,17 +290,17 @@ if st.button("Update Alert", key=f"update_alert_{alert_id}"):
                             ratio="No"
                         )
                         successes.append(f"{stock_name} ({ticker})")
-                        
+
                     except Exception as e:
                         failures.append(f"{stock_name}: {str(e)}")
-                
+
                 if successes:
                     st.success(f"✅ Alert updated successfully for: {', '.join(successes)}")
                     if failures:
                         st.error(f"❌ Failed for: {', '.join(failures)}")
                 else:
                     st.error(f"❌ Failed for all stocks: {', '.join(failures)}")
-            
+
             # Clear session state and redirect
             st.session_state.entry_conditions = {}
             st.session_state.entry_combination = ""
@@ -308,7 +308,7 @@ if st.button("Update Alert", key=f"update_alert_{alert_id}"):
             st.success("Alert updated successfully! Redirecting to Home page...")
             time.sleep(2)
             st.switch_page("Home.py")
-            
+
         except Exception as e:
             st.error(f"Error updating alert: {str(e)}")
-            st.error(f"Traceback: {traceback.format_exc()}") 
+            st.error(f"Traceback: {traceback.format_exc()}")

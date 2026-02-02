@@ -41,7 +41,7 @@ from backend_fmp import FMPDataFetcher
 from data_access.alert_repository import get_alert, list_alerts
 
 # Import indicator functions directly for special handling
-from indicators_lib import (
+from src.utils.indicators import (
     HARSI_Flip,
     SMA,
     EMA,

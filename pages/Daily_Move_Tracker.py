@@ -4,8 +4,8 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 
-from utils import load_market_data
-from db_config import db_config
+from src.utils.utils import load_market_data
+from src.data_access.db_config import db_config
 
 st.set_page_config(
     page_title="Daily Move Tracker",

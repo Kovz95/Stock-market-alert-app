@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 # Thread-local storage for database connections
 _thread_local = threading.local()
 
-from db_config import db_config
+from src.data_access.db_config import db_config
 
 DAILY_ALIASES = {'1d', 'daily', 'day'}
 WEEKLY_ALIASES = {'1wk', 'weekly', '1week', 'week'}

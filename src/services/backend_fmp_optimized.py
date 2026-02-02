@@ -13,7 +13,7 @@ from typing import Optional, Dict, Any
 import logging
 import os
 import json
-from db_config import db_config
+from src.data_access.db_config import db_config
 
 logger = logging.getLogger(__name__)
 

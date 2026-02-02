@@ -5,14 +5,16 @@ Allows users to search for a company by name or ticker and view alert trigger hi
 
 import streamlit as st
 import json
-from db_config import db_config
-from data_access.metadata_repository import (
+from datetime import datetime, timedelta
+
+import pandas as pd
+
+from src.data_access.db_config import db_config
+from src.data_access.metadata_repository import (
     fetch_alerts_list,
     fetch_portfolios,
     fetch_stock_metadata_map,
 )
-from datetime import datetime, timedelta
-import pandas as pd
 
 st.set_page_config(page_title="Alert History", page_icon="🔍", layout="wide")
 

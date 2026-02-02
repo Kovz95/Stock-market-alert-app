@@ -18,10 +18,10 @@ import json
 import pandas as pd
 import uuid
 from streamlit_tags import st_tags
-from data_access.document_store import load_document
+from src.data_access.document_store import load_document
 
 # Local imports
-from utils import (
+from src.utils.utils import (
     load_market_data,
     bl_sp,
     predefined_suggestions,
@@ -46,56 +46,56 @@ if "entry_combination" not in st.session_state:
 def extract_parameter(condition, param_name):
     """
     Extract parameter value from condition string
-    
+
     Args:
         condition: The condition string
         param_name: Name of the parameter to extract
-    
+
     Returns:
         Parameter value as string or None if not found
     """
     import re
-    
+
     # Pattern to match parameter_name = value (with spaces)
     pattern = rf"{param_name}\s*=\s*([^,\s)]+)"
     match = re.search(pattern, condition, re.IGNORECASE)
-    
+
     if match:
         return match.group(1).strip()
-    
+
     # Pattern to match parameter_name = value (without spaces)
     pattern2 = rf"{param_name}=([^,\s)]+)"
     match2 = re.search(pattern2, condition, re.IGNORECASE)
-    
+
     if match2:
         return match2.group(1).strip()
-    
+
     # Pattern to match just the value after parameter_name (with space)
     pattern3 = rf"{param_name}\s+([^,\s)]+)"
     match3 = re.search(pattern3, condition, re.IGNORECASE)
-    
+
     if match3:
         return match3.group(1).strip()
-    
+
     return None
 
 def extract_price_value(condition):
     """
     Extract price value from price condition
-    
+
     Args:
         condition: The condition string
-    
+
     Returns:
         Price value as string or None if not found
     """
     import re
-    
+
     # Pattern to match price values (numbers with optional decimals)
     # Look for numbers that are likely to be prices (not periods or other parameters)
     pattern = r"(\d+\.?\d*)"
     matches = re.findall(pattern, condition)
-    
+
     if matches:
         # Return the first number found (usually the price)
         # Filter out common non-price numbers like periods
@@ -109,29 +109,29 @@ def extract_price_value(condition):
                 continue
         # If no likely price found, return the first number
         return matches[0]
-    
+
     return None
 
 def extract_volume_value(condition):
     """
     Extract volume value from volume condition
-    
+
     Args:
         condition: The condition string
-    
+
     Returns:
         Volume value as string or None if not found
     """
     import re
-    
+
     # Pattern to match volume multipliers or thresholds
     pattern = r"(\d+\.?\d*)[xX]?"  # Matches numbers with optional 'x' multiplier
     matches = re.findall(pattern, condition)
-    
+
     if matches:
         # Return the first number found
         return matches[0]
-    
+
     return None
 
 # Utility: optionally wrap a numeric indicator expression in a z-score
@@ -156,26 +156,26 @@ def apply_zscore_indicator(indicator_expr: str, use_zscore: bool, lookback: int)
 def generate_alert_name_from_conditions(stock_name, conditions_dict, combination_logic=""):
     """
     Generate a descriptive alert name based on the conditions used
-    
+
     Args:
         stock_name: Name of the stock
         conditions_dict: Dictionary of conditions from session state
         combination_logic: How conditions are combined (AND/OR)
-    
+
     Returns:
         Descriptive alert name
     """
     if not conditions_dict:
         return f"{stock_name} Alert"
-    
+
     # Extract conditions and create a descriptive name
     condition_descriptions = []
-    
+
     for condition_id, conditions in conditions_dict.items():
         for condition in conditions:
             # Clean up the condition for display
             clean_condition = condition.strip()
-            
+
             # Extract key indicators with parameters from common patterns
             if "sma(" in clean_condition.lower():
                 # Extract period parameter
@@ -211,7 +211,7 @@ def generate_alert_name_from_conditions(stock_name, conditions_dict, combination
                 slow_match = extract_parameter(clean_condition, "slow_period")
                 signal_match = extract_parameter(clean_condition, "signal_period")
                 type_match = extract_parameter(clean_condition, "type")
-                
+
                 params = []
                 if fast_match:
                     params.append(f"fast={fast_match}")
@@ -221,7 +221,7 @@ def generate_alert_name_from_conditions(stock_name, conditions_dict, combination
                     params.append(f"signal={signal_match}")
                 if type_match:
                     params.append(f"type={type_match}")
-                
+
                 if params:
                     condition_descriptions.append(f"MACD({','.join(params)})")
                 else:
@@ -231,7 +231,7 @@ def generate_alert_name_from_conditions(stock_name, conditions_dict, combination
                 period_match = extract_parameter(clean_condition, "period")
                 std_dev_match = extract_parameter(clean_condition, "std_dev")
                 type_match = extract_parameter(clean_condition, "type")
-                
+
                 params = []
                 if period_match:
                     params.append(f"period={period_match}")
@@ -239,7 +239,7 @@ def generate_alert_name_from_conditions(stock_name, conditions_dict, combination
                     params.append(f"std={std_dev_match}")
                 if type_match:
                     params.append(f"type={type_match}")
-                
+
                 if params:
                     condition_descriptions.append(f"BB({','.join(params)})")
                 else:
@@ -276,13 +276,13 @@ def generate_alert_name_from_conditions(stock_name, conditions_dict, combination
                 # Extract HARSI parameters
                 period_match = extract_parameter(clean_condition, "period")
                 smoothing_match = extract_parameter(clean_condition, "smoothing")
-                
+
                 params = []
                 if period_match:
                     params.append(f"period={period_match}")
                 if smoothing_match:
                     params.append(f"smooth={smoothing_match}")
-                
+
                 if params:
                     condition_descriptions.append(f"HARSI({','.join(params)})")
                 else:
@@ -380,13 +380,13 @@ def generate_alert_name_from_conditions(stock_name, conditions_dict, combination
                         condition_descriptions.append("Custom")
                 else:
                     condition_descriptions.append("Custom")
-    
+
     # Remove duplicates while preserving order
     unique_conditions = []
     for condition in condition_descriptions:
         if condition not in unique_conditions:
             unique_conditions.append(condition)
-    
+
     # Create the alert name
     if len(unique_conditions) == 1:
         condition_part = unique_conditions[0]
@@ -398,7 +398,7 @@ def generate_alert_name_from_conditions(stock_name, conditions_dict, combination
             condition_part = f"{'|'.join(unique_conditions)}"
         else:
             condition_part = f"{'&'.join(unique_conditions)}"
-    
+
     return f"{stock_name} - {condition_part} Alert"
 
 
@@ -619,23 +619,23 @@ def display_indicator_guide():
     with st.expander("📊 Indicator Guide & Condition Syntax", expanded=False):
         st.markdown("### Available Indicators and Conditions")
         st.markdown("This guide shows all available indicators and their conditions with proper syntax.")
-        
+
         guide = get_indicator_guide()
-        
+
         for category, data in guide.items():
             st.markdown(f"#### {category}")
             st.markdown(f"*{data['description']}*")
-            
+
             # Create columns for better layout
             col1, col2, col3 = st.columns([1, 2, 2])
-            
+
             with col1:
                 st.markdown("**Condition**")
             with col2:
                 st.markdown("**Syntax**")
             with col3:
                 st.markdown("**Description**")
-            
+
             for condition, details in data['conditions'].items():
                 with col1:
                     st.markdown(f"`{condition}`")
@@ -657,7 +657,7 @@ def display_indicator_guide():
                     st.markdown(f"{details.get('description', 'No description available')}")
                     if 'example' in details:
                         st.caption(f"Example: {details['example']}")
-            
+
             st.markdown("---")
 
     catalog_path = Path(__file__).resolve().parent.parent / "docs" / "add_alert_indicator_catalog.md"
@@ -764,7 +764,7 @@ if selected_asset_type == "Futures":
 elif selected_asset_type in ["All", "Stocks", "ETFs"]:
     st.sidebar.markdown("---")
     st.sidebar.subheader("🌍 Location Filters")
-    
+
     # Country Filter
     if 'Country' in market_data.columns:
         available_countries = sorted(market_data['Country'].dropna().unique())
@@ -774,14 +774,14 @@ elif selected_asset_type in ["All", "Stocks", "ETFs"]:
             default=[],
             help="Select countries to filter symbols"
         )
-    
+
     # Exchange Filter - cascading from country
     if 'Exchange' in market_data.columns:
         if selected_countries:
             available_exchanges = sorted(market_data[market_data['Country'].isin(selected_countries)]['Exchange'].dropna().unique())
         else:
             available_exchanges = sorted(market_data['Exchange'].dropna().unique())
-        
+
         selected_exchanges = st.sidebar.multiselect(
             "Filter by Exchange:",
             available_exchanges,
@@ -793,20 +793,20 @@ elif selected_asset_type in ["All", "Stocks", "ETFs"]:
 if selected_asset_type in ["All", "Stocks"] and 'RBICS_Sector' in market_data.columns:
     st.sidebar.markdown("---")
     st.sidebar.subheader("🏭 Stock Industry Filters")
-    
+
     # Only show stocks (not ETFs) for stock filters - use Asset_Type field
     if 'Asset_Type' in market_data.columns:
         stocks_only_data = market_data[market_data['Asset_Type'] == 'Stock']
     else:
         # Fallback to old method if Asset_Type not available
         stocks_only_data = market_data[~market_data['ETF_Issuer'].notna()] if 'ETF_Issuer' in market_data.columns else market_data
-    
+
     # Apply country and exchange filters if selected
     if selected_countries and 'Country' in stocks_only_data.columns:
         stocks_only_data = stocks_only_data[stocks_only_data['Country'].isin(selected_countries)]
     if selected_exchanges and 'Exchange' in stocks_only_data.columns:
         stocks_only_data = stocks_only_data[stocks_only_data['Exchange'].isin(selected_exchanges)]
-    
+
     # Economy filter
     available_economies = stocks_only_data['RBICS_Economy'].dropna().unique() if 'RBICS_Economy' in stocks_only_data.columns else []
     selected_economies = st.sidebar.multiselect(
@@ -815,7 +815,7 @@ if selected_asset_type in ["All", "Stocks"] and 'RBICS_Sector' in market_data.co
         default=[],
         help="Select economies to filter stocks"
     )
-    
+
     # Sector filter - cascading from economy
     if selected_economies and 'RBICS_Economy' in stocks_only_data.columns:
         # Filter sectors based on selected economies
@@ -823,14 +823,14 @@ if selected_asset_type in ["All", "Stocks"] and 'RBICS_Sector' in market_data.co
         available_sectors = sorted(available_sectors)
     else:
         available_sectors = stocks_only_data['RBICS_Sector'].dropna().unique() if 'RBICS_Sector' in stocks_only_data.columns else []
-    
+
     selected_sectors = st.sidebar.multiselect(
         "Filter by Sector:",
         sorted(available_sectors),
         default=[],
         help="Select sectors to filter stocks"
     )
-    
+
     # Subsector filter - cascading from sector
     if selected_sectors and 'RBICS_Sector' in stocks_only_data.columns:
         # Filter subsectors based on selected sectors
@@ -838,14 +838,14 @@ if selected_asset_type in ["All", "Stocks"] and 'RBICS_Sector' in market_data.co
         available_subsectors = sorted(available_subsectors)
     else:
         available_subsectors = stocks_only_data['RBICS_Subsector'].dropna().unique() if 'RBICS_Subsector' in stocks_only_data.columns else []
-    
+
     selected_subsectors = st.sidebar.multiselect(
         "Filter by Subsector:",
         sorted(available_subsectors),
         default=[],
         help="Select subsectors to filter stocks"
     )
-    
+
     # Industry Group filter - cascading from subsector
     if selected_subsectors and 'RBICS_Subsector' in stocks_only_data.columns:
         # Filter industry groups based on selected subsectors
@@ -853,14 +853,14 @@ if selected_asset_type in ["All", "Stocks"] and 'RBICS_Sector' in market_data.co
         available_industry_groups = sorted(available_industry_groups)
     else:
         available_industry_groups = stocks_only_data['RBICS_Industry_Group'].dropna().unique() if 'RBICS_Industry_Group' in stocks_only_data.columns else []
-    
+
     selected_industry_groups = st.sidebar.multiselect(
         "Filter by Industry Group:",
         sorted(available_industry_groups),
         default=[],
         help="Select industry groups to filter stocks"
     )
-    
+
     # Industry filter - cascading from industry group
     if selected_industry_groups and 'RBICS_Industry_Group' in stocks_only_data.columns:
         # Filter industries based on selected industry groups
@@ -868,14 +868,14 @@ if selected_asset_type in ["All", "Stocks"] and 'RBICS_Sector' in market_data.co
         available_industries = sorted(available_industries)
     else:
         available_industries = stocks_only_data['RBICS_Industry'].dropna().unique() if 'RBICS_Industry' in stocks_only_data.columns else []
-    
+
     selected_industries = st.sidebar.multiselect(
         "Filter by Industry:",
         sorted(available_industries),
         default=[],
         help="Select industries to filter stocks"
     )
-    
+
     # Subindustry filter - cascading from industry
     if selected_industries and 'RBICS_Industry' in stocks_only_data.columns:
         # Filter subindustries based on selected industries
@@ -883,7 +883,7 @@ if selected_asset_type in ["All", "Stocks"] and 'RBICS_Sector' in market_data.co
         available_subindustries = sorted(available_subindustries)
     else:
         available_subindustries = stocks_only_data['RBICS_Subindustry'].dropna().unique() if 'RBICS_Subindustry' in stocks_only_data.columns else []
-    
+
     selected_subindustries = st.sidebar.multiselect(
         "Filter by Subindustry:",
         sorted(available_subindustries),
@@ -895,20 +895,20 @@ if selected_asset_type in ["All", "Stocks"] and 'RBICS_Sector' in market_data.co
 if selected_asset_type in ["All", "ETFs"] and 'ETF_Issuer' in market_data.columns:
     st.sidebar.markdown("---")
     st.sidebar.subheader("💼 ETF Filters")
-    
+
     # Only show ETFs - use Asset_Type field
     if 'Asset_Type' in market_data.columns:
         etfs_only_data = market_data[market_data['Asset_Type'] == 'ETF']
     else:
         # Fallback to old method if Asset_Type not available
         etfs_only_data = market_data[market_data['ETF_Issuer'].notna()] if 'ETF_Issuer' in market_data.columns else market_data
-    
+
     # Apply country and exchange filters if selected
     if selected_countries and 'Country' in etfs_only_data.columns:
         etfs_only_data = etfs_only_data[etfs_only_data['Country'].isin(selected_countries)]
     if selected_exchanges and 'Exchange' in etfs_only_data.columns:
         etfs_only_data = etfs_only_data[etfs_only_data['Exchange'].isin(selected_exchanges)]
-    
+
     # ETF Issuer filter
     available_issuers = etfs_only_data['ETF_Issuer'].dropna().unique() if 'ETF_Issuer' in etfs_only_data.columns else []
     selected_issuers = st.sidebar.multiselect(
@@ -917,7 +917,7 @@ if selected_asset_type in ["All", "ETFs"] and 'ETF_Issuer' in market_data.column
         default=[],
         help="Select ETF issuers/providers"
     )
-    
+
     # Asset Class filter
     if 'Asset_Class' in etfs_only_data.columns:
         available_asset_classes = etfs_only_data['Asset_Class'].dropna().unique()
@@ -929,7 +929,7 @@ if selected_asset_type in ["All", "ETFs"] and 'ETF_Issuer' in market_data.column
         )
     else:
         selected_asset_classes = []
-    
+
     # ETF Focus filter
     if 'ETF_Focus' in etfs_only_data.columns:
         if selected_asset_classes:
@@ -944,7 +944,7 @@ if selected_asset_type in ["All", "ETFs"] and 'ETF_Issuer' in market_data.column
         )
     else:
         selected_focuses = []
-    
+
     # ETF Niche filter
     if 'ETF_Niche' in etfs_only_data.columns:
         if selected_focuses:
@@ -982,13 +982,13 @@ if selected_asset_type == "Futures":
 elif selected_asset_type == "All":
     # Start with all data
     filtered_stocks_data = market_data.copy()
-    
+
     # Apply location filters first
     if selected_countries and 'Country' in filtered_stocks_data.columns:
         filtered_stocks_data = filtered_stocks_data[filtered_stocks_data['Country'].isin(selected_countries)]
     if selected_exchanges and 'Exchange' in filtered_stocks_data.columns:
         filtered_stocks_data = filtered_stocks_data[filtered_stocks_data['Exchange'].isin(selected_exchanges)]
-    
+
 elif selected_asset_type == "Stocks":
     # Start with stocks only - use Asset_Type field
     if 'Asset_Type' in market_data.columns:
@@ -996,43 +996,43 @@ elif selected_asset_type == "Stocks":
     else:
         # Fallback to old method
         filtered_stocks_data = market_data[~market_data['ETF_Issuer'].notna()] if 'ETF_Issuer' in market_data.columns else market_data
-    
+
     # Apply location filters
     if selected_countries and 'Country' in filtered_stocks_data.columns:
         filtered_stocks_data = filtered_stocks_data[filtered_stocks_data['Country'].isin(selected_countries)]
     if selected_exchanges and 'Exchange' in filtered_stocks_data.columns:
         filtered_stocks_data = filtered_stocks_data[filtered_stocks_data['Exchange'].isin(selected_exchanges)]
-    
+
     if selected_economies and 'RBICS_Economy' in filtered_stocks_data.columns:
         filtered_stocks_data = filtered_stocks_data[
             filtered_stocks_data['RBICS_Economy'].isin(selected_economies)
         ]
-    
+
     if selected_sectors and 'RBICS_Sector' in filtered_stocks_data.columns:
         filtered_stocks_data = filtered_stocks_data[
             filtered_stocks_data['RBICS_Sector'].isin(selected_sectors)
         ]
-    
+
     if selected_subsectors and 'RBICS_Subsector' in filtered_stocks_data.columns:
         filtered_stocks_data = filtered_stocks_data[
             filtered_stocks_data['RBICS_Subsector'].isin(selected_subsectors)
         ]
-    
+
     if selected_industry_groups and 'RBICS_Industry_Group' in filtered_stocks_data.columns:
         filtered_stocks_data = filtered_stocks_data[
             filtered_stocks_data['RBICS_Industry_Group'].isin(selected_industry_groups)
         ]
-    
+
     if selected_industries and 'RBICS_Industry' in filtered_stocks_data.columns:
         filtered_stocks_data = filtered_stocks_data[
             filtered_stocks_data['RBICS_Industry'].isin(selected_industries)
         ]
-    
+
     if selected_subindustries and 'RBICS_Subindustry' in filtered_stocks_data.columns:
         filtered_stocks_data = filtered_stocks_data[
             filtered_stocks_data['RBICS_Subindustry'].isin(selected_subindustries)
         ]
-    
+
     if any([selected_economies, selected_sectors, selected_subsectors, selected_industry_groups, selected_industries, selected_subindustries]):
         st.sidebar.info(f"Showing {len(filtered_stocks_data)} stocks after filtering")
     else:
@@ -1045,33 +1045,33 @@ elif selected_asset_type == "ETFs":
     else:
         # Fallback to old method
         filtered_stocks_data = market_data[market_data['ETF_Issuer'].notna()] if 'ETF_Issuer' in market_data.columns else market_data
-    
+
     # Apply location filters
     if selected_countries and 'Country' in filtered_stocks_data.columns:
         filtered_stocks_data = filtered_stocks_data[filtered_stocks_data['Country'].isin(selected_countries)]
     if selected_exchanges and 'Exchange' in filtered_stocks_data.columns:
         filtered_stocks_data = filtered_stocks_data[filtered_stocks_data['Exchange'].isin(selected_exchanges)]
-    
+
     if selected_issuers and 'ETF_Issuer' in filtered_stocks_data.columns:
         filtered_stocks_data = filtered_stocks_data[
             filtered_stocks_data['ETF_Issuer'].isin(selected_issuers)
         ]
-    
+
     if selected_asset_classes and 'Asset_Class' in filtered_stocks_data.columns:
         filtered_stocks_data = filtered_stocks_data[
             filtered_stocks_data['Asset_Class'].isin(selected_asset_classes)
         ]
-    
+
     if selected_focuses and 'ETF_Focus' in filtered_stocks_data.columns:
         filtered_stocks_data = filtered_stocks_data[
             filtered_stocks_data['ETF_Focus'].isin(selected_focuses)
         ]
-    
+
     if selected_niches and 'ETF_Niche' in filtered_stocks_data.columns:
         filtered_stocks_data = filtered_stocks_data[
             filtered_stocks_data['ETF_Niche'].isin(selected_niches)
         ]
-    
+
     if any([selected_issuers, selected_asset_classes, selected_focuses, selected_niches]):
         st.sidebar.info(f"Showing {len(filtered_stocks_data)} ETFs after filtering")
     else:
@@ -1132,7 +1132,7 @@ with col2:
     elif selected_asset_type == "Futures":
         if 'selected_futures_categories' in locals() and selected_futures_categories:
             active_filters.append(f"{len(selected_futures_categories)} categories")
-    
+
     if active_filters:
         st.info("🔍 **Active Filters:** " + ", ".join(active_filters))
     else:
@@ -1147,8 +1147,8 @@ with col3:
 
 # Inform users about duplicate handling
 st.info("""
-💡 **Smart Duplicate Detection**: The system now allows you to create multiple alerts for the same stock with the same conditions, 
-as long as they have different names. If similar alerts already exist, you'll see suggestions to help you decide whether to 
+💡 **Smart Duplicate Detection**: The system now allows you to create multiple alerts for the same stock with the same conditions,
+as long as they have different names. If similar alerts already exist, you'll see suggestions to help you decide whether to
 create a new one or update an existing one.
 """)
 
@@ -1159,51 +1159,51 @@ tab1 = st.tabs(["🎯 Individual Alert"])[0]
 
 with tab1:
     st.subheader("Create Individual Alert")
-    
+
     # Initialize selected_stocks for this tab
     selected_stocks = []
-    
+
     # Display the comprehensive indicator guide
     display_indicator_guide()
 
     # Quick Reference for Common Conditions
     with st.expander("⚡ Quick Reference - Common Conditions", expanded=False):
         st.markdown("### Most Commonly Used Conditions")
-        
+
         col1, col2 = st.columns(2)
-        
+
         with col1:
             st.markdown("**Price Conditions**")
             st.markdown("- `price_above: 150.00` - Price > $150")
             st.markdown("- `price_below: 100.00` - Price < $100")
             st.markdown("- `price_equals: 125.50` - Price = $125.50")
-            
+
             st.markdown("**Moving Averages**")
             st.markdown("- `price_above_ma: 20` - Price above 20-period SMA")
             st.markdown("- `price_below_ma: 50` - Price below 50-period EMA")
             st.markdown("- `ma_crossover: 10 > 20` - Fast MA crosses above slow MA")
-        
+
         with col2:
             st.markdown("**RSI Conditions**")
             st.markdown("- `rsi_oversold: 30` - RSI < 30 (oversold)")
             st.markdown("- `rsi_overbought: 70` - RSI > 70 (overbought)")
-            
+
             st.markdown("**MACD Conditions**")
             st.markdown("- `macd_bullish_crossover` - MACD line > Signal line")
             st.markdown("- `macd_bearish_crossover` - MACD line < Signal line")
-            
+
             st.markdown("**Multi-Timeframe**")
             st.markdown("- `daily_price_above_weekly_ma: 20` - Daily price > Weekly MA")
             st.markdown("- `daily_price_above_weekly_high` - Daily price > Weekly high")
             st.markdown("- `daily_rsi_vs_weekly_rsi: bullish` - Daily RSI > Weekly RSI")
-        
+
         st.markdown("---")
         st.markdown("**💡 Tip**: Use these conditions in the 'Add Condition' section below. You can combine multiple conditions with AND/OR logic.")
 
     # Available Indicators Overview
     with st.expander("🎯 Available Indicators Overview", expanded=False):
         st.markdown("### What Each Indicator Does")
-        
+
         indicators_info = {
             "📈 **Price-Based**": "Basic price comparisons (above, below, equals)",
             "📊 **Moving Averages**": "Trend following (SMA, EMA, crossovers)",
@@ -1214,10 +1214,10 @@ with tab1:
             "⚖️ **Cross-Exchange Ratio**": "Ratio between different market stocks",
             "🔄 **Multi-Timeframe Analysis**": "Compare daily vs weekly trends and values"
         }
-        
+
         for indicator, description in indicators_info.items():
             st.markdown(f"**{indicator}**: {description}")
-        
+
         st.markdown("---")
         st.markdown("**🔧 Advanced Features**:")
         st.markdown("- Combine multiple conditions with AND/OR logic")
@@ -1233,20 +1233,20 @@ with tab1:
     if st.session_state.entry_conditions and not alert_name:
         st.markdown("### 📝 Alert Name Preview")
         st.markdown("**Example alert names that will be generated:**")
-        
+
         # Get a sample stock name for preview
         sample_stock = "Apple Inc."  # Default sample
         if selected_stocks and len(selected_stocks) == 1:
             sample_stock = selected_stocks[0]
         elif selected_stocks and len(selected_stocks) > 1:
             sample_stock = selected_stocks[0]  # Use first selected stock for preview
-        
+
         preview_name = generate_alert_name_from_conditions(
-            sample_stock, 
-            st.session_state.entry_conditions, 
+            sample_stock,
+            st.session_state.entry_conditions,
             st.session_state.entry_combination
         )
-        
+
         st.info(f"**Example:** `{preview_name}`")
         st.markdown("💡 *This naming pattern will be applied to all selected stocks. You can override this by entering a custom alert name above.*")
 
@@ -1257,7 +1257,7 @@ with tab1:
 
     # Use the asset type selected in the sidebar
     asset_type = selected_asset_type
-    
+
     # Display selected asset type
     st.info(f"📈 Creating alert for: **{asset_type}**")
 
@@ -1350,7 +1350,7 @@ with tab1:
             ["Stocks", "ETFs", "Futures", "Mixed (Stock/ETF/Future)"],
             help="Choose whether to create a ratio between stocks, ETFs, futures, or mix different types"
         )
-        
+
         # Initialize variables for ratio calculation
         first_stock_name = None
         first_ticker = None
@@ -1358,13 +1358,13 @@ with tab1:
         second_ticker = None
         first_country_code = None
         second_country_code = None
-        
+
         # Create two columns for asset selection
         col1, col2 = st.columns(2)
-        
+
         with col1:
             st.subheader("First Asset")
-            
+
             # Filter data based on asset type
             if ratio_asset_type == "Stocks":
                 # Use stocks from filtered_stocks_data
@@ -1372,12 +1372,12 @@ with tab1:
             else:
                 # Use ETFs from filtered_stocks_data
                 ratio_data = filtered_stocks_data[filtered_stocks_data['Asset_Type'] == 'ETF'] if 'Asset_Type' in filtered_stocks_data.columns else filtered_stocks_data[filtered_stocks_data['ETF_Issuer'].notna()]
-            
+
             if ratio_asset_type in ["Stocks", "ETFs"]:
                 # Get unique exchanges from the filtered data
                 if 'Exchange' in ratio_data.columns:
                     available_exchanges = sorted(ratio_data['Exchange'].dropna().unique())
-                    
+
                     if not available_exchanges:
                         st.warning(f"⚠️ No {ratio_asset_type.lower()} found in the database.")
                         first_exchange = None
@@ -1387,10 +1387,10 @@ with tab1:
                             available_exchanges,
                             key="first_exchange_ratio"
                         )
-                        
+
                         # Filter assets for selected exchange
                         first_exchange_data = ratio_data[ratio_data['Exchange'] == first_exchange]
-                        
+
                         if first_exchange_data.empty:
                             st.warning(f"⚠️ No {ratio_asset_type.lower()} found in {first_exchange}.")
                             first_stock = None
@@ -1404,7 +1404,7 @@ with tab1:
                                 sorted(first_stocks_display),
                                 key="first_stock_ratio"
                             )
-                            
+
                             # Extract ticker and name
                             if first_stock:
                                 first_ticker = first_stock.split(" (")[1].rstrip(")")
@@ -1420,16 +1420,16 @@ with tab1:
                     first_stock_name = None
                     first_ticker = None
                     first_country_code = None
-        
+
         with col2:
             st.subheader("Second Asset")
-            
+
             # Second asset selection - similar to first
             if ratio_asset_type in ["Stocks", "ETFs"]:
                 # Get unique exchanges from the filtered data
                 if 'Exchange' in ratio_data.columns:
                     available_exchanges = sorted(ratio_data['Exchange'].dropna().unique())
-                    
+
                     if not available_exchanges:
                         st.warning(f"⚠️ No {ratio_asset_type.lower()} found in the database.")
                         second_exchange = None
@@ -1439,10 +1439,10 @@ with tab1:
                             available_exchanges,
                             key="second_exchange_ratio"
                         )
-                        
+
                         # Filter assets for selected exchange
                         second_exchange_data = ratio_data[ratio_data['Exchange'] == second_exchange]
-                        
+
                         if second_exchange_data.empty:
                             st.warning(f"⚠️ No {ratio_asset_type.lower()} found in {second_exchange}.")
                             second_stock = None
@@ -1456,7 +1456,7 @@ with tab1:
                                 sorted(second_stocks_display),
                                 key="second_stock_ratio"
                             )
-                            
+
                             # Extract ticker and name
                             if second_stock:
                                 second_ticker = second_stock.split(" (")[1].rstrip(")")
@@ -1472,11 +1472,11 @@ with tab1:
                     second_stock_name = None
                     second_ticker = None
                     second_country_code = None
-        
+
         # Display selected assets only if both are selected
         if first_stock_name and second_stock_name and first_ticker and second_ticker:
             st.success(f"📊 **Ratio Alert**: {first_stock_name} ({first_ticker}) / {second_stock_name} ({second_ticker})")
-            
+
             # Check if assets are from different exchanges
             if ratio_asset_type in ["Stocks", "ETFs"]:
                 if first_country_code != second_country_code:
@@ -1516,9 +1516,9 @@ with tab1:
 
     if enable_multi_timeframe:
         st.markdown("#### 📊 Multi-Timeframe Analysis")
-        
+
         col1, col2 = st.columns(2)
-        
+
         with col1:
             st.markdown("**Primary Timeframe** (for current price)")
             primary_timeframe = st.selectbox(
@@ -1527,7 +1527,7 @@ with tab1:
                 index=0 if timeframe == "1d" else 1,
                 key="multi_tf_primary"
             )
-            
+
         with col2:
             st.markdown("**Comparison Timeframe** (for historical reference)")
             comparison_timeframe = st.selectbox(
@@ -1536,11 +1536,11 @@ with tab1:
                 index=1 if timeframe == "1d" else 0,
                 key="multi_tf_comparison"
             )
-        
+
         # Configure multi-timeframe options
         if primary_timeframe == comparison_timeframe:
             st.warning("⚠️ Primary and comparison timeframes should be different for meaningful comparisons")
-        
+
         multi_timeframe_info = st.info(
             f"📊 **Multi-Timeframe Analysis Enabled**\n\n"
             f"• **Primary**: {primary_timeframe} (for current values)\n"
@@ -1549,11 +1549,11 @@ with tab1:
             f"• `Close[-1]` uses {primary_timeframe} data\n"
             f"• `Close_weekly[-1]` uses {comparison_timeframe} data"
         )
-    
+
     if enable_mixed_timeframe:
         st.markdown("#### 🎯 Mixed Timeframe Conditions")
         st.markdown("**Combine different indicators using daily AND weekly data**")
-        
+
         mixed_timeframe_conditions = {
             "Daily Indicators": {
                 "rsi[0] > 70": "Daily RSI overbought",
@@ -1568,7 +1568,7 @@ with tab1:
                 "sma_weekly[0] > sma_weekly[1]": "Weekly SMA trending up"
             }
         }
-        
+
         st.info(
             "💡 **Example Mixed Conditions:**\n\n"
             "• `rsi[0] < 30 AND rsi_weekly[0] > 50` - Daily oversold but weekly bullish\n"
@@ -1616,18 +1616,18 @@ with tab1:
 
     # Condition Builder Section
     st.markdown("### 📝 Build Your Alert Conditions")
-    
+
     # Initialize session state for all conditions
     if 'all_conditions' not in st.session_state:
         st.session_state.all_conditions = []
     if 'condition_logic' not in st.session_state:
         st.session_state.condition_logic = "AND"
-    
+
     # Single condition builder
     st.markdown("#### Add Conditions")
-    
+
     col1, col2, col3 = st.columns([2, 2, 1])
-    
+
     with col1:
         # Indicator category selection
         indicator_category = st.selectbox(
@@ -1637,7 +1637,7 @@ with tab1:
              "SAR", "SuperTrend", "Trend Magic", "Ichimoku Cloud", "Kalman ROC Stoch", "Pivot S/R", "Donchian Channels", "Custom"],
             key="indicator_category"
         )
-        
+
         # Indicator selection based on category
         indicator = ""
         if indicator_category == "Price Data":
@@ -1662,7 +1662,7 @@ with tab1:
             elif price_type == "Price Data Points":
                 indicator = st.selectbox(
                     "Select Price Data:",
-                    ["", "Close[-1]", "Open[-1]", "High[-1]", "Low[-1]", 
+                    ["", "Close[-1]", "Open[-1]", "High[-1]", "Low[-1]",
                      "Close[-2]", "Open[-2]", "High[-2]", "Low[-2]",
                      "Close[0]", "Open[0]", "High[0]", "Low[0]"],
                     key="price_indicator"
@@ -1960,7 +1960,7 @@ with tab1:
             elif volume_type == "Volume Data":
                 indicator = st.selectbox(
                     "Select Volume Data:",
-                    ["", "volume[-1]", "volume[0]", "volume_avg(20)[-1]", 
+                    ["", "volume[-1]", "volume[0]", "volume_avg(20)[-1]",
                      "volume[-1] / volume_avg(20)[-1]"],
                     key="volume_indicator"
                 )
@@ -2150,7 +2150,7 @@ with tab1:
                     # HARSI_FLIP returns transition codes: 0=no change, 1=green to red, 2=red to green
                     indicator_options = st.selectbox(
                         "Select HARSI_FLIP Condition:",
-                        ["", 
+                        ["",
                          f"HARSI_Flip(period = {harsi_period}, smoothing = {harsi_smoothing})[-1] == 1",  # Green to Red (Sell signal)
                          f"HARSI_Flip(period = {harsi_period}, smoothing = {harsi_smoothing})[-1] == 2",  # Red to Green (Buy signal)
                          f"HARSI_Flip(period = {harsi_period}, smoothing = {harsi_smoothing})[-1] > 0"],  # Any flip
@@ -2779,7 +2779,7 @@ with tab1:
                    "• sma(20)[-1] > sma(50)[-1]\n" +
                    "• HARSI_Flip(period = 14, smoothing = 1)[-1] == 2")
             indicator = ""
-    
+
     with col2:
         # Condition input with pre-filled indicator
         if indicator:
@@ -2813,7 +2813,7 @@ with tab1:
                 placeholder="e.g., Close[-1] > sma(20)[-1]",
                 help="Enter any valid condition using the indicator syntax"
             )
-    
+
     with col3:
         st.markdown("<br>", unsafe_allow_html=True)  # Add spacing
         if st.button("➕ Add Condition", key="add_condition"):
@@ -2821,7 +2821,7 @@ with tab1:
                 st.session_state.all_conditions.append(condition.strip())
                 st.success(f"✅ Added: {condition.strip()}")
                 st.rerun()
-    
+
     # Logic operator selection
     if len(st.session_state.all_conditions) > 0:
         st.markdown("#### Condition Logic")
@@ -2836,18 +2836,18 @@ with tab1:
             )
         with col2:
             st.info(f"Conditions will be combined using **{st.session_state.condition_logic}** logic")
-    
+
     # Display current conditions
     if st.session_state.all_conditions:
         st.markdown("#### Current Conditions")
-        
+
         # Clear all button
         col1, col2 = st.columns([3, 1])
         with col2:
             if st.button("🗑️ Clear All", key="clear_all"):
                 st.session_state.all_conditions = []
                 st.rerun()
-        
+
         # Display conditions with logic
         for i, cond in enumerate(st.session_state.all_conditions):
             col1, col2 = st.columns([4, 1])
@@ -2860,7 +2860,7 @@ with tab1:
                 if st.button("❌", key=f"remove_{i}"):
                     st.session_state.all_conditions.pop(i)
                     st.rerun()
-        
+
         # Show combined condition preview
         if len(st.session_state.all_conditions) > 1:
             st.markdown("**Combined Condition:**")
@@ -2868,12 +2868,12 @@ with tab1:
             st.code(combined, language="python")
     else:
         st.info("No conditions added yet. Use the dropdowns above to build your alert conditions.")
-    
+
     # For backward compatibility, set the conditions as entry conditions
     # The backend will handle these as a single condition set
     entry_conditions_list = st.session_state.all_conditions
     exit_conditions_list = []  # No separate exit conditions in this mode
-    
+
     # Submit button
     if st.button("Add Alert", type="primary"):
         # Validate inputs
@@ -2886,7 +2886,7 @@ with tab1:
         else:
             # Import exchange mapping
             from src.utils.reference_data import get_country_for_exchange
-            
+
             # Format conditions for saving
             conditions_dict = {
                 "condition_1": {
@@ -2894,21 +2894,21 @@ with tab1:
                     "combination_logic": st.session_state.get('condition_logic', 'AND')
                 }
             }
-            
+
             # Save alerts
             if ratio == "Yes":
                 # Ratio alert
                 try:
                     # Determine exchanges for ratio assets
                     first_exchange = first_exchange if 'first_exchange' in locals() else "Unknown"
-                    
+
                     # Get country from exchange
                     country = get_country_for_exchange(first_exchange)
-                    
+
                     # Generate alert name if not provided
                     if not alert_name:
                         alert_name = f"{first_stock_name}/{second_stock_name} Ratio Alert"
-                    
+
                     futures_db = load_futures_database()
                     is_futures_ratio = (first_ticker in futures_db) or (second_ticker in futures_db)
 
@@ -2934,17 +2934,17 @@ with tab1:
                 # Individual stock alerts (can be multiple)
                 success_count = 0
                 error_count = 0
-                
+
                 for stock_name in selected_stocks:
                     try:
                         # Get the stock data from filtered_stocks_data
                         stock_data = filtered_stocks_data[filtered_stocks_data['Name'] == stock_name]
-                        
+
                         if not stock_data.empty:
                             ticker = stock_data.iloc[0]['Symbol']
                             exchange = stock_data.iloc[0].get('Exchange', stock_data.iloc[0].get('exchange', 'Unknown'))
                             country = stock_data.iloc[0].get('Country', get_country_for_exchange(exchange))
-                            
+
                             # Generate alert name if not provided
                             if not alert_name:
                                 current_alert_name = generate_alert_name_from_conditions(
@@ -2958,7 +2958,7 @@ with tab1:
                                     current_alert_name = f"{alert_name} - {stock_name}"
                                 else:
                                     current_alert_name = alert_name
-                            
+
                             futures_db = load_futures_database()
                             is_futures_alert = ticker in futures_db
 
@@ -2983,9 +2983,8 @@ with tab1:
                     except Exception as e:
                         error_count += 1
                         st.error(f"❌ Error creating alert for {stock_name}: {str(e)}")
-                
+
                 if success_count > 0:
                     st.success(f"✅ Successfully created {success_count} alert(s)")
                 if error_count > 0:
                     st.warning(f"⚠️ Failed to create {error_count} alert(s)")
-
