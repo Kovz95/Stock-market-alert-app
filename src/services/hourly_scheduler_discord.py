@@ -80,6 +80,9 @@ class HourlySchedulerDiscord:
         return None
 
     def _post(self, message: str) -> bool:
+        from src.utils.discord_env import is_discord_send_enabled
+        if not is_discord_send_enabled():
+            return False
         webhook_url = self.config.get("webhook_url") or self.fallback_webhook
         if not webhook_url or webhook_url == "YOUR_WEBHOOK_URL_HERE":
             logger.warning("Hourly scheduler webhook not configured; message skipped.")

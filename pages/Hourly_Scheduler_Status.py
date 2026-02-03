@@ -111,10 +111,11 @@ st.caption(
     f"({SELECTED_TZ_ABBREV}); backend scheduling continues to run in UTC."
 )
 
-# Files to monitor
+# Files to monitor - use LOG_DIR environment variable if set
+LOG_DIR = Path(os.getenv("LOG_DIR", "."))
 LOCK_FILE = Path("hourly_scheduler.lock")
 REDIS_STATUS_KEY = build_key("hourly_scheduler_status")
-LOG_FILE = Path("hourly_data_scheduler.log")
+LOG_FILE = LOG_DIR / "hourly_data_scheduler.log"
 STATUS_FILE = Path("hourly_scheduler_status.json")
 
 @st.cache_data(show_spinner=False)

@@ -36,9 +36,11 @@ class PriceUpdateMonitor:
         if not self.webhook_url:
             logger.warning("No webhook URL configured for failed price updates")
             return False
+        from src.utils.discord_env import get_discord_environment_tag, is_discord_send_enabled
+        if not is_discord_send_enabled():
+            return False
 
         try:
-            from src.utils.discord_env import get_discord_environment_tag
             payload = {"content": get_discord_environment_tag() + message}
             if embeds:
                 payload["embeds"] = embeds

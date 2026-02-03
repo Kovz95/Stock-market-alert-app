@@ -63,8 +63,9 @@ if not logger.handlers:
     console.setFormatter(formatter)
     logger.addHandler(console)
 
-    # File handler
-    log_file = BASE_DIR / "futures_scheduler.log"
+    # File handler - use LOG_DIR environment variable if set
+    log_dir = Path(os.getenv("LOG_DIR", str(BASE_DIR)))
+    log_file = log_dir / "futures_scheduler.log"
     file_handler = logging.FileHandler(log_file)
     file_handler.setFormatter(formatter)
     logger.addHandler(file_handler)
@@ -145,8 +146,10 @@ def send_scheduler_notification(message: str, event: str = "info") -> bool:
 
     if not webhook_cfg.get("enabled") or not webhook_cfg.get("url"):
         return False
+    from src.utils.discord_env import get_discord_environment_tag, is_discord_send_enabled
+    if not is_discord_send_enabled():
+        return False
 
-    from src.utils.discord_env import get_discord_environment_tag
     payload = {
         "content": get_discord_environment_tag() + message,
         "username": webhook_cfg.get("name") or "Futures Scheduler",

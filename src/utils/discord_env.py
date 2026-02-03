@@ -9,6 +9,17 @@ consistent with db_config and deployment.
 import os
 
 
+def is_discord_send_enabled() -> bool:
+    """
+    Return True only if Discord sends (alerts, logging, scheduler, watchdog) are enabled.
+
+    Set DISCORD_SEND_ENABLED=true (or 1/yes) to send; false or unset to disable
+    all Discord messages (e.g. for testing).
+    """
+    val = (os.getenv("DISCORD_SEND_ENABLED") or "").strip().lower()
+    return val in ("true", "1", "yes")
+
+
 def get_discord_environment_tag() -> str:
     """
     Return a short tag to prepend to Discord messages for environment identification.

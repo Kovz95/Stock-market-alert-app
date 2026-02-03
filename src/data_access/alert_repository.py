@@ -61,11 +61,11 @@ def _parse_timestamp(value: Any) -> Optional[datetime]:
 
 
 def _fetch_alert_dataframe() -> pd.DataFrame:
-    conn = db_config.get_connection()
-    try:
-        df = pd.read_sql_query(f"{ALERT_SELECT_COLUMNS} ORDER BY updated_at DESC, name ASC", conn)
-    finally:
-        db_config.close_connection(conn)
+    engine = db_config.get_sqlalchemy_engine()
+    df = pd.read_sql_query(
+        f"{ALERT_SELECT_COLUMNS} ORDER BY updated_at DESC, name ASC",
+        engine,
+    )
 
     if not df.empty and "last_triggered" in df.columns:
         df["last_triggered"] = pd.to_datetime(df["last_triggered"])

@@ -13,7 +13,7 @@ import requests
 
 from src.data_access.document_store import load_document
 from src.data_access.metadata_repository import fetch_stock_metadata_map
-from src.utils.discord_env import get_discord_environment_tag
+from src.utils.discord_env import get_discord_environment_tag, is_discord_send_enabled
 from src.utils.discord_rate_limiter import get_rate_limiter
 
 # Set up logging
@@ -507,6 +507,9 @@ class DiscordEconomyRouter:
         Returns:
             True if sent successfully, False otherwise
         """
+        if not is_discord_send_enabled():
+            logger.info("Discord send disabled (DISCORD_SEND_ENABLED); skipping alert.")
+            return False
         self._reload_configs_if_changed()
         success = False
         channels_sent = []  # Track which channels received the alert

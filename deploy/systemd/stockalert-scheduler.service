@@ -1,0 +1,28 @@
+[Unit]
+Description=Stock Alert Daily/Weekly Scheduler
+After=network.target postgresql.service redis.service
+Wants=postgresql.service redis.service
+
+[Service]
+Type=simple
+User=stockalert
+Group=stockalert
+WorkingDirectory=/opt/stockalert
+Environment="PATH=/opt/stockalert/.venv/bin:/home/stockalert/.local/bin:/usr/local/bin:/usr/bin:/bin"
+Environment="ENVIRONMENT=production"
+ExecStart=/home/stockalert/.local/bin/uv run python -m src.services.auto_scheduler_v2
+Restart=always
+RestartSec=30
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=stockalert-scheduler
+
+# Security hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/opt/stockalert
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

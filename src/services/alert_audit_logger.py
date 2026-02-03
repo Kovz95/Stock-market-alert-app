@@ -6,6 +6,7 @@ Provides tabular logging of all alert checks, evaluations, and results
 
 import json
 import logging
+import os
 from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Optional, Sequence
@@ -15,13 +16,18 @@ import pandas as pd
 from src.data_access.db_config import db_config
 from src.data_access.alert_repository import list_alerts as repo_list_alerts
 
+# Default log directory - can be overridden by environment variable
+LOG_DIR = os.getenv("LOG_DIR", ".")
+
 
 class AlertAuditLogger:
     """
     Comprehensive logging system for tracking alert evaluations
     """
 
-    def __init__(self, db_path: str = "alert_audit.db", log_file: str = "alert_audit.log"):
+    def __init__(self, db_path: str = "alert_audit.db", log_file: Optional[str] = None):
+        if log_file is None:
+            log_file = os.path.join(LOG_DIR, "alert_audit.log")
         self.db_path = db_path
         self.log_file = log_file
         self.use_postgres = db_config.db_type == "postgresql"

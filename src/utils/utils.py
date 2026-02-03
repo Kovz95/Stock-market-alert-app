@@ -55,13 +55,13 @@ except ImportError:
 # - Dual-layer caching provides both performance and persistence across sessions
 
 MAX_DISCORD_MESSAGE_LENGTH = 2000
-FMP_API_KEY = os.getenv("FMP_API_KEY", "8BulhGx0fCwLpA48qCwy8r9cx5n6fya7")
+FMP_API_KEY = os.getenv("FMP_API_KEY")
 WEBHOOK_URL = os.getenv("WEBHOOK_URL")
 WEBHOOK_URL_2 = os.getenv("WEBHOOK_URL_2")
 
-# Hardcode webhook URLs for logging if not in environment
-WEBHOOK_URL_LOGGING = os.getenv("WEBHOOK_URL_LOGGING", "https://discord.com/api/webhooks/1403827120978788482/jI7kxmHWIy_Gwe5XMjqbG6GCik_r70-AlsqPbA8BecWa2vpv2yyZytsmxSkRZdw_JYSn")
-WEBHOOK_URL_LOGGING_2 = os.getenv("WEBHOOK_URL_LOGGING_2", "https://discord.com/api/webhooks/1403827120978788482/jI7kxmHWIy_Gwe5XMjqbG6GCik_r70-AlsqPbA8BecWa2vpv2yyZytsmxSkRZdw_JYSn")
+# Webhook URLs for logging - must be set in environment
+WEBHOOK_URL_LOGGING = os.getenv("WEBHOOK_URL_LOGGING")
+WEBHOOK_URL_LOGGING_2 = os.getenv("WEBHOOK_URL_LOGGING_2")
 LOG_BUFFER = []
 
 
@@ -1343,6 +1343,9 @@ def send_alert(stock, alert, condition_str, df):
 
 
 def send_stock_alert(webhook_url, timeframe, alert_name, ticker, triggered_condition, current_price, action, exchange='Unknown'):
+    from src.utils.discord_env import is_discord_send_enabled
+    if not is_discord_send_enabled():
+        return
     # Check if webhook URL is valid
     if not webhook_url:
         print(f"[WARNING] No webhook URL configured for alert: {alert_name}")

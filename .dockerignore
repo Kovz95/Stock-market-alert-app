@@ -1,0 +1,71 @@
+# Git
+.git
+.gitattributes
+.gitignore
+
+# Python
+__pycache__
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv
+venv/
+ENV/
+.pytest_cache/
+.coverage
+htmlcov/
+.ruff_cache/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+
+# Local config and secrets
+.env
+*.lock.json
+.streamlit/secrets.toml
+
+# Documentation
+*.md
+docs/
+CLAUDE.md
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+db/
+
+# Test files
+tests/
+*_test.py
+test_*.py
+
+# Build artifacts
+*.egg-info/
+dist/
+build/
+
+# Excel/data files not needed at runtime
+*.xlsx
+~$*
+
+# Deployment scripts (not needed in container)
+deploy/
+
+# GitHub workflows
+.github/
+
+# Claude config
+.claude/
+
+# Temporary files
+nul
+*.tmp
+*.temp

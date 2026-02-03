@@ -1,7 +1,9 @@
 import os
 import json
-# Set the FMP API key environment variable
-os.environ['FMP_API_KEY'] = "8BulhGx0fCwLpA48qCwy8r9cx5n6fya7"
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 import streamlit as st
 import pandas as pd

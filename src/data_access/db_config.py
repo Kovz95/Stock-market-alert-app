@@ -120,6 +120,20 @@ class PostgresConnectionProxy:
                 raw_conn = self._pool.getconn()
                 self._config._configure_postgres_connection(raw_conn)
                 self._raw = raw_conn
+            else:
+                # Verify connection is actually alive with a ping
+                try:
+                    with self._raw.cursor() as cur:
+                        cur.execute("SELECT 1")
+                except Exception:
+                    logger.debug("Connection health check failed, reconnecting")
+                    try:
+                        self._pool.putconn(self._raw, close=True)
+                    except Exception:
+                        logger.debug("Failed returning dead connection to pool", exc_info=True)
+                    raw_conn = self._pool.getconn()
+                    self._config._configure_postgres_connection(raw_conn)
+                    self._raw = raw_conn
             return self._raw
         except Exception as exc:
             try:

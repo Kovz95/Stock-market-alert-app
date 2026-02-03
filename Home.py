@@ -13,6 +13,12 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, Iterable, List, Optional, Tuple
 
+# Load .env from project root first so FMP_API_KEY etc. are available regardless of cwd
+from dotenv import load_dotenv
+
+_env_path = Path(__file__).resolve().parent / ".env"
+load_dotenv(_env_path)
+
 import pandas as pd
 import streamlit as st
 

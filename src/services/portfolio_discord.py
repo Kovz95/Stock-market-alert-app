@@ -66,6 +66,9 @@ class PortfolioManager:
             portfolio_data: Portfolio configuration data
         """
         try:
+            from src.utils.discord_env import is_discord_send_enabled
+            if not is_discord_send_enabled():
+                return
             webhook_url = portfolio_data.get('discord_webhook')
             if not webhook_url:
                 return

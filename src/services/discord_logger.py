@@ -18,14 +18,22 @@ import requests
 from typing import List, Optional
 from dotenv import load_dotenv
 
-from src.utils.discord_env import get_discord_environment_tag
+from src.utils.discord_env import get_discord_environment_tag, is_discord_send_enabled
 
 # Load environment variables
 load_dotenv()
 
-# Discord Configuration
-WEBHOOK_URL_LOGGING = os.getenv("WEBHOOK_URL_LOGGING", "https://discord.com/api/webhooks/1403827120978788482/jI7kxmHWIy_Gwe5XMjqbG6GCik_r70-AlsqPbA8BecWa2vpv2yyZytsmxSkRZdw_JYSn")
-WEBHOOK_URL_LOGGING_2 = os.getenv("WEBHOOK_URL_LOGGING_2", "https://discord.com/api/webhooks/1403827120978788482/jI7kxmHWIy_Gwe5XMjqbG6GCik_r70-AlsqPbA8BecWa2vpv2yyZytsmxSkRZdw_JYSn")
+
+def _is_discord_logging_enabled() -> bool:
+    """Return True only if DISCORD_LOGGING_ENABLED is explicitly true/1/yes (case-insensitive)."""
+    val = (os.getenv("DISCORD_LOGGING_ENABLED") or "").strip().lower()
+    return val in ("true", "1", "yes")
+
+
+# Discord Configuration - must be set in environment
+DISCORD_LOGGING_ENABLED = _is_discord_logging_enabled()
+WEBHOOK_URL_LOGGING = os.getenv("WEBHOOK_URL_LOGGING")
+WEBHOOK_URL_LOGGING_2 = os.getenv("WEBHOOK_URL_LOGGING_2")
 MAX_DISCORD_MESSAGE_LENGTH = 2000
 BATCH_DELAY = 0.5  # Delay in seconds before sending batched messages
 MAX_BATCH_SIZE = 10  # Maximum number of messages to batch together
@@ -70,13 +78,15 @@ def split_message(message: str, max_length: int = MAX_DISCORD_MESSAGE_LENGTH) ->
 def _send_to_discord(message: str) -> bool:
     """
     Send a message to Discord webhook(s).
-    
+
     Args:
         message: Message to send
-        
+
     Returns:
         True if sent successfully, False otherwise
     """
+    if not is_discord_send_enabled() or not DISCORD_LOGGING_ENABLED:
+        return False
     if not WEBHOOK_URL_LOGGING:
         return False
     
@@ -179,16 +189,16 @@ def log_to_discord_async(message: str):
     """
     Queue a message for asynchronous Discord logging.
     This function returns immediately without blocking.
-    
+
     Args:
         message: Message to log to Discord
     """
-    if not message:
+    if not message or not is_discord_send_enabled() or not DISCORD_LOGGING_ENABLED:
         return
-    
+
     # Ensure worker thread is running
     _ensure_worker_thread()
-    
+
     # Queue the message
     _message_queue.put(str(message))
 

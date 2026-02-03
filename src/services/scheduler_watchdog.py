@@ -90,6 +90,9 @@ def send_discord_notification(config: WatchdogConfig, message: str, level: str =
     """Send a notification to Discord webhook if configured."""
     if not config.enable_discord or not config.discord_webhook:
         return False
+    from src.utils.discord_env import get_discord_environment_tag, is_discord_send_enabled
+    if not is_discord_send_enabled():
+        return False
 
     try:
         import requests
@@ -106,7 +109,6 @@ def send_discord_notification(config: WatchdogConfig, message: str, level: str =
     }
 
     emoji = emoji_map.get(level, "📝")
-    from src.utils.discord_env import get_discord_environment_tag
     payload = {
         "content": get_discord_environment_tag() + f"{emoji} **Scheduler Watchdog**\n{message}",
         "username": "Watchdog",

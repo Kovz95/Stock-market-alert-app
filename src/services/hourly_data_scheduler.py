@@ -37,8 +37,10 @@ from src.services.hourly_price_collector import HourlyPriceCollector  # noqa: E4
 from src.services.hourly_scheduler_discord import HourlySchedulerDiscord  # noqa: E402
 from src.data_access.redis_support import build_key, delete_key, get_json, set_json  # noqa: E402
 from src.data_access.document_store import delete_document, load_document, save_document  # noqa: E402
+from dotenv import load_dotenv  # noqa: E402
 
-os.environ.setdefault("FMP_API_KEY", "8BulhGx0fCwLpA48qCwy8r9cx5n6fya7")
+# Load environment variables from .env file
+load_dotenv()
 
 logger = logging.getLogger("hourly_data_scheduler")
 logger.setLevel(logging.INFO)
@@ -46,7 +48,9 @@ if not logger.handlers:
     stream_handler = logging.StreamHandler(sys.stdout)
     stream_handler.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(message)s"))
     logger.addHandler(stream_handler)
-    file_handler = logging.FileHandler("hourly_data_scheduler.log")
+    # Use LOG_DIR environment variable if set
+    log_dir = Path(os.getenv("LOG_DIR", "."))
+    file_handler = logging.FileHandler(log_dir / "hourly_data_scheduler.log")
     file_handler.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(message)s"))
     logger.addHandler(file_handler)
 
