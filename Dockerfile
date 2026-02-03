@@ -39,7 +39,16 @@ FROM python:3.13-slim AS runtime
 # Install runtime dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq5 \
+    curl \
     && rm -rf /var/lib/apt/lists/*
+
+# Install Docker CLI (static binary) for container management from Streamlit UI
+ARG TARGETARCH
+RUN DOCKER_ARCH=$(case ${TARGETARCH} in "amd64") echo "x86_64" ;; "arm64") echo "aarch64" ;; *) echo "x86_64" ;; esac) \
+    && curl -fsSL "https://download.docker.com/linux/static/stable/${DOCKER_ARCH}/docker-24.0.7.tgz" | tar xz -C /tmp \
+    && mv /tmp/docker/docker /usr/local/bin/docker \
+    && rm -rf /tmp/docker \
+    && chmod +x /usr/local/bin/docker
 
 # Copy TA-Lib from builder
 COPY --from=builder /usr/lib/libta_lib* /usr/lib/

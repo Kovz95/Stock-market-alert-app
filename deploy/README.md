@@ -244,14 +244,18 @@ sudo systemctl reload nginx
 
 ```
 deploy/
-├── README.md              # This file
-├── post-deploy.sh         # Runs after rsync (restarts services)
-├── health-check.sh        # Verifies deployment success
-├── setup-server.sh        # Initial server setup
-└── systemd/
-    ├── stockalert-app.service
-    ├── stockalert-scheduler.service
-    ├── stockalert-hourly.service
-    ├── stockalert-futures.service
-    └── stockalert-watchdog.service
+├── README.md                  # This file
+├── README-docker-systemd.md   # Running schedulers with systemd inside Docker
+├── post-deploy.sh             # Runs after rsync (restarts services)
+├── health-check.sh            # Verifies deployment success
+├── setup-server.sh            # Initial server setup
+├── systemd/                   # Units for bare-metal / VPS
+│   ├── stockalert-app.service
+│   ├── stockalert-scheduler.service
+│   ├── stockalert-hourly.service
+│   ├── stockalert-futures.service
+│   └── stockalert-watchdog.service
+└── systemd-docker/            # Units for Docker (paths /app, user appuser)
+    ├── *.service
+    └── entrypoint.sh
 ```

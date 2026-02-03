@@ -1,0 +1,25 @@
+[Unit]
+Description=Stock Alert Scheduler Watchdog (Docker)
+After=network-online.target stockalert-scheduler.service stockalert-hourly.service stockalert-futures.service
+Wants=stockalert-scheduler.service stockalert-hourly.service stockalert-futures.service
+
+[Service]
+Type=simple
+User=appuser
+Group=appuser
+WorkingDirectory=/app
+Environment="PATH=/app/.venv/bin:/usr/local/bin:/usr/bin:/bin"
+EnvironmentFile=-/app/.env
+ExecStart=/app/.venv/bin/python -m src.services.scheduler_watchdog
+Restart=always
+RestartSec=30
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=stockalert-watchdog
+
+NoNewPrivileges=true
+PrivateTmp=true
+ReadWritePaths=/app
+
+[Install]
+WantedBy=multi-user.target

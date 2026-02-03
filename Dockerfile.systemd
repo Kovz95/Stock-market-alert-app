@@ -1,0 +1,77 @@
+# syntax=docker/dockerfile:1
+# Multi-service image: Streamlit + schedulers run under systemd inside the container.
+# Build: docker build -f Dockerfile.systemd -t stockalert:systemd .
+# Run: see deploy/README-docker-systemd.md (requires --privileged or cgroup mounts).
+
+FROM python:3.13-slim AS builder
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    wget \
+    libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN wget -q http://prdownloads.sourceforge.net/ta-lib/ta-lib-0.4.0-src.tar.gz && \
+    tar -xzf ta-lib-0.4.0-src.tar.gz && \
+    cd ta-lib && \
+    ./configure --prefix=/usr && \
+    make && \
+    make install && \
+    cd .. && \
+    rm -rf ta-lib ta-lib-0.4.0-src.tar.gz
+
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+WORKDIR /app
+COPY pyproject.toml uv.lock ./
+RUN uv sync --frozen --no-dev --no-install-project
+
+# -------------------------------------------
+# Runtime stage with systemd
+# -------------------------------------------
+FROM python:3.13-slim AS runtime
+
+# systemd and runtime deps; keep only what's needed for container systemd
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libpq5 \
+    systemd \
+    && rm -rf /var/lib/apt/lists/* \
+    && rm -f /lib/systemd/system/getty*.service /lib/systemd/system/systemd*getty* \
+    && rm -f /lib/systemd/system/rescue.service /lib/systemd/system/halt.target \
+    && ln -sf /lib/systemd/system/multi-user.target /etc/systemd/system/default.target
+
+COPY --from=builder /usr/lib/libta_lib* /usr/lib/
+COPY --from=builder /usr/include/ta-lib /usr/include/ta-lib
+
+RUN useradd --create-home --shell /bin/bash appuser
+
+WORKDIR /app
+COPY --from=builder /bin/uv /bin/uv
+COPY --from=builder /app/.venv /app/.venv
+COPY . .
+
+# Container systemd unit files (paths and user for Docker)
+COPY deploy/systemd-docker/stockalert-app.service deploy/systemd-docker/stockalert-scheduler.service \
+     deploy/systemd-docker/stockalert-hourly.service deploy/systemd-docker/stockalert-futures.service \
+     deploy/systemd-docker/stockalert-watchdog.service /etc/systemd/system/
+RUN systemctl set-default multi-user.target
+
+RUN mkdir -p /app/logs /app/data && chown -R appuser:appuser /app
+
+ENV PATH="/app/.venv/bin:$PATH"
+ENV PYTHONUNBUFFERED=1
+ENV STREAMLIT_SERVER_PORT=8501
+ENV STREAMLIT_SERVER_ADDRESS=0.0.0.0
+ENV STREAMLIT_SERVER_HEADLESS=true
+ENV STREAMLIT_BROWSER_GATHER_USAGE_STATS=false
+ENV LOG_DIR=/app/logs
+
+# Entrypoint: enable our units and run systemd as PID 1 (must run as root)
+COPY deploy/systemd-docker/entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+EXPOSE 8501
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8501/_stcore/health')" || exit 1
+
+ENTRYPOINT ["/entrypoint.sh"]

@@ -35,9 +35,13 @@ from typing import Any, Dict, Iterable, List, Optional
 
 import pandas as pd
 import psutil
+import pytz
 import requests
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
+
+# Exchange run times from get_exchanges_by_closing_time() are in Eastern Time
+SCHEDULER_EXCHANGE_TZ = pytz.timezone("America/New_York")
 
 # Ensure project modules are importable (project root so "from src.xxx" works)
 BASE_DIR = Path(__file__).resolve().parent
@@ -699,7 +703,7 @@ def _schedule_exchange_jobs():
                 logger.warning("Invalid time format for %s: %s", exchange, time_str)
                 continue
 
-            # Schedule daily job
+            # Schedule daily job (hour/minute are Eastern Time per get_exchanges_by_closing_time)
             daily_days = market_days.get("daily", "mon-fri")
             daily_job_id = sanitize_job_id("daily", exchange)
             scheduler.add_job(
@@ -708,7 +712,7 @@ def _schedule_exchange_jobs():
                     day_of_week=daily_days,
                     hour=hour,
                     minute=minute,
-                    timezone="UTC",
+                    timezone=SCHEDULER_EXCHANGE_TZ,
                 ),
                 id=daily_job_id,
                 args=[exchange],
@@ -718,7 +722,7 @@ def _schedule_exchange_jobs():
             )
             scheduled_count += 1
 
-            # Schedule weekly job
+            # Schedule weekly job (same ET interpretation)
             weekly_day = market_days.get("weekly", "fri")
             weekly_job_id = sanitize_job_id("weekly", exchange)
             scheduler.add_job(
@@ -727,7 +731,7 @@ def _schedule_exchange_jobs():
                     day_of_week=weekly_day,
                     hour=hour,
                     minute=minute,
-                    timezone="UTC",
+                    timezone=SCHEDULER_EXCHANGE_TZ,
                 ),
                 id=weekly_job_id,
                 args=[exchange],

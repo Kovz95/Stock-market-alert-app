@@ -47,6 +47,11 @@ services:
     environment:
       - DATABASE_URL=postgresql://${POSTGRES_USER:-stockalertapp}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-stockalertapp}
       - REDIS_URL=redis://redis:6379
+      - DOCKER_CONTAINER=1
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    # Run as root to allow Docker socket access for container management
+    user: root
     depends_on:
       postgres:
         condition: service_healthy
@@ -58,6 +63,54 @@ services:
       timeout: 10s
       start_period: 30s
       retries: 3
+
+  hourly-scheduler:
+    build: .
+    container_name: stockalert-hourly-scheduler
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-stockalertapp}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-stockalertapp}
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: ["python", "-m", "src.services.hourly_data_scheduler"]
+
+  daily-scheduler:
+    build: .
+    container_name: stockalert-daily-scheduler
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-stockalertapp}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-stockalertapp}
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: ["python", "-m", "src.services.auto_scheduler_v2"]
+
+  futures-scheduler:
+    build: .
+    container_name: stockalert-futures-scheduler
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-stockalertapp}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-stockalertapp}
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: ["python", "-m", "src.services.futures_scheduler"]
 
 volumes:
   postgres_data:

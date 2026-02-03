@@ -20,6 +20,14 @@ import streamlit as st
 from src.services.hourly_data_scheduler import is_exchange_open
 from src.data_access.redis_support import build_key, get_json
 from src.data_access.metadata_repository import fetch_stock_metadata_map
+from src.utils.docker_utils import (
+    is_running_in_docker,
+    is_container_running,
+    get_container_status,
+    start_container,
+    stop_container,
+    get_container_logs,
+)
 
 TIMEZONE_OPTIONS = {
     "US/Eastern": "Eastern Time (EST/EDT)",
@@ -183,26 +191,58 @@ def lock_pid_alive(lock: Optional[dict]) -> bool:
     pid = lock.get("pid")
     return bool(pid and psutil.pid_exists(int(pid)))
 
+
+def is_scheduler_running_docker() -> bool:
+    """Check if hourly scheduler Docker container is running."""
+    return is_container_running("hourly")
+
+
+def is_scheduler_running_local() -> bool:
+    """Check if hourly scheduler is running as a local process."""
+    lock = load_lock()
+    status = load_status()
+    return (
+        status_indicates_running(status)
+        or status_pid_alive(status)
+        or lock_pid_alive(lock)
+    )
+
+
+def is_scheduler_running() -> bool:
+    """Check if hourly scheduler is running (Docker or local)."""
+    # First check Docker container
+    if is_container_running("hourly"):
+        return True
+    # Fall back to local process check
+    return is_scheduler_running_local()
+
+
 def start_scheduler_process():
-    """Start the hourly scheduler as a separate background process (console-less)"""
+    """Start the hourly scheduler (Docker container or local process)."""
+    # Try Docker first
     try:
-        # If the lock already points to a running process, treat as success
+        success, message = start_container("hourly")
+        if success:
+            time.sleep(2)
+            load_status.clear()
+            return True
+    except Exception:
+        pass  # Fall through to local start
+
+    # Fall back to local process start
+    try:
         existing_lock = load_lock()
         if lock_pid_alive(existing_lock):
             return True
 
-        # Get the Python executable path
         python_path = sys.executable
         if not python_path:
-            # Fallback to common Python paths on Windows
             python_path = r"C:\Users\NickK\AppData\Local\Programs\Python\Python313\python.exe"
 
-        # Start the scheduler in a new process with proper working directory
         parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-        # Use CREATE_NO_WINDOW to run without console window
         process = subprocess.Popen(
-            [python_path, os.path.join(parent_dir, "hourly_data_scheduler.py")],
+            [python_path, "-m", "src.services.hourly_data_scheduler"],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             stdin=subprocess.PIPE,
@@ -210,14 +250,12 @@ def start_scheduler_process():
             creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == 'win32' else 0
         )
 
-        # Answer 'n' to the initial prompt automatically
         try:
             process.stdin.write(b'n\n')
             process.stdin.flush()
         except:
             pass
 
-        # Give it time to initialize
         time.sleep(3)
         load_status.clear()
         status_snapshot = load_status()
@@ -232,25 +270,35 @@ def start_scheduler_process():
         st.error(f"Failed to start hourly scheduler: {e}")
         return False
 
+
 def stop_scheduler_process():
-    """Stop the hourly scheduler process"""
+    """Stop the hourly scheduler (Docker container or local process)."""
+    # Try Docker first
     try:
-        # Kill all Python processes running hourly_data_scheduler.py
+        if is_container_running("hourly"):
+            success, message = stop_container("hourly")
+            if success:
+                time.sleep(2)
+                load_status.clear()
+                return True
+    except Exception:
+        pass  # Fall through to local stop
+
+    # Fall back to local process stop
+    try:
         for proc in psutil.process_iter(['pid', 'name', 'cmdline']):
             try:
                 cmdline = proc.info.get('cmdline')
-                if cmdline and any('hourly_data_scheduler.py' in arg for arg in cmdline):
-                    proc.terminate()  # Try graceful termination first
+                if cmdline and any('hourly_data_scheduler' in arg for arg in cmdline):
+                    proc.terminate()
                     time.sleep(0.5)
                     if proc.is_running():
-                        proc.kill()  # Force kill if still running
+                        proc.kill()
             except (psutil.NoSuchProcess, psutil.AccessDenied):
                 continue
 
-        # Remove lock file if it exists
         LOCK_FILE.unlink(missing_ok=True)
-
-        time.sleep(1)  # Give it a moment to fully stop
+        time.sleep(1)
         load_status.clear()
         return True
     except Exception as e:
@@ -289,9 +337,13 @@ def live_status_monitor():
     status = load_status()
     lock = load_lock()
     state = status.get("status") if isinstance(status, dict) else None
+
+    # Check Docker container first, then local process
+    docker_running = is_container_running("hourly")
+    docker_status = get_container_status("hourly") if docker_running else None
     pid_alive = status_pid_alive(status) or lock_pid_alive(lock)
-    actively_running = status_indicates_running(status) or (pid_alive and state not in {"stopped", "error"})
-    is_idle = state == "idle" and pid_alive
+    actively_running = docker_running or status_indicates_running(status) or (pid_alive and state not in {"stopped", "error"})
+    is_idle = state == "idle" and (pid_alive or docker_running)
 
     if status:
         last_run_value = status.get('last_run')
@@ -307,7 +359,8 @@ def live_status_monitor():
 
     with col1:
         if actively_running:
-            st.metric("Scheduler Status", "🟢 Running", delta=None)
+            run_mode = "Docker" if docker_running else "Local"
+            st.metric("Scheduler Status", f"🟢 Running ({run_mode})", delta=None)
         elif is_idle:
             st.metric("Scheduler Status", "🟡 Idle", delta=None)
         else:
@@ -734,8 +787,10 @@ st.markdown("---")
 # Load status for control section
 status = load_status()
 lock_info = load_lock()
+docker_running = is_container_running("hourly")
 running = (
-    status_indicates_running(status)
+    docker_running
+    or status_indicates_running(status)
     or status_pid_alive(status)
     or lock_pid_alive(lock_info)
 )
@@ -751,14 +806,16 @@ with col1:
             with st.spinner("Starting hourly data scheduler..."):
                 if start_scheduler_process():
                     st.success("✅ Hourly scheduler started successfully!")
-                    st.info("The scheduler is now running in the background (no console window).")
+                    run_mode = "Docker container" if is_container_running("hourly") else "background process"
+                    st.info(f"The scheduler is now running as a {run_mode}.")
                     time.sleep(2)
                     load_status.clear()
                     st.rerun()
                 else:
                     st.error("❌ Failed to start scheduler. Check the logs for details.")
     else:
-        st.success("✅ Scheduler is currently running")
+        run_mode = "Docker" if docker_running else "local process"
+        st.success(f"✅ Scheduler is running ({run_mode})")
 
 with col2:
     if running:
@@ -770,14 +827,17 @@ with col2:
                     load_status.clear()
                     st.rerun()
                 else:
-                    st.error("❌ Failed to stop scheduler. You may need to close it manually.")
-                    pid_hint = None
-                    if isinstance(status, dict):
-                        pid_hint = status.get('pid')
-                    if not pid_hint and lock_info and 'pid' in lock_info:
-                        pid_hint = lock_info['pid']
-                    if pid_hint:
-                        st.code(f"taskkill /F /PID {pid_hint}", language="bash")
+                    st.error("❌ Failed to stop scheduler. You may need to stop it manually.")
+                    if docker_running:
+                        st.code("docker compose stop hourly-scheduler", language="bash")
+                    else:
+                        pid_hint = None
+                        if isinstance(status, dict):
+                            pid_hint = status.get('pid')
+                        if not pid_hint and lock_info and 'pid' in lock_info:
+                            pid_hint = lock_info['pid']
+                        if pid_hint:
+                            st.code(f"taskkill /F /PID {pid_hint}", language="bash")
 
 with col3:
     if st.button("📊 View Full Logs", use_container_width=True):

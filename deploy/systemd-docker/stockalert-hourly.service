@@ -1,0 +1,25 @@
+[Unit]
+Description=Stock Alert Hourly Data Scheduler (Docker)
+After=network-online.target stockalert-app.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=appuser
+Group=appuser
+WorkingDirectory=/app
+Environment="PATH=/app/.venv/bin:/usr/local/bin:/usr/bin:/bin"
+EnvironmentFile=-/app/.env
+ExecStart=/app/.venv/bin/python -m src.services.hourly_data_scheduler
+Restart=always
+RestartSec=30
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=stockalert-hourly
+
+NoNewPrivileges=true
+PrivateTmp=true
+ReadWritePaths=/app
+
+[Install]
+WantedBy=multi-user.target

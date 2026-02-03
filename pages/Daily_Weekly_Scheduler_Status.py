@@ -44,6 +44,12 @@ from src.services.pivot_support_resistance import (
     PIVOT_SR_PROXIMITY,
 )
 from src.data_access.document_store import load_document, save_document  # noqa: E402
+from src.utils.docker_utils import (  # noqa: E402
+    is_container_running,
+    get_container_status,
+    start_container,
+    stop_container,
+)
 
 SCHEDULER_PREF_FILE = BASE_DIR / "scheduler_preference.json"
 SCHEDULER_PREF_DOCUMENT = "scheduler_preference"
@@ -56,22 +62,46 @@ def _trigger_rerun() -> None:
         rerun_fn()
 
 
-def is_scheduler_process_running() -> bool:
-    """Match the same logic as auto_scheduler_v2.is_scheduler_running (script run as main)."""
+def is_scheduler_running_local() -> bool:
+    """Check if scheduler is running as a local process."""
     for proc in psutil.process_iter(["pid", "name", "cmdline"]):
         try:
             cmdline = proc.info.get("cmdline") or []
-            if any(part.endswith("auto_scheduler_v2.py") for part in cmdline):
+            if any("auto_scheduler_v2" in part for part in cmdline):
                 return True
         except (psutil.NoSuchProcess, psutil.AccessDenied):
             continue
     return False
 
 
+def is_scheduler_process_running() -> bool:
+    """Check if daily scheduler is running (Docker container or local process)."""
+    # Check Docker container first
+    if is_container_running("daily"):
+        return True
+    # Fall back to local process check
+    return is_scheduler_running_local()
+
+
+def is_running_in_docker_mode() -> bool:
+    """Check if the daily scheduler is running as a Docker container."""
+    return is_container_running("daily")
+
+
 def start_scheduler_process() -> bool:
+    """Start the daily scheduler (Docker container or local process)."""
+    # Try Docker first
+    try:
+        success, message = start_container("daily")
+        if success:
+            time.sleep(2)
+            return True
+    except Exception:
+        pass  # Fall through to local start
+
+    # Fall back to local start
     try:
         if start_auto_scheduler():
-            # give the background process a moment to emit status
             time.sleep(2)
             return True
         return is_scheduler_process_running()
@@ -81,9 +111,20 @@ def start_scheduler_process() -> bool:
 
 
 def stop_scheduler_process() -> bool:
+    """Stop the daily scheduler (Docker container or local process)."""
+    # Try Docker first
+    try:
+        if is_container_running("daily"):
+            success, message = stop_container("daily")
+            if success:
+                time.sleep(2)
+                return True
+    except Exception:
+        pass  # Fall through to local stop
+
+    # Fall back to local stop
     try:
         if stop_auto_scheduler():
-            # allow watchdog/status writers to flush updates
             time.sleep(2)
             return True
         return not is_scheduler_process_running()
@@ -275,8 +316,10 @@ def main() -> None:
     with status_col:
         st.subheader("📊 Scheduler Status")
         running = is_scheduler_process_running()
+        docker_running = is_running_in_docker_mode()
         if running:
-            st.success("✅ Scheduler is RUNNING")
+            run_mode = "Docker" if docker_running else "Local"
+            st.success(f"✅ Scheduler is RUNNING ({run_mode})")
         else:
             st.error("❌ Scheduler is NOT running")
 
@@ -304,47 +347,52 @@ def main() -> None:
         start_btn, stop_btn = st.columns(2)
         with start_btn:
             if st.button("▶️ Start Scheduler", disabled=running):
-                if start_scheduler_process():
-                    st.success("Scheduler started")
-                    pref = load_document(
-                        SCHEDULER_PREF_DOCUMENT,
-                        default={},
-                        fallback_path=str(SCHEDULER_PREF_FILE),
-                    )
-                    if not isinstance(pref, dict):
-                        pref = {}
-                    pref["enabled"] = True
-                    save_document(
-                        SCHEDULER_PREF_DOCUMENT,
-                        pref,
-                        fallback_path=str(SCHEDULER_PREF_FILE),
-                    )
-                    _trigger_rerun()
-                else:
-                    st.error(
-                        "Failed to start scheduler. If it started then exited, check "
-                        "`src/services/auto_scheduler_v2.log` for errors."
-                    )
+                with st.spinner("Starting scheduler..."):
+                    if start_scheduler_process():
+                        run_mode = "Docker container" if is_running_in_docker_mode() else "background process"
+                        st.success(f"Scheduler started as {run_mode}")
+                        pref = load_document(
+                            SCHEDULER_PREF_DOCUMENT,
+                            default={},
+                            fallback_path=str(SCHEDULER_PREF_FILE),
+                        )
+                        if not isinstance(pref, dict):
+                            pref = {}
+                        pref["enabled"] = True
+                        save_document(
+                            SCHEDULER_PREF_DOCUMENT,
+                            pref,
+                            fallback_path=str(SCHEDULER_PREF_FILE),
+                        )
+                        _trigger_rerun()
+                    else:
+                        st.error(
+                            "Failed to start scheduler. Check logs for errors."
+                        )
+                        st.code("docker compose logs daily-scheduler", language="bash")
         with stop_btn:
             if st.button("⏹️ Stop Scheduler", disabled=not running):
-                if stop_scheduler_process():
-                    st.success("Scheduler stopped")
-                    pref = load_document(
-                        SCHEDULER_PREF_DOCUMENT,
-                        default={},
-                        fallback_path=str(SCHEDULER_PREF_FILE),
-                    )
-                    if not isinstance(pref, dict):
-                        pref = {}
-                    pref["enabled"] = False
-                    save_document(
-                        SCHEDULER_PREF_DOCUMENT,
-                        pref,
-                        fallback_path=str(SCHEDULER_PREF_FILE),
-                    )
-                    _trigger_rerun()
-                else:
-                    st.error("Failed to stop scheduler")
+                with st.spinner("Stopping scheduler..."):
+                    if stop_scheduler_process():
+                        st.success("Scheduler stopped")
+                        pref = load_document(
+                            SCHEDULER_PREF_DOCUMENT,
+                            default={},
+                            fallback_path=str(SCHEDULER_PREF_FILE),
+                        )
+                        if not isinstance(pref, dict):
+                            pref = {}
+                        pref["enabled"] = False
+                        save_document(
+                            SCHEDULER_PREF_DOCUMENT,
+                            pref,
+                            fallback_path=str(SCHEDULER_PREF_FILE),
+                        )
+                        _trigger_rerun()
+                    else:
+                        st.error("Failed to stop scheduler")
+                        if docker_running:
+                            st.code("docker compose stop daily-scheduler", language="bash")
 
     with time_col:
         st.subheader("🕒 Current Time")

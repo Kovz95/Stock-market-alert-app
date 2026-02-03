@@ -1,0 +1,44 @@
+# Compose file for running Streamlit + all schedulers under systemd in one container.
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.systemd.yml up -d
+#
+# Requirements: systemd in Docker needs cgroup v2 (or --privileged). This file
+# uses the recommended tmpfs + read-only cgroup mount for cgroup v2 hosts.
+
+version: "3.8"
+
+services:
+  streamlit:
+    build:
+      context: .
+      dockerfile: Dockerfile.systemd
+    image: stockalert:systemd
+    container_name: stockalert-systemd
+    restart: unless-stopped
+    # systemd as PID 1: need cgroups (and optionally tmpfs for /run)
+    tmpfs:
+      - /run
+      - /run/lock
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:ro
+      - ./.env:/app/.env:ro
+    # Alternative if the above fails: use --privileged (less secure)
+    # privileged: true
+    ports:
+      - "8501:8501"
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-stockalertapp}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-stockalertapp}
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8501/_stcore/health')"]
+      interval: 30s
+      timeout: 10s
+      start_period: 90s
+      retries: 3
