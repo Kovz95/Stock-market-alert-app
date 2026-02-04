@@ -43,9 +43,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Docker CLI (static binary) for container management from Streamlit UI
+# Version 27.5.1 supports API 1.47, ensuring compatibility with newer Docker daemons
 ARG TARGETARCH
 RUN DOCKER_ARCH=$(case ${TARGETARCH} in "amd64") echo "x86_64" ;; "arm64") echo "aarch64" ;; *) echo "x86_64" ;; esac) \
-    && curl -fsSL "https://download.docker.com/linux/static/stable/${DOCKER_ARCH}/docker-24.0.7.tgz" | tar xz -C /tmp \
+    && curl -fsSL "https://download.docker.com/linux/static/stable/${DOCKER_ARCH}/docker-27.5.1.tgz" | tar xz -C /tmp \
     && mv /tmp/docker/docker /usr/local/bin/docker \
     && rm -rf /tmp/docker \
     && chmod +x /usr/local/bin/docker
