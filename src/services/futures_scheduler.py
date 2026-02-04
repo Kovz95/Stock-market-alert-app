@@ -28,7 +28,7 @@ import signal
 import subprocess
 import sys
 import time
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Dict, Optional
 
@@ -216,7 +216,7 @@ def is_ib_available() -> bool:
         config = load_scheduler_config()
         ib_hours = config.get("ib_hours", {})
 
-        now = datetime.utcnow()
+        now = datetime.now(tz=timezone.utc)
         current_time = now.strftime("%H:%M")
 
         ib_start = ib_hours.get("start", "05:00")
@@ -276,7 +276,7 @@ def update_scheduler_status(
 
         # Update fields
         existing_status["status"] = status
-        existing_status["heartbeat"] = datetime.utcnow().isoformat()
+        existing_status["heartbeat"] = datetime.now(tz=timezone.utc).isoformat()
         existing_status["pid"] = os.getpid()
         existing_status["type"] = "futures_scheduler"
 
@@ -305,7 +305,7 @@ def update_scheduler_status(
         if LOCK_FILE.exists():
             try:
                 lock_data = json.loads(LOCK_FILE.read_text())
-                lock_data["heartbeat"] = datetime.utcnow().isoformat()
+                lock_data["heartbeat"] = datetime.now(tz=timezone.utc).isoformat()
                 LOCK_FILE.write_text(json.dumps(lock_data, indent=2))
             except Exception:
                 pass
@@ -360,6 +360,8 @@ def _process_matches(pid: int) -> bool:
 
 def _acquire_process_lock() -> bool:
     """Acquire process-level lock file."""
+    current_pid = os.getpid()
+    
     if LOCK_FILE.exists():
         try:
             info = json.loads(LOCK_FILE.read_text())
@@ -367,17 +369,24 @@ def _acquire_process_lock() -> bool:
         except Exception:
             existing_pid = None
 
-        if existing_pid and _process_matches(existing_pid):
+        # If the existing PID is the same as current PID, it's the same process
+        # This can happen in Docker containers where PID 1 is the main process
+        if existing_pid == current_pid:
+            logger.debug("Lock file exists for current process (PID %s), updating timestamp", current_pid)
+            # Update the lock file timestamp but don't fail
+        elif existing_pid and _process_matches(existing_pid):
             logger.warning("Another futures scheduler instance (PID %s) is running.", existing_pid)
             return False
-
-        LOCK_FILE.unlink(missing_ok=True)
+        else:
+            # Lock file exists but process is not running, remove stale lock
+            logger.debug("Removing stale lock file (PID %s not running)", existing_pid)
+            LOCK_FILE.unlink(missing_ok=True)
 
     payload = {
-        "pid": os.getpid(),
-        "timestamp": datetime.utcnow().isoformat(),
-        "heartbeat": datetime.utcnow().isoformat(),
-        "started_at": datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"),
+        "pid": current_pid,
+        "timestamp": datetime.now(tz=timezone.utc).isoformat(),
+        "heartbeat": datetime.now(tz=timezone.utc).isoformat(),
+        "started_at": datetime.now(tz=timezone.utc).strftime("%Y-%m-%d %H:%M:%S"),
         "type": "futures_scheduler",
     }
     LOCK_FILE.write_text(json.dumps(payload, indent=2))
@@ -599,7 +608,7 @@ def execute_futures_job():
                 [
                     "🚀 **Futures job started**",
                     f"• Job ID: `{job_id}`",
-                    f"• Start (UTC): {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')}Z",
+                    f"• Start (UTC): {datetime.now(tz=timezone.utc).strftime('%Y-%m-%d %H:%M:%S')}Z",
                     f"• Timeout: {job_timeout}s",
                 ]
             ),
@@ -612,7 +621,7 @@ def execute_futures_job():
             current_job={
                 "id": job_id,
                 "job_type": "futures_combined",
-                "started": datetime.utcnow().isoformat(),
+                "started": datetime.now(tz=timezone.utc).isoformat(),
             },
         )
 
@@ -624,7 +633,7 @@ def execute_futures_job():
                 current_job=None,
                 last_run={
                     "job_id": job_id,
-                    "completed_at": datetime.utcnow().isoformat(),
+                    "completed_at": datetime.now(tz=timezone.utc).isoformat(),
                     "skipped": True,
                     "skip_reason": "Outside IB hours",
                 },
@@ -644,7 +653,7 @@ def execute_futures_job():
             current_job=None,
             last_run={
                 "job_id": job_id,
-                "completed_at": datetime.utcnow().isoformat(),
+                "completed_at": datetime.now(tz=timezone.utc).isoformat(),
                 "duration_seconds": duration,
             },
             last_result={
@@ -684,7 +693,7 @@ def execute_futures_job():
             status="error",
             current_job=None,
             last_error={
-                "time": datetime.utcnow().isoformat(),
+                "time": datetime.now(tz=timezone.utc).isoformat(),
                 "job_id": job_id,
                 "message": err_msg,
             },
@@ -750,7 +759,7 @@ def _heartbeat_job():
     try:
         if LOCK_FILE.exists():
             lock_data = json.loads(LOCK_FILE.read_text())
-            lock_data["heartbeat"] = datetime.utcnow().isoformat()
+            lock_data["heartbeat"] = datetime.now(tz=timezone.utc).isoformat()
             LOCK_FILE.write_text(json.dumps(lock_data, indent=2))
 
         update_scheduler_status(status="running")

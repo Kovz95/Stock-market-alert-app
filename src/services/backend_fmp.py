@@ -6,7 +6,7 @@ Provides historical and real-time market data for stocks and ETFs
 import pandas as pd
 import numpy as np
 import requests
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional, Dict, Any
 import logging
 import os
@@ -231,9 +231,9 @@ class FMPDataFetcher:
         try:
             # Set default date range if not provided
             if not to_date:
-                to_date = datetime.now().strftime('%Y-%m-%d')
+                to_date = datetime.now(tz=timezone.utc).strftime('%Y-%m-%d')
             if not from_date:
-                from_date = (datetime.now() - timedelta(days=730)).strftime('%Y-%m-%d')
+                from_date = (datetime.now(tz=timezone.utc) - timedelta(days=730)).strftime('%Y-%m-%d')
             
             # Convert to datetime for calculations
             start_dt = datetime.strptime(from_date, '%Y-%m-%d')
@@ -379,7 +379,7 @@ class FMPDataFetcher:
             
             # Group by week and aggregate
             weekly_data = []
-            today = pd.Timestamp.now().normalize()
+            today = pd.Timestamp(datetime.now(tz=timezone.utc)).normalize()
             current_week_start = today - pd.Timedelta(days=today.weekday() + 1)
             
             for year_week, week_df in df_copy.groupby('year_week'):

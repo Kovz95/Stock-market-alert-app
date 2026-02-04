@@ -268,8 +268,8 @@ class OptimizedDailyPriceCollector:
                 recent_df = self.db.get_daily_prices(ticker, limit=250)
                 if recent_df is not None and not recent_df.empty:
                     # Check if we have data from the current week
-                    from datetime import datetime, timedelta
-                    today = datetime.now().date()
+                    from datetime import datetime, timedelta, timezone
+                    today = datetime.now(tz=timezone.utc).date()
                     # Find Sunday of current week
                     days_since_sunday = today.weekday() + 1 if today.weekday() != 6 else 0
                     current_week_start = today - timedelta(days=days_since_sunday)
@@ -325,7 +325,7 @@ class OptimizedDailyPriceCollector:
 
             # Group by week and aggregate
             weekly_data = []
-            today = pd.Timestamp.now().normalize()
+            today = pd.Timestamp(datetime.now(tz=timezone.utc)).normalize()
             current_week_start = today - pd.Timedelta(days=today.weekday())
 
             for year_week, week_df in df_copy.groupby('year_week'):

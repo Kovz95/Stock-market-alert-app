@@ -3,10 +3,9 @@ Hourly Price Data Collector
 Collects and stores hourly price data for stocks during trading hours
 Used by the hourly data scheduler for real-time monitoring
 """
-
 import logging
 import time as time_module
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Dict, List, Optional
 
 import pandas as pd
@@ -81,7 +80,7 @@ class HourlyPriceCollector:
         """
         try:
             # Calculate date range
-            to_date = datetime.now()
+            to_date = datetime.now(tz=timezone.utc)
             from_date = to_date - timedelta(days=days_back)
 
             # Check if we should skip (if recent data exists)
@@ -95,7 +94,20 @@ class HourlyPriceCollector:
                 if not existing_df.empty:
                     # Check if we have very recent data (within last 2 hours)
                     latest_datetime = existing_df.index.max()
-                    hours_since_update = (pd.Timestamp.now() - latest_datetime).total_seconds() / 3600
+                    # Ensure both timestamps are in the same timezone format for comparison
+                    # Convert both to UTC-aware timestamps
+                    now_ts = pd.Timestamp(datetime.now(tz=timezone.utc))
+                    if isinstance(latest_datetime, pd.Timestamp):
+                        if latest_datetime.tzinfo is None:
+                            # Naive timestamp - assume UTC
+                            latest_datetime = latest_datetime.tz_localize('UTC')
+                        else:
+                            # Already timezone-aware - convert to UTC
+                            latest_datetime = latest_datetime.tz_convert('UTC')
+                    else:
+                        # Not a Timestamp - convert it
+                        latest_datetime = pd.Timestamp(latest_datetime, tz='UTC')
+                    hours_since_update = (now_ts - latest_datetime).total_seconds() / 3600
 
                     if hours_since_update < 2:
                         logger.debug(f"{ticker}: Up to date (last: {latest_datetime})")
@@ -254,7 +266,7 @@ def run_hourly_update(
         skip_existing: If True, skip tickers with recent data
     """
     logger.info("=" * 70)
-    logger.info(f"Hourly Price Update - {datetime.now()}")
+    logger.info(f"Hourly Price Update - {datetime.now(tz=timezone.utc)}")
     logger.info("=" * 70)
 
     collector = HourlyPriceCollector()
@@ -323,7 +335,7 @@ def test_hourly_collector():
         # Retrieve data
         df = collector.get_hourly_prices(
             test_ticker,
-            start_datetime=datetime.now() - timedelta(days=7)
+            start_datetime=datetime.now(tz=timezone.utc) - timedelta(days=7)
         )
 
         if not df.empty:

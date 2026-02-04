@@ -9,7 +9,7 @@ import os
 import sys
 import time
 from collections import defaultdict
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Tuple
 
@@ -78,6 +78,8 @@ def _process_matches(pid: int) -> bool:
 
 
 def acquire_lock() -> bool:
+    current_pid = os.getpid()
+    
     if LOCK_FILE.exists():
         try:
             info = json.loads(LOCK_FILE.read_text())
@@ -85,16 +87,23 @@ def acquire_lock() -> bool:
         except Exception:
             existing_pid = None
 
-        if existing_pid and _process_matches(existing_pid):
+        # If the existing PID is the same as current PID, it's the same process
+        # This can happen in Docker containers where PID 1 is the main process
+        if existing_pid == current_pid:
+            logger.debug("Lock file exists for current process (PID %s), updating timestamp", current_pid)
+            # Update the lock file timestamp but don't fail
+        elif existing_pid and _process_matches(existing_pid):
             logger.warning("Another hourly scheduler instance (PID %s) is running.", existing_pid)
             return False
-
-        LOCK_FILE.unlink(missing_ok=True)
+        else:
+            # Lock file exists but process is not running, remove stale lock
+            logger.debug("Removing stale lock file (PID %s not running)", existing_pid)
+            LOCK_FILE.unlink(missing_ok=True)
 
     payload = {
-        "pid": os.getpid(),
-        "timestamp": datetime.utcnow().isoformat(),
-        "started_at": datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"),
+        "pid": current_pid,
+        "timestamp": datetime.now(tz=timezone.utc).isoformat(),
+        "started_at": datetime.now(tz=timezone.utc).strftime("%Y-%m-%d %H:%M:%S"),
         "type": "hourly_data_scheduler",
     }
     LOCK_FILE.write_text(json.dumps(payload, indent=2))
@@ -148,7 +157,7 @@ def update_status(
             "status": status,
             "pid": os.getpid(),
             "type": "hourly_data_scheduler",
-            "last_update": datetime.utcnow().isoformat(),
+            "last_update": datetime.now(tz=timezone.utc).isoformat(),
         }
     )
 
@@ -271,7 +280,7 @@ def exchanges_grouped_by_style() -> Dict[str, List[str]]:
 def update_hourly_data(exchange_filter: Iterable[str] | None = None) -> None:
     collector = HourlyPriceCollector()
     discord_logger = HourlySchedulerDiscord()
-    run_started = datetime.utcnow()
+    run_started = datetime.now(tz=timezone.utc)
 
     try:
         exchanges = list(exchange_filter) if exchange_filter else list(EXCHANGE_SCHEDULES.keys())
@@ -288,12 +297,12 @@ def update_hourly_data(exchange_filter: Iterable[str] | None = None) -> None:
             update_status(
                 status="idle",
                 last_run="Skipped - Markets closed",
-                next_run=(datetime.utcnow() + timedelta(hours=1)).strftime("%Y-%m-%d %H:%M:%S"),
+                next_run=(datetime.now(tz=timezone.utc) + timedelta(hours=1)).strftime("%Y-%m-%d %H:%M:%S"),
             )
             return
 
         stock_db = collector.load_stock_database()
-        now = datetime.utcnow()
+        now = datetime.now(tz=timezone.utc)
 
         open_tickers = {}
         skipped_closed = defaultdict(int)
@@ -313,7 +322,7 @@ def update_hourly_data(exchange_filter: Iterable[str] | None = None) -> None:
             update_status(
                 status="idle",
                 last_run="Skipped - No open exchanges",
-                next_run=(datetime.utcnow() + timedelta(hours=1)).strftime("%Y-%m-%d %H:%M:%S"),
+                next_run=(datetime.now(tz=timezone.utc) + timedelta(hours=1)).strftime("%Y-%m-%d %H:%M:%S"),
             )
             return
 
@@ -394,8 +403,8 @@ def update_hourly_data(exchange_filter: Iterable[str] | None = None) -> None:
         )
         update_status(
             status="running",
-            last_run=datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"),
-            next_run=(datetime.utcnow() + timedelta(hours=1)).strftime("%Y-%m-%d %H:%M:%S"),
+            last_run=datetime.now(tz=timezone.utc).strftime("%Y-%m-%d %H:%M:%S"),
+            next_run=(datetime.now(tz=timezone.utc) + timedelta(hours=1)).strftime("%Y-%m-%d %H:%M:%S"),
             stats=stats,
         )
     except Exception as exc:  # noqa: BLE001
@@ -403,7 +412,7 @@ def update_hourly_data(exchange_filter: Iterable[str] | None = None) -> None:
         discord_logger.notify_error(run_started, str(exc))
         update_status(
             status="error",
-            last_run=datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"),
+            last_run=datetime.now(tz=timezone.utc).strftime("%Y-%m-%d %H:%M:%S"),
         )
     finally:
         db_handle = getattr(collector, "db", None)

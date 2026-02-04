@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env python3
+#!/usr/bin/env python3
 
 """
 
@@ -28,10 +28,13 @@ IMPORTANT: Date handling for international markets
 
 
 
+import logging
 from datetime import datetime, timedelta, date
 
 import pandas as pd
 import pytz
+
+logger = logging.getLogger(__name__)
 
 
 
@@ -1312,7 +1315,8 @@ def get_exchanges_by_closing_time(reference_time=None):
             if reference <= buffer_close:
                 run_ts = buffer_close
             _, close_time = get_session_bounds(exchange, reference, next_if_closed=True)
-        except Exception:
+        except Exception as e:
+            logger.warning("Skipping exchange %s (could not get run time): %s", exchange, e)
             continue
 
         run_et = run_ts.tz_convert(pytz.timezone("America/New_York"))

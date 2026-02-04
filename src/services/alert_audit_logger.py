@@ -551,7 +551,7 @@ class AlertAuditLogger:
     def get_daily_evaluation_stats(self, date=None):
         """Get daily evaluation statistics comparing expected vs actual evaluations"""
         if date is None:
-            date = datetime.now().date()
+            date = datetime.now(tz=timezone.utc).date()
 
         # Get all evaluations for the specified date
         date_str = date.strftime('%Y-%m-%d')
@@ -591,7 +591,7 @@ class AlertAuditLogger:
     def get_evaluation_coverage(self, date=None):
         """Get evaluation coverage statistics for a specific date"""
         if date is None:
-            date = datetime.now().date()
+            date = datetime.now(tz=timezone.utc).date()
 
         # Get unique alerts that should have been evaluated
         # This assumes alerts are checked at least once per day

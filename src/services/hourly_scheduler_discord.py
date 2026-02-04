@@ -194,7 +194,7 @@ class HourlySchedulerDiscord:
             [
                 "✅ **Hourly Scheduler Online**",
                 f"• Schedules: {schedule_info}",
-                f"• Timestamp (UTC): {_utc_str(datetime.utcnow())}",
+                f"• Timestamp (UTC): {_utc_str(datetime.now(tz=timezone.utc))}",
             ]
         )
         self._post(message)
@@ -203,7 +203,7 @@ class HourlySchedulerDiscord:
         message = "\n".join(
             [
                 "⏹️ **Hourly Scheduler Stopped**",
-                f"• Timestamp (UTC): {_utc_str(datetime.utcnow())}",
+                f"• Timestamp (UTC): {_utc_str(datetime.now(tz=timezone.utc))}",
             ]
         )
         self._post(message)

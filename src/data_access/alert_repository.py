@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 from functools import lru_cache
 from typing import Any, Dict, Iterable, List, Optional, Hashable
 from uuid import uuid4
@@ -155,7 +155,7 @@ def list_alerts_cached() -> List[Dict[str, Any]]:
 
     set_json(
         REDIS_ALERT_CACHE_KEY,
-        {"items": alerts, "cached_at": datetime.now().isoformat()},
+        {"items": alerts, "cached_at": datetime.now(tz=timezone.utc).isoformat()},
         ttl_seconds=300,
     )
     return alerts

@@ -5,7 +5,7 @@ Reports failed price updates to Discord channel
 
 import logging
 import requests
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Dict, Optional, Any
 
 from src.data_access.document_store import load_document
@@ -72,7 +72,7 @@ class PriceUpdateMonitor:
         embed: dict[str, Any] = {
             "title": "⚠️ Failed Price Updates",
             "color": 15158332,  # Red color
-            "timestamp": datetime.now().isoformat(),
+            "timestamp": datetime.now(tz=timezone.utc).isoformat(),
             "fields": []
         }
 
@@ -149,7 +149,7 @@ class PriceUpdateMonitor:
         embed: dict[str, Any] = {
             "title": "⏭️ Skipped Price Updates",
             "color": 16776960,  # Yellow color for skipped
-            "timestamp": datetime.now().isoformat(),
+            "timestamp": datetime.now(tz=timezone.utc).isoformat(),
 
             "fields": []
         }
@@ -211,7 +211,7 @@ class PriceUpdateMonitor:
             embed = {
                 "title": "📊 Price Update Summary",
                 "color": 15158332 if failed > 0 else 16776960,  # Red if failures, yellow if only skipped
-                "timestamp": datetime.now().isoformat(),
+                "timestamp": datetime.now(tz=timezone.utc).isoformat(),
                 "fields": [
                     {
                         "name": "Exchange",
