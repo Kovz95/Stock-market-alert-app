@@ -4,13 +4,13 @@ on:
   workflow_dispatch:
     inputs:
       skip_tests:
-        description: 'Skip tests before deployment'
+        description: "Skip tests before deployment"
         required: false
-        default: 'false'
+        default: false
         type: boolean
 
 env:
-  PYTHON_VERSION: '3.13'
+  PYTHON_VERSION: "3.13"
 
 jobs:
   test:
