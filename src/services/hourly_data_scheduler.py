@@ -44,15 +44,36 @@ load_dotenv()
 
 logger = logging.getLogger("hourly_data_scheduler")
 logger.setLevel(logging.INFO)
+
+# Configure logging format with logger name for better context
+LOG_FORMAT = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+LOG_DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
+
 if not logger.handlers:
+    # Console handler for Docker logs
     stream_handler = logging.StreamHandler(sys.stdout)
-    stream_handler.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(message)s"))
+    stream_handler.setLevel(logging.INFO)
+    stream_handler.setFormatter(logging.Formatter(LOG_FORMAT, datefmt=LOG_DATE_FORMAT))
     logger.addHandler(stream_handler)
-    # Use LOG_DIR environment variable if set
+
+    # File handler with error handling
     log_dir = Path(os.getenv("LOG_DIR", "."))
-    file_handler = logging.FileHandler(log_dir / "hourly_data_scheduler.log")
-    file_handler.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(message)s"))
-    logger.addHandler(file_handler)
+    try:
+        log_dir.mkdir(parents=True, exist_ok=True)
+        file_handler = logging.FileHandler(log_dir / "hourly_data_scheduler.log")
+        file_handler.setLevel(logging.DEBUG)  # More detailed logs in file
+        file_handler.setFormatter(logging.Formatter(LOG_FORMAT, datefmt=LOG_DATE_FORMAT))
+        logger.addHandler(file_handler)
+    except Exception as e:
+        logger.warning(f"Could not create file handler: {e}")
+
+# Configure APScheduler logger to use the same format
+apscheduler_logger = logging.getLogger("apscheduler")
+apscheduler_logger.setLevel(logging.INFO)
+if not apscheduler_logger.handlers:
+    aps_handler = logging.StreamHandler(sys.stdout)
+    aps_handler.setFormatter(logging.Formatter(LOG_FORMAT, datefmt=LOG_DATE_FORMAT))
+    apscheduler_logger.addHandler(aps_handler)
 
 LOCK_FILE = Path("hourly_scheduler.lock")
 STATUS_FILE = Path("hourly_scheduler_status.json")
@@ -79,12 +100,13 @@ def _process_matches(pid: int) -> bool:
 
 def acquire_lock() -> bool:
     current_pid = os.getpid()
-    
+
     if LOCK_FILE.exists():
         try:
             info = json.loads(LOCK_FILE.read_text())
             existing_pid = info.get("pid")
-        except Exception:
+        except Exception as e:
+            logger.warning(f"Could not read lock file: {e}")
             existing_pid = None
 
         # If the existing PID is the same as current PID, it's the same process
@@ -93,11 +115,11 @@ def acquire_lock() -> bool:
             logger.debug("Lock file exists for current process (PID %s), updating timestamp", current_pid)
             # Update the lock file timestamp but don't fail
         elif existing_pid and _process_matches(existing_pid):
-            logger.warning("Another hourly scheduler instance (PID %s) is running.", existing_pid)
+            logger.warning("❌ Another hourly scheduler instance (PID %s) is already running.", existing_pid)
             return False
         else:
             # Lock file exists but process is not running, remove stale lock
-            logger.debug("Removing stale lock file (PID %s not running)", existing_pid)
+            logger.info("Removing stale lock file (PID %s not running)", existing_pid)
             LOCK_FILE.unlink(missing_ok=True)
 
     payload = {
@@ -107,6 +129,7 @@ def acquire_lock() -> bool:
         "type": "hourly_data_scheduler",
     }
     LOCK_FILE.write_text(json.dumps(payload, indent=2))
+    logger.info("✓ Lock acquired for PID %s", current_pid)
     return True
 
 
@@ -278,6 +301,7 @@ def exchanges_grouped_by_style() -> Dict[str, List[str]]:
 
 
 def update_hourly_data(exchange_filter: Iterable[str] | None = None) -> None:
+    import threading
     collector = HourlyPriceCollector()
     discord_logger = HourlySchedulerDiscord()
     run_started = datetime.now(tz=timezone.utc)
@@ -289,6 +313,7 @@ def update_hourly_data(exchange_filter: Iterable[str] | None = None) -> None:
 
         logger.info("=" * 80)
         logger.info("Hourly update triggered (%s) - %s", candle_desc, exchange_label)
+        logger.info("Running on PID %s, Thread: %s", os.getpid(), threading.current_thread().name)
 
         if not any_market_open():
             reason = "No exchanges currently open"
@@ -343,34 +368,21 @@ def update_hourly_data(exchange_filter: Iterable[str] | None = None) -> None:
 
         stats = {
             "total": len(open_tickers),
-            "success": 0,
-            "failed": 0,
             "skipped_closed": sum(skipped_closed.values()),
         }
 
         start_time = time.time()
-        for idx, (ticker, info) in enumerate(sorted(open_tickers.items()), 1):
-            try:
-                if collector.update_ticker_hourly(ticker, days_back=7, skip_existing=True):
-                    stats["success"] += 1
-                else:
-                    stats["failed"] += 1
-            except Exception as exc:
-                stats["failed"] += 1
-                logger.error("Failed to update %s: %s", ticker, exc)
 
-            if idx % 50 == 0:
-                update_status(
-                    status="updating",
-                    current_progress={
-                        "current": idx,
-                        "total": stats["total"],
-                        "current_ticker": ticker,
-                        "success": stats["success"],
-                        "failed": stats["failed"],
-                        "percentage": round(idx / stats["total"] * 100, 1),
-                    },
-                )
+        # Update all tickers in parallel using the collector's built-in parallelization
+        ticker_list = sorted(open_tickers.keys())
+        update_stats = collector.update_multiple_tickers(
+            ticker_list,
+            days_back=7,
+            skip_existing=True
+        )
+
+        stats["success"] = update_stats.get("updated", 0)
+        stats["failed"] = update_stats.get("failed", 0)
 
         alert_stats = run_alert_checks(open_exchanges, "hourly")
         stats.update(
@@ -385,12 +397,17 @@ def update_hourly_data(exchange_filter: Iterable[str] | None = None) -> None:
 
         elapsed = time.time() - start_time
         logger.info(
-            "Hourly update finished: %s tickers (success=%s / failed=%s) in %.1fs",
+            "✓ Hourly update finished: %s tickers (success=%s / failed=%s) in %.1fs",
             stats["total"],
             stats["success"],
             stats["failed"],
             elapsed,
         )
+        logger.info("  Alerts: %s total, %s triggered, %s errors",
+                    stats.get("alerts_total", 0),
+                    stats.get("alerts_triggered", 0),
+                    stats.get("alerts_errors", 0))
+        logger.info("=" * 80)
 
         first_failure = getattr(collector, "last_error", None) if stats.get("failed") else None
         discord_logger.notify_complete(
@@ -408,7 +425,10 @@ def update_hourly_data(exchange_filter: Iterable[str] | None = None) -> None:
             stats=stats,
         )
     except Exception as exc:  # noqa: BLE001
-        logger.exception("Hourly update failed: %s", exc)
+        logger.error("=" * 80)
+        logger.error("❌ Hourly update failed with exception:")
+        logger.exception(exc)
+        logger.error("=" * 80)
         discord_logger.notify_error(run_started, str(exc))
         update_status(
             status="error",
@@ -440,10 +460,14 @@ def build_scheduler() -> BackgroundScheduler:
     sched = BackgroundScheduler(timezone="UTC")
     style_map = exchanges_grouped_by_style()
 
+    logger.info("Building hourly scheduler with exchange groupings:")
     for style, minute in STYLE_MINUTES.items():
         exchanges = style_map.get(style, [])
         if not exchanges:
+            logger.debug(f"No exchanges found for style '{style}' (minute={minute})")
             continue
+
+        logger.info(f"  - Style '{style}' (minute={minute}): {len(exchanges)} exchanges - {', '.join(exchanges[:5])}{' ...' if len(exchanges) > 5 else ''}")
         sched.add_job(
             update_hourly_data,
             trigger=CronTrigger(minute=minute),
@@ -458,6 +482,7 @@ def build_scheduler() -> BackgroundScheduler:
     classified = set().union(*style_map.values()) if style_map else set()
     miscellaneous = [ex for ex in EXCHANGE_SCHEDULES.keys() if ex not in classified]
     if miscellaneous:
+        logger.info(f"  - Miscellaneous exchanges (minute=5): {len(miscellaneous)} exchanges - {', '.join(miscellaneous)}")
         sched.add_job(
             update_hourly_data,
             trigger=CronTrigger(minute=5),
@@ -480,25 +505,52 @@ def main() -> None:
     global scheduler
 
     if not acquire_lock():
+        logger.error("Could not acquire lock - another instance may be running. Exiting.")
         return
 
+    logger.info("=" * 80)
     logger.info("Hourly scheduler starting (PID %s)", os.getpid())
+    logger.info("Timezone: UTC | Log directory: %s", os.getenv("LOG_DIR", "."))
+    logger.info("=" * 80)
     update_status(status="starting")
 
     scheduler = build_scheduler()
+
+    logger.info("")
+    logger.info("Starting scheduler - jobs will run on main process (PID %s) in background threads", os.getpid())
     scheduler.start()
     update_status(status="running")
+
+    # Log all scheduled jobs with next run times (after scheduler starts)
+    logger.info("")
+    logger.info("Scheduled jobs summary:")
+    for job in scheduler.get_jobs():
+        next_run = job.next_run_time.strftime("%Y-%m-%d %H:%M:%S") if job.next_run_time else "Not scheduled"
+        logger.info("  ✓ Job '%s': %s (next run: %s UTC)", job.id, job.trigger, next_run)
+    logger.info("")
+    logger.info("Scheduler is now running and waiting for scheduled times...")
 
     try:
         while True:
             time.sleep(60)
     except KeyboardInterrupt:
+        logger.info("")
+        logger.info("=" * 80)
         logger.info("Hourly scheduler stopping (KeyboardInterrupt)")
+        logger.info("=" * 80)
+    except Exception as e:
+        logger.error("")
+        logger.error("=" * 80)
+        logger.error("❌ Hourly scheduler crashed with unexpected error:")
+        logger.exception(e)
+        logger.error("=" * 80)
     finally:
         if scheduler:
+            logger.info("Shutting down scheduler...")
             scheduler.shutdown(wait=False)
         update_status(status="stopped")
         release_lock()
+        logger.info("Scheduler stopped and lock released")
 
 
 if __name__ == "__main__":

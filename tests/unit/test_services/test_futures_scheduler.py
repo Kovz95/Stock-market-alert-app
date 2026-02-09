@@ -439,7 +439,7 @@ class TestPriceUpdate:
         result = futures_scheduler.run_price_update()
 
         mock_run.assert_called_once()
-        assert "futures_price_updater.py" in str(mock_run.call_args)
+        assert "src" in str(mock_run.call_args) and "services" in str(mock_run.call_args) and "futures_price_updater.py" in str(mock_run.call_args)
 
     @patch("src.services.futures_scheduler.subprocess.run")
     @patch("src.services.futures_scheduler.is_ib_available")

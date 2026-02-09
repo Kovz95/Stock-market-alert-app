@@ -79,6 +79,12 @@ services:
       redis:
         condition: service_healthy
     command: ["python", "-m", "src.services.hourly_data_scheduler"]
+    healthcheck:
+      test: ["CMD-SHELL", "test -f /app/hourly_scheduler.lock && python -c 'import sys; sys.exit(0)'"]
+      interval: 30s
+      timeout: 10s
+      start_period: 30s
+      retries: 3
 
   daily-scheduler:
     build: .
@@ -95,6 +101,12 @@ services:
       redis:
         condition: service_healthy
     command: ["python", "-m", "src.services.auto_scheduler_v2"]
+    healthcheck:
+      test: ["CMD-SHELL", "test -f /app/src/services/scheduler_v2.lock && python -c 'import sys; sys.exit(0)'"]
+      interval: 30s
+      timeout: 10s
+      start_period: 30s
+      retries: 3
 
   futures-scheduler:
     build: .
@@ -111,6 +123,29 @@ services:
       redis:
         condition: service_healthy
     command: ["python", "-m", "src.services.futures_scheduler"]
+    healthcheck:
+      test: ["CMD-SHELL", "test -f /app/src/services/futures_scheduler.lock && python -c 'import sys; sys.exit(0)'"]
+      interval: 30s
+      timeout: 10s
+      start_period: 30s
+      retries: 3
+
+  autoheal:
+    image: willfarrell/autoheal:latest
+    container_name: stockalert-autoheal
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      # Check unhealthy containers every 30 seconds
+      - AUTOHEAL_INTERVAL=30
+      # Wait 5 minutes after container start before monitoring
+      - AUTOHEAL_START_PERIOD=300
+      # Default action is to restart unhealthy containers
+      - AUTOHEAL_DEFAULT_STOP_TIMEOUT=10
+    labels:
+      # Prevent autoheal from monitoring itself
+      - autoheal=false
 
 volumes:
   postgres_data:

@@ -9,6 +9,7 @@ This module processes futures alerts by:
 5. Sending Discord notifications via discord_routing
 6. Updating alert status (last_triggered timestamp)
 """
+from pytz import timezone
 
 import logging
 import time
@@ -362,7 +363,9 @@ class FuturesAlertChecker:
 **Conditions Met:**
 {conditions_str}
 
-*Triggered at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}*"""
+
+*Triggered at {datetime.now(tz=timezone('UTC')).astimezone(timezone('US/Eastern')).strftime('%Y-%m-%d %I:%M:%S %p ET')}*"""
+
 
         return message
 

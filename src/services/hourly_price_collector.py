@@ -4,9 +4,11 @@ Collects and stores hourly price data for stocks during trading hours
 Used by the hourly data scheduler for real-time monitoring
 """
 import logging
+import os
 import time as time_module
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timedelta, timezone
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple, Hashable
 
 import pandas as pd
 
@@ -14,8 +16,40 @@ from src.services.backend_fmp import FMPDataFetcher
 from src.data_access.metadata_repository import fetch_stock_metadata_map
 from src.data_access.daily_price_repository import DailyPriceRepository
 
+# Default number of parallel workers for hourly updates
+DEFAULT_HOURLY_WORKERS = int(os.getenv("HOURLY_UPDATE_WORKERS", "20"))
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+
+def _update_one_ticker_hourly(
+    ticker: str,
+    days_back: int = 7,
+    skip_existing: bool = True
+) -> Tuple[str, bool, Optional[str]]:
+    """
+    Update hourly data for a single ticker in isolation (one collector per call for thread safety).
+    Used by ThreadPoolExecutor in update_multiple_tickers.
+
+    Args:
+        ticker: Stock symbol to update
+        days_back: Number of days of history to fetch
+        skip_existing: If True, skip if recent data exists
+
+    Returns:
+        Tuple of (ticker, success, error_message)
+    """
+    collector = HourlyPriceCollector()
+    try:
+        result = collector.update_ticker_hourly(ticker, days_back, skip_existing)
+        error = collector.last_error if not result else None
+        return (ticker, result, error)
+    except Exception as e:
+        logger.exception(f"Error updating hourly data for {ticker}: {e}")
+        return (ticker, False, str(e))
+    finally:
+        collector.close()
 
 
 class HourlyPriceCollector:
@@ -30,7 +64,7 @@ class HourlyPriceCollector:
         """
         self.db = DailyPriceRepository()
         self.fetcher = FMPDataFetcher()
-        self.stats = {
+        self.stats : Dict[Hashable, Any]= {
             'updated': 0,
             'skipped': 0,
             'failed': 0,
@@ -151,57 +185,80 @@ class HourlyPriceCollector:
         tickers: List[str],
         days_back: int = 7,
         skip_existing: bool = True,
-        rate_limit_delay: float = 0.2
+        workers: int = DEFAULT_HOURLY_WORKERS
     ) -> Dict[str, int]:
         """
-        Update hourly data for multiple tickers
+        Update hourly data for multiple tickers using parallel processing
 
         Args:
             tickers: List of ticker symbols to update
             days_back: Number of days of history to fetch
             skip_existing: If True, skip tickers with recent data
-            rate_limit_delay: Delay between requests in seconds (default: 0.2)
+            workers: Number of parallel workers (default: from env HOURLY_UPDATE_WORKERS or 10)
 
         Returns:
             Dictionary with statistics (updated, skipped, failed)
         """
-        logger.info(f"Starting hourly update for {len(tickers)} tickers")
+        logger.info(f"Starting hourly update for {len(tickers)} tickers with {workers} workers")
         start_time = time_module.time()
 
         # Reset stats
-        self.stats = {
+        stats = {
             'updated': 0,
             'skipped': 0,
             'failed': 0,
             'new': 0,
+            'failed_tickers': [],
         }
 
-        for i, ticker in enumerate(tickers, 1):
-            self.update_ticker_hourly(ticker, days_back, skip_existing)
+        completed = 0
 
-            # Rate limiting
-            if rate_limit_delay > 0:
-                time_module.sleep(rate_limit_delay)
+        # Use ThreadPoolExecutor for parallel processing
+        with ThreadPoolExecutor(max_workers=workers) as executor:
+            # Submit all tasks
+            futures = {
+                executor.submit(_update_one_ticker_hourly, ticker, days_back, skip_existing): ticker
+                for ticker in tickers
+            }
 
-            # Progress logging every 50 tickers
-            if i % 50 == 0 or i == len(tickers):
-                elapsed = time_module.time() - start_time
-                rate = i / elapsed if elapsed > 0 else 0
-                logger.info(
-                    f"Progress: {i}/{len(tickers)} | "
-                    f"Updated={self.stats['updated']}, "
-                    f"Skipped={self.stats['skipped']}, "
-                    f"Failed={self.stats['failed']} | "
-                    f"Rate: {rate:.1f} tickers/sec"
-                )
+            # Process results as they complete
+            for future in as_completed(futures):
+                ticker = futures[future]
+                try:
+                    _, success, error = future.result()
+                    if success:
+                        stats['updated'] += 1
+                    else:
+                        stats['failed'] += 1
+                        if error:
+                            stats['failed_tickers'].append({'ticker': ticker, 'error': error})
+                except Exception as e:
+                    logger.error(f"Exception processing {ticker}: {e}")
+                    stats['failed'] += 1
+                    stats['failed_tickers'].append({'ticker': ticker, 'error': str(e)})
+
+                completed += 1
+
+                # Progress logging every 50 tickers
+                if completed % 50 == 0 or completed == len(tickers):
+                    elapsed = time_module.time() - start_time
+                    rate = completed / elapsed if elapsed > 0 else 0
+                    logger.info(
+                        f"Progress: {completed}/{len(tickers)} | "
+                        f"Updated={stats['updated']}, "
+                        f"Failed={stats['failed']} | "
+                        f"Rate: {rate:.1f} tickers/sec"
+                    )
 
         elapsed = time_module.time() - start_time
         logger.info(
             f"Hourly update complete in {elapsed:.1f}s | "
-            f"Final stats: {self.stats}"
+            f"Updated={stats['updated']}, Failed={stats['failed']}"
         )
 
-        return self.stats
+        # Store stats for retrieval
+        self.stats = stats
+        return stats
 
     def get_hourly_prices(
         self,

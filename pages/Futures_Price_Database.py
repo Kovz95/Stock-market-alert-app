@@ -696,7 +696,7 @@ def main():
                         try:
                             import subprocess
                             result = subprocess.run(
-                                [sys.executable, "futures_price_updater.py"],
+                                [sys.executable, "src/services/futures_price_updater.py"],
                                 capture_output=True,
                                 text=True
                             )
@@ -734,7 +734,7 @@ def main():
                                     temp_file = f.name
 
                                 result = subprocess.run(
-                                    [sys.executable, "futures_price_updater.py", "--symbols", temp_file],
+                                    [sys.executable, "src/services/futures_price_updater.py", "--symbols", temp_file],
                                     capture_output=True,
                                     text=True,
                                     timeout=300

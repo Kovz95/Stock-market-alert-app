@@ -17,6 +17,7 @@ work.ipynb
 .DS_Store
 .ruff_cache/
 .env
+.env.production
 deployment/.env.production
 
 # Logs and runtime outputs

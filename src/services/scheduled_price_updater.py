@@ -21,7 +21,7 @@ from src.utils.reference_data import EXCHANGE_COUNTRY_MAP, get_country_for_excha
 logger = logging.getLogger(__name__)
 
 # Default number of parallel workers for price updates (env override: SCHEDULER_PRICE_UPDATE_WORKERS)
-DEFAULT_PRICE_UPDATE_WORKERS = int(os.getenv("SCHEDULER_PRICE_UPDATE_WORKERS", "5"))
+DEFAULT_PRICE_UPDATE_WORKERS = int(os.getenv("SCHEDULER_PRICE_UPDATE_WORKERS", "20"))
 
 
 def _update_one_ticker(

@@ -438,7 +438,7 @@ def run_price_update() -> Dict[str, Any]:
 
         # Run the price updater
         result = subprocess.run(
-            [sys.executable, str(BASE_DIR / "futures_price_updater.py")],
+            [sys.executable, str(BASE_DIR / "src" / "services" / "futures_price_updater.py")],
             capture_output=True,
             text=True,
             timeout=600,  # 10 minute timeout
