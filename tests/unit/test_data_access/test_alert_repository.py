@@ -829,3 +829,167 @@ class TestBulkReplaceAlerts:
 
         mock_conn.commit.assert_called_once()
         mock_clear.assert_called_once()
+
+
+class TestBulkCreateAlerts:
+    """Tests for bulk_create_alerts function."""
+
+    @patch("src.data_access.alert_repository._clear_cache")
+    @patch("src.data_access.alert_repository.execute_values")
+    @patch("src.data_access.alert_repository._row_from_payload")
+    @patch("src.data_access.alert_repository._prepare_payload")
+    @patch("src.data_access.alert_repository.db_config")
+    def test_inserts_multiple_alerts(
+        self, mock_db_config, mock_prepare, mock_row_from, mock_execute_values, mock_clear
+    ):
+        """Test that bulk_create_alerts inserts multiple alerts."""
+        from src.data_access.alert_repository import bulk_create_alerts
+
+        mock_conn = MagicMock()
+        mock_cursor = MagicMock()
+        mock_cursor.__enter__ = MagicMock(return_value=mock_cursor)
+        mock_cursor.__exit__ = MagicMock(return_value=False)
+        mock_conn.cursor.return_value = mock_cursor
+        mock_db_config.get_connection.return_value = mock_conn
+
+        alerts = [
+            {"name": "Alert 1", "ticker": "AAPL"},
+            {"name": "Alert 2", "ticker": "GOOGL"}
+        ]
+        mock_prepare.side_effect = [
+            {"alert_id": "id-1", "name": "Alert 1", "ticker": "AAPL"},
+            {"alert_id": "id-2", "name": "Alert 2", "ticker": "GOOGL"}
+        ]
+        mock_row_from.side_effect = [
+            ("id-1", "Alert 1"),
+            ("id-2", "Alert 2")
+        ]
+        # Simulate RETURNING clause - returns inserted alert_ids
+        mock_execute_values.return_value = [("id-1",), ("id-2",)]
+
+        result = bulk_create_alerts(alerts)
+
+        # Check execute_values was called with INSERT and ON CONFLICT
+        mock_execute_values.assert_called_once()
+        sql = mock_execute_values.call_args[0][1]
+        assert "INSERT INTO alerts" in sql
+        assert "ON CONFLICT (alert_id) DO NOTHING" in sql
+        assert "RETURNING alert_id" in sql
+
+        mock_conn.commit.assert_called_once()
+        mock_clear.assert_called_once()
+
+        assert result["inserted"] == 2
+        assert result["skipped"] == 0
+        assert result["failed"] == 0
+        assert result["alert_ids"] == ["id-1", "id-2"]
+
+    def test_returns_empty_result_for_empty_list(self):
+        """Test that empty list returns zero counts."""
+        from src.data_access.alert_repository import bulk_create_alerts
+
+        result = bulk_create_alerts([])
+
+        assert result["inserted"] == 0
+        assert result["skipped"] == 0
+        assert result["failed"] == 0
+        assert result["alert_ids"] == []
+        assert result["errors"] == []
+
+    @patch("src.data_access.alert_repository._clear_cache")
+    @patch("src.data_access.alert_repository.execute_values")
+    @patch("src.data_access.alert_repository._row_from_payload")
+    @patch("src.data_access.alert_repository._prepare_payload")
+    @patch("src.data_access.alert_repository.db_config")
+    def test_counts_skipped_duplicates(
+        self, mock_db_config, mock_prepare, mock_row_from, mock_execute_values, mock_clear
+    ):
+        """Test that skipped duplicates are counted correctly."""
+        from src.data_access.alert_repository import bulk_create_alerts
+
+        mock_conn = MagicMock()
+        mock_cursor = MagicMock()
+        mock_cursor.__enter__ = MagicMock(return_value=mock_cursor)
+        mock_cursor.__exit__ = MagicMock(return_value=False)
+        mock_conn.cursor.return_value = mock_cursor
+        mock_db_config.get_connection.return_value = mock_conn
+
+        alerts = [
+            {"name": "Alert 1"},
+            {"name": "Alert 2"},
+            {"name": "Alert 3"}
+        ]
+        mock_prepare.side_effect = [
+            {"alert_id": "id-1"},
+            {"alert_id": "id-2"},
+            {"alert_id": "id-3"}
+        ]
+        mock_row_from.side_effect = [("id-1",), ("id-2",), ("id-3",)]
+        # Only 2 were actually inserted (1 was duplicate in DB)
+        mock_execute_values.return_value = [("id-1",), ("id-3",)]
+
+        result = bulk_create_alerts(alerts)
+
+        assert result["inserted"] == 2
+        assert result["skipped"] == 1  # One duplicate skipped
+        assert result["failed"] == 0
+
+    @patch("src.data_access.alert_repository.execute_values")
+    @patch("src.data_access.alert_repository._row_from_payload")
+    @patch("src.data_access.alert_repository._prepare_payload")
+    @patch("src.data_access.alert_repository.db_config")
+    def test_handles_database_error(
+        self, mock_db_config, mock_prepare, mock_row_from, mock_execute_values
+    ):
+        """Test that database errors are handled gracefully."""
+        from src.data_access.alert_repository import bulk_create_alerts
+
+        mock_conn = MagicMock()
+        mock_cursor = MagicMock()
+        mock_cursor.__enter__ = MagicMock(return_value=mock_cursor)
+        mock_cursor.__exit__ = MagicMock(return_value=False)
+        mock_conn.cursor.return_value = mock_cursor
+        mock_db_config.get_connection.return_value = mock_conn
+
+        mock_prepare.return_value = {"alert_id": "id-1"}
+        mock_row_from.return_value = ("id-1",)
+
+        # Simulate database error in execute_values
+        mock_execute_values.side_effect = Exception("Database error")
+
+        result = bulk_create_alerts([{"name": "Alert 1"}])
+
+        assert result["inserted"] == 0
+        assert result["failed"] == 1
+        assert len(result["errors"]) == 1
+        assert "Database error" in result["errors"][0]
+        mock_conn.rollback.assert_called_once()
+
+    @patch("src.data_access.alert_repository._clear_cache")
+    @patch("src.data_access.alert_repository.execute_values")
+    @patch("src.data_access.alert_repository._row_from_payload")
+    @patch("src.data_access.alert_repository._prepare_payload")
+    @patch("src.data_access.alert_repository.db_config")
+    def test_uses_batch_size_parameter(
+        self, mock_db_config, mock_prepare, mock_row_from, mock_execute_values, mock_clear
+    ):
+        """Test that batch_size is passed to execute_values."""
+        from src.data_access.alert_repository import bulk_create_alerts
+
+        mock_conn = MagicMock()
+        mock_cursor = MagicMock()
+        mock_cursor.__enter__ = MagicMock(return_value=mock_cursor)
+        mock_cursor.__exit__ = MagicMock(return_value=False)
+        mock_conn.cursor.return_value = mock_cursor
+        mock_db_config.get_connection.return_value = mock_conn
+
+        mock_prepare.return_value = {"alert_id": "id-1"}
+        mock_row_from.return_value = ("id-1",)
+        mock_execute_values.return_value = [("id-1",)]
+
+        bulk_create_alerts([{"name": "Alert 1"}], batch_size=50)
+
+        # Check page_size was passed
+        call_kwargs = mock_execute_values.call_args[1]
+        assert call_kwargs["page_size"] == 50
+        assert call_kwargs["fetch"] is True

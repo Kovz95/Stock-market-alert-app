@@ -2932,12 +2932,51 @@ with tab1:
                     st.error(f"❌ Error creating ratio alert: {str(e)}")
             else:
                 # Individual stock alerts (can be multiple)
-                success_count = 0
-                error_count = 0
+                if len(selected_stocks) > 1:
+                    # Use optimized bulk insert for multiple stocks
+                    from src.services.bulk_alert_service import BulkAlertService
 
-                for stock_name in selected_stocks:
+                    # Prepare stock data list from DataFrame
+                    stocks_data_list = []
+                    for stock_name in selected_stocks:
+                        stock_row = filtered_stocks_data[filtered_stocks_data['Name'] == stock_name]
+                        if not stock_row.empty:
+                            stocks_data_list.append({
+                                "Name": stock_name,
+                                "Symbol": stock_row.iloc[0]['Symbol'],
+                                "Exchange": stock_row.iloc[0].get('Exchange', stock_row.iloc[0].get('exchange', 'Unknown')),
+                                "Country": stock_row.iloc[0].get('Country'),
+                            })
+
+                    if stocks_data_list:
+                        with st.spinner(f"Creating {len(stocks_data_list)} alerts..."):
+                            service = BulkAlertService()
+                            result = service.create_alerts_batch(
+                                stocks_data=stocks_data_list,
+                                conditions_dict=conditions_dict,
+                                combination_logic=st.session_state.get('condition_logic', 'AND'),
+                                timeframe=timeframe,
+                                action=action,
+                                alert_name_template=alert_name,
+                                adjustment_method=adjustment_method,
+                            )
+
+                        if result.inserted > 0:
+                            st.success(f"✅ Successfully created {result.inserted} alert(s)")
+                        if result.skipped_duplicates > 0:
+                            st.info(f"ℹ️ Skipped {result.skipped_duplicates} duplicate alert(s)")
+                        if result.skipped_missing_data > 0:
+                            st.warning(f"⚠️ Skipped {result.skipped_missing_data} stock(s) with missing data")
+                        if result.failed > 0:
+                            st.error(f"❌ Failed to create {result.failed} alert(s)")
+                            for error in result.errors[:5]:  # Show first 5 errors
+                                st.error(f"  {error}")
+                    else:
+                        st.warning("⚠️ No valid stock data found for selected stocks")
+                else:
+                    # Single stock - use original flow
+                    stock_name = selected_stocks[0]
                     try:
-                        # Get the stock data from filtered_stocks_data
                         stock_data = filtered_stocks_data[filtered_stocks_data['Name'] == stock_name]
 
                         if not stock_data.empty:
@@ -2953,11 +2992,7 @@ with tab1:
                                     st.session_state.get('condition_logic', 'AND')
                                 )
                             else:
-                                # For bulk alerts, append stock name to user-provided name
-                                if len(selected_stocks) > 1:
-                                    current_alert_name = f"{alert_name} - {stock_name}"
-                                else:
-                                    current_alert_name = alert_name
+                                current_alert_name = alert_name
 
                             futures_db = load_futures_database()
                             is_futures_alert = ticker in futures_db
@@ -2976,15 +3011,8 @@ with tab1:
                                 country=country,
                                 adjustment_method=adjustment_method if is_futures_alert else None
                             )
-                            success_count += 1
+                            st.success(f"✅ Successfully created alert for {stock_name}")
                         else:
-                            error_count += 1
                             st.warning(f"⚠️ Could not find data for {stock_name}")
                     except Exception as e:
-                        error_count += 1
                         st.error(f"❌ Error creating alert for {stock_name}: {str(e)}")
-
-                if success_count > 0:
-                    st.success(f"✅ Successfully created {success_count} alert(s)")
-                if error_count > 0:
-                    st.warning(f"⚠️ Failed to create {error_count} alert(s)")

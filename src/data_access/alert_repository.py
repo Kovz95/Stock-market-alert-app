@@ -322,3 +322,98 @@ def bulk_replace_alerts(alerts: Iterable[Dict[str, Any]]) -> None:
     finally:
         db_config.close_connection(conn)
     _clear_cache()
+
+
+def bulk_create_alerts(
+    alerts: List[Dict[str, Any]],
+    batch_size: int = 100,
+) -> Dict[str, Any]:
+    """Create multiple alerts efficiently in a single transaction.
+
+    Uses execute_values() for batch inserts with ON CONFLICT handling
+    to skip duplicates. Clears cache only once after all inserts.
+
+    Args:
+        alerts: List of alert dictionaries to create.
+        batch_size: Number of rows per execute_values batch (default 100).
+
+    Returns:
+        Dictionary with keys:
+            - inserted: Number of alerts successfully inserted
+            - skipped: Number of alerts skipped (duplicates)
+            - failed: Number of alerts that failed
+            - alert_ids: List of successfully created alert IDs
+            - errors: List of error messages (if any)
+    """
+    if not alerts:
+        return {"inserted": 0, "skipped": 0, "failed": 0, "alert_ids": [], "errors": []}
+
+    payloads = [_prepare_payload(alert) for alert in alerts]
+    rows = [_row_from_payload(payload) for payload in payloads]
+    alert_ids = [payload["alert_id"] for payload in payloads]
+
+    conn = db_config.get_connection()
+    try:
+        with conn.cursor() as cur:
+            # Use execute_values with ON CONFLICT DO NOTHING to skip duplicates
+            # RETURNING gives us the actually inserted alert_ids
+            result = execute_values(
+                cur,
+                """
+                INSERT INTO alerts (
+                    alert_id,
+                    name,
+                    stock_name,
+                    ticker,
+                    ticker1,
+                    ticker2,
+                    conditions,
+                    combination_logic,
+                    last_triggered,
+                    action,
+                    timeframe,
+                    exchange,
+                    country,
+                    ratio,
+                    is_ratio,
+                    adjustment_method,
+                    dtp_params,
+                    multi_timeframe_params,
+                    mixed_timeframe_params,
+                    raw_payload
+                )
+                VALUES %s
+                ON CONFLICT (alert_id) DO NOTHING
+                RETURNING alert_id
+                """,
+                rows,
+                page_size=batch_size,
+                fetch=True,
+            )
+            inserted_ids = [row[0] for row in result] if result else []
+        conn.commit()
+    except Exception as e:
+        conn.rollback()
+        db_config.close_connection(conn)
+        return {
+            "inserted": 0,
+            "skipped": 0,
+            "failed": len(alerts),
+            "alert_ids": [],
+            "errors": [str(e)],
+        }
+    finally:
+        db_config.close_connection(conn)
+
+    _clear_cache()
+
+    inserted_count = len(inserted_ids)
+    skipped_count = len(alerts) - inserted_count
+
+    return {
+        "inserted": inserted_count,
+        "skipped": skipped_count,
+        "failed": 0,
+        "alert_ids": inserted_ids,
+        "errors": [],
+    }
