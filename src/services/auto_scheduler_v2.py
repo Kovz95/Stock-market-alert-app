@@ -61,6 +61,7 @@ from src.config.exchange_schedule_config import (  # noqa: E402
 from src.services.scheduled_price_updater import update_prices_for_exchanges  # noqa: E402
 from src.services.daily_price_service import run_full_daily_update  # noqa: E402
 from src.services.stock_alert_checker import StockAlertChecker  # noqa: E402
+from src.services.scheduler_discord import create_scheduler_discord  # noqa: E402
 
 # Constants
 LOCK_FILE = BASE_DIR / "scheduler_v2.lock"
@@ -558,20 +559,12 @@ def execute_exchange_job(exchange_name: str, job_type: str):
     send_complete = notify_settings.get("send_completion_notification", True)
     job_timeout = max(int(notify_settings.get("job_timeout_seconds", JOB_TIMEOUT_SECONDS)), 60)
 
+    run_time_utc = datetime.now(tz=timezone.utc)
+    discord_notifier = create_scheduler_discord(job_type)
+
     start_time = time.time()
     if send_start:
-        send_scheduler_notification(
-            "\n".join(
-                [
-                    f"🚀 **{job_type.title()} job started**",
-                    f"• Exchange: {exchange_name}",
-                    f"• Job ID: `{job_id}`",
-                    f"• Start (UTC): {datetime.now(tz=timezone.utc).strftime('%Y-%m-%d %H:%M:%S')}Z",
-                    f"• Timeout: {job_timeout}s",
-                ]
-            ),
-            event="start",
-        )
+        discord_notifier.notify_start(run_time_utc, exchange_name)
 
     try:
         update_scheduler_status(
@@ -580,7 +573,7 @@ def execute_exchange_job(exchange_name: str, job_type: str):
                 "id": job_id,
                 "exchange": exchange_name,
                 "job_type": job_type,
-                "started": datetime.now(tz=timezone.utc).isoformat(),
+                "started": run_time_utc.isoformat(),
             },
         )
 
@@ -621,16 +614,18 @@ def execute_exchange_job(exchange_name: str, job_type: str):
         )
 
         if send_complete:
-            send_scheduler_notification(
-                "\n".join(
-                    [
-                        f"🏁 **{job_type.title()} job complete**",
-                        f"• Exchange: {exchange_name}",
-                        f"• Duration: {duration}s",
-                        f"• Summary: {_format_stats_for_message(price_stats, alert_stats)}",
-                    ]
-                ),
-                event="complete",
+            first_failure_reason = (
+                price_stats.get("first_failure_reason")
+                if isinstance(price_stats, dict)
+                else None
+            )
+            discord_notifier.notify_complete(
+                run_time_utc,
+                duration,
+                price_stats if isinstance(price_stats, dict) else {},
+                alert_stats if isinstance(alert_stats, dict) else {},
+                exchange_name,
+                first_failure_reason=first_failure_reason,
             )
 
         return {
@@ -657,17 +652,7 @@ def execute_exchange_job(exchange_name: str, job_type: str):
                 "message": err_msg,
             },
         )
-        send_scheduler_notification(
-            "\n".join(
-                [
-                    f"❌ **{job_type.title()} job failed**",
-                    f"• Exchange: {exchange_name}",
-                    f"• Error: {err_msg}",
-                    f"• Duration: {round(time.time() - start_time, 2)}s",
-                ]
-            ),
-            event="error",
-        )
+        discord_notifier.notify_error(run_time_utc, err_msg)
         return None
     finally:
         release_job_lock(job_id)
