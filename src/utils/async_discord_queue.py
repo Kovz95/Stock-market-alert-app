@@ -7,6 +7,7 @@ preventing Discord rate limits from blocking the main scheduler jobs.
 """
 
 import logging
+import os
 import queue
 import threading
 import time
@@ -71,6 +72,9 @@ class AsyncDiscordQueue:
         # Configuration
         self.max_queue_size = 1000  # Max pending notifications
         self.batch_delay = 0.1  # Seconds between sends (on top of rate limiter)
+        self.batch_linger_seconds = float(
+            os.getenv("DISCORD_BATCH_LINGER_SECONDS", "3.0")
+        )  # Wait this long after the first item for more to accumulate
 
         logger.info("AsyncDiscordQueue initialized")
 
@@ -222,8 +226,10 @@ class AsyncDiscordQueue:
         Drain up to ``_MAX_BATCH_SIZE`` items from the queue.
 
         The first item is retrieved with a 1-second timeout (so the worker
-        can periodically check the stop event). Subsequent items are
-        grabbed without blocking.
+        can periodically check the stop event).  After the first item
+        arrives we *linger* for up to ``batch_linger_seconds``, polling in
+        short intervals, to give parallel alert-checker threads time to
+        queue their notifications before the batch is dispatched.
         """
         batch: List[NotificationTask] = []
         try:
@@ -232,12 +238,21 @@ class AsyncDiscordQueue:
         except queue.Empty:
             return batch
 
+        # Linger: keep collecting items until the batch is full or the
+        # linger window expires, giving parallel workers time to enqueue.
+        deadline = time.monotonic() + self.batch_linger_seconds
         while len(batch) < self._MAX_BATCH_SIZE:
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                break
             try:
-                _priority, task = self._queue.get_nowait()
+                _priority, task = self._queue.get(timeout=min(remaining, 0.5))
                 batch.append(task)
             except queue.Empty:
-                break
+                # Poll interval expired but deadline not yet reached; keep waiting
+                if time.monotonic() >= deadline:
+                    break
+                continue
 
         return batch
 
@@ -273,7 +288,11 @@ class AsyncDiscordQueue:
 
     def _worker_loop(self) -> None:
         """Background worker that processes the queue with batching."""
-        logger.info("Discord notification worker started (batch size up to %d)", self._MAX_BATCH_SIZE)
+        logger.info(
+            "Discord notification worker started (batch size up to %d, linger %.1fs)",
+            self._MAX_BATCH_SIZE,
+            self.batch_linger_seconds,
+        )
 
         while not self._stop_event.is_set():
             try:
