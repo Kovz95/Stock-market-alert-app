@@ -72,7 +72,7 @@ EXCHANGE_TO_CALENDAR = {
     "SINGAPORE": "XSES",
     "ASX": "XASX",
     "TAIWAN": "XTAI",
-    "NSE INDIA": "XNSE",
+    "NSE INDIA": "XBOM",  # Use BSE calendar (same hours as NSE)
     "BSE INDIA": "XBOM",
     "INDONESIA": "XIDX",
     "THAILAND": "XBKK",

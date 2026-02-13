@@ -13,11 +13,12 @@ Usage:
 """
 
 from __future__ import annotations
+from zoneinfo import ZoneInfo
 
 import logging
 from abc import ABC, abstractmethod
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Iterable, Optional
 
 import requests
 from src.data_access.document_store import load_document
@@ -33,6 +34,12 @@ def _utc_str(dt: datetime) -> str:
     if dt.tzinfo is None:
         dt = dt.replace(tzinfo=timezone.utc)
     return dt.astimezone(timezone.utc).strftime("%Y-%m-%d %H:%M:%SZ")
+
+
+def _est_str(dt: datetime) -> str:
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(ZoneInfo("America/New_York")).strftime("%Y-%m-%d %I:%M:%S %p")
 
 
 def _format_duration(seconds: float) -> str:
@@ -147,22 +154,48 @@ class BaseSchedulerDiscord(ABC):
 
     # -- public notification API --------------------------------------------
 
-    def notify_start(self, run_time_utc: datetime, exchange: str) -> None:
-        message = "\n".join(
-            [
-                f"✅ **{self.job_label} Alert Check Started**",
-                f"• Run Time (UTC): {_utc_str(run_time_utc)}",
-                f"• Timeframe: {self.timeframe_key}",
-                f"• Exchange: {exchange}",
-            ]
-        )
-        self._post(message)
+    def notify_start(
+        self,
+        run_time_utc: datetime,
+        exchange: Optional[str] = None,
+        candle_type: Optional[str] = None,
+        exchanges: Optional[Iterable[str]] = None,
+        symbol_count: Optional[int] = None,
+        close_info: Optional[str] = None,
+        **kwargs,
+    ) -> None:
+        """
+        Send start notification.
+
+        This base implementation handles daily/weekly schedulers. Subclasses can
+        override this method to provide custom formatting (e.g., hourly scheduler).
+
+        Args:
+            run_time_utc: UTC timestamp of the run
+            exchange: Single exchange name (for daily/weekly schedulers)
+            candle_type: Type of candle window (for hourly scheduler)
+            exchanges: List of exchanges (for hourly scheduler)
+            symbol_count: Number of symbols queued (for hourly scheduler)
+            close_info: Optional close time information (for hourly scheduler)
+            **kwargs: Additional keyword arguments for future extensibility
+        """
+        # Default implementation for daily/weekly schedulers
+        if exchange is not None:
+            message = "\n".join(
+                [
+                    f"✅ **{self.job_label} Alert Check Started**",
+                    f"• Run Time (EST): {_est_str(run_time_utc)}",
+                    f"• Timeframe: {self.timeframe_key}",
+                    f"• Exchange: {exchange}",
+                ]
+            )
+            self._post(message)
 
     def notify_skipped(self, run_time_utc: datetime, reason: str) -> None:
         message = "\n".join(
             [
                 f"⚪ **{self.job_label} Alert Check Skipped**",
-                f"• Run Time (UTC): {_utc_str(run_time_utc)}",
+                f"• Run Time (EST): {_est_str(run_time_utc)}",
                 f"• Reason: {reason}",
             ]
         )
@@ -172,53 +205,75 @@ class BaseSchedulerDiscord(ABC):
         self,
         run_time_utc: datetime,
         duration_seconds: float,
-        price_stats: Optional[dict],
-        alert_stats: Optional[dict],
-        exchange: str,
+        price_stats: Optional[dict] = None,
+        alert_stats: Optional[dict] = None,
+        exchange: Optional[str] = None,
         first_failure_reason: Optional[str] = None,
+        stats: Optional[dict] = None,
+        exchanges: Optional[Iterable[str]] = None,
+        **kwargs,
     ) -> None:
-        price_stats = price_stats or {}
-        alert_stats = alert_stats or {}
+        """
+        Send completion notification.
 
-        price_line = (
-            f"• Price Update: {price_stats.get('updated', 0):,}/{price_stats.get('total', price_stats.get('updated', 0) + price_stats.get('failed', 0) + price_stats.get('skipped', 0)):,} updated"
-            f" | failed {price_stats.get('failed', 0):,}"
-            f" | skipped {price_stats.get('skipped', 0):,}"
-        )
-        alert_line = (
-            f"• Alerts: total {alert_stats.get('total', 0):,}"
-            f" | triggered {alert_stats.get('triggered', alert_stats.get('success', 0)):,}"
-            f" | not triggered {alert_stats.get('not_triggered', 0):,}"
-            f" | no data {alert_stats.get('no_data', 0):,}"
-            f" | stale {alert_stats.get('stale_data', 0):,}"
-            f" | errors {alert_stats.get('errors', 0):,}"
-        )
+        This base implementation handles daily/weekly schedulers. Subclasses can
+        override this method to provide custom formatting (e.g., hourly scheduler).
 
-        lines = [
-            f"✅ **{self.job_label} Alert Check Complete**",
-            f"• Run Time (UTC): {_utc_str(run_time_utc)}",
-            f"• Duration: {_format_duration(duration_seconds)}",
-            f"• Timeframe: {self.timeframe_key}",
-            f"• Exchange: {exchange}",
-            price_line,
-            alert_line,
-        ]
+        Args:
+            run_time_utc: UTC timestamp of the run
+            duration_seconds: Duration of the job in seconds
+            price_stats: Price update statistics (for daily/weekly schedulers)
+            alert_stats: Alert check statistics
+            exchange: Single exchange name (for daily/weekly schedulers)
+            first_failure_reason: Optional first failure error message
+            stats: Price update statistics (for hourly scheduler)
+            exchanges: List of exchanges (for hourly scheduler)
+            **kwargs: Additional keyword arguments for future extensibility
+        """
+        # Default implementation for daily/weekly schedulers
+        if exchange is not None:
+            price_stats = price_stats or {}
+            alert_stats = alert_stats or {}
 
-        if price_stats.get("failed", 0) > 0 and first_failure_reason:
-            reason = (
-                first_failure_reason[:200] + "..."
-                if len(first_failure_reason) > 200
-                else first_failure_reason
+            price_line = (
+                f"• Price Update: {price_stats.get('updated', 0):,}/{price_stats.get('total', price_stats.get('updated', 0) + price_stats.get('failed', 0) + price_stats.get('skipped', 0)):,} updated"
+                f" | failed {price_stats.get('failed', 0):,}"
+                f" | skipped {price_stats.get('skipped', 0):,}"
             )
-            lines.append(f"• First failure: {reason}")
+            alert_line = (
+                f"• Alerts: total {alert_stats.get('total', 0):,}"
+                f" | triggered {alert_stats.get('triggered', alert_stats.get('success', 0)):,}"
+                f" | not triggered {alert_stats.get('not_triggered', 0):,}"
+                f" | no data {alert_stats.get('no_data', 0):,}"
+                f" | stale {alert_stats.get('stale_data', 0):,}"
+                f" | errors {alert_stats.get('errors', 0):,}"
+            )
 
-        self._post("\n".join(lines))
+            lines = [
+                f"✅ **{self.job_label} Alert Check Complete**",
+                f"• Run Time (EST): {_est_str(run_time_utc)}",
+                f"• Duration: {_format_duration(duration_seconds)}",
+                f"• Timeframe: {self.timeframe_key}",
+                f"• Exchange: {exchange}",
+                price_line,
+                alert_line,
+            ]
+
+            if price_stats.get("failed", 0) > 0 and first_failure_reason:
+                reason = (
+                    first_failure_reason[:200] + "..."
+                    if len(first_failure_reason) > 200
+                    else first_failure_reason
+                )
+                lines.append(f"• First failure: {reason}")
+
+            self._post("\n".join(lines))
 
     def notify_error(self, run_time_utc: datetime, error: str) -> None:
         message = "\n".join(
             [
                 f"❌ **{self.job_label} Scheduler Error**",
-                f"• Run Time (UTC): {_utc_str(run_time_utc)}",
+                f"• Run Time (EST): {_est_str(run_time_utc)}",
                 f"• Error: {error}",
             ]
         )
@@ -229,7 +284,7 @@ class BaseSchedulerDiscord(ABC):
             [
                 f"✅ **{self.job_label} Scheduler Online**",
                 f"• Schedules: {schedule_info}",
-                f"• Timestamp (UTC): {_utc_str(datetime.now(tz=timezone.utc))}",
+                f"• Timestamp (EST): {_est_str(datetime.now(tz=timezone.utc))}",
             ]
         )
         self._post(message)
@@ -238,7 +293,7 @@ class BaseSchedulerDiscord(ABC):
         message = "\n".join(
             [
                 f"⏹️ **{self.job_label} Scheduler Stopped**",
-                f"• Timestamp (UTC): {_utc_str(datetime.now(tz=timezone.utc))}",
+                f"• Timestamp (EST): {_est_str(datetime.now(tz=timezone.utc))}",
             ]
         )
         self._post(message)

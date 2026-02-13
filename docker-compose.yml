@@ -130,6 +130,28 @@ services:
       start_period: 30s
       retries: 3
 
+  data-cleanup-scheduler:
+    build: .
+    container_name: stockalert-data-cleanup-scheduler
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-stockalertapp}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-stockalertapp}
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: ["python", "-m", "src.services.data_cleanup_scheduler"]
+    healthcheck:
+      test: ["CMD-SHELL", "test -f /app/data_cleanup_scheduler.lock && python -c 'import sys; sys.exit(0)'"]
+      interval: 30s
+      timeout: 10s
+      start_period: 30s
+      retries: 3
+
   autoheal:
     image: willfarrell/autoheal:latest
     container_name: stockalert-autoheal

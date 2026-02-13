@@ -24,7 +24,14 @@ import pandas as pd
 from src.services.backend import evaluate_expression, evaluate_expression_list
 from src.services.backend_fmp import FMPDataFetcher
 from src.data_access.alert_repository import list_alerts, update_alert
-from src.services.discord_routing import send_economy_discord_alert
+from src.data_access.metadata_repository import fetch_stock_metadata_map
+from src.services.discord_routing import (
+    send_economy_discord_alert,
+    resolve_alert_webhook_url,
+    resolve_alert_custom_webhook_urls,
+    format_alert_as_embed,
+)
+from src.utils.async_discord_queue import queue_discord_notification, get_discord_queue
 from src.services.alert_audit_logger import (
     log_alert_check_start,
     log_price_data_pulled,
@@ -44,6 +51,9 @@ logger = logging.getLogger(__name__)
 # Default number of parallel workers for alert checks (env override: SCHEDULER_ALERT_CHECK_WORKERS)
 DEFAULT_ALERT_CHECK_WORKERS = int(os.getenv("SCHEDULER_ALERT_CHECK_WORKERS", "5"))
 
+# Use async Discord notifications by default (env override: ASYNC_DISCORD_NOTIFICATIONS)
+USE_ASYNC_DISCORD = os.getenv("ASYNC_DISCORD_NOTIFICATIONS", "true").lower() in ("true", "1", "yes")
+
 
 class StockAlertChecker:
     """
@@ -51,10 +61,21 @@ class StockAlertChecker:
     Thread-safe for parallel check_alerts when using a shared price cache.
     """
 
-    def __init__(self):
+    def __init__(self, async_discord: bool = USE_ASYNC_DISCORD):
+        """
+        Initialize the alert checker.
+
+        Args:
+            async_discord: If True, queue Discord notifications for background sending.
+                          This prevents rate limits from blocking the main job.
+        """
         self.fmp = FMPDataFetcher()
         self.price_cache: Dict[str, pd.DataFrame] = {}
         self._cache_lock = threading.Lock()
+        self.async_discord = async_discord
+
+        if self.async_discord:
+            logger.info("Using async Discord notifications (background queue)")
 
     def get_price_data(
         self,
@@ -186,6 +207,12 @@ class StockAlertChecker:
         current_price = df["Close"].iloc[-1] if not df.empty else 0
         timeframe = alert.get("timeframe", "daily")
 
+        # Get stock metadata for economy classification and ISIN
+        stock_metadata = fetch_stock_metadata_map()
+        stock_info = stock_metadata.get(ticker, {})
+        economy = stock_info.get("rbics_economy", "Unknown")
+        isin = stock_info.get("isin", "N/A")
+
         # Get conditions for display
         conditions = self.extract_conditions(alert)
         conditions_str = "\n".join(f"  • {c}" for c in conditions[:3])  # Show first 3
@@ -196,6 +223,8 @@ class StockAlertChecker:
 
 **{name}**
 • Ticker: `{ticker}`
+• Economy: {economy}
+• ISIN: {isin}
 • Price: ${current_price:.2f}
 • Timeframe: {timeframe}
 
@@ -318,14 +347,41 @@ class StockAlertChecker:
                 result["triggered"] = True
                 logger.info(f"TRIGGERED: {ticker} - {alert.get('name', '')}")
 
-                # Send Discord notification
+                # Format the Discord notification message
                 message = self.format_alert_message(alert, df)
-                success = send_economy_discord_alert(alert, message)
 
-                if success:
-                    logger.info(f"Discord notification sent for {ticker}")
+                # Send Discord notification (async or sync based on setting)
+                if self.async_discord:
+                    # Pre-resolve webhook URL and build embed for batching
+                    webhook_url = resolve_alert_webhook_url(alert)
+                    embed = format_alert_as_embed(alert, message)
+
+                    # Queue primary economy-channel notification
+                    queued = queue_discord_notification(
+                        alert, message, send_economy_discord_alert,
+                        webhook_url=webhook_url,
+                        embed=embed,
+                    )
+                    if queued:
+                        logger.debug(f"Queued Discord notification for {ticker}")
+                    else:
+                        logger.warning(f"Failed to queue Discord notification for {ticker}")
+
+                    # Queue additional custom-channel notifications
+                    custom_urls = resolve_alert_custom_webhook_urls(alert)
+                    for custom_url in custom_urls:
+                        queue_discord_notification(
+                            alert, message, send_economy_discord_alert,
+                            webhook_url=custom_url,
+                            embed=embed,
+                        )
                 else:
-                    logger.warning(f"Failed to send Discord notification for {ticker}")
+                    # Synchronous sending - blocks until complete
+                    success = send_economy_discord_alert(alert, message)
+                    if success:
+                        logger.info(f"Discord notification sent for {ticker}")
+                    else:
+                        logger.warning(f"Failed to send Discord notification for {ticker}")
 
                 # Update alert's last_triggered timestamp
                 update_alert(alert_id, {"last_triggered": datetime.now().isoformat()})

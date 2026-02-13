@@ -980,8 +980,23 @@ if selected_asset_type == "Futures":
     filtered_stocks_data = pd.DataFrame(futures_list)
 
 elif selected_asset_type == "All":
-    # Start with all data
+    # Start with all data (stocks + ETFs)
     filtered_stocks_data = market_data.copy()
+
+    # Add futures to the combined dataset
+    futures_db_all = load_futures_database()
+    if futures_db_all:
+        futures_rows = []
+        for symbol, data in futures_db_all.items():
+            futures_rows.append({
+                'Name': data.get('long_name', data.get('name', symbol)),
+                'Symbol': symbol,
+                'Exchange': data.get('exchange', 'Futures'),
+                'Country': data.get('country', 'UNITED STATES'),
+                'Asset_Type': 'Future'
+            })
+        futures_df_all = pd.DataFrame(futures_rows)
+        filtered_stocks_data = pd.concat([filtered_stocks_data, futures_df_all], ignore_index=True)
 
     # Apply location filters first
     if selected_countries and 'Country' in filtered_stocks_data.columns:
@@ -1273,7 +1288,7 @@ with tab1:
             else:
                 # Simplified logic - no redundant exchange selector
                 # Show info about available stocks
-                asset_type_display = "stocks and ETFs" if asset_type == "All" else asset_type.lower()
+                asset_type_display = "stocks, ETFs and futures" if asset_type == "All" else asset_type.lower()
                 st.info(f"📊 Found {len(filtered_stocks_data)} {asset_type_display} matching your filters")
 
                 # Special handling for creating alerts on ALL assets
@@ -2949,7 +2964,23 @@ with tab1:
                             })
 
                     if stocks_data_list:
-                        with st.spinner(f"Creating {len(stocks_data_list)} alerts..."):
+                        # Create columns for progress bar in top right
+                        progress_col1, progress_col2 = st.columns([3, 1])
+                        
+                        with progress_col2:
+                            progress_text = st.empty()
+                            progress_bar = st.empty()
+                        
+                        # Define progress callback
+                        def update_progress(current, total):
+                            percent = int((current / total) * 100)
+                            progress_text.markdown(f"**{percent}%** complete")
+                            progress_bar.progress(current / total)
+                        
+                        with st.spinner(f"🏃 Creating {len(stocks_data_list)} alerts..."):
+                            # Initialize progress
+                            update_progress(0, len(stocks_data_list))
+                            
                             service = BulkAlertService()
                             result = service.create_alerts_batch(
                                 stocks_data=stocks_data_list,
@@ -2959,7 +2990,12 @@ with tab1:
                                 action=action,
                                 alert_name_template=alert_name,
                                 adjustment_method=adjustment_method,
+                                progress_callback=update_progress,
                             )
+                        
+                        # Clear progress indicators
+                        progress_text.empty()
+                        progress_bar.empty()
 
                         if result.inserted > 0:
                             st.success(f"✅ Successfully created {result.inserted} alert(s)")

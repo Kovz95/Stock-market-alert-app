@@ -1,6 +1,14 @@
 """
-Send hourly scheduler status updates to Discord in the same style as the
-daily/weekly scheduler notifications.
+Hourly scheduler Discord notifications using the BaseSchedulerDiscord pattern.
+
+Extends BaseSchedulerDiscord with hourly-specific notification methods while
+reusing the common configuration loading and posting logic.
+
+Usage:
+    from src.services.hourly_scheduler_discord import HourlySchedulerDiscord
+
+    notifier = HourlySchedulerDiscord()
+    notifier.notify_start(run_time_utc, "current", exchanges, symbol_count)
 """
 
 from __future__ import annotations
@@ -9,16 +17,9 @@ import logging
 from datetime import datetime, timezone
 from typing import Iterable, Optional
 
-import requests
-from src.data_access.document_store import load_document
+from src.services.scheduler_discord import BaseSchedulerDiscord, _utc_str, _format_duration, _est_str
 
 logger = logging.getLogger(__name__)
-
-
-def _utc_str(dt: datetime) -> str:
-    if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=timezone.utc)
-    return dt.astimezone(timezone.utc).strftime("%Y-%m-%d %H:%M:%SZ")
 
 
 def _format_list(items: Iterable[str], limit: int = 10) -> str:
@@ -30,121 +31,94 @@ def _format_list(items: Iterable[str], limit: int = 10) -> str:
     return f"{', '.join(values[:limit])} ... (+{len(values) - limit} more)"
 
 
-def _format_duration(seconds: float) -> str:
-    seconds = int(max(0, round(seconds)))
-    minutes, secs = divmod(seconds, 60)
-    hours, minutes = divmod(minutes, 60)
-    if hours:
-        return f"{hours}h {minutes}m {secs}s"
-    if minutes:
-        return f"{minutes}m {secs}s"
-    return f"{secs}s"
+class HourlySchedulerDiscord(BaseSchedulerDiscord):
+    """Discord notifier for hourly exchange jobs."""
 
+    @property
+    def job_label(self) -> str:
+        return "Hourly"
 
-class HourlySchedulerDiscord:
-    def __init__(self) -> None:
-        self.config = self._load_config()
-        self.fallback_webhook = self._load_scheduler_webhook()
+    @property
+    def timeframe_key(self) -> str:
+        return "1h"
 
-    @staticmethod
-    def _load_config() -> dict:
-        try:
-            config = load_document(
-                "discord_channels_config",
-                default={},
-                fallback_path="discord_channels_config.json",
-            ) or {}
-            return config.get("logging_channels", {}).get("Hourly_Scheduler_Status", {})
-        except Exception as exc:
-            logger.error("Error loading Discord config: %s", exc)
-            return {}
+    @property
+    def config_key(self) -> str:
+        return "Hourly_Scheduler_Status"
 
-    @staticmethod
-    def _load_scheduler_webhook() -> str | None:
-        """
-        Use the scheduler status webhook as a fallback if the hourly-specific
-        webhook is missing. This keeps start/complete notifications visible even
-        when the hourly channel is not configured.
-        """
-        try:
-            cfg = load_document(
-                "scheduler_config",
-                default={},
-                fallback_path="scheduler_config.json",
-            ) or {}
-            webhook_cfg = cfg.get("scheduler_webhook", {})
-            if webhook_cfg.get("enabled") and webhook_cfg.get("url"):
-                return webhook_cfg["url"]
-        except Exception as exc:
-            logger.error("Error loading scheduler webhook fallback: %s", exc)
-        return None
-
-    def _post(self, message: str) -> bool:
-        from src.utils.discord_env import is_discord_send_enabled
-        if not is_discord_send_enabled():
-            return False
-        webhook_url = self.config.get("webhook_url") or self.fallback_webhook
-        if not webhook_url or webhook_url == "YOUR_WEBHOOK_URL_HERE":
-            logger.warning("Hourly scheduler webhook not configured; message skipped.")
-            return False
-        try:
-            from src.utils.discord_env import get_discord_environment_tag
-            response = requests.post(
-                webhook_url,
-                json={"content": get_discord_environment_tag() + message},
-                timeout=10,
-            )
-            if response.status_code in (200, 204):
-                return True
-            logger.error(
-                "Failed to send hourly scheduler message: HTTP %s %s",
-                response.status_code,
-                response.text,
-            )
-        except Exception as exc:
-            logger.error("Error sending hourly scheduler message: %s", exc)
-        return False
+    # -- Hourly-specific notification methods -------------------------------
 
     def notify_start(
         self,
         run_time_utc: datetime,
-        candle_type: str,
-        exchanges: Iterable[str],
-        symbol_count: int,
+        exchange: Optional[str] = None,
+        candle_type: Optional[str] = None,
+        exchanges: Optional[Iterable[str]] = None,
+        symbol_count: Optional[int] = None,
         close_info: Optional[str] = None,
+        **kwargs,
     ) -> None:
+        """
+        Send hourly-specific start notification with candle type and exchange info.
+
+        Args:
+            run_time_utc: UTC timestamp of the run
+            candle_type: Type of candle window (e.g., "current", "previous")
+            exchanges: List of exchanges being processed
+            symbol_count: Number of symbols queued for processing
+            close_info: Optional close time information
+            exchange: Unused parameter for compatibility with base class
+            **kwargs: Additional keyword arguments for compatibility
+        """
+        # If called with positional args, they should be non-None
+        if exchanges is None:
+            exchanges = []
         exchanges = list(exchanges)
+
         lines = [
-            "✅ **Hourly Alert Check Started**",
-            f"• Run Time (UTC): {_utc_str(run_time_utc)}",
-            f"• Candle Window: {candle_type}",
-            "• Alert Timeframe: 1h",
+            f"✅ **{self.job_label} Alert Check Started**",
+            f"• Run Time (EST): {_est_str(run_time_utc)}",
+            f"• Candle Window: {candle_type or 'unknown'}",
+            f"• Alert Timeframe: {self.timeframe_key}",
             f"• Exchanges ({len(exchanges)}): {_format_list(exchanges)}",
-            f"• Symbols Queued: {symbol_count:,}",
+            f"• Symbols Queued: {symbol_count or 0:,}",
         ]
         if close_info:
             lines.append(f"• Close Times (UTC): {close_info}")
         self._post("\n".join(lines))
 
-    def notify_skipped(self, run_time_utc: datetime, reason: str) -> None:
-        message = "\n".join(
-            [
-                "⚪ **Hourly Alert Check Skipped**",
-                f"• Run Time (UTC): {_utc_str(run_time_utc)}",
-                f"• Reason: {reason}",
-            ]
-        )
-        self._post(message)
-
     def notify_complete(
         self,
         run_time_utc: datetime,
         duration_seconds: float,
-        stats: dict,
-        alert_stats: Optional[dict],
-        exchanges: Iterable[str],
+        price_stats: Optional[dict] = None,
+        alert_stats: Optional[dict] = None,
+        exchange: Optional[str] = None,
         first_failure_reason: Optional[str] = None,
+        stats: Optional[dict] = None,
+        exchanges: Optional[Iterable[str]] = None,
+        **kwargs,
     ) -> None:
+        """
+        Send hourly-specific completion notification with exchange list.
+
+        Args:
+            run_time_utc: UTC timestamp of the run
+            duration_seconds: Duration of the job in seconds
+            stats: Price update statistics dictionary
+            alert_stats: Alert check statistics dictionary
+            exchanges: List of exchanges processed
+            first_failure_reason: Optional first failure error message
+            price_stats: Unused parameter for compatibility with base class
+            exchange: Unused parameter for compatibility with base class
+            **kwargs: Additional keyword arguments for compatibility
+        """
+        # If called with positional args, they should be non-None
+        if exchanges is None:
+            exchanges = []
+        if stats is None:
+            stats = {}
+
         exchanges = list(exchanges)
         price_line = (
             f"• Price Update: {stats.get('success', 0):,}/{stats.get('total', 0):,} updated "
@@ -163,10 +137,10 @@ class HourlySchedulerDiscord:
             alert_line = "• Alerts: no hourly alerts processed"
 
         lines = [
-            "✅ **Hourly Alert Check Complete**",
-            f"• Run Time (UTC): {_utc_str(run_time_utc)}",
+            f"✅ **{self.job_label} Alert Check Complete**",
+            f"• Run Time (EST): {_est_str(run_time_utc)}",
             f"• Duration: {_format_duration(duration_seconds)}",
-            "• Alert Timeframe: 1h",
+            f"• Alert Timeframe: {self.timeframe_key}",
             f"• Exchanges ({len(exchanges)}): {_format_list(exchanges)}",
             price_line,
             alert_line,
@@ -177,33 +151,4 @@ class HourlySchedulerDiscord:
             reason = first_failure_reason[:200] + "..." if len(first_failure_reason) > 200 else first_failure_reason
             lines.append(f"• First failure: {reason}")
         message = "\n".join(lines)
-        self._post(message)
-
-    def notify_error(self, run_time_utc: datetime, error: str) -> None:
-        message = "\n".join(
-            [
-                "❌ **Hourly Scheduler Error**",
-                f"• Run Time (UTC): {_utc_str(run_time_utc)}",
-                f"• Error: {error}",
-            ]
-        )
-        self._post(message)
-
-    def notify_scheduler_start(self, schedule_info: str) -> None:
-        message = "\n".join(
-            [
-                "✅ **Hourly Scheduler Online**",
-                f"• Schedules: {schedule_info}",
-                f"• Timestamp (UTC): {_utc_str(datetime.now(tz=timezone.utc))}",
-            ]
-        )
-        self._post(message)
-
-    def notify_scheduler_stop(self) -> None:
-        message = "\n".join(
-            [
-                "⏹️ **Hourly Scheduler Stopped**",
-                f"• Timestamp (UTC): {_utc_str(datetime.now(tz=timezone.utc))}",
-            ]
-        )
         self._post(message)

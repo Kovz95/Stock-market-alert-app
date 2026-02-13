@@ -374,6 +374,7 @@ class BulkAlertService:
         multi_timeframe_params: Optional[Dict[str, Any]] = None,
         mixed_timeframe_params: Optional[Dict[str, Any]] = None,
         max_workers: int = MAX_WORKERS,
+        progress_callback: Optional[callable] = None,
     ) -> BulkAlertResult:
         """Create multiple alerts efficiently in a batch.
 
@@ -389,6 +390,7 @@ class BulkAlertService:
             multi_timeframe_params: Multi-timeframe parameters.
             mixed_timeframe_params: Mixed-timeframe parameters.
             max_workers: Number of parallel workers for payload preparation.
+            progress_callback: Optional callback function(current, total) to report progress.
 
         Returns:
             BulkAlertResult with counts and status.
@@ -402,6 +404,8 @@ class BulkAlertService:
         payloads_to_insert = []
         skipped_duplicates = 0
         skipped_missing_data = 0
+        total_stocks = len(stocks_data)
+        processed_count = 0
 
         # Pre-load existing signatures for O(1) duplicate detection
         self._load_existing_signatures()
@@ -444,6 +448,11 @@ class BulkAlertService:
                     logger.error(f"Error preparing payload: {e}")
                     result.errors.append(str(e))
                     result.failed += 1
+                finally:
+                    # Update progress
+                    processed_count += 1
+                    if progress_callback:
+                        progress_callback(processed_count, total_stocks)
 
         result.skipped_duplicates = skipped_duplicates
         result.skipped_missing_data = skipped_missing_data

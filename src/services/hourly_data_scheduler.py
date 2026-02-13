@@ -26,8 +26,8 @@ if str(PROJECT_ROOT) not in sys.path:
 if str(BASE_DIR) not in sys.path:
     sys.path.insert(0, str(BASE_DIR))
 
-from auto_scheduler_v2 import run_alert_checks  # noqa: E402
-from calendar_adapter import (  # noqa: E402
+from src.services.auto_scheduler_v2 import run_alert_checks  # noqa: E402
+from src.services.calendar_adapter import (  # noqa: E402
     get_hourly_alignment,
     get_session_bounds,
     is_exchange_open as calendar_is_open,
@@ -306,7 +306,18 @@ def update_hourly_data(exchange_filter: Iterable[str] | None = None) -> None:
     discord_logger = HourlySchedulerDiscord()
     run_started = datetime.now(tz=timezone.utc)
 
+    # Phase timing for performance analysis
+    phase_times: Dict[str, float] = {}
+
+    def log_phase(phase_name: str, start_time: float) -> float:
+        """Log phase completion and return current time."""
+        elapsed = time.time() - start_time
+        phase_times[phase_name] = elapsed
+        logger.info(f"  Phase '{phase_name}' completed in {elapsed:.1f}s")
+        return time.time()
+
     try:
+        phase_start = time.time()
         exchanges = list(exchange_filter) if exchange_filter else list(EXCHANGE_SCHEDULES.keys())
         exchange_label = ", ".join(exchanges) if exchange_filter else "All exchanges"
         candle_desc = determine_candle_description(exchanges)
@@ -327,6 +338,8 @@ def update_hourly_data(exchange_filter: Iterable[str] | None = None) -> None:
             return
 
         stock_db = collector.load_stock_database()
+        phase_start = log_phase("load_database", phase_start)
+
         now = datetime.now(tz=timezone.utc)
 
         open_tickers = {}
@@ -339,6 +352,8 @@ def update_hourly_data(exchange_filter: Iterable[str] | None = None) -> None:
                 open_tickers[ticker] = info
             else:
                 skipped_closed[exchange or "Unknown"] += 1
+
+        phase_start = log_phase("filter_tickers", phase_start)
 
         if not open_tickers:
             reason = "No tickers from open exchanges"
@@ -360,9 +375,9 @@ def update_hourly_data(exchange_filter: Iterable[str] | None = None) -> None:
 
         discord_logger.notify_start(
             run_started,
-            candle_desc,
-            open_exchanges or ["Unknown"],
-            len(open_tickers),
+            candle_type=candle_desc,
+            exchanges=open_exchanges or ["Unknown"],
+            symbol_count=len(open_tickers),
             close_info=", ".join(close_lines) if close_lines else None,
         )
 
@@ -375,16 +390,28 @@ def update_hourly_data(exchange_filter: Iterable[str] | None = None) -> None:
 
         # Update all tickers in parallel using the collector's built-in parallelization
         ticker_list = sorted(open_tickers.keys())
+        logger.info(f"  Starting price update for {len(ticker_list)} tickers...")
+        price_update_start = time.time()
+
         update_stats = collector.update_multiple_tickers(
             ticker_list,
             days_back=7,
             skip_existing=True
         )
 
+        phase_times["price_update"] = time.time() - price_update_start
+        logger.info(f"  Phase 'price_update' completed in {phase_times['price_update']:.1f}s")
+
         stats["success"] = update_stats.get("updated", 0)
         stats["failed"] = update_stats.get("failed", 0)
 
+        logger.info(f"  Starting alert checks for {len(open_exchanges)} exchanges...")
+        alert_check_start = time.time()
+
         alert_stats = run_alert_checks(open_exchanges, "hourly")
+
+        phase_times["alert_check"] = time.time() - alert_check_start
+        logger.info(f"  Phase 'alert_check' completed in {phase_times['alert_check']:.1f}s")
         stats.update(
             {
                 "alerts_total": alert_stats.get("total", 0),
@@ -407,15 +434,32 @@ def update_hourly_data(exchange_filter: Iterable[str] | None = None) -> None:
                     stats.get("alerts_total", 0),
                     stats.get("alerts_triggered", 0),
                     stats.get("alerts_errors", 0))
+
+        # Log phase timing breakdown
+        logger.info("  Phase timing breakdown:")
+        for phase_name, phase_elapsed in phase_times.items():
+            pct = (phase_elapsed / elapsed * 100) if elapsed > 0 else 0
+            logger.info(f"    - {phase_name}: {phase_elapsed:.1f}s ({pct:.1f}%)")
+
+        # Log async Discord queue status if using async notifications
+        try:
+            from src.utils.async_discord_queue import get_discord_queue
+            queue_stats = get_discord_queue().get_stats()
+            if queue_stats.get('queued', 0) > 0 or queue_stats.get('pending', 0) > 0:
+                logger.info(f"  Discord queue: {queue_stats.get('pending', 0)} pending, "
+                           f"{queue_stats.get('sent', 0)} sent, {queue_stats.get('failed', 0)} failed")
+        except Exception:
+            pass
+
         logger.info("=" * 80)
 
         first_failure = getattr(collector, "last_error", None) if stats.get("failed") else None
         discord_logger.notify_complete(
             run_started,
             elapsed,
-            stats,
-            alert_stats,
-            open_exchanges or ["Unknown"],
+            stats=stats,
+            alert_stats=alert_stats,
+            exchanges=open_exchanges or ["Unknown"],
             first_failure_reason=first_failure,
         )
         update_status(

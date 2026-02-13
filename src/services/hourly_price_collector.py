@@ -17,7 +17,8 @@ from src.data_access.metadata_repository import fetch_stock_metadata_map
 from src.data_access.daily_price_repository import DailyPriceRepository
 
 # Default number of parallel workers for hourly updates
-DEFAULT_HOURLY_WORKERS = int(os.getenv("HOURLY_UPDATE_WORKERS", "20"))
+# Reduced from 20 to 10 to avoid FMP API rate limits
+DEFAULT_HOURLY_WORKERS = int(os.getenv("HOURLY_UPDATE_WORKERS", "10"))
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

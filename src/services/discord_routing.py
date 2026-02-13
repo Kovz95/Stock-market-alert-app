@@ -667,6 +667,61 @@ class DiscordEconomyRouter:
             })
         return channels
 
+    def resolve_webhook_url(self, alert: Dict) -> Optional[str]:
+        """
+        Determine the webhook URL for an alert without sending it.
+
+        This allows callers to pre-resolve the destination so that
+        notifications can be batched by webhook URL.
+
+        Args:
+            alert: Alert dictionary containing stock/routing information
+
+        Returns:
+            The webhook URL string, or None if no valid webhook is configured.
+        """
+        self._reload_configs_if_changed()
+        try:
+            _channel_name, webhook_url = self.determine_alert_channel(alert)
+
+            if not webhook_url:
+                alert_timeframe = alert.get("timeframe", "1d")
+                fallback_channel = self.config.get("default_channel", "General")
+                _channel_name, webhook_url = self._get_channel_info(
+                    fallback_channel, alert_timeframe
+                )
+
+            if not webhook_url or "YOUR_" in webhook_url:
+                return None
+
+            return webhook_url
+        except Exception as exc:
+            logger.error("Error resolving webhook URL for %s: %s", alert.get("ticker", "?"), exc)
+            return None
+
+    def resolve_custom_webhook_urls(self, alert: Dict) -> List[str]:
+        """
+        Return webhook URLs for all matching custom channels (excluding the
+        primary economy channel).
+
+        Args:
+            alert: Alert dictionary
+
+        Returns:
+            List of webhook URL strings for matching custom channels.
+        """
+        self._reload_configs_if_changed()
+        urls: List[str] = []
+        try:
+            custom_channels = self.get_custom_channels_for_alert(alert)
+            for _name, info in custom_channels:
+                url = info.get("webhook_url", "")
+                if url and "YOUR_" not in url:
+                    urls.append(url)
+        except Exception as exc:
+            logger.error("Error resolving custom webhook URLs: %s", exc)
+        return urls
+
     def update_channel_config(self, channel_name: str, webhook_url: str, timeframe: Optional[str] = None) -> bool:
         """
         Update a channel's webhook URL
@@ -737,3 +792,159 @@ def get_stock_economy_classification(ticker: str) -> Optional[str]:
         Economy classification or None
     """
     return discord_router.get_stock_economy(ticker)
+
+
+def resolve_alert_webhook_url(alert: Dict) -> Optional[str]:
+    """
+    Convenience function to pre-resolve the primary webhook URL for an alert.
+
+    Args:
+        alert: Alert dictionary
+
+    Returns:
+        Webhook URL string, or None if not configured.
+    """
+    return discord_router.resolve_webhook_url(alert)
+
+
+def resolve_alert_custom_webhook_urls(alert: Dict) -> List[str]:
+    """
+    Convenience function to get custom-channel webhook URLs for an alert.
+
+    Args:
+        alert: Alert dictionary
+
+    Returns:
+        List of webhook URL strings for matching custom channels.
+    """
+    return discord_router.resolve_custom_webhook_urls(alert)
+
+
+# ---------------------------------------------------------------------------
+# Embed formatting & batched sending
+# ---------------------------------------------------------------------------
+
+def format_alert_as_embed(alert: Dict, message: str) -> Dict:
+    """
+    Convert a triggered-alert message into a Discord embed dictionary.
+
+    The embed colour is green (0x00FF00) for Buy alerts and red (0xFF0000)
+    for Sell alerts, matching the convention in ``src/utils/utils.py``.
+
+    Args:
+        alert: Alert dictionary (must contain at least ``ticker``).
+        message: The plain-text alert message (used as the embed description).
+
+    Returns:
+        A dict suitable for inclusion in a Discord ``embeds`` array.
+    """
+    from datetime import datetime, timezone as _tz
+    from zoneinfo import ZoneInfo
+
+    ticker = alert.get("ticker", alert.get("ticker1", "Unknown"))
+    name = alert.get("name", alert.get("stock_name", "Alert"))
+    action = alert.get("action", "Buy")
+    timeframe = alert.get("timeframe", "1d")
+
+    # Green for Buy, red for Sell
+    color = 0x00FF00 if action == "Buy" else 0xFF0000
+
+    # Build concise conditions string for description
+    conditions = alert.get("conditions", [])
+    cond_lines = []
+    for cond in conditions[:5]:
+        if isinstance(cond, dict):
+            cond_lines.append(cond.get("conditions", ""))
+        elif isinstance(cond, str):
+            cond_lines.append(cond)
+        elif isinstance(cond, list) and cond:
+            cond_lines.append(str(cond[0]))
+    conditions_text = "\n".join(f"• {c}" for c in cond_lines if c) or "—"
+
+    now_utc = datetime.now(tz=_tz.utc)
+    now_et = now_utc.astimezone(ZoneInfo("America/New_York"))
+
+    env_tag = ""
+    try:
+        env_tag = get_discord_environment_tag().strip()
+    except Exception:
+        pass
+
+    title = f"{env_tag} {ticker} — {name}".strip() if env_tag else f"{ticker} — {name}"
+
+    embed: Dict = {
+        "title": title[:256],  # Discord limit
+        "description": conditions_text[:4096],
+        "color": color,
+        "fields": [
+            {"name": "Action", "value": action, "inline": True},
+            {"name": "Timeframe", "value": timeframe, "inline": True},
+        ],
+        "footer": {
+            "text": f"Triggered at {now_et.strftime('%Y-%m-%d %I:%M:%S %p ET')}",
+        },
+        "timestamp": now_utc.isoformat(),
+    }
+
+    # Optional extra fields (only if data is present)
+    economy = alert.get("economy")
+    if not economy:
+        try:
+            economy = discord_router.get_stock_economy(ticker)
+        except Exception:
+            pass
+    if economy:
+        embed["fields"].append({"name": "Economy", "value": economy, "inline": True})
+
+    return embed
+
+
+def send_batch_embeds(
+    webhook_url: str,
+    embeds: List[Dict],
+    rate_limiter=None,
+) -> bool:
+    """
+    Send up to 10 embeds in a single Discord webhook POST.
+
+    Args:
+        webhook_url: Discord webhook URL.
+        embeds: List of embed dicts (max 10 — caller should chunk).
+        rate_limiter: Optional ``DiscordRateLimiter`` instance.
+
+    Returns:
+        True if the message was accepted by Discord, False otherwise.
+    """
+    if not is_discord_send_enabled():
+        logger.info("Discord send disabled; skipping batch of %d embeds.", len(embeds))
+        return False
+
+    if not webhook_url or "YOUR_" in webhook_url:
+        logger.warning("Webhook URL not configured; skipping batch send.")
+        return False
+
+    # Discord enforces a maximum of 10 embeds per message
+    embeds = embeds[:10]
+
+    payload = {
+        "embeds": embeds,
+        "username": "Stock Alert Bot",
+    }
+
+    try:
+        if rate_limiter is not None:
+            success, _status = rate_limiter.send_with_rate_limit(webhook_url, payload)
+            return success
+
+        response = requests.post(webhook_url, json=payload, timeout=10)
+        if response.status_code in (200, 204):
+            return True
+        logger.error(
+            "Batch embed send failed: HTTP %s — %s",
+            response.status_code,
+            response.text[:200],
+        )
+        return False
+    except Exception as exc:
+        logger.error("Error sending batch embeds: %s", exc)
+        return False

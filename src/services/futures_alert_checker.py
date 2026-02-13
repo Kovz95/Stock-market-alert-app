@@ -355,6 +355,7 @@ class FuturesAlertChecker:
 
 **{name}**
 • Symbol: `{symbol}` ({full_name})
+• Economy: Commodities/Futures
 • Category: {category}
 • Price: ${current_price:.2f}
 • Timeframe: {timeframe}

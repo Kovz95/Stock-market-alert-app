@@ -22,7 +22,7 @@ from __future__ import annotations
 
 import json
 import logging
-import multiprocessing as mp
+import threading
 import os
 import signal
 import subprocess
@@ -307,7 +307,7 @@ def run_alert_checks(
 # ---------------------------------------------------------------------------
 
 _job_locks: Dict[str, bool] = {}
-_lock_lock = mp.Lock()
+_lock_lock = threading.Lock()
 
 
 def sanitize_job_id(job_type: str, exchange_name: str) -> str:
@@ -495,50 +495,38 @@ def is_scheduler_running() -> bool:
 # Job Execution with Timeout
 # ---------------------------------------------------------------------------
 
-def _job_worker(queue, exchange_name: str, resample_weekly: bool):
-    """Worker executed in a subprocess to isolate hangs/crashes."""
-    try:
-        price_stats = update_prices_for_exchanges([exchange_name], resample_weekly=resample_weekly)
-        timeframe_key = "weekly" if resample_weekly else "daily"
-        alert_stats = run_alert_checks([exchange_name], timeframe_key)
-        queue.put({"ok": True, "price_stats": price_stats, "alert_stats": alert_stats})
-    except Exception as exc:
-        queue.put({"ok": False, "error": str(exc)})
+def _exchange_worker(exchange_name: str, resample_weekly: bool):
+    """Execute price update + alert checks for a single exchange."""
+    price_stats = update_prices_for_exchanges([exchange_name], resample_weekly=resample_weekly)
+    timeframe_key = "weekly" if resample_weekly else "daily"
+    alert_stats = run_alert_checks([exchange_name], timeframe_key)
+    return price_stats, alert_stats
 
 
-def _run_job_subprocess(exchange_name: str, resample_weekly: bool, timeout_seconds: int):
+def _run_exchange_job(exchange_name: str, resample_weekly: bool, timeout_seconds: int):
     """
-    Run a single exchange job in a subprocess with a hard timeout.
+    Run a single exchange job on a thread with a soft timeout.
+
+    Uses ThreadPoolExecutor so the caller is not blocked indefinitely.
+    Unlike the old subprocess approach the async Discord queue lives in
+    the same process and drains naturally — no explicit wait required.
+
     Returns (price_stats, alert_stats, error_message)
     """
-    queue: mp.Queue = mp.Queue()
-    proc = mp.Process(target=_job_worker, args=(queue, exchange_name, resample_weekly))
-    proc.start()
-    start = time.time()
-
-    while True:
-        elapsed = time.time() - start
-        remaining = timeout_seconds - elapsed
-        if remaining <= 0:
-            proc.terminate()
-            proc.join(5)
-            if proc.is_alive():
-                proc.kill()
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        future = pool.submit(_exchange_worker, exchange_name, resample_weekly)
+        try:
+            price_stats, alert_stats = future.result(timeout=timeout_seconds)
+            return price_stats, alert_stats, None
+        except TimeoutError:
+            logger.warning(
+                "Job for %s timed out after %ds (worker thread will finish in background)",
+                exchange_name,
+                timeout_seconds,
+            )
             return None, None, f"timeout after {timeout_seconds}s"
-
-        wait_time = min(remaining, 5)
-        proc.join(wait_time)
-        if not proc.is_alive():
-            break
-
-    if queue.empty():
-        return None, None, "no result from worker"
-
-    result = queue.get()
-    if not result.get("ok"):
-        return None, None, result.get("error", "unknown error")
-
-    return result.get("price_stats"), result.get("alert_stats"), None
+        except Exception as exc:
+            return None, None, str(exc)
 
 
 def execute_exchange_job(exchange_name: str, job_type: str):
@@ -578,7 +566,7 @@ def execute_exchange_job(exchange_name: str, job_type: str):
         )
 
         resample_weekly = job_type == "weekly"
-        price_stats, alert_stats, worker_err = _run_job_subprocess(
+        price_stats, alert_stats, worker_err = _run_exchange_job(
             exchange_name,
             resample_weekly=resample_weekly,
             timeout_seconds=job_timeout,
