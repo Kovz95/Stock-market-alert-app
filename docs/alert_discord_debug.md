@@ -44,6 +44,51 @@ Important: **StockAlertChecker** gets price data from the **FMP API** (`FMPDataF
 
 ---
 
+## Where Schedulers Get Their Discord Channels
+
+There are **two separate** Discord channel systems:
+
+### 1. Scheduler status messages (start / complete / error)
+
+Used by **daily**, **weekly**, and **hourly** schedulers to post “Alert Check Started” and “Alert Check Complete” (and errors) to a dedicated status channel.
+
+| Scheduler | Config source | Config key | Fallback |
+|-----------|----------------|------------|----------|
+| **Daily** | `discord_channels_config` (document store or `discord_channels_config.json`) | `logging_channels.Daily_Scheduler_Status` | `scheduler_config.scheduler_webhook.url` |
+| **Weekly** | same | `logging_channels.Weekly_Scheduler_Status` | `scheduler_config.scheduler_webhook.url` |
+| **Hourly** | same | `logging_channels.Hourly_Scheduler_Status` | `scheduler_config.scheduler_webhook.url` |
+
+- **Code:** `src/services/scheduler_discord.py` (BaseSchedulerDiscord, DailySchedulerDiscord, WeeklySchedulerDiscord) and `hourly_scheduler_discord.py` (HourlySchedulerDiscord). Each notifier’s `_load_config()` reads `config["logging_channels"][config_key]` for `webhook_url`.
+- If a job-specific key has no `webhook_url`, the code falls back to the single **scheduler status webhook** in `scheduler_config` (document store or `scheduler_config.json`). So daily and weekly often end up using that “old” shared channel when you haven’t set up `Daily_Scheduler_Status` / `Weekly_Scheduler_Status`.
+
+**To give daily and weekly their own channels:** Add entries under `logging_channels` with the right webhook URLs, for example:
+
+```json
+"logging_channels": {
+  "Daily_Scheduler_Status":  { "webhook_url": "https://discord.com/api/webhooks/...", "channel_name": "#daily-scheduler" },
+  "Weekly_Scheduler_Status": { "webhook_url": "https://discord.com/api/webhooks/...", "channel_name": "#weekly-scheduler" },
+  "Hourly_Scheduler_Status": { "webhook_url": "https://discord.com/api/webhooks/...", "channel_name": "#hourly-scheduler" }
+}
+```
+
+### 2. Alert routing (where triggered stock alerts are sent)
+
+When an alert **triggers**, it is sent to a channel chosen by **economy** (and optionally ETF/Pairs) and **timeframe**. The timeframe selects which mapping is used:
+
+| Alert timeframe | Mapping used | Where it comes from |
+|-----------------|--------------|---------------------|
+| **Hourly** (1h, 1hr, hourly) | `channel_mappings_hourly` | Built in `discord_routing.py` from `channel_mappings`; each economy can override with its own `webhook_url` and `channel_name` in `channel_mappings_hourly`. |
+| **Daily** (1d, daily, or missing) | `channel_mappings_daily` | Same: built from base `channel_mappings`; daily-specific overrides in `channel_mappings_daily`. |
+| **Weekly** (1wk, 1w, weekly) | `channel_mappings_weekly` | Same: built from base `channel_mappings`; weekly-specific overrides in `channel_mappings_weekly`. |
+
+- **Code:** `discord_routing.py` → `_load_config()` builds `channel_mappings_daily`, `channel_mappings_weekly`, and `channel_mappings_hourly` from the base `channel_mappings`. For each economy in the base map:
+  - **Daily/Weekly:** If you don’t add a `channel_mappings_daily` or `channel_mappings_weekly` entry for that economy, it **inherits** `webhook_url` (and derived channel_name) from the base. So daily and weekly alerts use the **same webhooks as the old base channels** until you add explicit daily/weekly entries with different webhooks.
+  - **Hourly:** Same inheritance; you’ve overridden hourly with your own channels, so hourly has its own webhooks.
+
+**To give daily and weekly alerts their own channels:** In `discord_channels_config`, define `channel_mappings_daily` and/or `channel_mappings_weekly` with the same economy keys (e.g. `General`, `US`, `China`, etc.) and set each entry’s `webhook_url` (and optionally `channel_name`) to the new channel. If an economy is missing from `channel_mappings_daily` or `channel_mappings_weekly`, it keeps using the base mapping (old channel).
+
+---
+
 ## Why Alerts Might Not Reach Discord: Checklist
 
 ### 1. Alert logic (condition never true)
@@ -68,7 +113,7 @@ Important: **StockAlertChecker** gets price data from the **FMP API** (`FMPDataF
 
 ### 4. Discord routing / webhook
 
-- **Config file:** `discord_channels_config.json` (or document store key `discord_channels_config`). Must have real webhook URLs (not placeholders like `YOUR_GENERAL_WEBHOOK_URL_HERE`).
+- **Config file:** `discord_channels_config.json` (or document store key `discord_channels_config`). Must have real webhook URLs (not placeholders like `YOUR_GENERAL_WEBHOOK_URL_HERE`). The actual file is not committed (it contains webhook URLs); use **`discord_channels_config.example.json`** in the project root as a template, then copy to `discord_channels_config.json` and fill in webhooks, or configure via the **Discord Management** page (which persists to the document store).
 - **Channel selection:** `determine_alert_channel(alert)` uses:
   - `enable_industry_routing` → economy/ETF/Pairs/default.
   - Ticker → economy from metadata (`rbics_economy`). If metadata has no economy for the ticker, it falls back to default channel.

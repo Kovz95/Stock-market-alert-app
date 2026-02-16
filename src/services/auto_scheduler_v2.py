@@ -67,6 +67,7 @@ from src.services.scheduler_services import (  # noqa: E402
 )
 from src.services.scheduler_job_handler import (  # noqa: E402
     DailyJobHandler,
+    HourlyJobHandler,
     WeeklyJobHandler,
     _exchange_worker,
     _run_exchange_job,
@@ -93,12 +94,17 @@ if not logger.handlers:
     logger.addHandler(file_handler)
 
 # ---------------------------------------------------------------------------
-# Singleton instances
+# Singleton instances (mode-specific lock file when SCHEDULER_MODE is set)
 # ---------------------------------------------------------------------------
 
-_services = SchedulerServices()
+_scheduler_mode = os.getenv("SCHEDULER_MODE", "").strip().lower() or None
+if _scheduler_mode and _scheduler_mode in ("daily", "weekly", "hourly"):
+    _services = SchedulerServices(lock_file=BASE_DIR / f"scheduler_v2_{_scheduler_mode}.lock")
+else:
+    _services = SchedulerServices()
 _daily_handler = DailyJobHandler(_services)
 _weekly_handler = WeeklyJobHandler(_services)
+_hourly_handler = HourlyJobHandler(_services)
 
 # Global scheduler instance
 scheduler: Optional[BackgroundScheduler] = None
@@ -309,14 +315,20 @@ def is_scheduler_running() -> bool:
 
 def execute_exchange_job(exchange_name: str, job_type: str) -> Optional[Dict[str, Any]]:
     """
-    Execute a single exchange job (daily or weekly).
+    Execute a single exchange job (daily, weekly, or hourly).
 
     Args:
         exchange_name: Name of the exchange
-        job_type: 'daily' or 'weekly'
+        job_type: 'daily', 'weekly', or 'hourly'
     """
-    handler = _daily_handler if job_type == "daily" else _weekly_handler
-    return handler.execute(exchange_name)
+    if job_type == "daily":
+        return _daily_handler.execute(exchange_name)
+    if job_type == "weekly":
+        return _weekly_handler.execute(exchange_name)
+    if job_type == "hourly":
+        return _hourly_handler.execute(exchange_name)
+    logger.warning("Unknown job_type %r; expected daily, weekly, or hourly", job_type)
+    return None
 
 
 def run_daily_job(exchange_name: str):
@@ -327,6 +339,11 @@ def run_daily_job(exchange_name: str):
 def run_weekly_job(exchange_name: str):
     """Execute a weekly job for an exchange."""
     return execute_exchange_job(exchange_name, "weekly")
+
+
+def run_hourly_job(exchange_name: str):
+    """Execute an hourly job for an exchange."""
+    return execute_exchange_job(exchange_name, "hourly")
 
 
 # ---------------------------------------------------------------------------
@@ -344,31 +361,35 @@ def _log_scheduler_startup_summary(configured_runs: List[Dict[str, Any]]):
     exchange_count = len(configured_runs)
 
     logger.info("=" * 70)
-    logger.info("DAILY SCHEDULER STARTUP SUMMARY")
+    logger.info("SCHEDULER STARTUP SUMMARY (mode=%s)", _scheduler_mode or "all")
     logger.info("=" * 70)
     logger.info("Current Time: %s UTC / %s ET", now_utc.strftime("%Y-%m-%d %H:%M:%S"), now_et.strftime("%Y-%m-%d %H:%M:%S"))
-    logger.info("Scheduler Timezone: America/New_York (Eastern Time)")
-    logger.info("Total Jobs Scheduled: %d (%d daily, %d weekly, plus system jobs)", total_jobs, exchange_count, exchange_count)
-    logger.info("Exchanges Configured: %d", exchange_count)
+    logger.info("Total Jobs Scheduled: %d | Exchanges Configured: %d", total_jobs, exchange_count)
     logger.info("-" * 70)
 
-    time_grouped: Dict[str, List[str]] = {}
-    for entry in configured_runs:
-        time_key = f"{entry['hour']:02d}:{entry['minute']:02d}"
-        time_grouped.setdefault(time_key, []).append(entry["exchange"])
+    # Hourly mode: entries have exchange + hourly_et
+    if configured_runs and "hourly_et" in configured_runs[0]:
+        logger.info("HOURLY RUNS (UTC):")
+        for entry in configured_runs:
+            logger.info("  - %s: %s", entry["exchange"], entry.get("hourly_et", "every hour"))
+    else:
+        time_grouped: Dict[str, List[str]] = {}
+        for entry in configured_runs:
+            time_key = f"{entry['hour']:02d}:{entry['minute']:02d}"
+            time_grouped.setdefault(time_key, []).append(entry["exchange"])
 
-    logger.info("SCHEDULED RUN TIMES (Eastern Time):")
-    logger.info("-" * 70)
-    for time_key in sorted(time_grouped.keys()):
-        exchanges = sorted(time_grouped[time_key])
-        h, m = map(int, time_key.split(":"))
-        sample_et = now_et.replace(hour=h, minute=m, second=0, microsecond=0)
-        sample_utc = sample_et.astimezone(utc_tz)
-        utc_time = sample_utc.strftime("%H:%M")
+        logger.info("SCHEDULED RUN TIMES (Eastern Time):")
+        logger.info("-" * 70)
+        for time_key in sorted(time_grouped.keys()):
+            exchanges = sorted(time_grouped[time_key])
+            h, m = map(int, time_key.split(":"))
+            sample_et = now_et.replace(hour=h, minute=m, second=0, microsecond=0)
+            sample_utc = sample_et.astimezone(utc_tz)
+            utc_time = sample_utc.strftime("%H:%M")
 
-        logger.info("  %s ET (%s UTC): %d exchange(s)", time_key, utc_time, len(exchanges))
-        for exchange in exchanges:
-            logger.info("    - %s (daily + weekly)", exchange)
+            logger.info("  %s ET (%s UTC): %d exchange(s)", time_key, utc_time, len(exchanges))
+            for exchange in exchanges:
+                logger.info("    - %s (daily + weekly)", exchange)
 
     logger.info("-" * 70)
 
@@ -398,16 +419,44 @@ def _log_scheduler_startup_summary(configured_runs: List[Dict[str, Any]]):
     logger.info("=" * 70)
 
 
-def _schedule_exchange_jobs():
-    """Schedule all exchange jobs based on their closing times."""
+def _schedule_exchange_jobs(mode: Optional[str] = None):
+    """Schedule exchange jobs based on closing times (or hourly when mode=hourly).
+
+    When mode is 'daily', 'weekly', or 'hourly', only that job type is scheduled.
+    When mode is None, both daily and weekly are scheduled (backward compatible).
+    """
     if not scheduler:
         logger.error("Scheduler not initialized")
         return
 
-    time_groups = get_exchanges_by_closing_time()
     scheduled_count = 0
     configured_runs: List[Dict[str, Any]] = []
+    schedule_daily = mode is None or mode == "daily"
+    schedule_weekly = mode is None or mode == "weekly"
+    schedule_hourly = mode == "hourly"
 
+    if schedule_hourly:
+        # Hourly: one job per exchange at minute 5 past every hour (UTC)
+        for exchange in sorted(EXCHANGE_SCHEDULES.keys()):
+            hourly_job_id = sanitize_job_id("hourly", exchange)
+            scheduler.add_job(
+                run_hourly_job,
+                CronTrigger(minute=5, timezone="UTC"),
+                id=hourly_job_id,
+                args=[exchange],
+                replace_existing=True,
+                max_instances=1,
+                misfire_grace_time=600,
+            )
+            scheduled_count += 1
+            configured_runs.append({
+                "exchange": exchange,
+                "hourly_et": "every hour at :05 UTC",
+            })
+        logger.info("Scheduled %d hourly jobs for %d exchanges", scheduled_count, len(configured_runs))
+        return configured_runs
+
+    time_groups = get_exchanges_by_closing_time()
     for time_str, exchanges_info in time_groups.items():
         for info in exchanges_info:
             exchange = info["exchange"]
@@ -433,39 +482,41 @@ def _schedule_exchange_jobs():
                 "weekly_et": f"{time_display} ET ({weekly_day})",
             })
 
-            daily_job_id = sanitize_job_id("daily", exchange)
-            scheduler.add_job(
-                run_daily_job,
-                CronTrigger(
-                    day_of_week=daily_days,
-                    hour=hour,
-                    minute=minute,
-                    timezone=SCHEDULER_EXCHANGE_TZ,
-                ),
-                id=daily_job_id,
-                args=[exchange],
-                replace_existing=True,
-                max_instances=1,
-                misfire_grace_time=3600,
-            )
-            scheduled_count += 1
+            if schedule_daily:
+                daily_job_id = sanitize_job_id("daily", exchange)
+                scheduler.add_job(
+                    run_daily_job,
+                    CronTrigger(
+                        day_of_week=daily_days,
+                        hour=hour,
+                        minute=minute,
+                        timezone=SCHEDULER_EXCHANGE_TZ,
+                    ),
+                    id=daily_job_id,
+                    args=[exchange],
+                    replace_existing=True,
+                    max_instances=1,
+                    misfire_grace_time=3600,
+                )
+                scheduled_count += 1
 
-            weekly_job_id = sanitize_job_id("weekly", exchange)
-            scheduler.add_job(
-                run_weekly_job,
-                CronTrigger(
-                    day_of_week=weekly_day,
-                    hour=hour,
-                    minute=minute,
-                    timezone=SCHEDULER_EXCHANGE_TZ,
-                ),
-                id=weekly_job_id,
-                args=[exchange],
-                replace_existing=True,
-                max_instances=1,
-                misfire_grace_time=3600,
-            )
-            scheduled_count += 1
+            if schedule_weekly:
+                weekly_job_id = sanitize_job_id("weekly", exchange)
+                scheduler.add_job(
+                    run_weekly_job,
+                    CronTrigger(
+                        day_of_week=weekly_day,
+                        hour=hour,
+                        minute=minute,
+                        timezone=SCHEDULER_EXCHANGE_TZ,
+                    ),
+                    id=weekly_job_id,
+                    args=[exchange],
+                    replace_existing=True,
+                    max_instances=1,
+                    misfire_grace_time=3600,
+                )
+                scheduled_count += 1
 
     logger.info("Scheduled %d jobs for %d exchanges", scheduled_count, len(configured_runs))
     return configured_runs
@@ -523,7 +574,7 @@ def start_auto_scheduler(foreground: bool = False) -> bool:
     try:
         scheduler = BackgroundScheduler(timezone="UTC")
 
-        configured_runs = _schedule_exchange_jobs() or []
+        configured_runs = _schedule_exchange_jobs(_scheduler_mode) or []
 
         scheduler.add_job(
             _heartbeat_job,
@@ -533,14 +584,16 @@ def start_auto_scheduler(foreground: bool = False) -> bool:
             replace_existing=True,
         )
 
-        scheduler.add_job(
-            run_full_daily_update,
-            CronTrigger(hour=23, minute=0, timezone="UTC"),
-            id="daily_full_update",
-            name="Daily Full Database Update",
-            replace_existing=True,
-            misfire_grace_time=3600,
-        )
+        # Daily full update only when running in combined mode or daily-only mode
+        if _scheduler_mode is None or _scheduler_mode == "daily":
+            scheduler.add_job(
+                run_full_daily_update,
+                CronTrigger(hour=23, minute=0, timezone="UTC"),
+                id="daily_full_update",
+                name="Daily Full Database Update",
+                replace_existing=True,
+                misfire_grace_time=3600,
+            )
 
         scheduler.start()
         _log_scheduler_startup_summary(configured_runs)

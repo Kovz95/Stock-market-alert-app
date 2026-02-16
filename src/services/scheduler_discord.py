@@ -3,13 +3,20 @@ Daily and Weekly scheduler Discord notifications using the Template Method patte
 
 BaseSchedulerDiscord holds all notification logic. Subclasses override three
 abstract properties (job_label, timeframe_key, config_key) to produce
-job-type-specific messages.
+job-type-specific messages. Each job type sends start and complete (and error)
+notifications to its own Discord channel via the webhook in
+discord_channels_config.logging_channels[config_key].
+
+- Daily: config_key "Daily_Scheduler_Status" (e.g. #daily-scheduler channel)
+- Weekly: config_key "Weekly_Scheduler_Status" (e.g. #weekly-scheduler channel)
+- Hourly: config_key "Hourly_Scheduler_Status" (e.g. #hourly-scheduler channel)
 
 Usage:
     from src.services.scheduler_discord import create_scheduler_discord
 
     notifier = create_scheduler_discord("daily")
     notifier.notify_start(run_time_utc, exchange_name)
+    notifier.notify_complete(run_time_utc, duration, price_stats, alert_stats, exchange_name)
 """
 
 from __future__ import annotations
@@ -304,7 +311,7 @@ class BaseSchedulerDiscord(ABC):
 # ---------------------------------------------------------------------------
 
 class DailySchedulerDiscord(BaseSchedulerDiscord):
-    """Discord notifier for daily exchange jobs."""
+    """Discord notifier for daily exchange jobs. Sends start and complete messages to the daily-scheduler channel (Daily_Scheduler_Status webhook)."""
 
     @property
     def job_label(self) -> str:
@@ -320,7 +327,7 @@ class DailySchedulerDiscord(BaseSchedulerDiscord):
 
 
 class WeeklySchedulerDiscord(BaseSchedulerDiscord):
-    """Discord notifier for weekly exchange jobs."""
+    """Discord notifier for weekly exchange jobs. Sends start and complete messages to the weekly-scheduler channel (Weekly_Scheduler_Status webhook)."""
 
     @property
     def job_label(self) -> str:
@@ -339,9 +346,16 @@ class WeeklySchedulerDiscord(BaseSchedulerDiscord):
 # Factory
 # ---------------------------------------------------------------------------
 
-_NOTIFIER_MAP: dict[str, type[BaseSchedulerDiscord]] = {
+def _get_hourly_notifier_class() -> type[BaseSchedulerDiscord]:
+    """Lazy import to avoid circular dependency with hourly_scheduler_discord."""
+    from src.services.hourly_scheduler_discord import HourlySchedulerDiscord
+    return HourlySchedulerDiscord
+
+
+_NOTIFIER_MAP: dict[str, type[BaseSchedulerDiscord] | None] = {
     "daily": DailySchedulerDiscord,
     "weekly": WeeklySchedulerDiscord,
+    "hourly": None,  # Resolved lazily via _get_hourly_notifier_class()
 }
 
 
@@ -350,7 +364,7 @@ def create_scheduler_discord(job_type: str) -> BaseSchedulerDiscord:
     Factory function — returns the correct notifier for *job_type*.
 
     Args:
-        job_type: Either ``"daily"`` or ``"weekly"``.
+        job_type: One of ``"daily"``, ``"weekly"``, or ``"hourly"``.
 
     Returns:
         A configured :class:`BaseSchedulerDiscord` subclass instance.
@@ -360,7 +374,10 @@ def create_scheduler_discord(job_type: str) -> BaseSchedulerDiscord:
     """
     cls = _NOTIFIER_MAP.get(job_type)
     if cls is None:
-        raise ValueError(
-            f"Unknown job_type: {job_type!r}. Expected one of {list(_NOTIFIER_MAP)}"
-        )
+        if job_type == "hourly":
+            cls = _get_hourly_notifier_class()
+        else:
+            raise ValueError(
+                f"Unknown job_type: {job_type!r}. Expected one of {list(_NOTIFIER_MAP)}"
+            )
     return cls()

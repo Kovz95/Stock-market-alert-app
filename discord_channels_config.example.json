@@ -1,0 +1,46 @@
+{
+  "channel_mappings": {
+    "General": {
+      "webhook_url": "YOUR_GENERAL_WEBHOOK_URL_HERE",
+      "channel_name": "#general-alerts",
+      "description": "General alerts and fallback"
+    },
+    "US": {
+      "webhook_url": "",
+      "channel_name": "#us-alerts",
+      "description": "US economy alerts"
+    },
+    "China": {
+      "webhook_url": "",
+      "channel_name": "#china-alerts",
+      "description": "China economy alerts"
+    },
+    "ETFs": {
+      "webhook_url": "",
+      "channel_name": "#etf-alerts",
+      "description": "ETF alerts"
+    },
+    "Pairs": {
+      "webhook_url": "",
+      "channel_name": "#pairs-alerts",
+      "description": "Ratio/pairs alerts"
+    }
+  },
+  "default_channel": "General",
+  "enable_industry_routing": false,
+  "log_routing_decisions": true,
+  "logging_channels": {
+    "Daily_Scheduler_Status": {
+      "webhook_url": "",
+      "channel_name": "#daily-scheduler"
+    },
+    "Weekly_Scheduler_Status": {
+      "webhook_url": "",
+      "channel_name": "#weekly-scheduler"
+    },
+    "Hourly_Scheduler_Status": {
+      "webhook_url": "",
+      "channel_name": "#hourly-scheduler"
+    }
+  }
+}

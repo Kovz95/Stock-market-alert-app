@@ -59,30 +59,36 @@ class HourlySchedulerDiscord(BaseSchedulerDiscord):
         **kwargs,
     ) -> None:
         """
-        Send hourly-specific start notification with candle type and exchange info.
+        Send hourly-specific start notification. Supports both single-exchange
+        (scheduler_job_handler HourlyJobHandler) and multi-exchange (legacy
+        hourly_data_scheduler) call patterns. Messages post to the
+        hourly-scheduler channel (Hourly_Scheduler_Status webhook).
 
         Args:
             run_time_utc: UTC timestamp of the run
+            exchange: Single exchange name (when called from HourlyJobHandler)
             candle_type: Type of candle window (e.g., "current", "previous")
-            exchanges: List of exchanges being processed
-            symbol_count: Number of symbols queued for processing
-            close_info: Optional close time information
-            exchange: Unused parameter for compatibility with base class
+            exchanges: List of exchanges (legacy multi-exchange run)
+            symbol_count: Number of symbols queued (legacy)
+            close_info: Optional close time information (legacy)
             **kwargs: Additional keyword arguments for compatibility
         """
-        # If called with positional args, they should be non-None
         if exchanges is None:
             exchanges = []
         exchanges = list(exchanges)
+        # Single-exchange run from scheduler_job_handler (e.g. HourlyJobHandler)
+        if exchange and not exchanges:
+            exchanges = [exchange]
 
         lines = [
             f"✅ **{self.job_label} Alert Check Started**",
             f"• Run Time (EST): {_est_str(run_time_utc)}",
-            f"• Candle Window: {candle_type or 'unknown'}",
+            f"• Candle Window: {candle_type or 'current'}",
             f"• Alert Timeframe: {self.timeframe_key}",
-            f"• Exchanges ({len(exchanges)}): {_format_list(exchanges)}",
-            f"• Symbols Queued: {symbol_count or 0:,}",
+            f"• Exchange(s): {_format_list(exchanges)}",
         ]
+        if symbol_count is not None and (symbol_count > 0 or len(exchanges) != 1):
+            lines.append(f"• Symbols Queued: {symbol_count:,}")
         if close_info:
             lines.append(f"• Close Times (UTC): {close_info}")
         self._post("\n".join(lines))
@@ -100,34 +106,46 @@ class HourlySchedulerDiscord(BaseSchedulerDiscord):
         **kwargs,
     ) -> None:
         """
-        Send hourly-specific completion notification with exchange list.
+        Send hourly-specific completion notification. Supports both single-exchange
+        (scheduler_job_handler HourlyJobHandler) and multi-exchange (legacy
+        hourly_data_scheduler) call patterns. Messages post to the
+        hourly-scheduler channel (Hourly_Scheduler_Status webhook).
 
         Args:
             run_time_utc: UTC timestamp of the run
             duration_seconds: Duration of the job in seconds
-            stats: Price update statistics dictionary
-            alert_stats: Alert check statistics dictionary
-            exchanges: List of exchanges processed
+            price_stats: Price stats from handler (updated/total/failed/skipped)
+            alert_stats: Alert check statistics
+            exchange: Single exchange name (when called from HourlyJobHandler)
             first_failure_reason: Optional first failure error message
-            price_stats: Unused parameter for compatibility with base class
-            exchange: Unused parameter for compatibility with base class
+            stats: Legacy price stats (success/total/failed/skipped_closed)
+            exchanges: List of exchanges (legacy)
             **kwargs: Additional keyword arguments for compatibility
         """
-        # If called with positional args, they should be non-None
         if exchanges is None:
             exchanges = []
-        if stats is None:
-            stats = {}
-
         exchanges = list(exchanges)
+        if exchange and not exchanges:
+            exchanges = [exchange]
+
+        # Single-exchange run uses price_stats (handler shape); legacy uses stats
+        use_stats = price_stats if (price_stats and "updated" in price_stats) else (stats or {})
+        updated = use_stats.get("updated", use_stats.get("success", 0))
+        failed = use_stats.get("failed", 0)
+        skipped = use_stats.get("skipped", use_stats.get("skipped_closed", 0))
+        total = use_stats.get("total")
+        if total is None or total == 0:
+            total = updated + failed + skipped or 1
+
         price_line = (
-            f"• Price Update: {stats.get('success', 0):,}/{stats.get('total', 0):,} updated "
-            f"| failed {stats.get('failed', 0):,} | skipped {stats.get('skipped_closed', 0):,}"
+            f"• Price Update: {updated:,}/{total:,} updated "
+            f"| failed {failed:,} | skipped {skipped:,}"
         )
         if alert_stats:
+            triggered = alert_stats.get("triggered", alert_stats.get("success", 0))
             alert_line = (
                 f"• Alerts: total {alert_stats.get('total', 0):,} | "
-                f"triggered {alert_stats.get('triggered', 0):,} | "
+                f"triggered {triggered:,} | "
                 f"not triggered {alert_stats.get('not_triggered', 0):,} | "
                 f"no data {alert_stats.get('no_data', 0):,} | "
                 f"stale {alert_stats.get('stale_data', 0):,} | "
@@ -141,14 +159,11 @@ class HourlySchedulerDiscord(BaseSchedulerDiscord):
             f"• Run Time (EST): {_est_str(run_time_utc)}",
             f"• Duration: {_format_duration(duration_seconds)}",
             f"• Alert Timeframe: {self.timeframe_key}",
-            f"• Exchanges ({len(exchanges)}): {_format_list(exchanges)}",
+            f"• Exchange(s): {_format_list(exchanges)}",
             price_line,
             alert_line,
         ]
-        failed = stats.get("failed", 0)
         if failed > 0 and first_failure_reason:
-            # Truncate long error messages for Discord
             reason = first_failure_reason[:200] + "..." if len(first_failure_reason) > 200 else first_failure_reason
             lines.append(f"• First failure: {reason}")
-        message = "\n".join(lines)
-        self._post(message)
+        self._post("\n".join(lines))

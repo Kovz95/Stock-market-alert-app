@@ -57,13 +57,67 @@ class DiscordEconomyRouter:
             ) or {}
             logger.info(f"Loaded Discord routing configuration from {self.config_file}")
 
-            # Ensure hourly mappings exist and inherit missing fields/webhooks from the daily map
-            daily_mappings = config.get('channel_mappings', {}) or {}
+            # Base mapping (used as source for daily/weekly/hourly variants)
+            base_mappings = config.get('channel_mappings', {}) or {}
+
+            # Ensure daily mappings exist and inherit from base (like hourly/weekly)
+            daily_mappings = config.get('channel_mappings_daily') or {}
+            for key, value in base_mappings.items():
+                daily_entry = daily_mappings.get(key, {})
+                channel_name = daily_entry.get('channel_name')
+                if not channel_name:
+                    base_channel = value.get('channel_name', '')
+                    if base_channel and base_channel.endswith('-alerts'):
+                        channel_name = base_channel[:-7] + '-daily-alerts'
+                    elif base_channel.startswith('#'):
+                        channel_name = f"{base_channel}-daily" if base_channel else ''
+                    else:
+                        channel_name = f"{base_channel}-daily" if base_channel else ''
+                description = daily_entry.get('description') or value.get('description', '')
+                if description and 'Daily' not in description:
+                    description = f"{description} (Daily)"
+                elif not description:
+                    description = "Daily alerts"
+                webhook_url = daily_entry.get('webhook_url') or value.get('webhook_url', '')
+                daily_mappings[key] = {
+                    "webhook_url": webhook_url,
+                    "channel_name": channel_name,
+                    "description": description,
+                }
+            config['channel_mappings_daily'] = daily_mappings
+
+            # Ensure weekly mappings exist and inherit from base (like hourly)
+            weekly_mappings = config.get('channel_mappings_weekly') or {}
+            for key, value in base_mappings.items():
+                weekly_entry = weekly_mappings.get(key, {})
+                channel_name = weekly_entry.get('channel_name')
+                if not channel_name:
+                    base_channel = value.get('channel_name', '')
+                    if base_channel and base_channel.endswith('-alerts'):
+                        channel_name = base_channel[:-7] + '-weekly-alerts'
+                    elif base_channel.startswith('#'):
+                        channel_name = f"{base_channel}-weekly" if base_channel else ''
+                    else:
+                        channel_name = f"{base_channel}-weekly" if base_channel else ''
+                description = weekly_entry.get('description') or value.get('description', '')
+                if description and 'Weekly' not in description:
+                    description = f"{description} (Weekly)"
+                elif not description:
+                    description = "Weekly alerts"
+                webhook_url = weekly_entry.get('webhook_url') or value.get('webhook_url', '')
+                weekly_mappings[key] = {
+                    "webhook_url": webhook_url,
+                    "channel_name": channel_name,
+                    "description": description,
+                }
+            config['channel_mappings_weekly'] = weekly_mappings
+
+            # Ensure hourly mappings exist and inherit missing fields/webhooks from the base map
             hourly_mappings = config.get('channel_mappings_hourly') or {}
-            for key, value in daily_mappings.items():
+            for key, value in base_mappings.items():
                 hourly_entry = hourly_mappings.get(key, {})
 
-                # Keep existing hourly channel name if provided; otherwise derive from daily
+                # Keep existing hourly channel name if provided; otherwise derive from base
                 channel_name = hourly_entry.get('channel_name')
                 if not channel_name:
                     base_channel = value.get('channel_name', '')
@@ -80,7 +134,7 @@ class DiscordEconomyRouter:
                 elif not description:
                     description = "Hourly alerts"
 
-                # Inherit the daily webhook when the hourly one is blank/missing to avoid silent drops
+                # Inherit the base webhook when the hourly one is blank/missing to avoid silent drops
                 webhook_url = hourly_entry.get('webhook_url') or value.get('webhook_url', '')
 
                 hourly_mappings[key] = {
@@ -415,6 +469,14 @@ class DiscordEconomyRouter:
             mapping = self.config.get('channel_mappings_hourly')
             if mapping:
                 return mapping, 'channel_mappings_hourly'
+        if normalized == 'daily':
+            mapping = self.config.get('channel_mappings_daily')
+            if mapping:
+                return mapping, 'channel_mappings_daily'
+        if normalized == 'weekly':
+            mapping = self.config.get('channel_mappings_weekly')
+            if mapping:
+                return mapping, 'channel_mappings_weekly'
         return self.config.get('channel_mappings', {}), 'channel_mappings'
 
     def determine_alert_channel(self, alert: Dict) -> Tuple[str, str]:

@@ -32,6 +32,9 @@ deployment/.env.production
 *.sqlite3
 hourly_scheduler.lock
 scheduler_v2.lock
+scheduler_v2_daily.lock
+scheduler_v2_weekly.lock
+scheduler_v2_hourly.lock
 
 # Generated state files
 hourly_scheduler_status.json

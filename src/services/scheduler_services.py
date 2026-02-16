@@ -24,7 +24,7 @@ import os
 import threading
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Union
 
 import psutil
 import requests
@@ -97,9 +97,10 @@ class SchedulerServices:
     (thread-safe), status/heartbeat management, and process-level lock files.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, lock_file: Optional[Union[Path, str]] = None) -> None:
         self._job_locks: Dict[str, bool] = {}
         self._lock_lock = threading.Lock()
+        self._lock_file: Path = Path(lock_file) if lock_file else LOCK_FILE
 
     # -- Configuration -------------------------------------------------------
 
@@ -229,11 +230,11 @@ class SchedulerServices:
                 fallback_path=str(BASE_DIR / "scheduler_status.json"),
             )
 
-            if LOCK_FILE.exists():
+            if self._lock_file.exists():
                 try:
-                    lock_data = json.loads(LOCK_FILE.read_text())
+                    lock_data = json.loads(self._lock_file.read_text())
                     lock_data["heartbeat"] = datetime.now(tz=timezone.utc).isoformat()
-                    LOCK_FILE.write_text(json.dumps(lock_data, indent=2))
+                    self._lock_file.write_text(json.dumps(lock_data, indent=2))
                 except Exception:
                     pass
 
@@ -292,9 +293,9 @@ class SchedulerServices:
         """Acquire process-level lock file."""
         current_pid = os.getpid()
 
-        if LOCK_FILE.exists():
+        if self._lock_file.exists():
             try:
-                info = json.loads(LOCK_FILE.read_text())
+                info = json.loads(self._lock_file.read_text())
                 existing_pid = info.get("pid")
             except Exception:
                 existing_pid = None
@@ -308,7 +309,7 @@ class SchedulerServices:
                 logger.warning("Another scheduler instance (PID %s) is running.", existing_pid)
                 return False
             else:
-                LOCK_FILE.unlink(missing_ok=True)
+                self._lock_file.unlink(missing_ok=True)
 
         payload = {
             "pid": current_pid,
@@ -317,14 +318,13 @@ class SchedulerServices:
             "started_at": datetime.now(tz=timezone.utc).strftime("%Y-%m-%d %H:%M:%S"),
             "type": "auto_scheduler_v2",
         }
-        LOCK_FILE.write_text(json.dumps(payload, indent=2))
+        self._lock_file.write_text(json.dumps(payload, indent=2))
         return True
 
-    @staticmethod
-    def release_process_lock() -> None:
+    def release_process_lock(self) -> None:
         """Release process-level lock file."""
         try:
-            LOCK_FILE.unlink(missing_ok=True)
+            self._lock_file.unlink(missing_ok=True)
         except OSError as exc:
             logger.error("Failed to remove lock file: %s", exc)
 
@@ -345,10 +345,10 @@ class SchedulerServices:
     def heartbeat(self) -> None:
         """Update heartbeat timestamp in lock file and status."""
         try:
-            if LOCK_FILE.exists():
-                lock_data = json.loads(LOCK_FILE.read_text())
+            if self._lock_file.exists():
+                lock_data = json.loads(self._lock_file.read_text())
                 lock_data["heartbeat"] = datetime.now(tz=timezone.utc).isoformat()
-                LOCK_FILE.write_text(json.dumps(lock_data, indent=2))
+                self._lock_file.write_text(json.dumps(lock_data, indent=2))
 
             self.update_status(status="running")
         except Exception as exc:

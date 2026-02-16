@@ -64,28 +64,7 @@ services:
       start_period: 30s
       retries: 3
 
-  hourly-scheduler:
-    build: .
-    container_name: stockalert-hourly-scheduler
-    restart: unless-stopped
-    env_file:
-      - .env
-    environment:
-      - DATABASE_URL=postgresql://${POSTGRES_USER:-stockalertapp}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-stockalertapp}
-      - REDIS_URL=redis://redis:6379
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    command: ["python", "-m", "src.services.hourly_data_scheduler"]
-    healthcheck:
-      test: ["CMD-SHELL", "test -f /app/hourly_scheduler.lock && python -c 'import sys; sys.exit(0)'"]
-      interval: 30s
-      timeout: 10s
-      start_period: 30s
-      retries: 3
-
+  # auto_scheduler_v2 (scheduler_job_handler): daily exchange jobs only
   daily-scheduler:
     build: .
     container_name: stockalert-daily-scheduler
@@ -95,6 +74,7 @@ services:
     environment:
       - DATABASE_URL=postgresql://${POSTGRES_USER:-stockalertapp}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-stockalertapp}
       - REDIS_URL=redis://redis:6379
+      - SCHEDULER_MODE=daily
     depends_on:
       postgres:
         condition: service_healthy
@@ -102,7 +82,55 @@ services:
         condition: service_healthy
     command: ["python", "-m", "src.services.auto_scheduler_v2"]
     healthcheck:
-      test: ["CMD-SHELL", "test -f /app/src/services/scheduler_v2.lock && python -c 'import sys; sys.exit(0)'"]
+      test: ["CMD-SHELL", "test -f /app/src/services/scheduler_v2_daily.lock && python -c 'import sys; sys.exit(0)'"]
+      interval: 30s
+      timeout: 10s
+      start_period: 30s
+      retries: 3
+
+  # auto_scheduler_v2 (scheduler_job_handler): weekly exchange jobs only
+  weekly-scheduler:
+    build: .
+    container_name: stockalert-weekly-scheduler
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-stockalertapp}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-stockalertapp}
+      - REDIS_URL=redis://redis:6379
+      - SCHEDULER_MODE=weekly
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: ["python", "-m", "src.services.auto_scheduler_v2"]
+    healthcheck:
+      test: ["CMD-SHELL", "test -f /app/src/services/scheduler_v2_weekly.lock && python -c 'import sys; sys.exit(0)'"]
+      interval: 30s
+      timeout: 10s
+      start_period: 30s
+      retries: 3
+
+  # auto_scheduler_v2 (scheduler_job_handler): hourly exchange jobs only
+  hourly-scheduler:
+    build: .
+    container_name: stockalert-hourly-scheduler
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-stockalertapp}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-stockalertapp}
+      - REDIS_URL=redis://redis:6379
+      - SCHEDULER_MODE=hourly
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: ["python", "-m", "src.services.auto_scheduler_v2"]
+    healthcheck:
+      test: ["CMD-SHELL", "test -f /app/src/services/scheduler_v2_hourly.lock && python -c 'import sys; sys.exit(0)'"]
       interval: 30s
       timeout: 10s
       start_period: 30s

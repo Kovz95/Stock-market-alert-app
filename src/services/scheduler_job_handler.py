@@ -5,12 +5,12 @@ Defines BaseExchangeJobHandler with a template ``execute()`` method that
 orchestrates the full job lifecycle: acquire lock -> notify start -> run
 worker -> notify complete/error -> release lock.
 
-Concrete subclasses (DailyJobHandler, WeeklyJobHandler) override three
-properties to customise behaviour per timeframe.
+Concrete subclasses (DailyJobHandler, WeeklyJobHandler, HourlyJobHandler)
+override three properties to customise behaviour per timeframe.
 
 Usage:
     from src.services.scheduler_services import SchedulerServices
-    from src.services.scheduler_job_handler import DailyJobHandler, WeeklyJobHandler
+    from src.services.scheduler_job_handler import DailyJobHandler, WeeklyJobHandler, HourlyJobHandler
 
     services = SchedulerServices()
     daily = DailyJobHandler(services)
@@ -39,7 +39,7 @@ logger = logging.getLogger("auto_scheduler_v2")
 # ---------------------------------------------------------------------------
 
 def _exchange_worker(exchange_name: str, resample_weekly: bool):
-    """Execute price update + alert checks for a single exchange."""
+    """Execute price update + alert checks for a single exchange (daily or weekly)."""
     from src.services.scheduled_price_updater import update_prices_for_exchanges
     from src.services.auto_scheduler_v2 import run_alert_checks
 
@@ -47,6 +47,67 @@ def _exchange_worker(exchange_name: str, resample_weekly: bool):
     timeframe_key = "weekly" if resample_weekly else "daily"
     alert_stats = run_alert_checks([exchange_name], timeframe_key)
     return price_stats, alert_stats
+
+
+def _hourly_exchange_worker(exchange_name: str):
+    """Execute hourly price update + alert checks for a single exchange."""
+    from src.services.hourly_price_collector import HourlyPriceCollector
+    from src.services.auto_scheduler_v2 import run_alert_checks
+
+    collector = HourlyPriceCollector()
+    try:
+        stock_db = collector.load_stock_database()
+        ticker_list = sorted(
+            ticker for ticker, info in stock_db.items()
+            if isinstance(info, dict) and info.get("exchange") == exchange_name
+        )
+        if not ticker_list:
+            price_stats = {"updated": 0, "total": 0, "failed": 0, "skipped": 0}
+            alert_stats = run_alert_checks([exchange_name], "hourly")
+            return price_stats, alert_stats
+        update_stats = collector.update_multiple_tickers(
+            ticker_list, days_back=7, skip_existing=True
+        )
+        price_stats = {
+            "updated": update_stats.get("updated", 0),
+            "total": len(ticker_list),
+            "failed": update_stats.get("failed", 0),
+            "skipped": update_stats.get("skipped", 0),
+        }
+        first_failure = getattr(collector, "last_error", None)
+        if first_failure and price_stats.get("failed", 0) > 0:
+            price_stats["first_failure_reason"] = first_failure
+        alert_stats = run_alert_checks([exchange_name], "hourly")
+        return price_stats, alert_stats
+    finally:
+        db_handle = getattr(collector, "db", None)
+        if db_handle and callable(getattr(db_handle, "close", None)):
+            try:
+                db_handle.close()
+            except Exception:  # noqa: S110
+                pass
+
+
+def _run_hourly_exchange_job(exchange_name: str, timeout_seconds: int):
+    """
+    Run a single exchange hourly job on a thread with a soft timeout.
+
+    Returns (price_stats, alert_stats, error_message).
+    """
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        future = pool.submit(_hourly_exchange_worker, exchange_name)
+        try:
+            price_stats, alert_stats = future.result(timeout=timeout_seconds)
+            return price_stats, alert_stats, None
+        except TimeoutError:
+            logger.warning(
+                "Hourly job for %s timed out after %ds (worker thread will finish in background)",
+                exchange_name,
+                timeout_seconds,
+            )
+            return None, None, f"timeout after {timeout_seconds}s"
+        except Exception as exc:
+            return None, None, str(exc)
 
 
 def _run_exchange_job(exchange_name: str, resample_weekly: bool, timeout_seconds: int):
@@ -143,11 +204,17 @@ class BaseExchangeJobHandler(ABC):
                 },
             )
 
-            price_stats, alert_stats, worker_err = _run_exchange_job(
-                exchange_name,
-                resample_weekly=self.resample_weekly,
-                timeout_seconds=job_timeout,
-            )
+            if self.job_type == "hourly":
+                price_stats, alert_stats, worker_err = _run_hourly_exchange_job(
+                    exchange_name,
+                    timeout_seconds=job_timeout,
+                )
+            else:
+                price_stats, alert_stats, worker_err = _run_exchange_job(
+                    exchange_name,
+                    resample_weekly=self.resample_weekly,
+                    timeout_seconds=job_timeout,
+                )
 
             if worker_err:
                 raise TimeoutError(worker_err) if "timeout" in worker_err else RuntimeError(worker_err)
@@ -257,3 +324,19 @@ class WeeklyJobHandler(BaseExchangeJobHandler):
     @property
     def timeframe_key(self) -> str:
         return "weekly"
+
+
+class HourlyJobHandler(BaseExchangeJobHandler):
+    """Handler for hourly exchange jobs."""
+
+    @property
+    def job_type(self) -> str:
+        return "hourly"
+
+    @property
+    def resample_weekly(self) -> bool:
+        return False
+
+    @property
+    def timeframe_key(self) -> str:
+        return "hourly"
