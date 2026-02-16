@@ -32,6 +32,8 @@ from src.services.discord_routing import (
     format_alert_as_embed,
 )
 from src.utils.async_discord_queue import queue_discord_notification, get_discord_queue
+from src.utils.discord_message_accumulator import DiscordMessageAccumulator
+from src.utils.discord_rate_limiter import get_rate_limiter
 from src.services.alert_audit_logger import (
     log_alert_check_start,
     log_price_data_pulled,
@@ -268,12 +270,19 @@ class StockAlertChecker:
 
         return False
 
-    def check_alert(self, alert: Dict[str, Any]) -> Dict[str, Any]:
+    def check_alert(
+        self,
+        alert: Dict[str, Any],
+        accumulator: Optional[DiscordMessageAccumulator] = None,
+    ) -> Dict[str, Any]:
         """
         Check a single alert and send notification if triggered.
 
         Args:
             alert: Alert dictionary
+            accumulator: Optional DiscordMessageAccumulator for batched sending.
+                         When provided, embeds are added to the accumulator instead
+                         of being queued via the async queue.
 
         Returns:
             Result dictionary with status information
@@ -350,13 +359,25 @@ class StockAlertChecker:
                 # Format the Discord notification message
                 message = self.format_alert_message(alert, df)
 
-                # Send Discord notification (async or sync based on setting)
-                if self.async_discord:
-                    # Pre-resolve webhook URL and build embed for batching
+                # Send Discord notification
+                if accumulator is not None:
+                    # Accumulator path: collect embeds for batched sending
                     webhook_url = resolve_alert_webhook_url(alert)
                     embed = format_alert_as_embed(alert, message)
 
-                    # Queue primary economy-channel notification
+                    if webhook_url and embed:
+                        accumulator.add(webhook_url, embed)
+
+                    # Also accumulate for custom channels
+                    custom_urls = resolve_alert_custom_webhook_urls(alert)
+                    for custom_url in custom_urls:
+                        accumulator.add(custom_url, embed)
+
+                elif self.async_discord:
+                    # Async queue path (legacy fallback)
+                    webhook_url = resolve_alert_webhook_url(alert)
+                    embed = format_alert_as_embed(alert, message)
+
                     queued = queue_discord_notification(
                         alert, message, send_economy_discord_alert,
                         webhook_url=webhook_url,
@@ -367,7 +388,6 @@ class StockAlertChecker:
                     else:
                         logger.warning(f"Failed to queue Discord notification for {ticker}")
 
-                    # Queue additional custom-channel notifications
                     custom_urls = resolve_alert_custom_webhook_urls(alert)
                     for custom_url in custom_urls:
                         queue_discord_notification(
@@ -454,6 +474,9 @@ class StockAlertChecker:
             workers,
         )
 
+        # Create accumulator for batched Discord sends
+        accumulator = DiscordMessageAccumulator(rate_limiter=get_rate_limiter())
+
         def _aggregate_result(result: Dict[str, Any]) -> None:
             if result.get("skipped"):
                 stats["skipped"] += 1
@@ -471,7 +494,7 @@ class StockAlertChecker:
         if workers <= 1:
             for alert in filtered_alerts:
                 try:
-                    result = self.check_alert(alert)
+                    result = self.check_alert(alert, accumulator=accumulator)
                     _aggregate_result(result)
                 except Exception as e:
                     logger.error(f"Unexpected error checking alert: {e}")
@@ -479,7 +502,7 @@ class StockAlertChecker:
         else:
             with ThreadPoolExecutor(max_workers=workers) as executor:
                 future_to_alert = {
-                    executor.submit(self.check_alert, alert): alert
+                    executor.submit(self.check_alert, alert, accumulator): alert
                     for alert in filtered_alerts
                 }
                 for future in as_completed(future_to_alert):
@@ -489,6 +512,15 @@ class StockAlertChecker:
                     except Exception as e:
                         logger.exception("Unexpected error checking alert: %s", e)
                         stats["errors"] += 1
+
+        # Flush remaining partial batches
+        accumulator.flush_all()
+        acc_stats = accumulator.get_stats()
+        logger.info(
+            "Accumulator stats: added=%d, sent=%d, failed=%d, flushes=%d",
+            acc_stats["added"], acc_stats["sent"],
+            acc_stats["failed"], acc_stats["flushes"],
+        )
 
         logger.info(
             f"Alert check complete: {stats['triggered']} triggered, "

@@ -6,6 +6,7 @@ Routes alerts to different Discord channels based on industry classifications
 
 import json
 import logging
+import time
 from typing import Dict, List, Optional, Tuple
 
 import pandas as pd
@@ -19,6 +20,9 @@ from src.utils.discord_rate_limiter import get_rate_limiter
 # Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# Config cache TTL in seconds (5 minutes)
+_CONFIG_CACHE_TTL = 300
 
 class DiscordEconomyRouter:
     """
@@ -40,6 +44,8 @@ class DiscordEconomyRouter:
         self.custom_channels = self._load_custom_channels()
         self.use_rate_limiter = use_rate_limiter
         self.rate_limiter = get_rate_limiter() if use_rate_limiter else None
+        self._config_loaded_at = time.time()
+        self._custom_channels_loaded_at = time.time()
 
     def _load_config(self) -> Dict:
         """Load Discord channel configuration"""
@@ -94,9 +100,14 @@ class DiscordEconomyRouter:
             return self._get_default_config()
 
     def _reload_configs_if_changed(self) -> None:
-        """Refresh channel configurations from persistent storage."""
-        self.config = self._load_config()
-        self.custom_channels = self._load_custom_channels()
+        """Refresh channel configurations from persistent storage if cache TTL expired."""
+        now = time.time()
+        if now - self._config_loaded_at > _CONFIG_CACHE_TTL:
+            self.config = self._load_config()
+            self._config_loaded_at = now
+        if now - self._custom_channels_loaded_at > _CONFIG_CACHE_TTL:
+            self.custom_channels = self._load_custom_channels()
+            self._custom_channels_loaded_at = now
 
     def _get_default_config(self) -> Dict:
         """Get default configuration when config file is missing"""

@@ -30,6 +30,15 @@ class NotificationTask:
     webhook_url: Optional[str] = None  # Pre-resolved webhook URL for batching
     embed: Optional[Dict[str, Any]] = None  # Discord embed dict for batching
 
+    def __lt__(self, other: "NotificationTask") -> bool:
+        """Compare tasks by priority for PriorityQueue ordering."""
+        if not isinstance(other, NotificationTask):
+            return NotImplemented
+        # Lower priority number = higher priority, so earlier queued_at wins ties
+        if self.priority != other.priority:
+            return self.priority < other.priority
+        return self.queued_at < other.queued_at
+
 
 class AsyncDiscordQueue:
     """
@@ -72,9 +81,9 @@ class AsyncDiscordQueue:
         # Configuration
         self.max_queue_size = 1000  # Max pending notifications
         self.batch_delay = 0.1  # Seconds between sends (on top of rate limiter)
-        self.batch_linger_seconds = float(
-            os.getenv("DISCORD_BATCH_LINGER_SECONDS", "3.0")
-        )  # Wait this long after the first item for more to accumulate
+        self.batch_poll_timeout = float(
+            os.getenv("DISCORD_BATCH_POLL_TIMEOUT", "0.5")
+        )  # Max wait for the *next* item; batch dispatches on first gap
 
         logger.info("AsyncDiscordQueue initialized")
 
@@ -227,9 +236,10 @@ class AsyncDiscordQueue:
 
         The first item is retrieved with a 1-second timeout (so the worker
         can periodically check the stop event).  After the first item
-        arrives we *linger* for up to ``batch_linger_seconds``, polling in
-        short intervals, to give parallel alert-checker threads time to
-        queue their notifications before the batch is dispatched.
+        arrives we try to grab more with a short per-item poll timeout.
+        As soon as a poll expires with no new item the batch is dispatched
+        immediately -- so the added latency is at most one poll interval
+        (default 0.5 s) rather than a fixed multi-second linger window.
         """
         batch: List[NotificationTask] = []
         try:
@@ -238,21 +248,14 @@ class AsyncDiscordQueue:
         except queue.Empty:
             return batch
 
-        # Linger: keep collecting items until the batch is full or the
-        # linger window expires, giving parallel workers time to enqueue.
-        deadline = time.monotonic() + self.batch_linger_seconds
+        # Keep collecting while items arrive within the poll window.
+        # The first gap (empty poll) triggers immediate dispatch.
         while len(batch) < self._MAX_BATCH_SIZE:
-            remaining = deadline - time.monotonic()
-            if remaining <= 0:
-                break
             try:
-                _priority, task = self._queue.get(timeout=min(remaining, 0.5))
+                _priority, task = self._queue.get(timeout=self.batch_poll_timeout)
                 batch.append(task)
             except queue.Empty:
-                # Poll interval expired but deadline not yet reached; keep waiting
-                if time.monotonic() >= deadline:
-                    break
-                continue
+                break  # No more items arriving quickly; dispatch now
 
         return batch
 
@@ -289,9 +292,9 @@ class AsyncDiscordQueue:
     def _worker_loop(self) -> None:
         """Background worker that processes the queue with batching."""
         logger.info(
-            "Discord notification worker started (batch size up to %d, linger %.1fs)",
+            "Discord notification worker started (batch size up to %d, poll timeout %.1fs)",
             self._MAX_BATCH_SIZE,
-            self.batch_linger_seconds,
+            self.batch_poll_timeout,
         )
 
         while not self._stop_event.is_set():
