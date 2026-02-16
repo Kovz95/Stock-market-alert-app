@@ -6,12 +6,9 @@ and calls the correct notifier methods for each job lifecycle event, replacing
 the old send_scheduler_notification() per-job calls.
 
 Patches applied to keep tests fast and isolated:
-  - create_scheduler_discord  → returns a Mock notifier
-  - acquire_job_lock / release_job_lock
-  - load_scheduler_config
-  - _run_job_subprocess
-  - update_scheduler_status
-  - send_scheduler_notification (verified NOT called per-job)
+  - create_scheduler_discord  → returns a Mock notifier (in scheduler_job_handler)
+  - _run_exchange_job          → returns canned stats (in scheduler_job_handler)
+  - load_document / save_document → mocked (in scheduler_services)
   - time.time (controls duration calculation)
 """
 
@@ -74,7 +71,7 @@ def _run_job(
     """
     Helper that runs execute_exchange_job with all external calls mocked.
 
-    Returns (result, mock_notifier).
+    Returns (result, mock_notifier, mock_factory, mock_send_notif).
     """
     settings = notify_settings if notify_settings is not None else _DEFAULT_NOTIFY_SETTINGS
     ps = price_stats if price_stats is not None else _DEFAULT_PRICE_STATS
@@ -82,21 +79,25 @@ def _run_job(
     notifier = mock_notifier or Mock()
     time_vals = time_side_effect or [0.0, 1.5]  # duration = 1.5s
 
+    # Config: load_document returns the config dict used by services.load_config()
+    config_doc = {
+        "notification_settings": settings,
+        "scheduler_webhook": {"enabled": False, "url": ""},
+    }
+
     with patch(
-        "src.services.auto_scheduler_v2.create_scheduler_discord",
+        "src.services.scheduler_discord.create_scheduler_discord",
         return_value=notifier,
     ) as mock_factory, \
          patch(
-             "src.services.auto_scheduler_v2.load_scheduler_config",
-             return_value={"notification_settings": settings},
+             "src.services.scheduler_services.load_document",
+             return_value=config_doc,
          ), \
-         patch("src.services.auto_scheduler_v2.acquire_job_lock", return_value=True), \
-         patch("src.services.auto_scheduler_v2.release_job_lock"), \
+         patch("src.services.scheduler_services.save_document"), \
          patch(
-             "src.services.auto_scheduler_v2._run_job_subprocess",
+             "src.services.scheduler_job_handler._run_exchange_job",
              return_value=(ps, als, worker_error),
          ), \
-         patch("src.services.auto_scheduler_v2.update_scheduler_status"), \
          patch("src.services.auto_scheduler_v2.send_scheduler_notification") as mock_send_notif, \
          patch("time.time", side_effect=time_vals):
 
@@ -201,7 +202,7 @@ class TestNotifyComplete:
         assert args[1] == pytest.approx(15.5)
 
     def test_notify_complete_not_called_on_worker_error(self):
-        """When the subprocess returns an error string, notify_error fires instead."""
+        """When the worker returns an error string, notify_error fires instead."""
         _, notifier, _, _ = _run_job(worker_error="timeout after 300s")
         notifier.notify_complete.assert_not_called()
 
@@ -252,7 +253,7 @@ class TestNotifyError:
         assert "Timeout" in err_msg or "timeout" in err_msg.lower()
 
     def test_notify_start_not_called_on_error(self):
-        """notify_start fires before the subprocess, so it fires even on error."""
+        """notify_start fires before the worker, so it fires even on error."""
         # But notify_complete must NOT fire on error
         settings = {**_DEFAULT_NOTIFY_SETTINGS}
         _, notifier, _, _ = _run_job(notify_settings=settings, worker_error="crash")
@@ -295,45 +296,58 @@ class TestJobLocking:
     """Verifies the job lock is acquired and released correctly."""
 
     def test_returns_none_when_lock_already_held(self):
-        with patch("src.services.auto_scheduler_v2.acquire_job_lock", return_value=False), \
-             patch("src.services.auto_scheduler_v2.release_job_lock") as mock_release:
-            result = execute_exchange_job("NYSE", "daily")
-        assert result is None
-        mock_release.assert_not_called()
+        """Should return None when the job lock cannot be acquired."""
+        from src.services.auto_scheduler_v2 import _services
+
+        # Pre-acquire the lock so the handler can't get it
+        _services.acquire_job_lock("daily_nyse")
+        try:
+            with patch("src.services.scheduler_job_handler._run_exchange_job") as mock_run:
+                result = execute_exchange_job("NYSE", "daily")
+            assert result is None
+            mock_run.assert_not_called()
+        finally:
+            _services.release_job_lock("daily_nyse")
 
     def test_lock_released_after_success(self):
-        with patch(
-            "src.services.auto_scheduler_v2.create_scheduler_discord",
-            return_value=Mock(),
-        ), \
-             patch("src.services.auto_scheduler_v2.load_scheduler_config",
-                   return_value={"notification_settings": _DEFAULT_NOTIFY_SETTINGS}), \
-             patch("src.services.auto_scheduler_v2.acquire_job_lock", return_value=True), \
-             patch("src.services.auto_scheduler_v2.release_job_lock") as mock_release, \
-             patch("src.services.auto_scheduler_v2._run_job_subprocess",
+        """Lock should be released after a successful job."""
+        from src.services.auto_scheduler_v2 import _services
+
+        config_doc = {
+            "notification_settings": _DEFAULT_NOTIFY_SETTINGS,
+            "scheduler_webhook": {"enabled": False, "url": ""},
+        }
+        with patch("src.services.scheduler_discord.create_scheduler_discord", return_value=Mock()), \
+             patch("src.services.scheduler_services.load_document", return_value=config_doc), \
+             patch("src.services.scheduler_services.save_document"), \
+             patch("src.services.scheduler_job_handler._run_exchange_job",
                    return_value=(_DEFAULT_PRICE_STATS, _DEFAULT_ALERT_STATS, None)), \
-             patch("src.services.auto_scheduler_v2.update_scheduler_status"), \
-             patch("src.services.auto_scheduler_v2.send_scheduler_notification"), \
              patch("time.time", side_effect=[0.0, 1.0]):
             execute_exchange_job("NYSE", "daily")
-        mock_release.assert_called_once()
+
+        # Lock should be released — acquiring should succeed
+        assert _services.acquire_job_lock("daily_nyse") is True
+        _services.release_job_lock("daily_nyse")
 
     def test_lock_released_after_worker_error(self):
-        with patch(
-            "src.services.auto_scheduler_v2.create_scheduler_discord",
-            return_value=Mock(),
-        ), \
-             patch("src.services.auto_scheduler_v2.load_scheduler_config",
-                   return_value={"notification_settings": _DEFAULT_NOTIFY_SETTINGS}), \
-             patch("src.services.auto_scheduler_v2.acquire_job_lock", return_value=True), \
-             patch("src.services.auto_scheduler_v2.release_job_lock") as mock_release, \
-             patch("src.services.auto_scheduler_v2._run_job_subprocess",
+        """Lock should be released even when the worker errors."""
+        from src.services.auto_scheduler_v2 import _services
+
+        config_doc = {
+            "notification_settings": _DEFAULT_NOTIFY_SETTINGS,
+            "scheduler_webhook": {"enabled": False, "url": ""},
+        }
+        with patch("src.services.scheduler_discord.create_scheduler_discord", return_value=Mock()), \
+             patch("src.services.scheduler_services.load_document", return_value=config_doc), \
+             patch("src.services.scheduler_services.save_document"), \
+             patch("src.services.scheduler_job_handler._run_exchange_job",
                    return_value=(None, None, "crash")), \
-             patch("src.services.auto_scheduler_v2.update_scheduler_status"), \
-             patch("src.services.auto_scheduler_v2.send_scheduler_notification"), \
              patch("time.time", side_effect=[0.0, 1.0]):
             execute_exchange_job("NYSE", "daily")
-        mock_release.assert_called_once()
+
+        # Lock should be released — acquiring should succeed
+        assert _services.acquire_job_lock("daily_nyse") is True
+        _services.release_job_lock("daily_nyse")
 
 
 # ---------------------------------------------------------------------------
