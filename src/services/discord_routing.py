@@ -336,6 +336,12 @@ class DiscordEconomyRouter:
         matching_channels = []
 
         for channel_name, channel_info in self.custom_channels.items():
+            if not isinstance(channel_info, dict):
+                logger.warning(
+                    "Skipping custom channel '%s': expected dict, got %s",
+                    channel_name, type(channel_info).__name__,
+                )
+                continue
             if self.check_custom_channel_condition(alert, channel_info):
                 matching_channels.append((channel_name, channel_info))
                 if self.config.get('log_routing_decisions', False):

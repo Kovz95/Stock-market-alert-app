@@ -368,6 +368,200 @@ class AlertAuditLogger:
         except Exception as e:
             logging.error(f"Error logging completion: {e}")
 
+    def _flush_deferred_record(self, record: "DeferredAuditRecord") -> Optional[str]:
+        """
+        Write a single INSERT with all audit fields pre-populated from a
+        DeferredAuditRecord. Returns the audit_id as a string, or None on error.
+        """
+        try:
+            alert = record._alert
+            additional_data = {
+                "ratio": alert.get("ratio", False),
+                "ticker2": alert.get("ticker2", None),
+                "conditions_count": len(alert.get("conditions", [])),
+                "combination_logic": alert.get("combination_logic", "AND"),
+            }
+
+            columns = (
+                "timestamp",
+                "alert_id",
+                "ticker",
+                "stock_name",
+                "exchange",
+                "timeframe",
+                "action",
+                "evaluation_type",
+                "price_data_pulled",
+                "price_data_source",
+                "conditions_evaluated",
+                "alert_triggered",
+                "trigger_reason",
+                "execution_time_ms",
+                "cache_hit",
+                "error_message",
+                "additional_data",
+            )
+            placeholders = ", ".join(["?"] * len(columns))
+            query = f"""
+                INSERT INTO alert_audits (
+                    {', '.join(columns)}
+                ) VALUES ({placeholders})
+            """
+            if self.use_postgres:
+                query += " RETURNING id"
+
+            params = (
+                record._timestamp,
+                alert.get("alert_id", alert.get("id", "unknown")),
+                alert.get("ticker", alert.get("ticker1", "unknown")),
+                alert.get("stock_name", "unknown"),
+                alert.get("exchange", "unknown"),
+                alert.get("timeframe", "unknown"),
+                alert.get("action", "unknown"),
+                record._evaluation_type,
+                self._bool(record._price_data_pulled),
+                record._price_data_source,
+                self._bool(record._conditions_evaluated),
+                self._bool(record._alert_triggered),
+                record._trigger_reason,
+                record._execution_time_ms,
+                self._bool(record._cache_hit),
+                record._error_message,
+                self._serialize_json(additional_data),
+            )
+
+            with self._connection() as conn:
+                cursor = conn.cursor()
+                try:
+                    cursor.execute(query, params)
+                    if self.use_postgres:
+                        audit_id_value = cursor.fetchone()[0]
+                    else:
+                        audit_id_value = cursor.lastrowid
+                    conn.commit()
+                finally:
+                    cursor.close()
+
+            logging.info(
+                "Deferred audit flushed: alert=%s ticker=%s triggered=%s time=%sms",
+                alert.get("alert_id", "unknown"),
+                alert.get("ticker", "unknown"),
+                record._alert_triggered,
+                record._execution_time_ms,
+            )
+            return str(audit_id_value)
+
+        except Exception as e:
+            logging.error("Error flushing deferred audit record: %s", e)
+            return None
+
+    def bulk_flush(self, records: list["DeferredAuditRecord"]) -> None:
+        """Write multiple deferred audit records in a single transaction.
+
+        Uses executemany() with one connection checkout and one commit,
+        replacing N individual _flush_deferred_record calls.
+
+        Args:
+            records: List of DeferredAuditRecord instances to persist.
+        """
+        if not records:
+            return
+
+        columns = (
+            "timestamp",
+            "alert_id",
+            "ticker",
+            "stock_name",
+            "exchange",
+            "timeframe",
+            "action",
+            "evaluation_type",
+            "price_data_pulled",
+            "price_data_source",
+            "conditions_evaluated",
+            "alert_triggered",
+            "trigger_reason",
+            "execution_time_ms",
+            "cache_hit",
+            "error_message",
+            "additional_data",
+        )
+        placeholders = ", ".join(["?"] * len(columns))
+        query = f"""
+            INSERT INTO alert_audits (
+                {', '.join(columns)}
+            ) VALUES ({placeholders})
+        """
+
+        rows = []
+        for record in records:
+            if record._flushed:
+                continue
+            record._flushed = True
+            alert = record._alert
+            additional_data = {
+                "ratio": alert.get("ratio", False),
+                "ticker2": alert.get("ticker2", None),
+                "conditions_count": len(alert.get("conditions", [])),
+                "combination_logic": alert.get("combination_logic", "AND"),
+            }
+            rows.append((
+                record._timestamp,
+                alert.get("alert_id", alert.get("id", "unknown")),
+                alert.get("ticker", alert.get("ticker1", "unknown")),
+                alert.get("stock_name", "unknown"),
+                alert.get("exchange", "unknown"),
+                alert.get("timeframe", "unknown"),
+                alert.get("action", "unknown"),
+                record._evaluation_type,
+                self._bool(record._price_data_pulled),
+                record._price_data_source,
+                self._bool(record._conditions_evaluated),
+                self._bool(record._alert_triggered),
+                record._trigger_reason,
+                record._execution_time_ms,
+                self._bool(record._cache_hit),
+                record._error_message,
+                self._serialize_json(additional_data),
+            ))
+
+        if not rows:
+            return
+
+        try:
+            with self._connection() as conn:
+                cursor = conn.cursor()
+                try:
+                    cursor.executemany(query, rows)
+                    conn.commit()
+                finally:
+                    cursor.close()
+
+            logging.info("Bulk-flushed %d audit records", len(rows))
+        except Exception as e:
+            logging.warning(
+                "Bulk-flush failed (%s), falling back to individual inserts for %d records",
+                e, len(rows),
+            )
+            # Fall back to individual inserts so a single sequence/key
+            # conflict doesn't drop the entire batch.
+            inserted = 0
+            for row in rows:
+                try:
+                    with self._connection() as conn:
+                        cursor = conn.cursor()
+                        try:
+                            cursor.execute(query, row)
+                            conn.commit()
+                            inserted += 1
+                        finally:
+                            cursor.close()
+                except Exception as row_err:
+                    logging.error("Error inserting individual audit record: %s", row_err)
+            logging.info(
+                "Fallback insert complete: %d/%d audit records written", inserted, len(rows)
+            )
+
     def get_audit_summary(self, days: int = 7) -> pd.DataFrame:
         """
         Get summary of alert audits for analysis
@@ -667,6 +861,69 @@ class AlertAuditLogger:
         except Exception as e:
             logging.error(f"Error calculating expected daily evaluations: {e}")
             return None
+
+
+class DeferredAuditRecord:
+    """
+    Collects audit fields in-memory during alert evaluation, then writes
+    a single INSERT on flush(). This reduces 5 DB round-trips to 1 per alert.
+
+    Usage:
+        record = DeferredAuditRecord(alert, evaluation_type="scheduled")
+        record.set_price_pulled("DB-daily", cache_hit=True)
+        record.set_conditions_evaluated(triggered=True, trigger_reason="conditions_met")
+        # ... or on error:
+        record.set_error("Some error message")
+        # In finally block:
+        record.set_completion(execution_time_ms=42)
+        record.flush()
+    """
+
+    def __init__(self, alert: Dict[str, Any], evaluation_type: str = "scheduled"):
+        self._alert = alert
+        self._evaluation_type = evaluation_type
+        self._timestamp = datetime.now(timezone.utc).isoformat()
+
+        # Fields populated during evaluation
+        self._price_data_pulled: bool = False
+        self._price_data_source: Optional[str] = None
+        self._cache_hit: bool = False
+        self._conditions_evaluated: bool = False
+        self._alert_triggered: bool = False
+        self._trigger_reason: Optional[str] = None
+        self._error_message: Optional[str] = None
+        self._execution_time_ms: Optional[int] = None
+
+        self._flushed = False
+
+    def set_price_pulled(self, price_source: str, cache_hit: bool = False) -> None:
+        self._price_data_pulled = True
+        self._price_data_source = price_source
+        self._cache_hit = cache_hit
+
+    def set_no_data(self, ticker: str) -> None:
+        self._price_data_pulled = False
+        self._error_message = f"No data available for {ticker}"
+
+    def set_conditions_evaluated(
+        self, triggered: bool, trigger_reason: Optional[str] = None
+    ) -> None:
+        self._conditions_evaluated = True
+        self._alert_triggered = triggered
+        self._trigger_reason = trigger_reason
+
+    def set_error(self, error_message: str) -> None:
+        self._error_message = error_message
+
+    def set_completion(self, execution_time_ms: int) -> None:
+        self._execution_time_ms = execution_time_ms
+
+    def flush(self) -> Optional[str]:
+        """Write a single INSERT with all collected data. Returns audit_id or None."""
+        if self._flushed:
+            return None
+        self._flushed = True
+        return audit_logger._flush_deferred_record(self)
 
 
 # Global instance for easy access

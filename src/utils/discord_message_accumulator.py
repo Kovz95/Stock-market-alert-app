@@ -32,17 +32,21 @@ class DiscordMessageAccumulator:
         logger.info("Accumulator stats: %s", accumulator.get_stats())
     """
 
-    def __init__(self, rate_limiter=None):
+    def __init__(self, rate_limiter=None, auto_flush: bool = True):
         """
         Initialize the accumulator.
 
         Args:
             rate_limiter: Optional DiscordRateLimiter instance. Passed through
                           to send_batch_embeds() for 429 handling.
+            auto_flush: If True (default), automatically send batches when a
+                        bucket reaches 10 embeds. If False, only append to
+                        buckets — all sends happen in flush_all().
         """
         self._lock = threading.Lock()
         self._buckets: Dict[str, List[Dict[str, Any]]] = {}
         self._rate_limiter = rate_limiter
+        self._auto_flush = auto_flush
 
         # Stats
         self._added = 0
@@ -69,7 +73,7 @@ class DiscordMessageAccumulator:
             bucket = self._buckets.setdefault(webhook_url, [])
             bucket.append(embed)
 
-            if len(bucket) >= _MAX_EMBEDS_PER_MESSAGE:
+            if self._auto_flush and len(bucket) >= _MAX_EMBEDS_PER_MESSAGE:
                 batch_to_send = bucket[:_MAX_EMBEDS_PER_MESSAGE]
                 self._buckets[webhook_url] = bucket[_MAX_EMBEDS_PER_MESSAGE:]
 

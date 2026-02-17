@@ -29,7 +29,9 @@ from typing import Any, Dict, Optional, Union
 import psutil
 import requests
 
+from src.data_access.db_config import db_config
 from src.data_access.document_store import load_document, save_document
+from src.data_access.redis_support import build_key, delete_key
 
 logger = logging.getLogger("auto_scheduler_v2")
 
@@ -343,13 +345,46 @@ class SchedulerServices:
     # -- Heartbeat -----------------------------------------------------------
 
     def heartbeat(self) -> None:
-        """Update heartbeat timestamp in lock file and status."""
+        """Update heartbeat timestamp in lock file and status document.
+
+        Writes the heartbeat timestamp directly without reading the current
+        status first, keeping the operation lightweight even under DB load.
+        """
+        now = datetime.now(tz=timezone.utc).isoformat()
+
+        # Update lock file (pure file I/O, always fast)
         try:
             if self._lock_file.exists():
                 lock_data = json.loads(self._lock_file.read_text())
-                lock_data["heartbeat"] = datetime.now(tz=timezone.utc).isoformat()
+                lock_data["heartbeat"] = now
                 self._lock_file.write_text(json.dumps(lock_data, indent=2))
-
-            self.update_status(status="running")
         except Exception as exc:
-            logger.debug("Heartbeat update failed: %s", exc)
+            logger.debug("Heartbeat lock file update failed: %s", exc)
+
+        # Write only the heartbeat timestamp directly to DB — no read required
+        try:
+            conn = db_config.get_connection()
+            try:
+                cur = conn.cursor()
+                try:
+                    cur.execute(
+                        """
+                        INSERT INTO app_documents (document_key, payload, updated_at)
+                        VALUES (%s, jsonb_build_object('status', 'running', 'heartbeat', %s::text), NOW())
+                        ON CONFLICT (document_key) DO UPDATE SET
+                            payload = app_documents.payload
+                                || jsonb_build_object('status', 'running', 'heartbeat', EXCLUDED.payload->>'heartbeat'),
+                            updated_at = EXCLUDED.updated_at
+                        """,
+                        (STATUS_DOCUMENT_KEY, now),
+                    )
+                finally:
+                    cur.close()
+                conn.commit()
+            finally:
+                db_config.close_connection(conn)
+
+            # Invalidate Redis cache so next read gets fresh data
+            delete_key(build_key(f"document:{STATUS_DOCUMENT_KEY}"))
+        except Exception as exc:
+            logger.debug("Heartbeat DB update failed: %s", exc)

@@ -23,7 +23,7 @@ import pandas as pd
 
 from src.services.backend import evaluate_expression, evaluate_expression_list
 from src.services.backend_fmp import FMPDataFetcher
-from src.data_access.alert_repository import list_alerts, update_alert
+from src.data_access.alert_repository import list_alerts, update_alert, bulk_update_last_triggered
 from src.data_access.metadata_repository import fetch_stock_metadata_map
 from src.services.discord_routing import (
     send_economy_discord_alert,
@@ -34,7 +34,10 @@ from src.services.discord_routing import (
 from src.utils.async_discord_queue import queue_discord_notification, get_discord_queue
 from src.utils.discord_message_accumulator import DiscordMessageAccumulator
 from src.utils.discord_rate_limiter import get_rate_limiter
+from src.data_access.daily_price_repository import DailyPriceRepository
 from src.services.alert_audit_logger import (
+    DeferredAuditRecord,
+    audit_logger,
     log_alert_check_start,
     log_price_data_pulled,
     log_no_data_available,
@@ -72,9 +75,16 @@ class StockAlertChecker:
                           This prevents rate limits from blocking the main job.
         """
         self.fmp = FMPDataFetcher()
+        self._price_repo = DailyPriceRepository()
+        self._thread_local = threading.local()
         self.price_cache: Dict[str, pd.DataFrame] = {}
         self._cache_lock = threading.Lock()
         self.async_discord = async_discord
+
+        # Thread-safe collections for deferred batch operations
+        self._deferred_lock = threading.Lock()
+        self._deferred_last_triggered: List[tuple[str, str]] = []
+        self._deferred_audit_records: List[DeferredAuditRecord] = []
 
         if self.async_discord:
             logger.info("Using async Discord notifications (background queue)")
@@ -88,6 +98,13 @@ class StockAlertChecker:
         """
         Get price data for a stock ticker (cache access is thread-safe).
 
+        Lookup order:
+        1. In-memory cache (shared across workers)
+        2. PostgreSQL/SQLite DB (populated by scheduler price pre-fetch)
+        3. FMP API fallback (for tickers not yet in DB)
+
+        The source is tracked in self._thread_local.last_price_source for audit logging.
+
         Args:
             ticker: Stock symbol (e.g., "AAPL", "MSFT")
             timeframe: Timeframe for the data ("1d", "1wk", "1h")
@@ -97,29 +114,55 @@ class StockAlertChecker:
             DataFrame with OHLCV data, or None if unavailable
         """
         cache_key = f"{ticker}_{timeframe}"
+        self._thread_local.last_price_source = "unknown"
 
+        # 1. Check in-memory cache
         with self._cache_lock:
             if cache_key in self.price_cache:
                 logger.debug(f"Using cached data for {ticker}")
+                self._thread_local.last_price_source = "cache"
                 return self.price_cache[cache_key].copy()
 
+        # 2. Try reading from DB (populated by scheduler's update_prices_for_exchanges)
         try:
-            # Map timeframe to FMP period
+            df = None
+            if timeframe in ("1wk", "weekly"):
+                df = self._price_repo.get_weekly_prices(ticker, limit=days)
+                db_source = "DB-weekly"
+            elif timeframe in ("1h", "hourly"):
+                df = self._price_repo.get_hourly_prices(ticker, limit=days)
+                db_source = "DB-hourly"
+            else:
+                df = self._price_repo.get_daily_prices(ticker, limit=days)
+                db_source = "DB-daily"
+
+            if df is not None and not df.empty:
+                with self._cache_lock:
+                    self.price_cache[cache_key] = df
+                self._thread_local.last_price_source = db_source
+                logger.debug(f"Loaded {len(df)} price records for {ticker} from {db_source}")
+                return df.copy()
+
+            logger.debug(f"No DB data for {ticker} ({timeframe}), falling back to FMP")
+        except Exception as e:
+            logger.warning(f"DB read failed for {ticker}, falling back to FMP: {e}")
+
+        # 3. Fall back to FMP API (handles new tickers or DB gaps)
+        try:
             if timeframe in ("1wk", "weekly"):
                 df = self.fmp.get_historical_data(ticker, period="1day", timeframe="1wk")
             elif timeframe in ("1h", "hourly"):
                 df = self.fmp.get_historical_data(ticker, period="1hour")
             else:
-                # Default to daily
                 df = self.fmp.get_historical_data(ticker, period="1day")
 
             if df is not None and not df.empty:
-                # Limit to requested number of days
                 if len(df) > days:
                     df = df.tail(days)
                 with self._cache_lock:
                     self.price_cache[cache_key] = df
-                logger.debug(f"Fetched {len(df)} price records for {ticker}")
+                self._thread_local.last_price_source = "FMP-fallback"
+                logger.debug(f"Fetched {len(df)} price records for {ticker} from FMP (fallback)")
                 return df
             else:
                 logger.warning(f"No price data available for {ticker}")
@@ -299,8 +342,9 @@ class StockAlertChecker:
             "skipped": False,
         }
 
-        # Start audit logging
-        audit_id = log_alert_check_start(alert, "scheduled")
+        # Use deferred audit record: collects all fields in-memory,
+        # writes a single INSERT on flush (reduces 5 DB round-trips to 1).
+        audit_record = DeferredAuditRecord(alert, "scheduled")
 
         try:
             # Check if alert is disabled (only skip if explicitly set to "off")
@@ -322,14 +366,12 @@ class StockAlertChecker:
                 ticker2 = alert.get("ticker2", "")
                 if not ticker1 or not ticker2:
                     result["error"] = "Missing ticker1 or ticker2 for ratio alert"
-                    if audit_id:
-                        log_error(audit_id, result["error"])
+                    audit_record.set_error(result["error"])
                     return result
                 ticker = ticker1  # Use ticker1 as primary for data fetch
             elif not ticker:
                 result["error"] = "No ticker specified"
-                if audit_id:
-                    log_error(audit_id, result["error"])
+                audit_record.set_error(result["error"])
                 return result
 
             # Get price data
@@ -338,19 +380,19 @@ class StockAlertChecker:
 
             if df is None or df.empty:
                 result["error"] = f"No price data for {ticker}"
-                if audit_id:
-                    log_no_data_available(audit_id, ticker)
+                audit_record.set_no_data(ticker)
                 return result
 
-            if audit_id:
-                log_price_data_pulled(audit_id, "FMP", cache_hit=ticker in self.price_cache)
+            # Record price source from thread-local (set by get_price_data)
+            price_source = getattr(self._thread_local, "last_price_source", "unknown")
+            cache_key = f"{ticker}_{timeframe}"
+            audit_record.set_price_pulled(price_source, cache_hit=(price_source == "cache"))
 
             # Evaluate conditions
             triggered = self.evaluate_alert(alert, df)
 
-            if audit_id:
-                trigger_reason = "conditions_met" if triggered else None
-                log_conditions_evaluated(audit_id, triggered, trigger_reason)
+            trigger_reason = "conditions_met" if triggered else None
+            audit_record.set_conditions_evaluated(triggered, trigger_reason)
 
             if triggered:
                 result["triggered"] = True
@@ -403,20 +445,22 @@ class StockAlertChecker:
                     else:
                         logger.warning(f"Failed to send Discord notification for {ticker}")
 
-                # Update alert's last_triggered timestamp
-                update_alert(alert_id, {"last_triggered": datetime.now().isoformat()})
+                # Defer last_triggered update for batch processing
+                triggered_ts = datetime.now().isoformat()
+                with self._deferred_lock:
+                    self._deferred_last_triggered.append((alert_id, triggered_ts))
 
         except Exception as e:
             result["error"] = str(e)
             logger.error(f"Error checking alert {alert_id}: {e}")
-            if audit_id:
-                log_error(audit_id, str(e))
+            audit_record.set_error(str(e))
 
         finally:
-            # Log completion
+            # Record completion time but defer the DB write
             execution_time = int((time.time() - start_time) * 1000)
-            if audit_id:
-                log_completion(audit_id, execution_time)
+            audit_record.set_completion(execution_time)
+            with self._deferred_lock:
+                self._deferred_audit_records.append(audit_record)
 
         return result
 
@@ -474,8 +518,30 @@ class StockAlertChecker:
             workers,
         )
 
-        # Create accumulator for batched Discord sends
-        accumulator = DiscordMessageAccumulator(rate_limiter=get_rate_limiter())
+        # Pre-warm price cache: load unique tickers sequentially so workers
+        # only hit the in-memory cache. This avoids lock contention and
+        # ensures only one DB read per unique (ticker, timeframe) pair.
+        unique_tickers = set()
+        for a in filtered_alerts:
+            t = a.get("ticker") or a.get("ticker1", "")
+            tf = a.get("timeframe", "1d")
+            if t:
+                unique_tickers.add((t, tf))
+        if unique_tickers:
+            logger.info("Pre-warming price cache for %d unique tickers", len(unique_tickers))
+            for ticker, tf in unique_tickers:
+                self.get_price_data(ticker, tf)
+
+        # Create accumulator for batched Discord sends (auto_flush=False
+        # defers all HTTP sends until flush_all after all alerts finish)
+        accumulator = DiscordMessageAccumulator(
+            rate_limiter=get_rate_limiter(), auto_flush=False
+        )
+
+        # Reset deferred collections for this run
+        with self._deferred_lock:
+            self._deferred_last_triggered.clear()
+            self._deferred_audit_records.clear()
 
         def _aggregate_result(result: Dict[str, Any]) -> None:
             if result.get("skipped"):
@@ -491,36 +557,67 @@ class StockAlertChecker:
             else:
                 stats["success"] += 1
 
-        if workers <= 1:
-            for alert in filtered_alerts:
-                try:
-                    result = self.check_alert(alert, accumulator=accumulator)
-                    _aggregate_result(result)
-                except Exception as e:
-                    logger.error(f"Unexpected error checking alert: {e}")
-                    stats["errors"] += 1
-        else:
-            with ThreadPoolExecutor(max_workers=workers) as executor:
-                future_to_alert = {
-                    executor.submit(self.check_alert, alert, accumulator): alert
-                    for alert in filtered_alerts
-                }
-                for future in as_completed(future_to_alert):
+        try:
+            if workers <= 1:
+                for alert in filtered_alerts:
                     try:
-                        result = future.result()
+                        result = self.check_alert(alert, accumulator=accumulator)
                         _aggregate_result(result)
                     except Exception as e:
-                        logger.exception("Unexpected error checking alert: %s", e)
+                        logger.error(f"Unexpected error checking alert: {e}")
                         stats["errors"] += 1
+            else:
+                with ThreadPoolExecutor(max_workers=workers) as executor:
+                    future_to_alert = {
+                        executor.submit(self.check_alert, alert, accumulator): alert
+                        for alert in filtered_alerts
+                    }
+                    for future in as_completed(future_to_alert):
+                        try:
+                            result = future.result()
+                            _aggregate_result(result)
+                        except Exception as e:
+                            logger.exception("Unexpected error checking alert: %s", e)
+                            stats["errors"] += 1
 
-        # Flush remaining partial batches
-        accumulator.flush_all()
-        acc_stats = accumulator.get_stats()
-        logger.info(
-            "Accumulator stats: added=%d, sent=%d, failed=%d, flushes=%d",
-            acc_stats["added"], acc_stats["sent"],
-            acc_stats["failed"], acc_stats["flushes"],
-        )
+            # --- Batch post-processing (all I/O deferred from hot path) ---
+
+            # 1. Flush all Discord embeds
+            accumulator.flush_all()
+            acc_stats = accumulator.get_stats()
+            logger.info(
+                "Accumulator stats: added=%d, sent=%d, failed=%d, flushes=%d",
+                acc_stats["added"], acc_stats["sent"],
+                acc_stats["failed"], acc_stats["flushes"],
+            )
+
+            # 2. Bulk-update last_triggered timestamps
+            with self._deferred_lock:
+                trigger_updates = list(self._deferred_last_triggered)
+                self._deferred_last_triggered.clear()
+            if trigger_updates:
+                try:
+                    bulk_update_last_triggered(trigger_updates)
+                    logger.info("Bulk-updated last_triggered for %d alerts", len(trigger_updates))
+                except Exception as e:
+                    logger.error("Error bulk-updating last_triggered: %s", e)
+
+            # 3. Bulk-flush audit records
+            with self._deferred_lock:
+                audit_records = list(self._deferred_audit_records)
+                self._deferred_audit_records.clear()
+            if audit_records:
+                try:
+                    audit_logger.bulk_flush(audit_records)
+                except Exception as e:
+                    logger.error("Error bulk-flushing audit records: %s", e)
+
+        finally:
+            # Clean up the DB connection used for price reads
+            try:
+                self._price_repo.close()
+            except Exception as e:
+                logger.warning("Error closing price repo: %s", e)
 
         logger.info(
             f"Alert check complete: {stats['triggered']} triggered, "

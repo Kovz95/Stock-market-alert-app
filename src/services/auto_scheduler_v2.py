@@ -35,6 +35,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 import pytz
+from apscheduler.executors.pool import ThreadPoolExecutor as APThreadPoolExecutor
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 
@@ -446,6 +447,7 @@ def _schedule_exchange_jobs(mode: Optional[str] = None):
                 args=[exchange],
                 replace_existing=True,
                 max_instances=1,
+                coalesce=True,
                 misfire_grace_time=600,
             )
             scheduled_count += 1
@@ -496,6 +498,7 @@ def _schedule_exchange_jobs(mode: Optional[str] = None):
                     args=[exchange],
                     replace_existing=True,
                     max_instances=1,
+                    coalesce=True,
                     misfire_grace_time=3600,
                 )
                 scheduled_count += 1
@@ -514,6 +517,7 @@ def _schedule_exchange_jobs(mode: Optional[str] = None):
                     args=[exchange],
                     replace_existing=True,
                     max_instances=1,
+                    coalesce=True,
                     misfire_grace_time=3600,
                 )
                 scheduled_count += 1
@@ -572,7 +576,16 @@ def start_auto_scheduler(foreground: bool = False) -> bool:
         return False
 
     try:
-        scheduler = BackgroundScheduler(timezone="UTC")
+        # Run one exchange job at a time to avoid thread/connection exhaustion.
+        # Parallelism happens inside each job (10-20 price-update workers),
+        # not across jobs. Queued jobs run sequentially as slots free up.
+        max_concurrent_jobs = int(os.getenv("SCHEDULER_MAX_CONCURRENT_JOBS", "1"))
+        scheduler = BackgroundScheduler(
+            timezone="UTC",
+            executors={
+                "default": APThreadPoolExecutor(max_workers=max_concurrent_jobs),
+            },
+        )
 
         configured_runs = _schedule_exchange_jobs(_scheduler_mode) or []
 
@@ -582,6 +595,9 @@ def start_auto_scheduler(foreground: bool = False) -> bool:
             seconds=HEARTBEAT_INTERVAL,
             id="heartbeat",
             replace_existing=True,
+            max_instances=2,
+            coalesce=True,
+            misfire_grace_time=30,
         )
 
         # Daily full update only when running in combined mode or daily-only mode
@@ -592,6 +608,8 @@ def start_auto_scheduler(foreground: bool = False) -> bool:
                 id="daily_full_update",
                 name="Daily Full Database Update",
                 replace_existing=True,
+                coalesce=True,
+                max_instances=1,
                 misfire_grace_time=3600,
             )
 

@@ -280,6 +280,31 @@ def delete_alert(alert_id: str) -> None:
         db_config.close_connection(conn)
     _clear_cache()
 
+def bulk_update_last_triggered(updates: List[tuple[str, str]]) -> None:
+    """Update last_triggered timestamps for multiple alerts in one query.
+
+    Uses executemany() for efficient batch updating. Clears cache once
+    after all updates are applied.
+
+    Args:
+        updates: List of (alert_id, iso_timestamp) tuples.
+    """
+    if not updates:
+        return
+
+    conn = db_config.get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.executemany(
+                "UPDATE alerts SET last_triggered = %s, updated_at = NOW() WHERE alert_id = %s",
+                [(ts, aid) for aid, ts in updates],
+            )
+        conn.commit()
+    finally:
+        db_config.close_connection(conn)
+    _clear_cache()
+
+
 def bulk_replace_alerts(alerts: Iterable[Dict[str, Any]]) -> None:
     payloads = [_prepare_payload(alert) for alert in alerts]
     rows = [_row_from_payload(payload) for payload in payloads]
