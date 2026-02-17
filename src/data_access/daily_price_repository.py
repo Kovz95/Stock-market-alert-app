@@ -437,6 +437,132 @@ class DailyPriceRepository:
             df.columns = ["Open", "High", "Low", "Close", "Volume"]
         return df
 
+    def get_daily_prices_batch(
+        self,
+        tickers: List[str],
+        limit: int = 200,
+    ) -> Dict[str, pd.DataFrame]:
+        """Retrieve daily prices for multiple tickers in a single query.
+
+        Args:
+            tickers: List of ticker symbols to fetch.
+            limit: Max rows per ticker (most recent). Defaults to 200.
+
+        Returns:
+            Dict mapping ticker to its OHLCV DataFrame (DatetimeIndex).
+        """
+        return self._batch_query(
+            table="daily_prices",
+            date_col="date",
+            tickers=tickers,
+            limit=limit,
+        )
+
+    def get_weekly_prices_batch(
+        self,
+        tickers: List[str],
+        limit: int = 200,
+    ) -> Dict[str, pd.DataFrame]:
+        """Retrieve weekly prices for multiple tickers in a single query.
+
+        Args:
+            tickers: List of ticker symbols to fetch.
+            limit: Max rows per ticker (most recent). Defaults to 200.
+
+        Returns:
+            Dict mapping ticker to its OHLCV DataFrame (DatetimeIndex).
+        """
+        return self._batch_query(
+            table="weekly_prices",
+            date_col="week_ending",
+            tickers=tickers,
+            limit=limit,
+        )
+
+    def get_hourly_prices_batch(
+        self,
+        tickers: List[str],
+        limit: int = 200,
+    ) -> Dict[str, pd.DataFrame]:
+        """Retrieve hourly prices for multiple tickers in a single query.
+
+        Args:
+            tickers: List of ticker symbols to fetch.
+            limit: Max rows per ticker (most recent). Defaults to 200.
+
+        Returns:
+            Dict mapping ticker to its OHLCV DataFrame (DatetimeIndex).
+        """
+        return self._batch_query(
+            table="hourly_prices",
+            date_col="datetime",
+            tickers=tickers,
+            limit=limit,
+        )
+
+    def _batch_query(
+        self,
+        table: str,
+        date_col: str,
+        tickers: List[str],
+        limit: int,
+        chunk_size: int = 500,
+    ) -> Dict[str, pd.DataFrame]:
+        """Fetch OHLCV data for many tickers via chunked IN-queries.
+
+        Args:
+            table: DB table name.
+            date_col: Name of the date/datetime column.
+            tickers: Ticker symbols to fetch.
+            limit: Max rows to keep per ticker (tail).
+            chunk_size: Max tickers per SQL IN-clause.
+
+        Returns:
+            Dict mapping ticker -> DataFrame with DatetimeIndex and
+            columns ["Open", "High", "Low", "Close", "Volume"].
+        """
+        if not tickers:
+            return {}
+
+        engine = self._get_sqlalchemy_engine()
+        all_frames: List[pd.DataFrame] = []
+
+        for i in range(0, len(tickers), chunk_size):
+            chunk = tickers[i : i + chunk_size]
+            param_names = [f"p{j}" for j in range(len(chunk))]
+            placeholders = ", ".join(f":{n}" for n in param_names)
+            query = (
+                f"SELECT ticker, {date_col}, open, high, low, close, volume "
+                f"FROM {table} "
+                f"WHERE ticker IN ({placeholders}) "
+                f"ORDER BY ticker, {date_col}"
+            )
+            params = dict(zip(param_names, chunk))
+            try:
+                with engine.connect() as conn:
+                    df = pd.read_sql_query(
+                        text(query), conn, params=params, parse_dates=[date_col]
+                    )
+                if not df.empty:
+                    all_frames.append(df)
+            except Exception as e:
+                logger.error("Batch query failed for chunk of %d tickers: %s", len(chunk), e)
+
+        if not all_frames:
+            return {}
+
+        combined = pd.concat(all_frames, ignore_index=True)
+        result: Dict[str, pd.DataFrame] = {}
+        for ticker, group in combined.groupby("ticker"):
+            group = group.sort_values(date_col)
+            if limit and len(group) > limit:
+                group = group.tail(limit)
+            group = group.drop(columns=["ticker"]).set_index(date_col)
+            group.columns = ["Open", "High", "Low", "Close", "Volume"]
+            result[ticker] = group
+
+        return result
+
     def needs_update(
         self, ticker: str, force_after_close: bool = False
     ) -> Tuple[bool, Optional[datetime]]:

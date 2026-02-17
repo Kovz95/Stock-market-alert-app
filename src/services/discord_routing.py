@@ -971,6 +971,15 @@ def format_alert_as_embed(alert: Dict, message: str) -> Dict:
 
     # Optional extra fields (only if data is present)
     economy = alert.get("economy")
+    isin = None
+    if not economy:
+        try:
+            stock_metadata = fetch_stock_metadata_map()
+            stock_info = stock_metadata.get(ticker, {})
+            economy = stock_info.get("rbics_economy")
+            isin = stock_info.get("isin")
+        except Exception:
+            pass
     if not economy:
         try:
             economy = discord_router.get_stock_economy(ticker)
@@ -978,6 +987,9 @@ def format_alert_as_embed(alert: Dict, message: str) -> Dict:
             pass
     if economy:
         embed["fields"].append({"name": "Economy", "value": economy, "inline": True})
+
+    if isin:
+        embed["fields"].append({"name": "ISIN", "value": isin, "inline": True})
 
     return embed
 

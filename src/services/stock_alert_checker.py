@@ -35,6 +35,7 @@ from src.utils.async_discord_queue import queue_discord_notification, get_discor
 from src.utils.discord_message_accumulator import DiscordMessageAccumulator
 from src.utils.discord_rate_limiter import get_rate_limiter
 from src.data_access.daily_price_repository import DailyPriceRepository
+from src.services.portfolio_discord import portfolio_manager
 from src.services.alert_audit_logger import (
     DeferredAuditRecord,
     audit_logger,
@@ -445,6 +446,32 @@ class StockAlertChecker:
                     else:
                         logger.warning(f"Failed to send Discord notification for {ticker}")
 
+                # Send to portfolio channels
+                try:
+                    matching_portfolios = portfolio_manager.get_portfolios_for_stock(ticker)
+                    for portfolio_id, portfolio_data in matching_portfolios:
+                        portfolio_webhook = portfolio_data.get('discord_webhook')
+                        if portfolio_webhook:
+                            if accumulator is not None:
+                                if embed is None:
+                                    embed = format_alert_as_embed(alert, message)
+                                accumulator.add(portfolio_webhook, embed)
+                            elif self.async_discord:
+                                if embed is None:
+                                    embed = format_alert_as_embed(alert, message)
+                                queue_discord_notification(
+                                    alert, message, send_economy_discord_alert,
+                                    webhook_url=portfolio_webhook,
+                                    embed=embed,
+                                )
+                            else:
+                                portfolio_manager.send_portfolio_alert(
+                                    {'message': message, 'ticker': ticker},
+                                    portfolio_id, portfolio_data,
+                                )
+                except Exception as e:
+                    logger.warning(f"Error sending portfolio alerts for {ticker}: {e}")
+
                 # Defer last_triggered update for batch processing
                 triggered_ts = datetime.now().isoformat()
                 with self._deferred_lock:
@@ -490,6 +517,12 @@ class StockAlertChecker:
             "success": 0,
         }
 
+        # Reload portfolio data so it's fresh for this run
+        try:
+            portfolio_manager.load_portfolios()
+        except Exception as e:
+            logger.warning(f"Error reloading portfolios: {e}")
+
         # Filter alerts by timeframe if specified
         filtered_alerts = []
         for alert in alerts:
@@ -518,9 +551,9 @@ class StockAlertChecker:
             workers,
         )
 
-        # Pre-warm price cache: load unique tickers sequentially so workers
+        # Pre-warm price cache: batch-load from DB by timeframe so workers
         # only hit the in-memory cache. This avoids lock contention and
-        # ensures only one DB read per unique (ticker, timeframe) pair.
+        # reduces ~1,800 sequential DB queries to a handful of batch queries.
         unique_tickers = set()
         for a in filtered_alerts:
             t = a.get("ticker") or a.get("ticker1", "")
@@ -528,9 +561,69 @@ class StockAlertChecker:
             if t:
                 unique_tickers.add((t, tf))
         if unique_tickers:
-            logger.info("Pre-warming price cache for %d unique tickers", len(unique_tickers))
+            logger.info(
+                "Pre-warming price cache for %d unique tickers (daily=%s, weekly=%s, hourly=%s)",
+                len(unique_tickers),
+                sum(1 for _, tf in unique_tickers if tf not in ("1wk", "weekly", "1h", "hourly")),
+                sum(1 for _, tf in unique_tickers if tf in ("1wk", "weekly")),
+                sum(1 for _, tf in unique_tickers if tf in ("1h", "hourly")),
+            )
+
+            # Group tickers by timeframe
+            daily_tickers: list[str] = []
+            weekly_tickers: list[str] = []
+            hourly_tickers: list[str] = []
             for ticker, tf in unique_tickers:
-                self.get_price_data(ticker, tf)
+                if tf in ("1wk", "weekly"):
+                    weekly_tickers.append(ticker)
+                elif tf in ("1h", "hourly"):
+                    hourly_tickers.append(ticker)
+                else:
+                    daily_tickers.append(ticker)
+
+            # Batch-load from DB
+            batch_loaded = 0
+            if daily_tickers:
+                logger.info("Loading daily prices for %d tickers from DB...", len(daily_tickers))
+                daily_results = self._price_repo.get_daily_prices_batch(daily_tickers, limit=200)
+                for tk, df in daily_results.items():
+                    self.price_cache[f"{tk}_1d"] = df
+                    batch_loaded += 1
+                logger.info(
+                    "Loaded %d/%d daily tickers from DB (sample: %s)",
+                    len(daily_results),
+                    len(daily_tickers),
+                    list(daily_results.keys())[:5],
+                )
+            if weekly_tickers:
+                logger.info("Loading weekly prices for %d tickers from DB...", len(weekly_tickers))
+                weekly_results = self._price_repo.get_weekly_prices_batch(weekly_tickers, limit=200)
+                for tk, df in weekly_results.items():
+                    self.price_cache[f"{tk}_1wk"] = df
+                    batch_loaded += 1
+                logger.info("Loaded %d/%d weekly tickers from DB", len(weekly_results), len(weekly_tickers))
+            if hourly_tickers:
+                logger.info("Loading hourly prices for %d tickers from DB...", len(hourly_tickers))
+                hourly_results = self._price_repo.get_hourly_prices_batch(hourly_tickers, limit=200)
+                for tk, df in hourly_results.items():
+                    self.price_cache[f"{tk}_1h"] = df
+                    batch_loaded += 1
+                logger.info("Loaded %d/%d hourly tickers from DB", len(hourly_results), len(hourly_tickers))
+
+            logger.info("Batch-loaded %d tickers from DB into price cache", batch_loaded)
+
+            # Fall back to individual fetch (FMP API) for any tickers
+            # missing from the batch DB results
+            missing = 0
+            for ticker, tf in unique_tickers:
+                cache_key = f"{ticker}_{tf}"
+                if cache_key not in self.price_cache:
+                    missing += 1
+                    self.get_price_data(ticker, tf)
+            if missing:
+                logger.info("Individually fetched %d tickers missing from DB via FMP API", missing)
+            else:
+                logger.info("All %d tickers found in DB — no FMP API fallback needed", len(unique_tickers))
 
         # Create accumulator for batched Discord sends (auto_flush=False
         # defers all HTTP sends until flush_all after all alerts finish)
@@ -543,7 +636,13 @@ class StockAlertChecker:
             self._deferred_last_triggered.clear()
             self._deferred_audit_records.clear()
 
+        processed_count = 0
+        log_interval = max(len(filtered_alerts) // 10, 100)  # Log every ~10% or 100
+
         def _aggregate_result(result: Dict[str, Any]) -> None:
+            nonlocal processed_count
+            processed_count += 1
+
             if result.get("skipped"):
                 stats["skipped"] += 1
             elif result.get("error"):
@@ -556,6 +655,21 @@ class StockAlertChecker:
                 stats["success"] += 1
             else:
                 stats["success"] += 1
+
+            # Periodic progress logging
+            if processed_count % log_interval == 0 or processed_count == len(filtered_alerts):
+                logger.info(
+                    "Alert evaluation progress: %d/%d checked "
+                    "(triggered=%d, errors=%d, no_data=%d, skipped=%d)",
+                    processed_count,
+                    len(filtered_alerts),
+                    stats["triggered"],
+                    stats["errors"],
+                    stats["no_data"],
+                    stats["skipped"],
+                )
+
+        logger.info("Starting alert evaluation for %d alerts...", len(filtered_alerts))
 
         try:
             if workers <= 1:
@@ -583,10 +697,16 @@ class StockAlertChecker:
             # --- Batch post-processing (all I/O deferred from hot path) ---
 
             # 1. Flush all Discord embeds
+            acc_stats = accumulator.get_stats()
+            logger.info(
+                "Alert evaluation complete. Flushing %d Discord embeds to %d webhooks...",
+                acc_stats["added"],
+                len(accumulator._buckets),
+            )
             accumulator.flush_all()
             acc_stats = accumulator.get_stats()
             logger.info(
-                "Accumulator stats: added=%d, sent=%d, failed=%d, flushes=%d",
+                "Discord send complete: added=%d, sent=%d, failed=%d, flushes=%d",
                 acc_stats["added"], acc_stats["sent"],
                 acc_stats["failed"], acc_stats["flushes"],
             )
@@ -687,7 +807,9 @@ class StockAlertChecker:
 
         try:
             # Load all alerts
+            logger.info("Loading alerts from repository...")
             all_alerts = list_alerts()
+            logger.info("Loaded %d total alerts from repository", len(all_alerts))
 
             # Filter by exchange
             exchange_alerts = [
@@ -695,7 +817,12 @@ class StockAlertChecker:
                 if isinstance(a, dict) and a.get("exchange") in exchanges
             ]
 
-            logger.info(f"Found {len(exchange_alerts)} alerts for specified exchanges")
+            logger.info(
+                "Filtered to %d alerts for exchanges %s (from %d total)",
+                len(exchange_alerts),
+                exchanges,
+                len(all_alerts),
+            )
 
             # Check alerts
             return self.check_alerts(exchange_alerts, timeframe_filter)

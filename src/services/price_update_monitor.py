@@ -12,6 +12,101 @@ from src.data_access.document_store import load_document
 
 logger = logging.getLogger(__name__)
 
+# Discord enforces a hard 6000-character total limit per embed.
+_MAX_EMBED_SIZE = 5800  # Leave margin for JSON overhead
+
+
+def _estimate_embed_size(embed: dict) -> int:
+    """Estimate the total character count of a Discord embed."""
+    size = len(embed.get("title", ""))
+    size += len(embed.get("description", ""))
+    for field in embed.get("fields", []):
+        size += len(field.get("name", ""))
+        size += len(field.get("value", ""))
+    footer = embed.get("footer", {})
+    size += len(footer.get("text", ""))
+    return size
+
+
+def _split_embed_if_needed(embed: dict) -> List[Dict]:
+    """Split an embed into multiple embeds if it exceeds Discord's 6000 char limit.
+
+    Keeps the title/description/footer on the first embed only, then distributes
+    fields across continuation embeds.
+
+    Args:
+        embed: A Discord embed dict with fields that may exceed the size limit.
+
+    Returns:
+        List of embed dicts, each under the 6000-character limit.
+    """
+    if _estimate_embed_size(embed) <= _MAX_EMBED_SIZE:
+        return [embed]
+
+    # Split by fields: keep adding fields until we approach the limit
+    base_size = (
+        len(embed.get("title", ""))
+        + len(embed.get("description", ""))
+        + len(embed.get("footer", {}).get("text", ""))
+        + 100  # overhead for timestamp, color, etc.
+    )
+
+    all_fields = embed.get("fields", [])
+    embeds: List[Dict] = []
+    current_fields: List[Dict] = []
+    current_size = base_size
+
+    for field in all_fields:
+        field_size = len(field.get("name", "")) + len(field.get("value", ""))
+
+        if current_size + field_size > _MAX_EMBED_SIZE and current_fields:
+            # Flush current embed
+            new_embed: dict = {
+                "color": embed.get("color"),
+                "fields": current_fields,
+            }
+            if not embeds:
+                # First embed gets title/description/timestamp
+                new_embed["title"] = embed.get("title", "")
+                if embed.get("description"):
+                    new_embed["description"] = embed["description"]
+                if embed.get("timestamp"):
+                    new_embed["timestamp"] = embed["timestamp"]
+            else:
+                new_embed["title"] = embed.get("title", "…") + " (continued)"
+            embeds.append(new_embed)
+            current_fields = []
+            current_size = 200  # continuation embed overhead
+
+        current_fields.append(field)
+        current_size += field_size
+
+    # Flush remaining fields
+    if current_fields:
+        new_embed = {
+            "color": embed.get("color"),
+            "fields": current_fields,
+        }
+        if not embeds:
+            new_embed["title"] = embed.get("title", "")
+            if embed.get("description"):
+                new_embed["description"] = embed["description"]
+            if embed.get("timestamp"):
+                new_embed["timestamp"] = embed["timestamp"]
+        else:
+            new_embed["title"] = embed.get("title", "…") + " (continued)"
+        # Footer goes on the last embed
+        if embed.get("footer"):
+            new_embed["footer"] = embed["footer"]
+        embeds.append(new_embed)
+
+    logger.info(
+        "Split oversized embed (%d chars) into %d embeds",
+        _estimate_embed_size(embed),
+        len(embeds),
+    )
+    return embeds
+
 
 class PriceUpdateMonitor:
     """Monitor and report failed price updates to Discord"""
@@ -32,7 +127,11 @@ class PriceUpdateMonitor:
             logger.warning("Failed_Price_Updates webhook URL not found in config")
 
     def send_to_discord(self, message: str, embeds: Optional[List[Dict]] = None):
-        """Send a message to the failed price updates Discord channel"""
+        """Send a message to the failed price updates Discord channel.
+
+        Automatically splits oversized embeds to stay under Discord's
+        6000-character embed limit.
+        """
         if not self.webhook_url:
             logger.warning("No webhook URL configured for failed price updates")
             return False
@@ -40,22 +139,43 @@ class PriceUpdateMonitor:
         if not is_discord_send_enabled():
             return False
 
-        try:
-            payload = {"content": get_discord_environment_tag() + message}
-            if embeds:
-                payload["embeds"] = embeds
+        # Split any oversized embeds into smaller ones
+        safe_embeds: List[Dict] = []
+        if embeds:
+            for embed in embeds:
+                safe_embeds.extend(_split_embed_if_needed(embed))
 
-            response = requests.post(self.webhook_url, json=payload)
+        # Discord allows max 10 embeds per message — chunk if needed
+        success = True
+        env_tag = get_discord_environment_tag()
+        embed_chunks = [
+            safe_embeds[i:i + 10]
+            for i in range(0, max(len(safe_embeds), 1), 10)
+        ] if safe_embeds else [None]
 
-            if response.status_code == 204:
-                return True
-            else:
-                logger.error(f"Discord webhook failed: {response.status_code} - {response.text}")
-                return False
+        for chunk in embed_chunks:
+            try:
+                payload: dict[str, Any] = {"content": env_tag + message}
+                if chunk:
+                    payload["embeds"] = chunk
 
-        except Exception as e:
-            logger.error(f"Error sending to Discord: {e}")
-            return False
+                response = requests.post(self.webhook_url, json=payload, timeout=10)
+
+                if response.status_code in (200, 204):
+                    logger.debug("Discord webhook sent successfully")
+                else:
+                    logger.error(
+                        "Discord webhook failed: %s - %s",
+                        response.status_code,
+                        response.text[:200],
+                    )
+                    success = False
+
+            except Exception as e:
+                logger.error(f"Error sending to Discord: {e}")
+                success = False
+
+        return success
 
     def report_failed_updates(self, failed_tickers: List[Dict], exchange: str | None = None):
         """
@@ -109,7 +229,7 @@ class PriceUpdateMonitor:
             all_tickers = sorted(tickers)  # Sort for easier reading
 
             # Create the initial field with error description
-            chunk_size = 80  # Approximate number of tickers that fit in 1024 chars
+            chunk_size = 50  # Conservative to keep total embed size manageable
             chunks = [all_tickers[i:i + chunk_size] for i in range(0, len(all_tickers), chunk_size)]
 
             for i, chunk in enumerate(chunks):
@@ -166,7 +286,7 @@ class PriceUpdateMonitor:
 
         # Add tickers in chunks
         all_tickers = sorted(skipped_tickers)
-        chunk_size = 100
+        chunk_size = 50  # Conservative to keep total embed size manageable
         chunks = [all_tickers[i:i + chunk_size] for i in range(0, len(all_tickers), chunk_size)]
 
         for i, chunk in enumerate(chunks):

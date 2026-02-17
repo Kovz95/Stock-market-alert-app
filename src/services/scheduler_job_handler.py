@@ -43,9 +43,27 @@ def _exchange_worker(exchange_name: str, resample_weekly: bool):
     from src.services.scheduled_price_updater import update_prices_for_exchanges
     from src.services.auto_scheduler_v2 import run_alert_checks
 
-    price_stats = update_prices_for_exchanges([exchange_name], resample_weekly=resample_weekly)
     timeframe_key = "weekly" if resample_weekly else "daily"
+
+    logger.info(
+        "[%s/%s] Step 1/2: Updating prices (resample_weekly=%s)...",
+        exchange_name, timeframe_key, resample_weekly,
+    )
+    price_stats = update_prices_for_exchanges([exchange_name], resample_weekly=resample_weekly)
+    logger.info(
+        "[%s/%s] Price update complete: %s",
+        exchange_name, timeframe_key, price_stats,
+    )
+
+    logger.info(
+        "[%s/%s] Step 2/2: Evaluating alerts...",
+        exchange_name, timeframe_key,
+    )
     alert_stats = run_alert_checks([exchange_name], timeframe_key)
+    logger.info(
+        "[%s/%s] Alert evaluation complete: %s",
+        exchange_name, timeframe_key, alert_stats,
+    )
     return price_stats, alert_stats
 
 
@@ -177,6 +195,10 @@ class BaseExchangeJobHandler(ABC):
         from src.services.scheduler_discord import create_scheduler_discord
 
         job_id = self.services.sanitize_job_id(self.job_type, exchange_name)
+        logger.info(
+            "=== Starting %s job for %s (job_id=%s) ===",
+            self.job_type.upper(), exchange_name, job_id,
+        )
         if not self.services.acquire_job_lock(job_id):
             logger.warning("Job %s is already running; skipping duplicate execution.", job_id)
             return None
@@ -189,6 +211,10 @@ class BaseExchangeJobHandler(ABC):
         run_time_utc = datetime.now(tz=timezone.utc)
         discord_notifier = create_scheduler_discord(self.job_type)
 
+        logger.info(
+            "Job %s acquired lock, timeout=%ds, starting execution...",
+            job_id, job_timeout,
+        )
         start_time = time.time()
         if send_start:
             discord_notifier.notify_start(run_time_utc, exchange_name)
