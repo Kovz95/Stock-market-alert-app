@@ -7,6 +7,7 @@ from datetime import datetime
 # Add the parent directory to the path for imports
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
+from src.data_access.document_store import clear_cache, save_document
 from src.services.discord_routing import DiscordEconomyRouter
 
 st.set_page_config(
@@ -72,10 +73,12 @@ def main():
     if st.button("💾 Save Global Settings"):
         config['enable_industry_routing'] = enable_routing
         config['log_routing_decisions'] = enable_logs
-        
-        with open('discord_channels_config.json', 'w') as f:
-            json.dump(config, f, indent=2)
-        
+        save_document(
+            "discord_channels_config",
+            config,
+            fallback_path="discord_channels_config.json",
+        )
+        clear_cache("discord_channels_config")
         st.success("✅ Global settings saved successfully!")
         st.rerun()
     
@@ -99,7 +102,7 @@ def main():
             st.markdown("**Configure economy-based channels:**")
             
             # Economy channels
-            economy_channels = [ch for ch in channels if ch['name'] not in ['ETFs', 'Pairs', 'General', 'Failed_Price_Data']]
+            economy_channels = [ch for ch in channels if ch['name'] not in ['ETFs', 'Pairs', 'General', 'Failed_Price_Updates']]
             
             for channel in economy_channels:
                 with st.expander(f"🏭 {channel['name']} - {channel['channel_name']}"):
@@ -130,7 +133,7 @@ def main():
         with tab2:
             st.markdown("**Configure special channels:**")
             
-            # Special channels (excluding Failed_Price_Data which moves to logging)
+            # Special channels (excluding Failed_Price_Updates which is in logging)
             special_channels = [ch for ch in channels if ch['name'] in ['ETFs', 'Pairs', 'General']]
             
             for channel in special_channels:
@@ -159,6 +162,85 @@ def main():
                         else:
                             st.warning("⚠️ Please enter a webhook URL")
         
+        st.divider()
+        st.subheader("📅 Timeframe-Specific Channels (Daily / Hourly / Weekly)")
+        st.markdown(
+            "Configure overrides for **daily**, **hourly**, or **weekly** alert channels. "
+            "Base channels are configured above. Clear override uses the base channel webhook for that timeframe."
+        )
+        timeframe_label = st.radio(
+            "Timeframe",
+            options=["daily", "hourly", "weekly"],
+            format_func=lambda x: x.capitalize(),
+            horizontal=True,
+            key="timeframe_selector",
+        )
+        tf_channels = router.get_available_channels(timeframe=timeframe_label)
+        mapping_key = {
+            "daily": "channel_mappings_daily",
+            "hourly": "channel_mappings_hourly",
+            "weekly": "channel_mappings_weekly",
+        }[timeframe_label]
+        tf_tab1, tf_tab2 = st.tabs(["Economy Channels", "Special Channels"])
+        special_names = {"ETFs", "Pairs", "General", "Futures", "Failed_Price_Updates"}
+        tf_economy = [ch for ch in tf_channels if ch["name"] not in special_names]
+        tf_special = [ch for ch in tf_channels if ch["name"] in special_names]
+        with tf_tab1:
+            for ch in tf_economy:
+                cfg = config.get(mapping_key, {}).get(ch["name"], {})
+                with st.expander(f"{ch['name']} — {cfg.get('channel_name', ch['channel_name'])}"):
+                    st.markdown(f"**Description:** {cfg.get('description', ch['description'])}")
+                    webhook = st.text_input(
+                        f"Webhook for {ch['name']} ({timeframe_label})",
+                        value=cfg.get("webhook_url") or "",
+                        type="password",
+                        key=f"tf_{timeframe_label}_{ch['name']}_wh",
+                    )
+                    col_a, col_b = st.columns(2)
+                    with col_a:
+                        if st.button(f"Save {ch['name']}", key=f"tf_save_{timeframe_label}_{ch['name']}"):
+                            if webhook:
+                                if router.update_channel_config(ch["name"], webhook, timeframe=timeframe_label):
+                                    st.success(f"Updated {timeframe_label} webhook for {ch['name']}")
+                                else:
+                                    st.error(f"Failed to update {ch['name']}")
+                            else:
+                                st.warning("Enter a webhook URL to save.")
+                    with col_b:
+                        if st.button("Clear override", key=f"tf_clear_{timeframe_label}_{ch['name']}"):
+                            if router.update_channel_config(ch["name"], "", timeframe=timeframe_label):
+                                st.success(f"Cleared override for {ch['name']}; will use base channel.")
+                                st.rerun()
+                            else:
+                                st.error(f"Failed to clear {ch['name']}")
+        with tf_tab2:
+            for ch in tf_special:
+                cfg = config.get(mapping_key, {}).get(ch["name"], {})
+                with st.expander(f"{ch['name']} — {cfg.get('channel_name', ch['channel_name'])}"):
+                    st.markdown(f"**Description:** {cfg.get('description', ch['description'])}")
+                    webhook = st.text_input(
+                        f"Webhook for {ch['name']} ({timeframe_label})",
+                        value=cfg.get("webhook_url") or "",
+                        type="password",
+                        key=f"tf_sp_{timeframe_label}_{ch['name']}_wh",
+                    )
+                    col_a, col_b = st.columns(2)
+                    with col_a:
+                        if st.button(f"Save {ch['name']}", key=f"tf_save_sp_{timeframe_label}_{ch['name']}"):
+                            if webhook:
+                                if router.update_channel_config(ch["name"], webhook, timeframe=timeframe_label):
+                                    st.success(f"Updated {timeframe_label} webhook for {ch['name']}")
+                                else:
+                                    st.error(f"Failed to update {ch['name']}")
+                            else:
+                                st.warning("Enter a webhook URL to save.")
+                    with col_b:
+                        if st.button("Clear override", key=f"tf_clear_sp_{timeframe_label}_{ch['name']}"):
+                            if router.update_channel_config(ch["name"], "", timeframe=timeframe_label):
+                                st.success(f"Cleared override for {ch['name']}; will use base channel.")
+                                st.rerun()
+                            else:
+                                st.error(f"Failed to clear {ch['name']}")
         st.divider()
         
         # Testing Section
@@ -667,7 +749,7 @@ def main():
             st.markdown("### ⚠️ Failed Price Data Channel")
             st.info("💡 This channel receives notifications when alerts fail to fetch price data from the FMP API")
             
-            # Get Failed_Price_Data channel from main config
+            # Get Failed_Price_Updates channel from main config
             failed_channel_exists = 'Failed_Price_Updates' in config.get('channel_mappings', {})
 
             if failed_channel_exists:
@@ -686,7 +768,7 @@ def main():
                 with col1:
                     if st.button("💾 Save Failed Price Data Channel", key="save_failed"):
                         if webhook_url:
-                            success = router.update_channel_config('Failed_Price_Data', webhook_url)
+                            success = router.update_channel_config('Failed_Price_Updates', webhook_url)
                             if success:
                                 st.success("✅ Failed Price Data webhook updated!")
                             else:
@@ -961,10 +1043,12 @@ def main():
                 config['logging_channels']['Hourly_Scheduler_Status']['channel_name'] = "#hourly-scheduler-status"
                 config['logging_channels']['Hourly_Scheduler_Status']['description'] = "Hourly data scheduler status updates and monitoring"
 
-                # Save to discord_channels_config.json
-                with open('discord_channels_config.json', 'w') as f:
-                    json.dump(config, f, indent=2)
-
+                save_document(
+                    "discord_channels_config",
+                    config,
+                    fallback_path="discord_channels_config.json",
+                )
+                clear_cache("discord_channels_config")
                 st.success("✅ Hourly scheduler webhook saved successfully!")
 
                 if hourly_webhook_url:

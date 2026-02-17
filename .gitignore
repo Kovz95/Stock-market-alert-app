@@ -19,6 +19,7 @@ work.ipynb
 .env
 .env.production
 deployment/.env.production
+discord_channels_config.json
 
 # Logs and runtime outputs
 *.log

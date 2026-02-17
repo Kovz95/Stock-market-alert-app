@@ -12,7 +12,7 @@ from typing import Dict, List, Optional, Tuple
 import pandas as pd
 import requests
 
-from src.data_access.document_store import load_document
+from src.data_access.document_store import clear_cache, load_document, save_document
 from src.data_access.metadata_repository import fetch_stock_metadata_map
 from src.utils.discord_env import get_discord_environment_tag, is_discord_send_enabled
 from src.utils.discord_rate_limiter import get_rate_limiter
@@ -802,7 +802,7 @@ class DiscordEconomyRouter:
         Args:
             channel_name: Name of the channel to update
             webhook_url: New webhook URL
-            timeframe: Optional timeframe ('daily' or 'hourly')
+            timeframe: Optional timeframe ('daily', 'hourly', or 'weekly')
 
         Returns:
             True if updated successfully, False otherwise
@@ -816,10 +816,14 @@ class DiscordEconomyRouter:
 
             mapping[channel_name]['webhook_url'] = webhook_url
 
-            # Persist configuration
+            # Persist configuration to app_documents so schedulers use same source
             self.config[mapping_key][channel_name]['webhook_url'] = webhook_url
-            with open(self.config_file, 'w', encoding='utf-8') as f:
-                json.dump(self.config, f, indent=2, ensure_ascii=False)
+            save_document(
+                "discord_channels_config",
+                self.config,
+                fallback_path=self.config_file,
+            )
+            clear_cache("discord_channels_config")
 
             logger.info(f"Updated webhook URL for {channel_name} (timeframe={self._normalize_timeframe(timeframe)})")
             return True
