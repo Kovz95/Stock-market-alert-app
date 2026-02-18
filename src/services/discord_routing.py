@@ -970,6 +970,10 @@ def format_alert_as_embed(alert: Dict, message: str) -> Dict:
     }
 
     # Optional extra fields (only if data is present)
+    exchange = alert.get("exchange")
+    if exchange:
+        embed["fields"].append({"name": "Exchange", "value": exchange, "inline": True})
+
     economy = alert.get("economy")
     isin = None
     if not economy:

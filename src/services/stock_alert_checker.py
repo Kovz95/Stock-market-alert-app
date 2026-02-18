@@ -265,10 +265,13 @@ class StockAlertChecker:
         if len(conditions) > 3:
             conditions_str += f"\n  ... and {len(conditions) - 3} more"
 
+        exchange = alert.get("exchange", "Unknown")
+
         message = f"""🚨 **Stock Alert Triggered**
 
 **{name}**
 • Ticker: `{ticker}`
+• Exchange: {exchange}
 • Economy: {economy}
 • ISIN: {isin}
 • Price: ${current_price:.2f}
