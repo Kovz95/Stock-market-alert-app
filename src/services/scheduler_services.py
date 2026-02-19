@@ -41,7 +41,7 @@ logger = logging.getLogger("auto_scheduler_v2")
 
 BASE_DIR = Path(__file__).resolve().parent
 LOCK_FILE = BASE_DIR / "scheduler_v2.lock"
-STATUS_DOCUMENT_KEY = "scheduler_status"
+STATUS_DOCUMENT_KEY = "scheduler_status"  # Base key, will be mode-specific if needed
 CONFIG_DOCUMENT_KEY = "scheduler_config"
 JOB_TIMEOUT_SECONDS = int(os.getenv("SCHEDULER_JOB_TIMEOUT", "900"))
 HEARTBEAT_INTERVAL = int(os.getenv("SCHEDULER_HEARTBEAT_INTERVAL", "60"))
@@ -99,10 +99,29 @@ class SchedulerServices:
     (thread-safe), status/heartbeat management, and process-level lock files.
     """
 
-    def __init__(self, lock_file: Optional[Union[Path, str]] = None) -> None:
+    def __init__(
+        self,
+        lock_file: Optional[Union[Path, str]] = None,
+        mode: Optional[str] = None
+    ) -> None:
+        """
+        Initialize scheduler services.
+
+        Args:
+            lock_file: Optional custom lock file path.
+            mode: Optional scheduler mode ('daily', 'weekly', 'hourly').
+                  If provided, uses mode-specific status key.
+        """
         self._job_locks: Dict[str, bool] = {}
         self._lock_lock = threading.Lock()
         self._lock_file: Path = Path(lock_file) if lock_file else LOCK_FILE
+        self._mode = mode
+
+        # Use mode-specific status key if mode is provided
+        if mode:
+            self._status_key = f"{STATUS_DOCUMENT_KEY}_{mode}"
+        else:
+            self._status_key = STATUS_DOCUMENT_KEY
 
     # -- Configuration -------------------------------------------------------
 
@@ -201,16 +220,21 @@ class SchedulerServices:
     ) -> None:
         """Update scheduler status in document store."""
         try:
+            # Use mode-specific fallback path if mode is set
+            fallback_filename = f"scheduler_status_{self._mode}.json" if self._mode else "scheduler_status.json"
+            fallback_path = str(BASE_DIR / fallback_filename)
+
             existing_status = load_document(
-                STATUS_DOCUMENT_KEY,
+                self._status_key,
                 default={},
-                fallback_path=str(BASE_DIR / "scheduler_status.json"),
+                fallback_path=fallback_path,
             )
             if not isinstance(existing_status, dict):
                 existing_status = {}
 
             existing_status["status"] = status
             existing_status["heartbeat"] = datetime.now(tz=timezone.utc).isoformat()
+            existing_status["mode"] = self._mode  # Add mode to status for identification
 
             if current_job is not None:
                 existing_status["current_job"] = current_job
@@ -227,9 +251,9 @@ class SchedulerServices:
                 existing_status["last_error"] = last_error
 
             save_document(
-                STATUS_DOCUMENT_KEY,
+                self._status_key,
                 existing_status,
-                fallback_path=str(BASE_DIR / "scheduler_status.json"),
+                fallback_path=fallback_path,
             )
 
             if self._lock_file.exists():
@@ -251,10 +275,11 @@ class SchedulerServices:
                 to include job counts and next run time.
         """
         try:
+            fallback_filename = f"scheduler_status_{self._mode}.json" if self._mode else "scheduler_status.json"
             status = load_document(
-                STATUS_DOCUMENT_KEY,
+                self._status_key,
                 default={},
-                fallback_path=str(BASE_DIR / "scheduler_status.json"),
+                fallback_path=str(BASE_DIR / fallback_filename),
             )
 
             if not isinstance(status, dict):
@@ -376,7 +401,7 @@ class SchedulerServices:
                                 || jsonb_build_object('status', 'running', 'heartbeat', EXCLUDED.payload->>'heartbeat'),
                             updated_at = EXCLUDED.updated_at
                         """,
-                        (STATUS_DOCUMENT_KEY, now),
+                        (self._status_key, now),
                     )
                 finally:
                     cur.close()
@@ -385,6 +410,6 @@ class SchedulerServices:
                 db_config.close_connection(conn)
 
             # Invalidate Redis cache so next read gets fresh data
-            delete_key(build_key(f"document:{STATUS_DOCUMENT_KEY}"))
+            delete_key(build_key(f"document:{self._status_key}"))
         except Exception as exc:
             logger.debug("Heartbeat DB update failed: %s", exc)

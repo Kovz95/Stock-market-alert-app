@@ -27,8 +27,10 @@ from src.data_access.document_store import load_document
 from src.data_access.metadata_repository import fetch_stock_metadata_map
 from src.data_access.redis_support import build_key, get_json
 
-AUTO_SCHEDULER_STATUS_KEY = build_key("auto_scheduler_status")
-HOURLY_STATUS_KEY = build_key("hourly_scheduler_status")
+# Scheduler status keys match document_store cache keys (mode-specific)
+DAILY_SCHEDULER_STATUS_KEY = build_key("document:scheduler_status_daily")
+WEEKLY_SCHEDULER_STATUS_KEY = build_key("document:scheduler_status_weekly")
+HOURLY_SCHEDULER_STATUS_KEY = build_key("document:scheduler_status_hourly")
 
 
 def _ensure_event_loop() -> asyncio.AbstractEventLoop:
@@ -46,46 +48,73 @@ def _ensure_event_loop() -> asyncio.AbstractEventLoop:
 # ---------------------------------------------------------------------------
 
 
-def _load_auto_scheduler_status() -> Optional[dict]:
-    snapshot = get_json(AUTO_SCHEDULER_STATUS_KEY)
+def _load_scheduler_status_by_mode(mode: str, redis_key: str, doc_key: str) -> Optional[dict]:
+    """
+    Load scheduler status for a specific mode.
+
+    Args:
+        mode: Scheduler mode ('daily', 'weekly', 'hourly')
+        redis_key: Redis cache key
+        doc_key: Document store key
+
+    Returns:
+        Status dictionary if found, None otherwise
+    """
+    # Try Redis cache first (document_store writes here)
+    snapshot = get_json(redis_key)
     if isinstance(snapshot, dict):
-        return snapshot
+        # document_store wraps payload in {"payload": ..., "cached_at": ...}
+        payload = snapshot.get("payload") if "payload" in snapshot else snapshot
+        if payload:
+            return payload
+
+    # Fallback to document_store (which queries PostgreSQL)
     try:
-        document = load_document("scheduler_status", default=None, fallback_path="scheduler_status.json")
+        document = load_document(doc_key, default=None, fallback_path=f"scheduler_status_{mode}.json")
         if isinstance(document, dict):
             return document
     except Exception:
         pass
-    status_path = Path("scheduler_status.json")
+
+    # Final fallback to legacy JSON file
+    status_path = Path(f"scheduler_status_{mode}.json")
     if status_path.exists():
         try:
             data = json.loads(status_path.read_text())
             if isinstance(data, dict):
                 return data
         except Exception:
-            return None
+            pass
+
     return None
+
+
+def _load_auto_scheduler_status() -> Optional[dict]:
+    """
+    Load combined daily/weekly scheduler status.
+
+    Tries to load both daily and weekly scheduler status and returns
+    the most recently updated one, or merges them if both exist.
+    """
+    daily_status = _load_scheduler_status_by_mode("daily", DAILY_SCHEDULER_STATUS_KEY, "scheduler_status_daily")
+    weekly_status = _load_scheduler_status_by_mode("weekly", WEEKLY_SCHEDULER_STATUS_KEY, "scheduler_status_weekly")
+
+    # If both exist, return the most recently updated
+    if daily_status and weekly_status:
+        daily_time = daily_status.get("heartbeat", "")
+        weekly_time = weekly_status.get("heartbeat", "")
+        # Return the one with the most recent heartbeat
+        if weekly_time > daily_time:
+            return weekly_status
+        return daily_status
+
+    # Return whichever one exists
+    return daily_status or weekly_status
 
 
 def _load_hourly_scheduler_status() -> Optional[dict]:
-    snapshot = get_json(HOURLY_STATUS_KEY)
-    if isinstance(snapshot, dict):
-        return snapshot
-    try:
-        document = load_document("hourly_scheduler_status", default=None, fallback_path="hourly_scheduler_status.json")
-        if isinstance(document, dict):
-            return document
-    except Exception:
-        pass
-    status_path = Path("hourly_scheduler_status.json")
-    if status_path.exists():
-        try:
-            data = json.loads(status_path.read_text())
-            if isinstance(data, dict):
-                return data
-        except Exception:
-            return None
-    return None
+    """Load hourly scheduler status."""
+    return _load_scheduler_status_by_mode("hourly", HOURLY_SCHEDULER_STATUS_KEY, "scheduler_status_hourly")
 
 
 @st.cache_data(ttl=60)
@@ -134,18 +163,117 @@ def load_exchange_symbol_counts() -> Dict[str, int]:
     return counts
 
 
-def format_scheduler_status(status: Optional[dict]) -> Tuple[str, str]:
+def format_timestamp(iso_timestamp: Optional[str]) -> str:
+    """Format ISO timestamp to readable format."""
+    if not iso_timestamp:
+        return "Never"
+    try:
+        dt = datetime.fromisoformat(iso_timestamp.replace("Z", "+00:00"))
+        # Convert to local time
+        local_dt = dt.astimezone()
+        # Format as "Jan 15, 2:30 PM" or "2 hours ago" for recent times
+        now = datetime.now(local_dt.tzinfo)
+        diff = now - local_dt
+
+        if diff.total_seconds() < 60:
+            return "Just now"
+        elif diff.total_seconds() < 3600:
+            minutes = int(diff.total_seconds() / 60)
+            return f"{minutes} minute{'s' if minutes != 1 else ''} ago"
+        elif diff.total_seconds() < 86400:
+            hours = int(diff.total_seconds() / 3600)
+            return f"{hours} hour{'s' if hours != 1 else ''} ago"
+        else:
+            return local_dt.strftime("%b %d, %I:%M %p")
+    except Exception:
+        return iso_timestamp
+
+
+def format_scheduler_status_detailed(status: Optional[dict]) -> dict:
+    """
+    Format scheduler status into a detailed display dict.
+
+    Returns:
+        Dict with 'state', 'emoji', 'details' keys for display
+    """
     if not isinstance(status, dict):
-        return "unknown", "No status available"
-    state = status.get("status", "unknown")
+        return {
+            "state": "Unknown",
+            "emoji": "❓",
+            "details": "No status information available",
+            "is_healthy": False
+        }
+
+    state = status.get("status", "unknown").lower()
+    mode = status.get("mode", "")
+    heartbeat = status.get("heartbeat")
     last_run = status.get("last_run")
-    next_run = status.get("next_run")
-    lines = [f"Status: {state}"]
-    if last_run:
-        lines.append(f"Last run: {last_run}")
-    if next_run:
-        lines.append(f"Next run: {next_run}")
-    return state, " | ".join(lines)
+    last_result = status.get("last_result")
+    current_job = status.get("current_job")
+
+    # Determine emoji and health based on state
+    emoji_map = {
+        "running": "🟢",
+        "updating": "🔄",
+        "stopped": "🔴",
+        "error": "❌",
+        "paused": "⏸️"
+    }
+    emoji = emoji_map.get(state, "⚪")
+    is_healthy = state in ("running", "updating")
+
+    # Build details list
+    details = []
+
+    # Heartbeat info
+    if heartbeat:
+        heartbeat_str = format_timestamp(heartbeat)
+        details.append(f"**Last heartbeat:** {heartbeat_str}")
+
+    # Current job info
+    if current_job and isinstance(current_job, dict):
+        job_name = current_job.get("exchange", current_job.get("name", "Unknown"))
+        details.append(f"**Current job:** {job_name}")
+
+    # Last run info
+    if last_run and isinstance(last_run, dict):
+        last_run_time = last_run.get("timestamp") or last_run.get("time")
+        if last_run_time:
+            details.append(f"**Last run:** {format_timestamp(last_run_time)}")
+
+        exchange = last_run.get("exchange")
+        if exchange:
+            details.append(f"**Last exchange:** {exchange}")
+
+    # Last result stats
+    if last_result and isinstance(last_result, dict):
+        price_stats = last_result.get("price_stats", {})
+        alert_stats = last_result.get("alert_stats", {})
+
+        if price_stats:
+            updated = price_stats.get("updated", 0)
+            failed = price_stats.get("failed", 0)
+            skipped = price_stats.get("skipped", 0)
+            details.append(f"**Last update:** {updated:,} updated, {failed:,} failed, {skipped:,} skipped")
+
+        if alert_stats:
+            triggered = alert_stats.get("triggered", 0)
+            total = alert_stats.get("total", 0)
+            if total > 0:
+                details.append(f"**Alerts:** {triggered:,} triggered of {total:,} checked")
+
+    # Mode info
+    if mode:
+        details.append(f"**Mode:** {mode.capitalize()}")
+
+    details_text = "\n\n".join(details) if details else "No detailed information available"
+
+    return {
+        "state": state.capitalize(),
+        "emoji": emoji,
+        "details": details_text,
+        "is_healthy": is_healthy
+    }
 
 
 def summarize_alerts(df: pd.DataFrame) -> Dict[str, int]:
@@ -186,25 +314,47 @@ def render_alert_summary(df: pd.DataFrame, filtered_count: int) -> None:
 
 
 def render_scheduler_cards() -> None:
+    """Render scheduler status cards with detailed information."""
     auto_status = _load_auto_scheduler_status()
     hourly_status = _load_hourly_scheduler_status()
-    auto_state, auto_details = format_scheduler_status(auto_status)
-    hourly_state, hourly_details = format_scheduler_status(hourly_status)
+    auto_formatted = format_scheduler_status_detailed(auto_status)
+    hourly_formatted = format_scheduler_status_detailed(hourly_status)
 
     st.subheader("⏱️ Scheduler Status")
+
     col1, col2 = st.columns(2)
+
+    # Daily/Weekly Scheduler Card
     with col1:
-        st.metric(
-            "Daily/Weekly Scheduler",
-            "Running" if auto_state in {"running", "updating"} else auto_state.title(),
-        )
-        st.caption(auto_details)
+        st.markdown(f"### {auto_formatted['emoji']} Daily/Weekly Scheduler")
+
+        # Status badge
+        if auto_formatted['is_healthy']:
+            st.success(f"**Status:** {auto_formatted['state']}")
+        elif auto_formatted['state'].lower() == 'stopped':
+            st.warning(f"**Status:** {auto_formatted['state']}")
+        else:
+            st.error(f"**Status:** {auto_formatted['state']}")
+
+        # Details in expander
+        with st.expander("📊 Details", expanded=False):
+            st.markdown(auto_formatted['details'])
+
+    # Hourly Scheduler Card
     with col2:
-        st.metric(
-            "Hourly Scheduler",
-            "Running" if hourly_state in {"running", "updating"} else hourly_state.title(),
-        )
-        st.caption(hourly_details)
+        st.markdown(f"### {hourly_formatted['emoji']} Hourly Scheduler")
+
+        # Status badge
+        if hourly_formatted['is_healthy']:
+            st.success(f"**Status:** {hourly_formatted['state']}")
+        elif hourly_formatted['state'].lower() == 'stopped':
+            st.warning(f"**Status:** {hourly_formatted['state']}")
+        else:
+            st.error(f"**Status:** {hourly_formatted['state']}")
+
+        # Details in expander
+        with st.expander("📊 Details", expanded=False):
+            st.markdown(hourly_formatted['details'])
 
 
 def render_recent_activity(df: pd.DataFrame) -> None:

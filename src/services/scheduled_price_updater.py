@@ -15,7 +15,6 @@ from typing import Any, Dict, List, Optional, Set, Tuple
 
 from src.data_access.metadata_repository import fetch_stock_metadata_map
 from src.services.backend_fmp_optimized import OptimizedDailyPriceCollector
-from src.services.price_update_monitor import PriceUpdateMonitor
 from src.utils.reference_data import EXCHANGE_COUNTRY_MAP, get_country_for_exchange
 
 logger = logging.getLogger(__name__)
@@ -58,12 +57,10 @@ class ScheduledPriceUpdater:
 
     Integrates with:
     - OptimizedDailyPriceCollector for efficient price fetching (uses DailyPriceRepository)
-    - PriceUpdateMonitor for Discord notifications of failures
     """
 
     def __init__(self) -> None:
         self.collector = OptimizedDailyPriceCollector()
-        self.monitor = PriceUpdateMonitor()
         self.exchange_mapping = EXCHANGE_COUNTRY_MAP
         self.metadata = fetch_stock_metadata_map()
 
@@ -216,9 +213,6 @@ class ScheduledPriceUpdater:
 
         stats["duration_seconds"] = time_module.time() - start_time
 
-        if stats["failed_tickers"]:
-            self.monitor.report_failed_updates(stats["failed_tickers"])
-
         return stats
 
     def run_scheduled_update(
@@ -270,17 +264,6 @@ class ScheduledPriceUpdater:
         )
 
         stats["exchanges"] = exchange_names
-
-        summary = {
-            "exchange": ", ".join(exchange_names) if exchange_names else "Unknown",
-            "total": stats["total"],
-            "successful": stats["updated"] + stats.get("new", 0),
-            "failed": stats["failed"],
-            "skipped": stats["skipped"],
-            "skipped_tickers": stats.get("skipped_tickers", []),
-            "duration_seconds": stats.get("duration_seconds", 0),
-        }
-        self.monitor.report_update_summary(summary)
 
         return stats
 

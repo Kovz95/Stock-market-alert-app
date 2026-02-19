@@ -3,7 +3,6 @@
 Tests cover:
 - Ticker resolution by exchange and country (including edge cases)
 - Price update flow: batching, stats aggregation, skip vs updated vs failed
-- Monitor integration (report_failed_updates, report_update_summary)
 - run_scheduled_update with exchanges/countries/empty/duplicates
 - update_prices_for_exchanges convenience and close()
 - run_alert_checks timeframe filtering and error handling
@@ -54,7 +53,7 @@ def sample_exchange_country_map():
 
 @pytest.fixture
 def updater_with_mocked_deps(sample_metadata_map, sample_exchange_country_map):
-    """ScheduledPriceUpdater with metadata and exchange mapping patched; collector/monitor as mocks."""
+    """ScheduledPriceUpdater with metadata and exchange mapping patched; collector as mock."""
     with (
         patch(
             "src.services.scheduled_price_updater.fetch_stock_metadata_map",
@@ -66,10 +65,6 @@ def updater_with_mocked_deps(sample_metadata_map, sample_exchange_country_map):
         ),
         patch(
             "src.services.scheduled_price_updater.OptimizedDailyPriceCollector",
-            MagicMock(),
-        ),
-        patch(
-            "src.services.scheduled_price_updater.PriceUpdateMonitor",
             MagicMock(),
         ),
     ):
@@ -122,10 +117,6 @@ class TestGetTickersForExchange:
                 "src.services.scheduled_price_updater.OptimizedDailyPriceCollector",
                 MagicMock(),
             ),
-            patch(
-                "src.services.scheduled_price_updater.PriceUpdateMonitor",
-                MagicMock(),
-            ),
         ):
             updater = ScheduledPriceUpdater()
             updater.metadata = bad_metadata
@@ -149,10 +140,6 @@ class TestGetTickersForExchange:
             ),
             patch(
                 "src.services.scheduled_price_updater.OptimizedDailyPriceCollector",
-                MagicMock(),
-            ),
-            patch(
-                "src.services.scheduled_price_updater.PriceUpdateMonitor",
                 MagicMock(),
             ),
         ):
@@ -203,10 +190,6 @@ class TestGetTickersForCountry:
             ),
             patch(
                 "src.services.scheduled_price_updater.OptimizedDailyPriceCollector",
-                MagicMock(),
-            ),
-            patch(
-                "src.services.scheduled_price_updater.PriceUpdateMonitor",
                 MagicMock(),
             ),
         ):
@@ -260,7 +243,6 @@ class TestUpdateExchangePrices:
         assert result["failed"] == 0
         # Implementation returns early for empty tickers and does not set duration_seconds
         updater.collector.update_ticker.assert_not_called()
-        updater.monitor.report_failed_updates.assert_not_called()
 
     def test_stats_structure_present(self, updater_with_mocked_deps):
         updater = updater_with_mocked_deps
@@ -343,11 +325,6 @@ class TestUpdateExchangePrices:
         assert result["failed_tickers"][0]["ticker"] == "FAIL"
         assert "error" in result["failed_tickers"][0]
 
-        updater.monitor.report_failed_updates.assert_called_once()
-        call_args = updater.monitor.report_failed_updates.call_args[0][0]
-        assert len(call_args) == 1
-        assert call_args[0]["ticker"] == "FAIL"
-
     def test_exception_during_update_increments_failed_and_appends_error(
         self, updater_with_mocked_deps
     ):
@@ -358,22 +335,12 @@ class TestUpdateExchangePrices:
         assert len(result["failed_tickers"]) == 1
         assert result["failed_tickers"][0]["ticker"] == "AAPL"
         assert "API timeout" in result["failed_tickers"][0]["error"]
-        updater.monitor.report_failed_updates.assert_called_once()
 
     def test_false_return_from_collector_records_error_message(self, updater_with_mocked_deps):
         updater = updater_with_mocked_deps
         updater.collector.update_ticker.return_value = False
         result = updater.update_exchange_prices(["X"], rate_limit_delay=0)
         assert result["failed_tickers"][0]["error"] == "Update returned False"
-
-    def test_report_failed_updates_not_called_when_no_failures(
-        self, updater_with_mocked_deps
-    ):
-        updater = updater_with_mocked_deps
-        updater.collector.update_ticker.return_value = True
-        updater.collector.get_statistics.return_value = {"skipped_tickers": []}
-        updater.update_exchange_prices(["AAPL"], rate_limit_delay=0)
-        updater.monitor.report_failed_updates.assert_not_called()
 
     def test_batch_size_controls_inner_loop(self, updater_with_mocked_deps):
         updater = updater_with_mocked_deps
@@ -410,7 +377,7 @@ class TestUpdateExchangePrices:
 
 
 class TestRunScheduledUpdate:
-    """Tests for run_scheduled_update: exchanges/countries, dedup, summary, monitor."""
+    """Tests for run_scheduled_update: exchanges/countries, dedup, summary."""
 
     def test_exchanges_only_collects_tickers_and_calls_update(
         self, updater_with_mocked_deps
@@ -426,12 +393,6 @@ class TestRunScheduledUpdate:
         assert result["total"] == 4
         assert "exchanges" in result
         assert "NASDAQ" in result["exchanges"] and "NYSE" in result["exchanges"]
-        updater.monitor.report_update_summary.assert_called_once()
-        summary = updater.monitor.report_update_summary.call_args[0][0]
-        assert summary["exchange"]
-        assert summary["total"] == 4
-        assert "successful" in summary
-        assert "duration_seconds" in summary
 
     def test_countries_only_collects_tickers_and_reports(self, updater_with_mocked_deps):
         updater = updater_with_mocked_deps
@@ -443,7 +404,6 @@ class TestRunScheduledUpdate:
         )
         assert result["total"] == 4
         assert "exchanges" in result
-        updater.monitor.report_update_summary.assert_called_once()
 
     def test_exchanges_and_countries_merge_tickers_without_duplicates(
         self, updater_with_mocked_deps
@@ -460,7 +420,7 @@ class TestRunScheduledUpdate:
         assert result["total"] == 4
         assert len(result.get("exchanges", [])) >= 1
 
-    def test_empty_exchanges_and_countries_still_calls_update_and_report(
+    def test_empty_exchanges_and_countries_still_calls_update(
         self, updater_with_mocked_deps
     ):
         updater = updater_with_mocked_deps
@@ -470,9 +430,6 @@ class TestRunScheduledUpdate:
         )
         assert result["total"] == 0
         assert result["updated"] == 0
-        updater.monitor.report_update_summary.assert_called_once()
-        summary = updater.monitor.report_update_summary.call_args[0][0]
-        assert summary["total"] == 0
 
     def test_duplicate_exchanges_deduplicate_tickers(self, updater_with_mocked_deps):
         updater = updater_with_mocked_deps
@@ -483,15 +440,6 @@ class TestRunScheduledUpdate:
             resample_weekly=False,
         )
         assert result["total"] == 3
-
-    def test_summary_successful_is_updated_plus_new(self, updater_with_mocked_deps):
-        updater = updater_with_mocked_deps
-        updater.collector.update_ticker.return_value = True
-        updater.collector.get_statistics.return_value = {"skipped_tickers": []}
-        updater.run_scheduled_update(exchanges=["NYSE"], resample_weekly=False)
-        summary = updater.monitor.report_update_summary.call_args[0][0]
-        assert summary["successful"] == 1
-        assert summary["total"] == 1
 
 
 # ---------------------------------------------------------------------------
@@ -511,9 +459,8 @@ class TestUpdatePricesForExchanges:
         {"NASDAQ": "United States"},
     )
     @patch("src.services.scheduled_price_updater.OptimizedDailyPriceCollector")
-    @patch("src.services.scheduled_price_updater.PriceUpdateMonitor")
     def test_creates_updater_runs_and_closes(
-        self, mock_monitor_cls, mock_collector_cls, *_ignore
+        self, mock_collector_cls, *_ignore
     ):
         mock_collector = MagicMock()
         mock_collector.update_ticker.return_value = True
@@ -532,9 +479,8 @@ class TestUpdatePricesForExchanges:
     )
     @patch("src.services.scheduled_price_updater.EXCHANGE_COUNTRY_MAP", {})
     @patch("src.services.scheduled_price_updater.OptimizedDailyPriceCollector")
-    @patch("src.services.scheduled_price_updater.PriceUpdateMonitor")
     def test_close_called_even_if_run_raises(
-        self, mock_monitor_cls, mock_collector_cls, *_ignore
+        self, mock_collector_cls, *_ignore
     ):
         mock_collector = MagicMock()
         mock_collector_cls.return_value = mock_collector
@@ -573,10 +519,6 @@ class TestClose:
             patch(
                 "src.services.scheduled_price_updater.OptimizedDailyPriceCollector",
                 MagicMock(spec=[]),
-            ),
-            patch(
-                "src.services.scheduled_price_updater.PriceUpdateMonitor",
-                MagicMock(),
             ),
         ):
             updater = ScheduledPriceUpdater()

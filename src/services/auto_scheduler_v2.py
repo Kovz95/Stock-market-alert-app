@@ -100,7 +100,10 @@ if not logger.handlers:
 
 _scheduler_mode = os.getenv("SCHEDULER_MODE", "").strip().lower() or None
 if _scheduler_mode and _scheduler_mode in ("daily", "weekly", "hourly"):
-    _services = SchedulerServices(lock_file=BASE_DIR / f"scheduler_v2_{_scheduler_mode}.lock")
+    _services = SchedulerServices(
+        lock_file=BASE_DIR / f"scheduler_v2_{_scheduler_mode}.lock",
+        mode=_scheduler_mode
+    )
 else:
     _services = SchedulerServices()
 _daily_handler = DailyJobHandler(_services)
