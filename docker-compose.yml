@@ -16,7 +16,11 @@ services:
       - postgres_data:/var/lib/postgresql/data
       - ./db/postgres_schema.sql:/docker-entrypoint-initdb.d/postgres_schema.sql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-stockalertapp} -d ${POSTGRES_DB:-stockalertapp}"]
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER:-stockalertapp} -d ${POSTGRES_DB:-stockalertapp}",
+        ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -58,7 +62,13 @@ services:
       redis:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8501/_stcore/health')"]
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://localhost:8501/_stcore/health')",
+        ]
       interval: 30s
       timeout: 10s
       start_period: 30s
@@ -82,7 +92,11 @@ services:
         condition: service_healthy
     command: ["python", "-m", "src.services.auto_scheduler_v2"]
     healthcheck:
-      test: ["CMD-SHELL", "test -f /app/src/services/scheduler_v2_daily.lock && python -c 'import sys; sys.exit(0)'"]
+      test:
+        [
+          "CMD-SHELL",
+          "test -f /app/src/services/scheduler_v2_daily.lock && python -c 'import sys; sys.exit(0)'",
+        ]
       interval: 30s
       timeout: 10s
       start_period: 30s
@@ -106,7 +120,11 @@ services:
         condition: service_healthy
     command: ["python", "-m", "src.services.auto_scheduler_v2"]
     healthcheck:
-      test: ["CMD-SHELL", "test -f /app/src/services/scheduler_v2_weekly.lock && python -c 'import sys; sys.exit(0)'"]
+      test:
+        [
+          "CMD-SHELL",
+          "test -f /app/src/services/scheduler_v2_weekly.lock && python -c 'import sys; sys.exit(0)'",
+        ]
       interval: 30s
       timeout: 10s
       start_period: 30s
@@ -130,29 +148,11 @@ services:
         condition: service_healthy
     command: ["python", "-m", "src.services.auto_scheduler_v2"]
     healthcheck:
-      test: ["CMD-SHELL", "test -f /app/src/services/scheduler_v2_hourly.lock && python -c 'import sys; sys.exit(0)'"]
-      interval: 30s
-      timeout: 10s
-      start_period: 30s
-      retries: 3
-
-  futures-scheduler:
-    build: .
-    container_name: stockalert-futures-scheduler
-    restart: unless-stopped
-    env_file:
-      - .env
-    environment:
-      - DATABASE_URL=postgresql://${POSTGRES_USER:-stockalertapp}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-stockalertapp}
-      - REDIS_URL=redis://redis:6379
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    command: ["python", "-m", "src.services.futures_scheduler"]
-    healthcheck:
-      test: ["CMD-SHELL", "test -f /app/src/services/futures_scheduler.lock && python -c 'import sys; sys.exit(0)'"]
+      test:
+        [
+          "CMD-SHELL",
+          "test -f /app/src/services/scheduler_v2_hourly.lock && python -c 'import sys; sys.exit(0)'",
+        ]
       interval: 30s
       timeout: 10s
       start_period: 30s
@@ -174,7 +174,11 @@ services:
         condition: service_healthy
     command: ["python", "-m", "src.services.data_cleanup_scheduler"]
     healthcheck:
-      test: ["CMD-SHELL", "test -f /app/data_cleanup_scheduler.lock && python -c 'import sys; sys.exit(0)'"]
+      test:
+        [
+          "CMD-SHELL",
+          "test -f /app/data_cleanup_scheduler.lock && python -c 'import sys; sys.exit(0)'",
+        ]
       interval: 30s
       timeout: 10s
       start_period: 30s
