@@ -9,8 +9,8 @@ on:
         default: false
         type: boolean
       ssh_password:
-        description: "SSH Password for deployment"
-        required: true
+        description: "SSH Password (leave blank to use stored secret)"
+        required: false
         type: string
 
 env:
@@ -62,7 +62,11 @@ jobs:
 
       - name: Set up SSH environment
         run: |
-          echo "SSHPASS=${{ github.event.inputs.ssh_password }}" >> $GITHUB_ENV
+          if [ -n "${{ github.event.inputs.ssh_password }}" ]; then
+            echo "SSHPASS=${{ github.event.inputs.ssh_password }}" >> $GITHUB_ENV
+          else
+            echo "SSHPASS=${{ secrets.SSH_PASSWORD }}" >> $GITHUB_ENV
+          fi
 
       - name: Package application
         run: |
