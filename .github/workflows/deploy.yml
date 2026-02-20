@@ -127,7 +127,6 @@ jobs:
 
     steps:
       - name: Send failure notification
-        if: ${{ secrets.DISCORD_WEBHOOK_URL != '' }}
         run: |
           curl -H "Content-Type: application/json" \
             -d "{\"content\": \"Deployment failed for ${{ github.repository }} on branch ${{ github.ref_name }}. Check: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}" \
