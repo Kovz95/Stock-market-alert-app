@@ -84,6 +84,7 @@ jobs:
               --exclude='*.egg-info' \
               --exclude='tests/' \
               --exclude='stocks.db' \
+              --exclude='stockalert-deploy.tar.gz' \
               -czf stockalert-deploy.tar.gz .
 
       - name: Copy archive to server
