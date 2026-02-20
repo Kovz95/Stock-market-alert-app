@@ -13,6 +13,8 @@ from src.services.backend import evaluate_expression_list, simplify_conditions, 
 from src.utils.utils import supported_indicators
 from src.data_access.metadata_repository import fetch_stock_metadata_map, fetch_portfolios
 from src.data_access.db_config import db_config
+from src.services.smart_price_fetcher import SmartPriceFetcher
+from src.utils.cache_helpers import format_age, get_freshness_icon
 import threading
 
 # MUST be the first Streamlit command after imports
@@ -32,6 +34,8 @@ if 'scanner_logic' not in st.session_state:
     st.session_state.scanner_logic = "AND"
 if 'scanner_timeframe' not in st.session_state:
     st.session_state.scanner_timeframe = "1d"
+if 'data_freshness' not in st.session_state:
+    st.session_state.data_freshness = {}
 
 # Initialize filter session states
 if 'filter_portfolio' not in st.session_state:
@@ -78,9 +82,44 @@ def load_portfolios():
     except Exception:
         return {}
 
-# Load price database
-def get_price_data(ticker, timeframe='1d', lookback_days=500):
-    """Get price data from PostgreSQL database"""
+# Create smart price fetcher instance (reused across scans)
+@st.cache_resource
+def get_smart_fetcher():
+    """Get cached smart price fetcher instance"""
+    return SmartPriceFetcher()
+
+# Load price database with smart fetching
+def get_price_data_smart(ticker, timeframe='1d', lookback_days=250, force_refresh=False):
+    """
+    Get price data with intelligent caching.
+
+    Uses 3-tier fetching: Cache -> Database -> API
+    Tracks freshness for UI display.
+
+    Default lookback: 250 days (optimized for performance while maintaining indicator accuracy)
+    """
+    try:
+        fetcher = get_smart_fetcher()
+        result = fetcher.get_price_data(
+            ticker=ticker,
+            timeframe=timeframe,
+            lookback_days=lookback_days,
+            force_refresh=force_refresh
+        )
+
+        # Track freshness for UI display
+        if 'data_freshness' not in st.session_state:
+            st.session_state.data_freshness = {}
+        st.session_state.data_freshness[ticker] = result
+
+        return result.df
+    except Exception as e:
+        st.warning(f"Error fetching data for {ticker}: {e}")
+        return None
+
+# Legacy function for backward compatibility (direct database access)
+def get_price_data_legacy(ticker, timeframe='1d', lookback_days=250):
+    """Get price data from PostgreSQL database (legacy method)"""
     try:
         end_ts = datetime.now()
         start_ts = end_ts - timedelta(days=lookback_days)
@@ -130,6 +169,9 @@ def get_price_data(ticker, timeframe='1d', lookback_days=500):
         return df
     except Exception:
         return None
+
+# Use smart fetcher by default
+get_price_data = get_price_data_smart
 
 
 def _count_filtered_symbols(
@@ -344,9 +386,18 @@ def scan_symbol(ticker, conditions, combination_logic, timeframe, stock_info):
 def scan_pair(symbol1, symbol2, conditions, combination_logic, timeframe, stock_info1, stock_info2):
     """Scan a pair of symbols for condition match"""
     try:
-        # Get price data for both symbols
-        df1 = get_price_data(symbol1, timeframe)
-        df2 = get_price_data(symbol2, timeframe)
+        # Get price data for both symbols atomically
+        fetcher = get_smart_fetcher()
+        result1, result2 = fetcher.get_pair_price_data(symbol1, symbol2, timeframe)
+
+        # Track freshness for both symbols
+        if 'data_freshness' not in st.session_state:
+            st.session_state.data_freshness = {}
+        st.session_state.data_freshness[symbol1] = result1
+        st.session_state.data_freshness[symbol2] = result2
+
+        df1 = result1.df
+        df2 = result2.df
 
         if df1 is None or df1.empty or df2 is None or df2.empty:
             return None
@@ -698,6 +749,39 @@ st.session_state.scanner_timeframe = timeframe
 # Display timeframe info
 timeframe_display = "Hourly" if timeframe == "1h" else ("Daily" if timeframe == "1d" else "Weekly")
 st.info(f"📊 **Selected Timeframe:** {timeframe_display}")
+
+# Data Freshness Status UI
+if st.session_state.get('data_freshness') and len(st.session_state.data_freshness) > 0:
+    with st.expander("📊 Data Freshness Status", expanded=False):
+        freshness_data = []
+        for ticker, result in st.session_state.data_freshness.items():
+            freshness_data.append({
+                'Ticker': ticker,
+                'Source': result.source.upper(),
+                'Status': get_freshness_icon(result.freshness),
+                'Age': format_age(result.last_update),
+            })
+
+        if freshness_data:
+            # Display as dataframe
+            freshness_df = pd.DataFrame(freshness_data)
+            st.dataframe(freshness_df, use_container_width=True, hide_index=True)
+
+            # Summary statistics
+            total = len(freshness_data)
+            from_cache = sum(1 for d in freshness_data if d['Source'] == 'CACHE')
+            from_db = sum(1 for d in freshness_data if d['Source'] == 'DATABASE')
+            from_api = sum(1 for d in freshness_data if d['Source'] == 'API')
+
+            st.caption(
+                f"**Summary:** {total} symbols | "
+                f"Cache: {from_cache} | Database: {from_db} | API: {from_api}"
+            )
+
+    # Add force refresh button
+    if st.button("🔄 Force Refresh All Data"):
+        st.session_state.data_freshness = {}
+        st.rerun()
 
 st.divider()
 
@@ -2329,7 +2413,8 @@ if scan_button:
                         if result:
                             matches.append(result)
 
-                    if processed % 10 == 0:
+                    # Update progress every 50 symbols (or on completion) to reduce Streamlit reruns
+                    if processed % 50 == 0 or processed == total_symbols:
                         update_progress()
 
             # Final update
@@ -2412,7 +2497,8 @@ if scan_button:
                             if result:
                                 matches.append(result)
 
-                        if processed % 10 == 0:
+                        # Update progress every 50 symbols (or on completion) to reduce Streamlit reruns
+                        if processed % 50 == 0 or processed == total_symbols:
                             update_progress()
 
                 # Final update

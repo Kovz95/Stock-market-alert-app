@@ -592,7 +592,7 @@ def fetch_stale_ticker_dataframe(
 
         if timeframe == "daily":
             # Compute expected date per exchange using local time (approx: needs today's bar if past 6pm local)
-            from calendar_adapter import get_calendar_timezone
+            from src.services.calendar_adapter import get_calendar_timezone
             from src.data_access.metadata_repository import fetch_stock_metadata_map
 
             metadata = fetch_stock_metadata_map()
@@ -724,20 +724,22 @@ def refresh_stale_tickers(conn, stale_tickers, timeframe='daily'):
     now_utc = datetime.now(timezone.utc)
     current_hour_utc = now_utc.hour + now_utc.minute / 60.0
 
-    # Create progress bar
-    progress_bar = st.progress(0)
+    # Progress: bar + live status (Success | Failed | Skipped)
+    progress_bar = st.progress(0.0)
     status_text = st.empty()
-
     total = len(stale_tickers)
+    rate_limit_delay = 0.15  # seconds between API calls to avoid rate limits
 
     for i, ticker_info in enumerate(stale_tickers):
         ticker = ticker_info['Ticker']
 
-        # Update progress less frequently to reduce UI overhead
-        if i == 0 or (i + 1) == total or (i + 1) % 25 == 0:
-            progress = (i + 1) / total
-            progress_bar.progress(progress)
-            status_text.text(f"Updating {ticker} ({i+1}/{total})...")
+        # Update progress every ticker for responsive feedback
+        progress = (i + 1) / total if total else 1.0
+        progress_bar.progress(min(progress, 1.0))
+        status_text.markdown(
+            f"**{ticker}** ({i + 1}/{total}) — "
+            f"✅ {len(results['success'])} | ❌ {len(results['failed'])} | ⏸️ {len(results['skipped_market_open'])}"
+        )
 
         try:
             # Check if market is closed (only on weekdays)
@@ -747,29 +749,37 @@ def refresh_stale_tickers(conn, stale_tickers, timeframe='daily'):
                 close_time_utc = market_close_times_utc.get(exchange)
 
                 if close_time_utc and current_hour_utc < close_time_utc:
-                    # Market hasn't closed yet, skip this ticker
                     should_skip = True
                     results['skipped_market_open'].append(ticker)
 
             if should_skip:
-                # Skip to next ticker without updating
                 if i < total - 1:
                     time.sleep(0.05)
                 continue
 
-            # Update the ticker - only resample weekly on Fridays
-            success = collector.update_ticker(ticker, resample_weekly=is_friday)
+            # Force refresh so explicit UI refresh always fetches and writes (avoids "no new record" when logic skips)
+            success = collector.update_ticker(
+                ticker, resample_weekly=is_friday, force_refresh=True
+            )
 
             if success:
                 results['success'].append(ticker)
             else:
                 results['failed'].append(ticker)
 
+            # Small delay between API calls to avoid rate limits
+            if i < total - 1:
+                time.sleep(rate_limit_delay)
+
         except Exception as e:
             results['failed'].append(ticker)
             st.warning(f"Failed to update {ticker}: {str(e)}")
 
-    # Clear progress indicators
+    progress_bar.progress(1.0)
+    status_text.markdown(
+        f"**Done.** ✅ {len(results['success'])} | ❌ {len(results['failed'])} | ⏸️ {len(results['skipped_market_open'])}"
+    )
+    time.sleep(1.2)
     progress_bar.empty()
     status_text.empty()
 
@@ -824,38 +834,29 @@ def _filter_stale_for_closed_markets(df: pd.DataFrame, main_db: Dict[str, Dict[s
     return pd.DataFrame(filtered_rows)
 
 def resample_weekly_only(stale_tickers):
-    """Resample weekly data from existing daily data without fetching new data"""
+    """Resample weekly data from existing daily data without fetching new data."""
     collector = OptimizedDailyPriceCollector()
-    results = {
-        'success': [],
-        'failed': []
-    }
+    results = {'success': [], 'failed': []}
 
-    # Create progress bar
-    progress_bar = st.progress(0)
+    progress_bar = st.progress(0.0)
     status_text = st.empty()
-
     total = len(stale_tickers)
 
     for i, ticker_info in enumerate(stale_tickers):
         ticker = ticker_info['Ticker']
-
-        # Update progress
-        progress = (i + 1) / total
-        progress_bar.progress(progress)
-        status_text.text(f"Resampling {ticker} ({i+1}/{total})...")
+        progress = (i + 1) / total if total else 1.0
+        progress_bar.progress(min(progress, 1.0))
+        status_text.markdown(
+            f"**{ticker}** ({i + 1}/{total}) — ✅ {len(results['success'])} | ❌ {len(results['failed'])}"
+        )
 
         try:
-            # Get existing daily data (last 250 days for proper weekly aggregation)
             recent_df = collector.db.get_daily_prices(ticker, limit=250)
-
             if recent_df is None or recent_df.empty:
                 results['failed'].append(ticker)
                 continue
 
-            # Resample to weekly
             weekly_df = collector._resample_to_weekly(recent_df, ticker)
-
             if weekly_df is not None and not weekly_df.empty:
                 weekly_records = collector.db.store_weekly_prices(ticker, weekly_df)
                 if weekly_records >= 0:
@@ -864,15 +865,15 @@ def resample_weekly_only(stale_tickers):
                     results['failed'].append(ticker)
             else:
                 results['failed'].append(ticker)
-
         except Exception as e:
             results['failed'].append(ticker)
             st.warning(f"Failed to resample {ticker}: {str(e)}")
 
-    # Clear progress indicators
+    progress_bar.progress(1.0)
+    status_text.markdown(f"**Done.** ✅ {len(results['success'])} | ❌ {len(results['failed'])}")
+    time.sleep(1.0)
     progress_bar.empty()
     status_text.empty()
-
     return results
 
 def _update_hourly_batch(tickers: List[str], days_back: int, skip_existing: bool = True) -> Dict[str, List[str]]:
@@ -1451,6 +1452,10 @@ def main():
         st.session_state.daily_stale_df = None
     if 'weekly_stale_df' not in st.session_state:
         st.session_state.weekly_stale_df = None
+    if 'last_daily_refresh_results' not in st.session_state:
+        st.session_state.last_daily_refresh_results = None
+    if 'last_weekly_resample_results' not in st.session_state:
+        st.session_state.last_weekly_resample_results = None
 
     # Stale Data Section - on-demand analysis
     st.divider()
@@ -1465,7 +1470,9 @@ def main():
         with col_title:
             st.subheader("Daily Tickers with Stale Data")
         with col_hint:
-            st.caption("Scan checks for missing latest daily bar (market-aware).")
+            st.caption(
+                "Uses **daily_prices** (max date per ticker). Only tickers in your current stock universe are shown."
+            )
 
         if st.button("🔍 Scan Daily Data", key="scan_daily_stale", use_container_width=True):
             with st.spinner("Scanning daily prices for stale tickers..."):
@@ -1475,11 +1482,17 @@ def main():
                     limit=None,
                 )
                 if not daily_df.empty and main_db:
+                    # Only show stale tickers that are in the current stock universe (ignore legacy/delisted in DB)
+                    daily_df = daily_df[daily_df["Ticker"].isin(main_db.keys())].copy()
                     daily_df["Company"] = daily_df["Ticker"].apply(lambda t: main_db.get(t, {}).get("name", ""))
                     daily_df["ISIN"] = daily_df["Ticker"].apply(lambda t: main_db.get(t, {}).get("isin", ""))
                     daily_df["Exchange"] = daily_df["Ticker"].apply(lambda t: main_db.get(t, {}).get("exchange", ""))
                     daily_df = _filter_stale_for_closed_markets(daily_df, main_db)
                 st.session_state.daily_stale_df = daily_df
+                ticker_list = daily_df["Ticker"].tolist() if not daily_df.empty else []
+                st.session_state.daily_tickers_to_refresh = ticker_list
+                st.session_state.daily_stale_ticker_selection = ticker_list
+                st.session_state.last_daily_refresh_results = None
 
         daily_stale_df = st.session_state.daily_stale_df
 
@@ -1488,25 +1501,85 @@ def main():
         elif daily_stale_df.empty:
             st.success("✅ No stale daily data found within the selected threshold.")
         else:
-            if st.button("🔄 Refresh All", key="refresh_daily_all", help="Updates both daily and weekly data", use_container_width=True):
-                payload = daily_stale_df.to_dict(orient="records")
-                if payload:
-                    st.info(f"Starting update of {len(payload)} stale tickers (daily + weekly data)...")
-                    with get_database_connection() as conn:
-                        results = refresh_stale_tickers(conn, payload, timeframe='daily')
-                    if results['success']:
-                        st.success(f"✅ Successfully updated {len(results['success'])} tickers (daily & weekly)")
-                    if results['skipped_market_open']:
-                        st.info(f"⏸️ Skipped {len(results['skipped_market_open'])} tickers – markets still open")
-                    if results['failed']:
-                        st.error(f"❌ Failed to update {len(results['failed'])} tickers: {', '.join(results['failed'][:5])}")
-                    time.sleep(2)
-                    st.session_state.daily_stale_df = None
-                    st.rerun()
-                else:
-                    st.info("No stale daily tickers to refresh.")
-
             display_df = daily_stale_df.sort_values('Days Old', ascending=False)
+            all_tickers = display_df["Ticker"].tolist()
+            default_selection = st.session_state.get("daily_tickers_to_refresh", all_tickers)
+            selected_tickers = st.multiselect(
+                "Tickers to update (deselect to exclude)",
+                options=all_tickers,
+                default=default_selection if default_selection else all_tickers,
+                key="daily_stale_ticker_selection",
+                help="Choose which tickers to refresh. Default is all.",
+            )
+
+            col_refresh_sel, col_refresh_all, _ = st.columns([1, 1, 2])
+            with col_refresh_sel:
+                refresh_selected = st.button(
+                    "🔄 Refresh selected",
+                    key="refresh_daily_selected",
+                    help=f"Update only the {len(selected_tickers)} selected tickers (daily + weekly)",
+                    use_container_width=True,
+                )
+            with col_refresh_all:
+                refresh_all = st.button(
+                    "🔄 Refresh All",
+                    key="refresh_daily_all",
+                    help="Update all stale tickers (daily + weekly)",
+                    use_container_width=True,
+                )
+
+            payload = None
+            if refresh_selected and selected_tickers:
+                payload = [row for row in daily_stale_df.to_dict(orient="records") if row["Ticker"] in selected_tickers]
+            elif refresh_all:
+                payload = daily_stale_df.to_dict(orient="records")
+
+            if payload:
+                st.info(f"Updating {len(payload)} ticker(s) (daily + weekly data)...")
+                with get_database_connection() as conn:
+                    results = refresh_stale_tickers(conn, payload, timeframe='daily')
+                st.session_state.last_daily_refresh_results = results
+                st.rerun()
+
+            if refresh_selected and not selected_tickers:
+                st.warning("Select at least one ticker to refresh.")
+
+            # Last run summary and Retry failed
+            last_results = st.session_state.get("last_daily_refresh_results")
+            if last_results:
+                with st.expander("📋 Last run summary", expanded=True):
+                    st.success(f"✅ **{len(last_results['success'])}** updated")
+                    if last_results['failed']:
+                        st.error(f"❌ **{len(last_results['failed'])}** failed: {', '.join(last_results['failed'][:10])}{' ...' if len(last_results['failed']) > 10 else ''}")
+                        st.caption("Failures often mean the data provider returned no history (e.g. delisted, symbol change, or invalid symbol). See **Why might a ticker not update?** below.")
+                    if last_results['skipped_market_open']:
+                        st.info(f"⏸️ **{len(last_results['skipped_market_open'])}** skipped (market still open)")
+                    if last_results['failed']:
+                        if st.button("🔄 Retry failed", key="retry_daily_failed", use_container_width=True):
+                            retry_payload = [{"Ticker": t} for t in last_results["failed"]]
+                            with get_database_connection() as conn:
+                                retry_results = refresh_stale_tickers(conn, retry_payload, timeframe='daily')
+                            st.session_state.last_daily_refresh_results = retry_results
+                            st.rerun()
+
+            with st.expander("❓ Why might a ticker not update or stay years old?"):
+                st.markdown(
+                    """
+                    A ticker can stay stale or **never get new data** even after refresh for these reasons:
+
+                    - **Delisted or acquired** — The provider (e.g. FMP) often returns no new history for the old symbol.
+                    - **Symbol change** — e.g. FB → META; the old symbol may have no recent data.
+                    - **Invalid or unknown symbol** — Typo, wrong exchange suffix, or symbol not supported by the API.
+                    - **Exchange or asset type** — The API may not have history for that exchange or instrument.
+                    - **API limits** — Rate limits or plan restrictions can block or empty responses for some symbols.
+                    - **Temporary API error** — Network or server error; worth retrying later.
+
+                    **Does FMP say if a ticker is delisted or renamed?**  
+                    The **historical price** endpoint does *not* return a delisted/renamed flag — it just returns no data.  
+                    FMP does expose this via **separate** APIs: **Symbol Changes** (renames, mergers) and **Delisted Companies** (US delistings).  
+                    This app does not call those yet; for failed tickers you can check [FMP’s docs](https://site.financialmodelingprep.com/developer/docs) (Symbol Changes List, Delisted Companies) or remove/update the symbol in your universe.
+                    """
+                )
 
             def color_days_old(val: int) -> str:
                 if val >= 7:
@@ -1546,7 +1619,9 @@ def main():
         with col_title_w:
             st.subheader("Weekly Tickers with Stale Data")
         with col_hint_w:
-            st.caption("Resample weekly bars directly from recent daily history; flags if last week’s bar is missing.")
+            st.caption(
+                "Uses **weekly_prices** (max week_ending per ticker). Only tickers in your current stock universe are shown."
+            )
 
         if st.button("🔍 Scan Weekly Data", key="scan_weekly_stale", use_container_width=True):
             with st.spinner("Scanning weekly prices for stale tickers..."):
@@ -1556,9 +1631,15 @@ def main():
                     limit=None,
                 )
                 if not weekly_df.empty and main_db:
+                    # Only show stale tickers that are in the current stock universe (ignore legacy/delisted in DB)
+                    weekly_df = weekly_df[weekly_df["Ticker"].isin(main_db.keys())].copy()
                     weekly_df["Company"] = weekly_df["Ticker"].apply(lambda t: main_db.get(t, {}).get("name", ""))
                     weekly_df["Exchange"] = weekly_df["Ticker"].apply(lambda t: main_db.get(t, {}).get("exchange", ""))
                 st.session_state.weekly_stale_df = weekly_df
+                w_tickers = weekly_df["Ticker"].tolist() if not weekly_df.empty else []
+                st.session_state.weekly_tickers_to_resample = w_tickers
+                st.session_state.weekly_stale_ticker_selection = w_tickers
+                st.session_state.last_weekly_resample_results = None
 
         weekly_stale_df = st.session_state.weekly_stale_df
 
@@ -1567,22 +1648,61 @@ def main():
         elif weekly_stale_df.empty:
             st.success("✅ No stale weekly data detected within the selected threshold.")
         else:
-            if st.button("📊 Resample Weekly", key="resample_weekly_all", help="Resample weekly data from existing daily data (no API calls)", use_container_width=True):
-                payload = weekly_stale_df.to_dict(orient='records')
-                if payload:
-                    st.info(f"Starting resample of {len(payload)} tickers (weekly only)...")
-                    results = resample_weekly_only(payload)
-                    if results['success']:
-                        st.success(f"✅ Successfully resampled {len(results['success'])} tickers to weekly data")
-                    if results['failed']:
-                        st.error(f"❌ Failed to resample {len(results['failed'])} tickers: {', '.join(results['failed'][:5])}")
-                    time.sleep(2)
-                    st.session_state.weekly_stale_df = None
-                    st.rerun()
-                else:
-                    st.info("No stale weekly tickers to resample.")
+            display_weekly_df = weekly_stale_df.sort_values('Days Old', ascending=False)
+            w_all = display_weekly_df["Ticker"].tolist()
+            w_default = st.session_state.get("weekly_tickers_to_resample", w_all)
+            w_selected = st.multiselect(
+                "Tickers to resample (deselect to exclude)",
+                options=w_all,
+                default=w_default if w_default else w_all,
+                key="weekly_stale_ticker_selection",
+                help="Choose which tickers to resample from daily data. No API calls.",
+            )
 
-            st.info("💡 Weekly data can be resampled from existing daily data (no API calls), or automatically updated when you refresh daily data")
+            col_rs_sel, col_rs_all, _ = st.columns([1, 1, 2])
+            with col_rs_sel:
+                resample_selected = st.button(
+                    "📊 Resample selected",
+                    key="resample_weekly_selected",
+                    help=f"Resample the {len(w_selected)} selected tickers from daily data",
+                    use_container_width=True,
+                )
+            with col_rs_all:
+                resample_all = st.button(
+                    "📊 Resample All",
+                    key="resample_weekly_all",
+                    help="Resample all stale weekly tickers from daily data (no API calls)",
+                    use_container_width=True,
+                )
+
+            w_payload = None
+            if resample_selected and w_selected:
+                w_payload = [row for row in weekly_stale_df.to_dict(orient="records") if row["Ticker"] in w_selected]
+            elif resample_all:
+                w_payload = weekly_stale_df.to_dict(orient="records")
+
+            if w_payload:
+                st.info(f"Resampling {len(w_payload)} ticker(s) from daily data...")
+                results = resample_weekly_only(w_payload)
+                st.session_state.last_weekly_resample_results = results
+                st.rerun()
+
+            if resample_selected and not w_selected:
+                st.warning("Select at least one ticker to resample.")
+
+            last_weekly = st.session_state.get("last_weekly_resample_results")
+            if last_weekly:
+                with st.expander("📋 Last run summary", expanded=True):
+                    st.success(f"✅ **{len(last_weekly['success'])}** resampled")
+                    if last_weekly['failed']:
+                        st.error(f"❌ **{len(last_weekly['failed'])}** failed: {', '.join(last_weekly['failed'][:10])}{' ...' if len(last_weekly['failed']) > 10 else ''}")
+                        if st.button("🔄 Retry failed", key="retry_weekly_failed", use_container_width=True):
+                            retry_payload = [{"Ticker": t} for t in last_weekly["failed"]]
+                            retry_results = resample_weekly_only(retry_payload)
+                            st.session_state.last_weekly_resample_results = retry_results
+                            st.rerun()
+
+            st.info("💡 Weekly data can be resampled from existing daily data (no API calls), or updated when you refresh daily data.")
             display_weekly_df = weekly_stale_df.sort_values('Days Old', ascending=False)
 
             def color_days_old_weekly(val: int) -> str:

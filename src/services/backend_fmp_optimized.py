@@ -1,7 +1,7 @@
 """
 Optimized FMP Data Fetcher for Scheduler
 - Fetches only missing data instead of 300 days
-- No caching for scheduler operations (cache only for web app)
+- Caches data to Redis for fast web app access
 - Supports date range queries
 """
 
@@ -14,6 +14,8 @@ import logging
 import os
 import json
 from src.data_access.db_config import db_config
+from src.data_access import redis_support
+from src.utils.cache_helpers import get_cache_ttl, build_cache_key
 
 logger = logging.getLogger(__name__)
 
@@ -147,7 +149,11 @@ class OptimizedFMPDataFetcher:
 
                     return df
                 else:
-                    logger.warning(f"{ticker}: No historical data in response")
+                    # Empty or missing "historical" — common for delisted, renamed, or unsupported symbols
+                    logger.warning(
+                        "%s: No historical data in API response (may be delisted, renamed, or unsupported)",
+                        ticker,
+                    )
                     return None
             else:
                 logger.error(f"{ticker}: API error {response.status_code}")
@@ -203,27 +209,36 @@ class OptimizedDailyPriceCollector:
         from src.data_access.daily_price_repository import DailyPriceRepository
         return DailyPriceRepository()
 
-    def update_ticker(self, ticker: str, resample_weekly: bool = False) -> bool:
+    def update_ticker(
+        self, ticker: str, resample_weekly: bool = False, force_refresh: bool = False
+    ) -> bool:
         """
-        Update daily prices for a single ticker (optimized version)
+        Update daily prices for a single ticker (optimized version).
 
         Args:
-            ticker: The ticker to update
-            resample_weekly: If True, also resample to weekly data (should only be True on Fridays)
+            ticker: The ticker to update.
+            resample_weekly: If True, also resample to weekly data (should only be True on Fridays).
+            force_refresh: If True, skip "already up to date" checks and fetch the last N days
+                so that an explicit refresh from the UI always writes to the database.
         """
         try:
-            # Check if update needed
-            needs_update, last_update = self.db.needs_update(ticker, force_after_close=True)
+            if not force_refresh:
+                needs_update, last_update = self.db.needs_update(ticker, force_after_close=True)
+                if not needs_update:
+                    logger.debug(f"{ticker}: Already up to date")
+                    self.stats['skipped'] += 1
+                    self.stats['skipped_tickers'].append(ticker)
+                    return True
+            else:
+                last_update = None
 
-            if not needs_update:
-                logger.debug(f"{ticker}: Already up to date")
-                self.stats['skipped'] += 1
-                self.stats['skipped_tickers'].append(ticker)
-                return True
-
-            # Fetch ONLY missing data
-            logger.debug(f"Updating {ticker}...")
-            df = self.fetcher.get_historical_data_optimized(ticker)
+            # Fetch data: force_refresh pulls last 30 days so we always have something to write
+            logger.debug(f"Updating {ticker}..." + (" (force refresh)" if force_refresh else ""))
+            df = (
+                self.fetcher.get_historical_data_optimized(ticker, force_days=30)
+                if force_refresh
+                else self.fetcher.get_historical_data_optimized(ticker)
+            )
             self.stats['api_calls'] += 1
 
             if df is None:
@@ -243,6 +258,17 @@ class OptimizedDailyPriceCollector:
             try:
                 records = self.db.store_daily_prices(ticker, df)
                 self.stats['records_fetched'] += records
+
+                # Cache the daily data to Redis for fast web app access
+                if records > 0:
+                    try:
+                        # Get full dataset for caching (250 days optimized for performance)
+                        full_df = self.db.get_daily_prices(ticker, limit=250)
+                        if full_df is not None and not full_df.empty:
+                            self._cache_price_data(ticker, full_df, timeframe='1d')
+                    except Exception as e:
+                        logger.debug(f"{ticker}: Failed to cache daily data: {e}")
+
             except Exception as e:
                 logger.error(f"{ticker}: Failed to store daily prices: {e}", exc_info=True)
                 self.stats['failed'] += 1
@@ -285,6 +311,15 @@ class OptimizedDailyPriceCollector:
                                 weekly_records = self.db.store_weekly_prices(ticker, weekly_df)
                                 if weekly_records > 0:
                                     self.stats['weekly_updated'] += 1
+
+                                    # Cache the weekly data to Redis
+                                    try:
+                                        full_weekly_df = self.db.get_weekly_prices(ticker, limit=250)
+                                        if full_weekly_df is not None and not full_weekly_df.empty:
+                                            self._cache_price_data(ticker, full_weekly_df, timeframe='1wk')
+                                    except Exception as e:
+                                        logger.debug(f"{ticker}: Failed to cache weekly data: {e}")
+
                                 logger.info(f"{ticker}: Generated {len(weekly_df)} weekly records")
                             except Exception as e:
                                 logger.error(f"{ticker}: Failed to store weekly prices: {e}", exc_info=True)
@@ -370,6 +405,50 @@ class OptimizedDailyPriceCollector:
         except Exception as e:
             logger.error(f"Error resampling {ticker} to weekly: {e}")
             return None
+
+    def _cache_price_data(
+        self,
+        ticker: str,
+        df: pd.DataFrame,
+        timeframe: str = '1d',
+        lookback_days: int = 250
+    ) -> None:
+        """
+        Cache price data to Redis for fast web app access.
+
+        Args:
+            ticker: Stock ticker symbol.
+            timeframe: Timeframe string ('1h', '1d', '1wk').
+            df: Price DataFrame to cache.
+            lookback_days: Lookback period for cache key (default: 250 for performance).
+        """
+        try:
+            cache_key = build_cache_key(ticker, timeframe, lookback_days)
+            ttl = get_cache_ttl(timeframe)
+
+            # Prepare data for caching (convert to JSON-serializable format)
+            df_reset = df.reset_index()
+            # Rename index column to 'Date' for consistency
+            if df_reset.columns[0] in ['date', 'datetime', 'week_ending']:
+                df_reset.rename(columns={df_reset.columns[0]: 'Date'}, inplace=True)
+
+            cache_data = {
+                'data': df_reset.to_dict('records'),
+                'last_update': df.index.max().isoformat() if not df.empty else None
+            }
+
+            # Store to Redis
+            success = redis_support.set_json(
+                cache_key,
+                cache_data,
+                ttl_seconds=ttl
+            )
+
+            if success:
+                logger.debug(f"{ticker}: Cached {timeframe} data ({len(df)} rows, TTL: {ttl}s)")
+
+        except Exception as e:
+            logger.debug(f"{ticker}: Cache error: {e}")
 
     def get_statistics(self) -> Dict:
         """Get collection statistics"""

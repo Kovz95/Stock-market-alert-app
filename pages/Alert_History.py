@@ -566,17 +566,36 @@ with tab1:
 
                 # Display active alerts
                 for alert in ticker_alerts:
-                    with st.expander(f"**{alert.get('name', 'Unnamed Alert')}**"):
+                    # Build expander title with key info
+                    alert_name = alert.get('name', 'Unnamed Alert')
+                    timeframe = alert.get('timeframe', 'N/A')
+                    action = alert.get('action', 'N/A')
+                    expander_title = f"**{alert_name}** - {timeframe} | {action}"
+
+                    with st.expander(expander_title):
+                        # Alert metadata
                         col1, col2, col3 = st.columns(3)
                         with col1:
-                            st.write(f"**Timeframe:** {alert.get('timeframe', 'N/A')}")
-                            st.write(f"**Action:** {alert.get('action', 'N/A')}")
+                            st.write(f"**Timeframe:** {timeframe}")
+                            st.write(f"**Action:** {action}")
                         with col2:
-                            st.write(f"**Entry Conditions:** {len(alert.get('entry_conditions', []))}")
-                            st.write(f"**Exit Conditions:** {len(alert.get('exit_conditions', []))}")
+                            st.write(f"**Exchange:** {alert.get('exchange', 'N/A')}")
+                            economy = alert.get('rbics_economy', 'Unknown')
+                            st.write(f"**Economy:** {economy}")
                         with col3:
-                            st.write(f"**Created:** {alert.get('created_date', 'Unknown')}")
-                            st.write(f"**ID:** {alert.get('id', 'N/A')[:8]}...")
+                            alert_id = alert.get('alert_id', 'N/A')
+                            st.write(f"**Alert ID:**")
+                            st.caption(f"{alert_id[:16]}..." if len(alert_id) > 16 else alert_id)
+
+                        # Show conditions
+                        conditions = alert.get('conditions', [])
+                        if conditions:
+                            st.markdown("---")
+                            st.write(f"**Conditions ({len(conditions)}):**")
+                            for idx, cond in enumerate(conditions, 1):
+                                st.code(cond.get('conditions', 'N/A'), language=None)
+                        else:
+                            st.info("No conditions defined")
             else:
                 st.info(f"No active alerts found for {selected_ticker}")
 

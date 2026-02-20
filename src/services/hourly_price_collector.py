@@ -15,6 +15,8 @@ import pandas as pd
 from src.services.backend_fmp import FMPDataFetcher
 from src.data_access.metadata_repository import fetch_stock_metadata_map
 from src.data_access.daily_price_repository import DailyPriceRepository
+from src.data_access import redis_support
+from src.utils.cache_helpers import get_cache_ttl, build_cache_key
 
 # Default number of parallel workers for hourly updates
 # Reduced from 20 to 10 to avoid FMP API rate limits
@@ -169,6 +171,13 @@ class HourlyPriceCollector:
             if records > 0:
                 logger.debug(f"{ticker}: Stored {records} hourly records")
                 self.stats['updated'] += 1
+
+                # Cache the data to Redis for fast web app access
+                try:
+                    self._cache_price_data(ticker, df, timeframe='1h')
+                except Exception as e:
+                    logger.debug(f"{ticker}: Failed to cache hourly data: {e}")
+
                 return True
             else:
                 self.stats['failed'] += 1
@@ -303,6 +312,46 @@ class HourlyPriceCollector:
         except Exception as e:
             logger.error(f"Error getting database statistics: {e}")
             return {}
+
+    def _cache_price_data(
+        self,
+        ticker: str,
+        df: pd.DataFrame,
+        timeframe: str = '1h',
+        lookback_days: int = 250
+    ) -> None:
+        """
+        Cache price data to Redis for fast web app access.
+
+        Args:
+            ticker: Stock ticker symbol.
+            timeframe: Timeframe string ('1h', '1d', '1wk').
+            df: Price DataFrame to cache.
+            lookback_days: Lookback period for cache key (default: 250 for performance).
+        """
+        try:
+            cache_key = build_cache_key(ticker, timeframe, lookback_days)
+            ttl = get_cache_ttl(timeframe)
+
+            # Prepare data for caching (convert to JSON-serializable format)
+            df_reset = df.reset_index()
+            cache_data = {
+                'data': df_reset.to_dict('records'),
+                'last_update': df.index.max().isoformat() if not df.empty else None
+            }
+
+            # Store to Redis
+            success = redis_support.set_json(
+                cache_key,
+                cache_data,
+                ttl_seconds=ttl
+            )
+
+            if success:
+                logger.debug(f"{ticker}: Cached {timeframe} data (TTL: {ttl}s)")
+
+        except Exception as e:
+            logger.debug(f"{ticker}: Cache error: {e}")
 
     def close(self):
         """Clean up database connection"""
