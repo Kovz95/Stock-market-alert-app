@@ -70,6 +70,7 @@ jobs:
 
       - name: Package application
         run: |
+          set +e
           tar --exclude='.venv' \
               --exclude='__pycache__' \
               --exclude='*.pyc' \
@@ -85,8 +86,14 @@ jobs:
               --exclude='tests/' \
               --exclude='stocks.db' \
               --exclude='stockalert-deploy.tar.gz' \
-              --warning=no-file-changed \
               -czf stockalert-deploy.tar.gz .
+          EXIT_CODE=$?
+          set -e
+          if [ $EXIT_CODE -eq 2 ]; then
+            echo "Fatal error creating archive"
+            exit 2
+          fi
+          echo "Archive created successfully (exit code: $EXIT_CODE)"
 
       - name: Copy archive to server
         run: |
