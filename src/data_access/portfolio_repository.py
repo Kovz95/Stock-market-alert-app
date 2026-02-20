@@ -49,6 +49,8 @@ def _fetch_portfolio_frames() -> Tuple[pd.DataFrame, pd.DataFrame]:
 
 def _build_portfolio_map(portfolios_df: pd.DataFrame, links_df: pd.DataFrame) -> Dict[str, Dict[str, Any]]:
     portfolio_map: Dict[str, Dict[str, Any]] = {}
+    raw_stocks_by_portfolio: Dict[str, Dict[str, Dict[str, Any]]] = {}
+
     for _, row in portfolios_df.iterrows():
         portfolio_id = row["id"]
         raw_payload = row.get("raw_payload") or {}
@@ -65,9 +67,11 @@ def _build_portfolio_map(portfolios_df: pd.DataFrame, links_df: pd.DataFrame) ->
                 "last_updated": row.get("last_updated"),
                 "stocks": [],
             }
-        stocks = portfolio.get("stocks")
-        if not isinstance(stocks, list):
-            portfolio["stocks"] = []
+        raw_stocks = portfolio.get("stocks") if isinstance(portfolio.get("stocks"), list) else []
+        raw_stocks_by_portfolio[portfolio_id] = {
+            (s.get("symbol") or s.get("ticker") or ""): s for s in raw_stocks if isinstance(s, dict) and (s.get("symbol") or s.get("ticker"))
+        }
+        portfolio["stocks"] = []
         portfolio_map[portfolio_id] = portfolio
 
     if not links_df.empty:
@@ -76,7 +80,13 @@ def _build_portfolio_map(portfolios_df: pd.DataFrame, links_df: pd.DataFrame) ->
             ticker = row["ticker"]
             if portfolio_id in portfolio_map:
                 portfolio_map[portfolio_id].setdefault("stocks", [])
-                portfolio_map[portfolio_id]["stocks"].append({"symbol": ticker})
+                raw_by_symbol = raw_stocks_by_portfolio.get(portfolio_id) or {}
+                info = raw_by_symbol.get(ticker) or {}
+                portfolio_map[portfolio_id]["stocks"].append({
+                    "symbol": ticker,
+                    "name": info.get("name", ticker),
+                    "added_date": info.get("added_date", ""),
+                })
 
     return portfolio_map
 
@@ -130,35 +140,52 @@ def save_portfolio(portfolio: Dict[str, Any]) -> Dict[str, Any]:
     conn = db_config.get_connection()
     try:
         with conn.cursor() as cur:
-            cur.execute(
-                """
-                INSERT INTO portfolios (id, name, discord_webhook, enabled, created_date, last_updated, raw_payload)
-                VALUES (%s, %s, %s, %s, %s, %s, %s)
-                ON CONFLICT (id) DO UPDATE SET
-                    name = EXCLUDED.name,
-                    discord_webhook = EXCLUDED.discord_webhook,
-                    enabled = EXCLUDED.enabled,
-                    created_date = COALESCE(EXCLUDED.created_date, portfolios.created_date),
-                    last_updated = EXCLUDED.last_updated,
-                    raw_payload = EXCLUDED.raw_payload
-                """,
-                (
-                    portfolio_id,
-                    name,
-                    webhook,
-                    enabled,
-                    created,
-                    updated,
-                    Json({**portfolio, "id": portfolio_id}),
-                ),
-            )
+            cur.execute("SELECT 1 FROM portfolios WHERE id = %s", (portfolio_id,))
+            exists = cur.fetchone() is not None
+            if exists:
+                cur.execute(
+                    """
+                    UPDATE portfolios SET
+                        name = %s,
+                        discord_webhook = %s,
+                        enabled = %s,
+                        created_date = COALESCE(%s, created_date),
+                        last_updated = %s,
+                        raw_payload = %s
+                    WHERE id = %s
+                    """,
+                    (name, webhook, enabled, created, updated, Json({**portfolio, "id": portfolio_id}), portfolio_id),
+                )
+            else:
+                cur.execute(
+                    """
+                    INSERT INTO portfolios (id, name, discord_webhook, enabled, created_date, last_updated, raw_payload)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s)
+                    """,
+                    (
+                        portfolio_id,
+                        name,
+                        webhook,
+                        enabled,
+                        created,
+                        updated,
+                        Json({**portfolio, "id": portfolio_id}),
+                    ),
+                )
 
             cur.execute("DELETE FROM portfolio_stocks WHERE portfolio_id = %s", (portfolio_id,))
             if normalized_rows:
+                # Deduplicate by ticker so we never insert (portfolio_id, ticker) twice
+                seen: set[str] = set()
+                unique_pairs: List[Tuple[str, str]] = []
+                for symbol, _ in normalized_rows:
+                    if symbol not in seen:
+                        seen.add(symbol)
+                        unique_pairs.append((portfolio_id, symbol))
                 execute_values(
                     cur,
                     "INSERT INTO portfolio_stocks (portfolio_id, ticker) VALUES %s",
-                    [(portfolio_id, symbol) for symbol, _ in normalized_rows],
+                    unique_pairs,
                 )
         conn.commit()
     finally:
