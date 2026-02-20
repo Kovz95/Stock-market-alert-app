@@ -107,26 +107,18 @@ jobs:
             ${{ secrets.SSH_USER }}@${{ secrets.SERVER_HOST }} \
             "cd ${{ secrets.DEPLOY_PATH }} && tar -xzf stockalert-deploy.tar.gz && rm stockalert-deploy.tar.gz"
 
-      - name: Deploy environment file
-        run: |
-          echo "${{ secrets.ENV_PRODUCTION }}" > .env.production
-          sshpass -e scp -o StrictHostKeyChecking=no \
-            .env.production \
-            ${{ secrets.SSH_USER }}@${{ secrets.SERVER_HOST }}:${{ secrets.DEPLOY_PATH }}/.env
-          rm .env.production
-
       - name: Build and start Docker containers
         run: |
           sshpass -e ssh -o StrictHostKeyChecking=no \
             ${{ secrets.SSH_USER }}@${{ secrets.SERVER_HOST }} \
-            "cd ${{ secrets.DEPLOY_PATH }} && docker compose down && docker compose up -d --build"
+            "cd ${{ secrets.DEPLOY_PATH }} && docker-compose down && docker-compose up -d --build"
 
       - name: Check container status
         run: |
           sleep 5
           sshpass -e ssh -o StrictHostKeyChecking=no \
             ${{ secrets.SSH_USER }}@${{ secrets.SERVER_HOST }} \
-            "cd ${{ secrets.DEPLOY_PATH }} && docker compose ps"
+            "cd ${{ secrets.DEPLOY_PATH }} && docker-compose ps"
 
   notify:
     name: Notify on Failure
