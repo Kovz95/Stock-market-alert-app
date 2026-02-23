@@ -49,7 +49,7 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 sys.path.append(str(BASE_DIR))
 
-from src.data_access.alert_repository import list_alerts  # noqa: E402
+from src.data_access.alert_repository import list_alerts, refresh_alert_cache  # noqa: E402
 from src.data_access.metadata_repository import fetch_stock_metadata_df  # noqa: E402
 from src.config.exchange_schedule_config import (  # noqa: E402
     EXCHANGE_SCHEDULES,
@@ -174,6 +174,10 @@ def run_alert_checks(
     }
 
     try:
+        # Clear stale in-process lru_cache so the scheduler always sees
+        # the latest alerts from Redis / the database.
+        refresh_alert_cache()
+
         metadata_df = fetch_stock_metadata_df()
         if metadata_df is None or metadata_df.empty:
             logger.warning("No metadata available for alert checks")

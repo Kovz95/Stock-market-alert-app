@@ -67,10 +67,29 @@ def _exchange_worker(exchange_name: str, resample_weekly: bool):
     return price_stats, alert_stats
 
 
+class _ExchangeClosedError(Exception):
+    """Raised when an exchange is not currently open."""
+    pass
+
+
 def _hourly_exchange_worker(exchange_name: str):
-    """Execute hourly price update + alert checks for a single exchange."""
+    """Execute hourly price update + alert checks for a single exchange.
+
+    Skips processing entirely when the exchange is closed.
+    """
+    import pandas as pd
+    from src.services.calendar_adapter import is_exchange_open
     from src.services.hourly_price_collector import HourlyPriceCollector
     from src.services.auto_scheduler_v2 import run_alert_checks
+
+    # Skip closed exchanges to avoid unnecessary API calls and processing.
+    now = pd.Timestamp.utcnow()
+    if not is_exchange_open(exchange_name, now):
+        logger.info(
+            "[%s/hourly] Exchange is closed at %s UTC - skipping",
+            exchange_name, now.strftime("%H:%M"),
+        )
+        raise _ExchangeClosedError(f"{exchange_name} is closed")
 
     collector = HourlyPriceCollector()
     try:
@@ -111,6 +130,7 @@ def _run_hourly_exchange_job(exchange_name: str, timeout_seconds: int):
     Run a single exchange hourly job on a thread with a soft timeout.
 
     Returns (price_stats, alert_stats, error_message).
+    When the exchange is closed, error_message is "exchange_closed".
     """
     with ThreadPoolExecutor(max_workers=1) as pool:
         future = pool.submit(_hourly_exchange_worker, exchange_name)
@@ -124,6 +144,8 @@ def _run_hourly_exchange_job(exchange_name: str, timeout_seconds: int):
                 timeout_seconds,
             )
             return None, None, f"timeout after {timeout_seconds}s"
+        except _ExchangeClosedError:
+            return None, None, "exchange_closed"
         except Exception as exc:
             return None, None, str(exc)
 
@@ -203,6 +225,20 @@ class BaseExchangeJobHandler(ABC):
             logger.warning("Job %s is already running; skipping duplicate execution.", job_id)
             return None
 
+        # For hourly jobs, check if the exchange is open before doing any work
+        # (avoids noisy start/skip notification pairs in Discord).
+        if self.job_type == "hourly":
+            import pandas as pd
+            from src.services.calendar_adapter import is_exchange_open as _cal_is_open
+            now = pd.Timestamp.utcnow()
+            if not _cal_is_open(exchange_name, now):
+                logger.info(
+                    "Hourly job for %s skipped - exchange is closed at %s UTC",
+                    exchange_name, now.strftime("%H:%M"),
+                )
+                self.services.release_job_lock(job_id)
+                return None
+
         notify_settings = (self.services.load_config() or {}).get("notification_settings", {})
         send_start = notify_settings.get("send_start_notification", True)
         send_complete = notify_settings.get("send_completion_notification", True)
@@ -235,6 +271,14 @@ class BaseExchangeJobHandler(ABC):
                     exchange_name,
                     timeout_seconds=job_timeout,
                 )
+                if worker_err == "exchange_closed":
+                    logger.info(
+                        "Hourly job for %s skipped - exchange is closed", exchange_name,
+                    )
+                    discord_notifier.notify_skipped(
+                        run_time_utc, f"{exchange_name} is closed",
+                    )
+                    return None
             else:
                 price_stats, alert_stats, worker_err = _run_exchange_job(
                     exchange_name,
