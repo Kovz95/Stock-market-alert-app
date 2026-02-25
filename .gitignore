@@ -40,3 +40,11 @@ scheduler_v2_hourly.lock
 # Generated state files
 hourly_scheduler_status.json
 missing_tickers_report.json
+
+# Go
+go.work.sum
+*.exe
+
+# Node
+node_modules/
+.next/

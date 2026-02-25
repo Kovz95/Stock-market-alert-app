@@ -1,0 +1,133 @@
+syntax = "proto3";
+
+package stockalert.alert.v1;
+
+option go_package = "stockalert/gen/go/alert/v1;alertv1";
+
+import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
+
+// Alert represents a stock alert configuration.
+message Alert {
+  string alert_id = 1;
+  string name = 2;
+  string stock_name = 3;
+  string ticker = 4;
+  string ticker1 = 5;
+  string ticker2 = 6;
+  google.protobuf.Struct conditions = 7;
+  string combination_logic = 8;
+  google.protobuf.Timestamp last_triggered = 9;
+  string action = 10;
+  string timeframe = 11;
+  string exchange = 12;
+  string country = 13;
+  string ratio = 14;
+  bool is_ratio = 15;
+  string adjustment_method = 16;
+  google.protobuf.Struct dtp_params = 17;
+  google.protobuf.Struct multi_timeframe_params = 18;
+  google.protobuf.Struct mixed_timeframe_params = 19;
+  google.protobuf.Struct raw_payload = 20;
+  google.protobuf.Timestamp created_at = 21;
+  google.protobuf.Timestamp updated_at = 22;
+}
+
+// ListAlerts
+message ListAlertsRequest {}
+
+message ListAlertsResponse {
+  repeated Alert alerts = 1;
+}
+
+// GetAlert
+message GetAlertRequest {
+  string alert_id = 1;
+}
+
+message GetAlertResponse {
+  Alert alert = 1;
+}
+
+// CreateAlert
+message CreateAlertRequest {
+  string name = 1;
+  string stock_name = 2;
+  string ticker = 3;
+  string ticker1 = 4;
+  string ticker2 = 5;
+  google.protobuf.Struct conditions = 6;
+  string combination_logic = 7;
+  string action = 8;
+  string timeframe = 9;
+  string exchange = 10;
+  string country = 11;
+  string ratio = 12;
+  bool is_ratio = 13;
+  string adjustment_method = 14;
+  google.protobuf.Struct dtp_params = 15;
+  google.protobuf.Struct multi_timeframe_params = 16;
+  google.protobuf.Struct mixed_timeframe_params = 17;
+  google.protobuf.Struct raw_payload = 18;
+}
+
+message CreateAlertResponse {
+  Alert alert = 1;
+}
+
+// UpdateAlert
+message UpdateAlertRequest {
+  string alert_id = 1;
+  string name = 2;
+  string stock_name = 3;
+  string ticker = 4;
+  string ticker1 = 5;
+  string ticker2 = 6;
+  google.protobuf.Struct conditions = 7;
+  string combination_logic = 8;
+  string action = 9;
+  string timeframe = 10;
+  string exchange = 11;
+  string country = 12;
+  string ratio = 13;
+  bool is_ratio = 14;
+  string adjustment_method = 15;
+  google.protobuf.Struct dtp_params = 16;
+  google.protobuf.Struct multi_timeframe_params = 17;
+  google.protobuf.Struct mixed_timeframe_params = 18;
+  google.protobuf.Struct raw_payload = 19;
+}
+
+message UpdateAlertResponse {
+  Alert alert = 1;
+}
+
+// DeleteAlert
+message DeleteAlertRequest {
+  string alert_id = 1;
+}
+
+message DeleteAlertResponse {}
+
+// BulkUpdateLastTriggered
+message BulkUpdateLastTriggeredRequest {
+  message AlertTrigger {
+    string alert_id = 1;
+    google.protobuf.Timestamp last_triggered = 2;
+  }
+  repeated AlertTrigger triggers = 1;
+}
+
+message BulkUpdateLastTriggeredResponse {
+  int32 updated_count = 1;
+}
+
+// AlertService provides CRUD operations for stock alerts.
+service AlertService {
+  rpc ListAlerts(ListAlertsRequest) returns (ListAlertsResponse);
+  rpc GetAlert(GetAlertRequest) returns (GetAlertResponse);
+  rpc CreateAlert(CreateAlertRequest) returns (CreateAlertResponse);
+  rpc UpdateAlert(UpdateAlertRequest) returns (UpdateAlertResponse);
+  rpc DeleteAlert(DeleteAlertRequest) returns (DeleteAlertResponse);
+  rpc BulkUpdateLastTriggered(BulkUpdateLastTriggeredRequest) returns (BulkUpdateLastTriggeredResponse);
+}

@@ -142,13 +142,12 @@ class HourlySchedulerDiscord(BaseSchedulerDiscord):
             f"| failed {failed:,} | skipped {skipped:,}"
         )
         if alert_stats:
-            triggered = alert_stats.get("triggered", alert_stats.get("success", 0))
             alert_line = (
                 f"• Alerts: total {alert_stats.get('total', 0):,} | "
-                f"triggered {triggered:,} | "
+                f"triggered {alert_stats.get('triggered', 0):,} | "
                 f"not triggered {alert_stats.get('not_triggered', 0):,} | "
+                f"skipped {alert_stats.get('skipped', 0):,} | "
                 f"no data {alert_stats.get('no_data', 0):,} | "
-                f"stale {alert_stats.get('stale_data', 0):,} | "
                 f"errors {alert_stats.get('errors', 0):,}"
             )
         else:

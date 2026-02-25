@@ -228,6 +228,8 @@ def run_alert_checks(
         stats["triggered"] = check_stats.get("triggered", 0)
         stats["errors"] = check_stats.get("errors", 0)
         stats["no_data"] = check_stats.get("no_data", 0)
+        stats["skipped"] = check_stats.get("skipped", 0)
+        stats["not_triggered"] = stats["success"] - stats["triggered"]
 
         logger.info(
             "Alert evaluation complete: %d triggered, %d errors, %d no_data",

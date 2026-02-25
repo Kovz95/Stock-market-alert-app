@@ -372,7 +372,9 @@ def run_alert_checks(
             stats["triggered"] = check_stats.get("triggered", 0)
             stats["errors"] = check_stats.get("errors", 0)
             stats["no_data"] = check_stats.get("no_data", 0)
+            stats["skipped"] = check_stats.get("skipped", 0)
             stats["stale_data"] = check_stats.get("stale_data", 0)
+            stats["not_triggered"] = stats["success"] - stats["triggered"]
 
     except Exception as e:
         logger.error("Error running alert checks: %s", e)
