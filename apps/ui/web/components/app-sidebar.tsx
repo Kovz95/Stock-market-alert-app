@@ -16,6 +16,8 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
 import { LayoutDashboardIcon, ListIcon, ChartBarIcon, FolderIcon, UsersIcon, CameraIcon, FileTextIcon, Settings2Icon, CircleHelpIcon, SearchIcon, DatabaseIcon, FileChartColumnIcon, FileIcon, CommandIcon, BellIcon } from "lucide-react"
+import { NavAlerts } from "./nav-alerts"
+import Link from "next/link"
 
 const data = {
   user: {
@@ -23,113 +25,6 @@ const data = {
     email: "m@example.com",
     avatar: "/avatars/shadcn.jpg",
   },
-  navMain: [
-    {
-      title: "Dashboard",
-      url: "/",
-      icon: (
-        <LayoutDashboardIcon
-        />
-      ),
-    },
-    {
-      title: "Alerts",
-      url: "/alerts",
-      icon: (
-        <BellIcon
-        />
-      ),
-    },
-    {
-      title: "Lifecycle",
-      url: "#",
-      icon: (
-        <ListIcon
-        />
-      ),
-    },
-    {
-      title: "Analytics",
-      url: "#",
-      icon: (
-        <ChartBarIcon
-        />
-      ),
-    },
-    {
-      title: "Projects",
-      url: "#",
-      icon: (
-        <FolderIcon
-        />
-      ),
-    },
-    {
-      title: "Team",
-      url: "#",
-      icon: (
-        <UsersIcon
-        />
-      ),
-    },
-  ],
-  navClouds: [
-    {
-      title: "Capture",
-      icon: (
-        <CameraIcon
-        />
-      ),
-      isActive: true,
-      url: "#",
-      items: [
-        {
-          title: "Active Proposals",
-          url: "#",
-        },
-        {
-          title: "Archived",
-          url: "#",
-        },
-      ],
-    },
-    {
-      title: "Proposal",
-      icon: (
-        <FileTextIcon
-        />
-      ),
-      url: "#",
-      items: [
-        {
-          title: "Active Proposals",
-          url: "#",
-        },
-        {
-          title: "Archived",
-          url: "#",
-        },
-      ],
-    },
-    {
-      title: "Prompts",
-      icon: (
-        <FileTextIcon
-        />
-      ),
-      url: "#",
-      items: [
-        {
-          title: "Active Proposals",
-          url: "#",
-        },
-        {
-          title: "Archived",
-          url: "#",
-        },
-      ],
-    },
-  ],
   navSecondary: [
     {
       title: "Settings",
@@ -182,6 +77,66 @@ const data = {
       ),
     },
   ],
+  alerts: [
+    {
+      title: "Alerts",
+      url: "/alerts",
+      icon: (
+        <BellIcon
+        />
+      ),
+    },
+    {
+      title: "Add Alerts",
+      url: "#",
+      icon: (
+        <ListIcon
+        />
+      ),
+    },
+    {
+      title: "Alert Audit",
+      url: "#",
+      icon: (
+        <ChartBarIcon
+        />
+      ),
+    },
+    {
+      title: "Alert History",
+      url: "#",
+      icon: (
+        <FolderIcon
+        />
+      ),
+    },
+  ],
+  discord: [
+    {
+      title: "Hourly Discord Management",
+      url: "#",
+      icon: (
+        <UsersIcon
+        />
+      ),
+    },
+    {
+      title: "Daily Discord Management",
+      url: "#",
+      icon: (
+        <ChartBarIcon
+        />
+      ),
+    },
+    {
+      title: "Weekly Discord Management",
+      url: "#",
+      icon: (
+        <FolderIcon
+        />
+      ),
+    },
+  ],
 }
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
@@ -196,15 +151,17 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             >
               <a href="#">
                 <CommandIcon className="size-5!" />
-                <span className="text-base font-semibold">Acme Inc.</span>
+                <Link href={'/'}>
+                  <span className="text-base font-semibold">Kovich Stock Alerts</span>
+                </Link>
               </a>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>
       <SidebarContent>
-        <NavMain items={data.navMain} />
-        <NavDocuments items={data.documents} />
+        <NavMain items={data.alerts} title="Alerts" />
+        <NavMain items={data.discord} title="Discord" />
         <NavSecondary items={data.navSecondary} className="mt-auto" />
       </SidebarContent>
       <SidebarFooter>

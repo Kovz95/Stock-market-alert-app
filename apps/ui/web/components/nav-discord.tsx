@@ -1,31 +1,26 @@
 "use client"
 
 import Link from "next/link"
-import { Button } from "@/components/ui/button"
 import {
   SidebarGroup,
-  SidebarGroupContent,
   SidebarGroupLabel,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
-import { CirclePlusIcon, MailIcon } from "lucide-react"
 
-export function NavMain({
+export function NavAlerts({
   items,
-  title
 }: {
   items: {
     title: string
     url: string
     icon?: React.ReactNode
-  }[],
-  title: string
+  }[]
 }) {
   return (
     <SidebarGroup className="group-data-[collapsible=icon]:hidden">
-      <SidebarGroupLabel>{title}</SidebarGroupLabel>
+        <SidebarGroupLabel>Discord</SidebarGroupLabel>
         <SidebarMenu>
           {items.map((item) => (
             <SidebarMenuItem key={item.title}>
@@ -39,5 +34,5 @@ export function NavMain({
           ))}
         </SidebarMenu>
     </SidebarGroup>
-   )
+  )
 }
