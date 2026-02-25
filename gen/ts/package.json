@@ -1,0 +1,1 @@
+{"name":"@gen/ts","version":"0.0.0","private":true,"description":"Generated TypeScript code from protobuf definitions","main":"index.ts","types":"index.ts","exports":{".":"./index.ts","./*.js":"./*.ts","./*":"./*.ts"},"dependencies":{"@bufbuild/protobuf":"^2.11.0","nice-grpc":"^2.1.14","nice-grpc-common":"^2.0.2"}}

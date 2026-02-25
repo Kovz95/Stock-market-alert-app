@@ -1,21 +1,24 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useAtomValue } from "jotai";
 import {
-  listAlerts,
+  listAlertsPaginated,
   getAlert,
   createAlert,
   updateAlert,
   deleteAlert,
-  type AlertData,
 } from "@/actions/alert-actions";
+import { alertsPageAtom, alertsPageSizeAtom } from "@/lib/store/alerts";
 
-const ALERTS_KEY = ["alerts"] as const;
+export const ALERTS_KEY = ["alerts"] as const;
 
-export function useAlerts() {
+export function useAlertsPaginated() {
+  const page = useAtomValue(alertsPageAtom);
+  const pageSize = useAtomValue(alertsPageSizeAtom);
   return useQuery({
-    queryKey: ALERTS_KEY,
-    queryFn: () => listAlerts(),
+    queryKey: [...ALERTS_KEY, "paginated", page, pageSize],
+    queryFn: () => listAlertsPaginated(page, pageSize),
   });
 }
 

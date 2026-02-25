@@ -21,9 +21,6 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["./*"],
-      "@gen/*": ["../../../gen/ts/*"],
-      "@bufbuild/protobuf/wire": ["./node_modules/@bufbuild/protobuf/dist/esm/wire/index.d.ts"],
-      "nice-grpc-common": ["./node_modules/nice-grpc-common/lib/index.d.ts"]
     }
   },
   "include": [

@@ -5,8 +5,7 @@ import type {
   Alert as AlertProto,
   CreateAlertRequest,
   UpdateAlertRequest,
-} from "@gen/alert/v1/alert";
-
+} from "../../../../gen/ts/alert/v1/alert";
 export type AlertData = {
   alertId: string;
   name: string;
@@ -49,9 +48,30 @@ function toAlertData(alert: AlertProto): AlertData {
   };
 }
 
-export async function listAlerts(): Promise<AlertData[]> {
-  const response = await alertClient.listAlerts({});
-  return response.alerts.map(toAlertData);
+const DEFAULT_PAGE_SIZE = 20;
+const MAX_PAGE_SIZE = 100;
+
+export type ListAlertsResult = {
+  alerts: AlertData[];
+  totalCount: number;
+  hasNextPage: boolean;
+};
+
+export async function listAlertsPaginated(
+  page: number = 1,
+  pageSize: number = DEFAULT_PAGE_SIZE
+): Promise<ListAlertsResult> {
+  const size = Math.min(Math.max(1, pageSize), MAX_PAGE_SIZE);
+  const pageNum = Math.max(1, page);
+  const response = await alertClient.listAlerts({
+    pageSize: size,
+    page: pageNum,
+  });
+  return {
+    alerts: response.alerts.map(toAlertData),
+    totalCount: response.totalCount,
+    hasNextPage: response.hasNextPage,
+  };
 }
 
 export async function getAlert(alertId: string): Promise<AlertData | null> {

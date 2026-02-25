@@ -60,7 +60,7 @@ export interface Struct {
 
 export interface Struct_FieldsEntry {
   key: string;
-  value: any | undefined;
+  value?: any | undefined;
 }
 
 /**
@@ -175,10 +175,10 @@ export const Struct: MessageFns<Struct> & StructWrapperFns = {
     return obj;
   },
 
-  create(base?: DeepPartial<Struct>): Struct {
-    return Struct.fromPartial(base ?? {});
+  create<I extends Exact<DeepPartial<Struct>, I>>(base?: I): Struct {
+    return Struct.fromPartial(base ?? ({} as any));
   },
-  fromPartial(object: DeepPartial<Struct>): Struct {
+  fromPartial<I extends Exact<DeepPartial<Struct>, I>>(object: I): Struct {
     const message = createBaseStruct();
     message.fields = (globalThis.Object.entries(object.fields ?? {}) as [string, any | undefined][]).reduce(
       (acc: { [key: string]: any | undefined }, [key, value]: [string, any | undefined]) => {
@@ -279,10 +279,10 @@ export const Struct_FieldsEntry: MessageFns<Struct_FieldsEntry> = {
     return obj;
   },
 
-  create(base?: DeepPartial<Struct_FieldsEntry>): Struct_FieldsEntry {
-    return Struct_FieldsEntry.fromPartial(base ?? {});
+  create<I extends Exact<DeepPartial<Struct_FieldsEntry>, I>>(base?: I): Struct_FieldsEntry {
+    return Struct_FieldsEntry.fromPartial(base ?? ({} as any));
   },
-  fromPartial(object: DeepPartial<Struct_FieldsEntry>): Struct_FieldsEntry {
+  fromPartial<I extends Exact<DeepPartial<Struct_FieldsEntry>, I>>(object: I): Struct_FieldsEntry {
     const message = createBaseStruct_FieldsEntry();
     message.key = object.key ?? "";
     message.value = object.value ?? undefined;
@@ -446,10 +446,10 @@ export const Value: MessageFns<Value> & AnyValueWrapperFns = {
     return obj;
   },
 
-  create(base?: DeepPartial<Value>): Value {
-    return Value.fromPartial(base ?? {});
+  create<I extends Exact<DeepPartial<Value>, I>>(base?: I): Value {
+    return Value.fromPartial(base ?? ({} as any));
   },
-  fromPartial(object: DeepPartial<Value>): Value {
+  fromPartial<I extends Exact<DeepPartial<Value>, I>>(object: I): Value {
     const message = createBaseValue();
     message.nullValue = object.nullValue ?? undefined;
     message.numberValue = object.numberValue ?? undefined;
@@ -546,10 +546,10 @@ export const ListValue: MessageFns<ListValue> & ListValueWrapperFns = {
     return obj;
   },
 
-  create(base?: DeepPartial<ListValue>): ListValue {
-    return ListValue.fromPartial(base ?? {});
+  create<I extends Exact<DeepPartial<ListValue>, I>>(base?: I): ListValue {
+    return ListValue.fromPartial(base ?? ({} as any));
   },
-  fromPartial(object: DeepPartial<ListValue>): ListValue {
+  fromPartial<I extends Exact<DeepPartial<ListValue>, I>>(object: I): ListValue {
     const message = createBaseListValue();
     message.values = object.values?.map((e) => e) || [];
     return message;
@@ -578,6 +578,10 @@ export type DeepPartial<T> = T extends Builtin ? T
   : T extends {} ? { [K in keyof T]?: DeepPartial<T[K]> }
   : Partial<T>;
 
+type KeysOfUnion<T> = T extends T ? keyof T : never;
+export type Exact<P, I extends P> = P extends Builtin ? P
+  : P & { [K in keyof P]: Exact<P[K], I[K]> } & { [K in Exclude<keyof I, KeysOfUnion<P>>]: never };
+
 function isObject(value: any): boolean {
   return typeof value === "object" && value !== null;
 }
@@ -591,8 +595,8 @@ export interface MessageFns<T> {
   decode(input: BinaryReader | Uint8Array, length?: number): T;
   fromJSON(object: any): T;
   toJSON(message: T): unknown;
-  create(base?: DeepPartial<T>): T;
-  fromPartial(object: DeepPartial<T>): T;
+  create<I extends Exact<DeepPartial<T>, I>>(base?: I): T;
+  fromPartial<I extends Exact<DeepPartial<T>, I>>(object: I): T;
 }
 
 export interface StructWrapperFns {

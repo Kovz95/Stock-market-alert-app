@@ -16,16 +16,38 @@ import (
 	db "stockalert/database/generated"
 )
 
-func (s *Server) ListAlerts(ctx context.Context, _ *alertv1.ListAlertsRequest) (*alertv1.ListAlertsResponse, error) {
+func (s *Server) ListAlerts(ctx context.Context, req *alertv1.ListAlertsRequest) (*alertv1.ListAlertsResponse, error) {
+	pageSize := req.GetPageSize()
+	if pageSize <= 0 {
+		pageSize = 20
+	}
+	if pageSize > 100 {
+		pageSize = 100
+	}
+	page := req.GetPage()
+	if page < 1 {
+		page = 1
+	}
+	offset := (page - 1) * pageSize
+
 	conn, err := s.pool.Acquire(ctx)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to acquire connection: %v", err)
 	}
 	defer conn.Release()
 
-	alerts, err := db.New(conn).ListAlerts(ctx)
+	q := db.New(conn)
+	alerts, err := q.ListAlertsPaginated(ctx, db.ListAlertsPaginatedParams{
+		Limit:  pageSize,
+		Offset: offset,
+	})
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to list alerts: %v", err)
+	}
+
+	totalCount, err := q.CountAlerts(ctx)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to count alerts: %v", err)
 	}
 
 	protoAlerts := make([]*alertv1.Alert, len(alerts))
@@ -33,7 +55,13 @@ func (s *Server) ListAlerts(ctx context.Context, _ *alertv1.ListAlertsRequest) (
 		protoAlerts[i] = dbAlertToProto(a)
 	}
 
-	return &alertv1.ListAlertsResponse{Alerts: protoAlerts}, nil
+	hasNextPage := offset+int32(len(alerts)) < int32(totalCount)
+
+	return &alertv1.ListAlertsResponse{
+		Alerts:      protoAlerts,
+		HasNextPage: hasNextPage,
+		TotalCount:  int32(totalCount),
+	}, nil
 }
 
 func (s *Server) GetAlert(ctx context.Context, req *alertv1.GetAlertRequest) (*alertv1.GetAlertResponse, error) {

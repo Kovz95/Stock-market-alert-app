@@ -1,18 +1,22 @@
+
 version: v2
+managed:
+  enabled: true
 plugins:
-  - remote: buf.build/protocolbuffers/go
+  # Go: Base protobuf
+  - local: protoc-gen-go
     out: gen/go
-    opt: paths=source_relative
-  - remote: buf.build/grpc/go
-    out: gen/go
-    opt: paths=source_relative
-  - remote: buf.build/community/stephenh-ts-proto
-    out: gen/ts
     opt:
-      - outputServices=nice-grpc
-      - outputServices=generic-definitions
-      - useExactTypes=false
-      - esModuleInterop=true
-      - env=node
-inputs:
-  - directory: proto
+      - paths=source_relative
+  - remote: buf.build/grpc/go:v1.6.0
+    out: gen/go
+    opt:
+      - paths=source_relative
+  - local: protoc-gen-ts_proto
+    out: gen/ts
+    strategy: all
+    opt:
+      - useExactTypes=true
+      - useOptionals=messages
+      - outputServices=nice-grpc,outputServices=generic-definitions
+      - addGrpcMetadata=true

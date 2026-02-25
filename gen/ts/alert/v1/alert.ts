@@ -20,9 +20,9 @@ export interface Alert {
   ticker: string;
   ticker1: string;
   ticker2: string;
-  conditions: { [key: string]: any } | undefined;
+  conditions?: { [key: string]: any } | undefined;
   combinationLogic: string;
-  lastTriggered: Date | undefined;
+  lastTriggered?: Date | undefined;
   action: string;
   timeframe: string;
   exchange: string;
@@ -30,20 +30,26 @@ export interface Alert {
   ratio: string;
   isRatio: boolean;
   adjustmentMethod: string;
-  dtpParams: { [key: string]: any } | undefined;
-  multiTimeframeParams: { [key: string]: any } | undefined;
-  mixedTimeframeParams: { [key: string]: any } | undefined;
-  rawPayload: { [key: string]: any } | undefined;
-  createdAt: Date | undefined;
-  updatedAt: Date | undefined;
+  dtpParams?: { [key: string]: any } | undefined;
+  multiTimeframeParams?: { [key: string]: any } | undefined;
+  mixedTimeframeParams?: { [key: string]: any } | undefined;
+  rawPayload?: { [key: string]: any } | undefined;
+  createdAt?: Date | undefined;
+  updatedAt?: Date | undefined;
 }
 
-/** ListAlerts */
+/** ListAlerts (paginated) */
 export interface ListAlertsRequest {
+  /** default 20, max 100 */
+  pageSize: number;
+  /** 1-based page number */
+  page: number;
 }
 
 export interface ListAlertsResponse {
   alerts: Alert[];
+  hasNextPage: boolean;
+  totalCount: number;
 }
 
 /** GetAlert */
@@ -52,7 +58,7 @@ export interface GetAlertRequest {
 }
 
 export interface GetAlertResponse {
-  alert: Alert | undefined;
+  alert?: Alert | undefined;
 }
 
 /** CreateAlert */
@@ -62,7 +68,7 @@ export interface CreateAlertRequest {
   ticker: string;
   ticker1: string;
   ticker2: string;
-  conditions: { [key: string]: any } | undefined;
+  conditions?: { [key: string]: any } | undefined;
   combinationLogic: string;
   action: string;
   timeframe: string;
@@ -71,14 +77,14 @@ export interface CreateAlertRequest {
   ratio: string;
   isRatio: boolean;
   adjustmentMethod: string;
-  dtpParams: { [key: string]: any } | undefined;
-  multiTimeframeParams: { [key: string]: any } | undefined;
-  mixedTimeframeParams: { [key: string]: any } | undefined;
-  rawPayload: { [key: string]: any } | undefined;
+  dtpParams?: { [key: string]: any } | undefined;
+  multiTimeframeParams?: { [key: string]: any } | undefined;
+  mixedTimeframeParams?: { [key: string]: any } | undefined;
+  rawPayload?: { [key: string]: any } | undefined;
 }
 
 export interface CreateAlertResponse {
-  alert: Alert | undefined;
+  alert?: Alert | undefined;
 }
 
 /** UpdateAlert */
@@ -89,7 +95,7 @@ export interface UpdateAlertRequest {
   ticker: string;
   ticker1: string;
   ticker2: string;
-  conditions: { [key: string]: any } | undefined;
+  conditions?: { [key: string]: any } | undefined;
   combinationLogic: string;
   action: string;
   timeframe: string;
@@ -98,14 +104,14 @@ export interface UpdateAlertRequest {
   ratio: string;
   isRatio: boolean;
   adjustmentMethod: string;
-  dtpParams: { [key: string]: any } | undefined;
-  multiTimeframeParams: { [key: string]: any } | undefined;
-  mixedTimeframeParams: { [key: string]: any } | undefined;
-  rawPayload: { [key: string]: any } | undefined;
+  dtpParams?: { [key: string]: any } | undefined;
+  multiTimeframeParams?: { [key: string]: any } | undefined;
+  mixedTimeframeParams?: { [key: string]: any } | undefined;
+  rawPayload?: { [key: string]: any } | undefined;
 }
 
 export interface UpdateAlertResponse {
-  alert: Alert | undefined;
+  alert?: Alert | undefined;
 }
 
 /** DeleteAlert */
@@ -123,7 +129,7 @@ export interface BulkUpdateLastTriggeredRequest {
 
 export interface BulkUpdateLastTriggeredRequest_AlertTrigger {
   alertId: string;
-  lastTriggered: Date | undefined;
+  lastTriggered?: Date | undefined;
 }
 
 export interface BulkUpdateLastTriggeredResponse {
@@ -566,10 +572,10 @@ export const Alert: MessageFns<Alert> = {
     return obj;
   },
 
-  create(base?: DeepPartial<Alert>): Alert {
-    return Alert.fromPartial(base ?? {});
+  create<I extends Exact<DeepPartial<Alert>, I>>(base?: I): Alert {
+    return Alert.fromPartial(base ?? ({} as any));
   },
-  fromPartial(object: DeepPartial<Alert>): Alert {
+  fromPartial<I extends Exact<DeepPartial<Alert>, I>>(object: I): Alert {
     const message = createBaseAlert();
     message.alertId = object.alertId ?? "";
     message.name = object.name ?? "";
@@ -598,11 +604,17 @@ export const Alert: MessageFns<Alert> = {
 };
 
 function createBaseListAlertsRequest(): ListAlertsRequest {
-  return {};
+  return { pageSize: 0, page: 0 };
 }
 
 export const ListAlertsRequest: MessageFns<ListAlertsRequest> = {
-  encode(_: ListAlertsRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+  encode(message: ListAlertsRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.pageSize !== 0) {
+      writer.uint32(8).int32(message.pageSize);
+    }
+    if (message.page !== 0) {
+      writer.uint32(16).int32(message.page);
+    }
     return writer;
   },
 
@@ -613,6 +625,22 @@ export const ListAlertsRequest: MessageFns<ListAlertsRequest> = {
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 8) {
+            break;
+          }
+
+          message.pageSize = reader.int32();
+          continue;
+        }
+        case 2: {
+          if (tag !== 16) {
+            break;
+          }
+
+          message.page = reader.int32();
+          continue;
+        }
       }
       if ((tag & 7) === 4 || tag === 0) {
         break;
@@ -622,32 +650,53 @@ export const ListAlertsRequest: MessageFns<ListAlertsRequest> = {
     return message;
   },
 
-  fromJSON(_: any): ListAlertsRequest {
-    return {};
+  fromJSON(object: any): ListAlertsRequest {
+    return {
+      pageSize: isSet(object.pageSize)
+        ? globalThis.Number(object.pageSize)
+        : isSet(object.page_size)
+        ? globalThis.Number(object.page_size)
+        : 0,
+      page: isSet(object.page) ? globalThis.Number(object.page) : 0,
+    };
   },
 
-  toJSON(_: ListAlertsRequest): unknown {
+  toJSON(message: ListAlertsRequest): unknown {
     const obj: any = {};
+    if (message.pageSize !== 0) {
+      obj.pageSize = Math.round(message.pageSize);
+    }
+    if (message.page !== 0) {
+      obj.page = Math.round(message.page);
+    }
     return obj;
   },
 
-  create(base?: DeepPartial<ListAlertsRequest>): ListAlertsRequest {
-    return ListAlertsRequest.fromPartial(base ?? {});
+  create<I extends Exact<DeepPartial<ListAlertsRequest>, I>>(base?: I): ListAlertsRequest {
+    return ListAlertsRequest.fromPartial(base ?? ({} as any));
   },
-  fromPartial(_: DeepPartial<ListAlertsRequest>): ListAlertsRequest {
+  fromPartial<I extends Exact<DeepPartial<ListAlertsRequest>, I>>(object: I): ListAlertsRequest {
     const message = createBaseListAlertsRequest();
+    message.pageSize = object.pageSize ?? 0;
+    message.page = object.page ?? 0;
     return message;
   },
 };
 
 function createBaseListAlertsResponse(): ListAlertsResponse {
-  return { alerts: [] };
+  return { alerts: [], hasNextPage: false, totalCount: 0 };
 }
 
 export const ListAlertsResponse: MessageFns<ListAlertsResponse> = {
   encode(message: ListAlertsResponse, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
     for (const v of message.alerts) {
       Alert.encode(v!, writer.uint32(10).fork()).join();
+    }
+    if (message.hasNextPage !== false) {
+      writer.uint32(16).bool(message.hasNextPage);
+    }
+    if (message.totalCount !== 0) {
+      writer.uint32(24).int32(message.totalCount);
     }
     return writer;
   },
@@ -667,6 +716,22 @@ export const ListAlertsResponse: MessageFns<ListAlertsResponse> = {
           message.alerts.push(Alert.decode(reader, reader.uint32()));
           continue;
         }
+        case 2: {
+          if (tag !== 16) {
+            break;
+          }
+
+          message.hasNextPage = reader.bool();
+          continue;
+        }
+        case 3: {
+          if (tag !== 24) {
+            break;
+          }
+
+          message.totalCount = reader.int32();
+          continue;
+        }
       }
       if ((tag & 7) === 4 || tag === 0) {
         break;
@@ -677,7 +742,19 @@ export const ListAlertsResponse: MessageFns<ListAlertsResponse> = {
   },
 
   fromJSON(object: any): ListAlertsResponse {
-    return { alerts: globalThis.Array.isArray(object?.alerts) ? object.alerts.map((e: any) => Alert.fromJSON(e)) : [] };
+    return {
+      alerts: globalThis.Array.isArray(object?.alerts) ? object.alerts.map((e: any) => Alert.fromJSON(e)) : [],
+      hasNextPage: isSet(object.hasNextPage)
+        ? globalThis.Boolean(object.hasNextPage)
+        : isSet(object.has_next_page)
+        ? globalThis.Boolean(object.has_next_page)
+        : false,
+      totalCount: isSet(object.totalCount)
+        ? globalThis.Number(object.totalCount)
+        : isSet(object.total_count)
+        ? globalThis.Number(object.total_count)
+        : 0,
+    };
   },
 
   toJSON(message: ListAlertsResponse): unknown {
@@ -685,15 +762,23 @@ export const ListAlertsResponse: MessageFns<ListAlertsResponse> = {
     if (message.alerts?.length) {
       obj.alerts = message.alerts.map((e) => Alert.toJSON(e));
     }
+    if (message.hasNextPage !== false) {
+      obj.hasNextPage = message.hasNextPage;
+    }
+    if (message.totalCount !== 0) {
+      obj.totalCount = Math.round(message.totalCount);
+    }
     return obj;
   },
 
-  create(base?: DeepPartial<ListAlertsResponse>): ListAlertsResponse {
-    return ListAlertsResponse.fromPartial(base ?? {});
+  create<I extends Exact<DeepPartial<ListAlertsResponse>, I>>(base?: I): ListAlertsResponse {
+    return ListAlertsResponse.fromPartial(base ?? ({} as any));
   },
-  fromPartial(object: DeepPartial<ListAlertsResponse>): ListAlertsResponse {
+  fromPartial<I extends Exact<DeepPartial<ListAlertsResponse>, I>>(object: I): ListAlertsResponse {
     const message = createBaseListAlertsResponse();
     message.alerts = object.alerts?.map((e) => Alert.fromPartial(e)) || [];
+    message.hasNextPage = object.hasNextPage ?? false;
+    message.totalCount = object.totalCount ?? 0;
     return message;
   },
 };
@@ -752,10 +837,10 @@ export const GetAlertRequest: MessageFns<GetAlertRequest> = {
     return obj;
   },
 
-  create(base?: DeepPartial<GetAlertRequest>): GetAlertRequest {
-    return GetAlertRequest.fromPartial(base ?? {});
+  create<I extends Exact<DeepPartial<GetAlertRequest>, I>>(base?: I): GetAlertRequest {
+    return GetAlertRequest.fromPartial(base ?? ({} as any));
   },
-  fromPartial(object: DeepPartial<GetAlertRequest>): GetAlertRequest {
+  fromPartial<I extends Exact<DeepPartial<GetAlertRequest>, I>>(object: I): GetAlertRequest {
     const message = createBaseGetAlertRequest();
     message.alertId = object.alertId ?? "";
     return message;
@@ -810,10 +895,10 @@ export const GetAlertResponse: MessageFns<GetAlertResponse> = {
     return obj;
   },
 
-  create(base?: DeepPartial<GetAlertResponse>): GetAlertResponse {
-    return GetAlertResponse.fromPartial(base ?? {});
+  create<I extends Exact<DeepPartial<GetAlertResponse>, I>>(base?: I): GetAlertResponse {
+    return GetAlertResponse.fromPartial(base ?? ({} as any));
   },
-  fromPartial(object: DeepPartial<GetAlertResponse>): GetAlertResponse {
+  fromPartial<I extends Exact<DeepPartial<GetAlertResponse>, I>>(object: I): GetAlertResponse {
     const message = createBaseGetAlertResponse();
     message.alert = (object.alert !== undefined && object.alert !== null) ? Alert.fromPartial(object.alert) : undefined;
     return message;
@@ -1176,10 +1261,10 @@ export const CreateAlertRequest: MessageFns<CreateAlertRequest> = {
     return obj;
   },
 
-  create(base?: DeepPartial<CreateAlertRequest>): CreateAlertRequest {
-    return CreateAlertRequest.fromPartial(base ?? {});
+  create<I extends Exact<DeepPartial<CreateAlertRequest>, I>>(base?: I): CreateAlertRequest {
+    return CreateAlertRequest.fromPartial(base ?? ({} as any));
   },
-  fromPartial(object: DeepPartial<CreateAlertRequest>): CreateAlertRequest {
+  fromPartial<I extends Exact<DeepPartial<CreateAlertRequest>, I>>(object: I): CreateAlertRequest {
     const message = createBaseCreateAlertRequest();
     message.name = object.name ?? "";
     message.stockName = object.stockName ?? "";
@@ -1251,10 +1336,10 @@ export const CreateAlertResponse: MessageFns<CreateAlertResponse> = {
     return obj;
   },
 
-  create(base?: DeepPartial<CreateAlertResponse>): CreateAlertResponse {
-    return CreateAlertResponse.fromPartial(base ?? {});
+  create<I extends Exact<DeepPartial<CreateAlertResponse>, I>>(base?: I): CreateAlertResponse {
+    return CreateAlertResponse.fromPartial(base ?? ({} as any));
   },
-  fromPartial(object: DeepPartial<CreateAlertResponse>): CreateAlertResponse {
+  fromPartial<I extends Exact<DeepPartial<CreateAlertResponse>, I>>(object: I): CreateAlertResponse {
     const message = createBaseCreateAlertResponse();
     message.alert = (object.alert !== undefined && object.alert !== null) ? Alert.fromPartial(object.alert) : undefined;
     return message;
@@ -1637,10 +1722,10 @@ export const UpdateAlertRequest: MessageFns<UpdateAlertRequest> = {
     return obj;
   },
 
-  create(base?: DeepPartial<UpdateAlertRequest>): UpdateAlertRequest {
-    return UpdateAlertRequest.fromPartial(base ?? {});
+  create<I extends Exact<DeepPartial<UpdateAlertRequest>, I>>(base?: I): UpdateAlertRequest {
+    return UpdateAlertRequest.fromPartial(base ?? ({} as any));
   },
-  fromPartial(object: DeepPartial<UpdateAlertRequest>): UpdateAlertRequest {
+  fromPartial<I extends Exact<DeepPartial<UpdateAlertRequest>, I>>(object: I): UpdateAlertRequest {
     const message = createBaseUpdateAlertRequest();
     message.alertId = object.alertId ?? "";
     message.name = object.name ?? "";
@@ -1713,10 +1798,10 @@ export const UpdateAlertResponse: MessageFns<UpdateAlertResponse> = {
     return obj;
   },
 
-  create(base?: DeepPartial<UpdateAlertResponse>): UpdateAlertResponse {
-    return UpdateAlertResponse.fromPartial(base ?? {});
+  create<I extends Exact<DeepPartial<UpdateAlertResponse>, I>>(base?: I): UpdateAlertResponse {
+    return UpdateAlertResponse.fromPartial(base ?? ({} as any));
   },
-  fromPartial(object: DeepPartial<UpdateAlertResponse>): UpdateAlertResponse {
+  fromPartial<I extends Exact<DeepPartial<UpdateAlertResponse>, I>>(object: I): UpdateAlertResponse {
     const message = createBaseUpdateAlertResponse();
     message.alert = (object.alert !== undefined && object.alert !== null) ? Alert.fromPartial(object.alert) : undefined;
     return message;
@@ -1777,10 +1862,10 @@ export const DeleteAlertRequest: MessageFns<DeleteAlertRequest> = {
     return obj;
   },
 
-  create(base?: DeepPartial<DeleteAlertRequest>): DeleteAlertRequest {
-    return DeleteAlertRequest.fromPartial(base ?? {});
+  create<I extends Exact<DeepPartial<DeleteAlertRequest>, I>>(base?: I): DeleteAlertRequest {
+    return DeleteAlertRequest.fromPartial(base ?? ({} as any));
   },
-  fromPartial(object: DeepPartial<DeleteAlertRequest>): DeleteAlertRequest {
+  fromPartial<I extends Exact<DeepPartial<DeleteAlertRequest>, I>>(object: I): DeleteAlertRequest {
     const message = createBaseDeleteAlertRequest();
     message.alertId = object.alertId ?? "";
     return message;
@@ -1821,10 +1906,10 @@ export const DeleteAlertResponse: MessageFns<DeleteAlertResponse> = {
     return obj;
   },
 
-  create(base?: DeepPartial<DeleteAlertResponse>): DeleteAlertResponse {
-    return DeleteAlertResponse.fromPartial(base ?? {});
+  create<I extends Exact<DeepPartial<DeleteAlertResponse>, I>>(base?: I): DeleteAlertResponse {
+    return DeleteAlertResponse.fromPartial(base ?? ({} as any));
   },
-  fromPartial(_: DeepPartial<DeleteAlertResponse>): DeleteAlertResponse {
+  fromPartial<I extends Exact<DeepPartial<DeleteAlertResponse>, I>>(_: I): DeleteAlertResponse {
     const message = createBaseDeleteAlertResponse();
     return message;
   },
@@ -1882,10 +1967,12 @@ export const BulkUpdateLastTriggeredRequest: MessageFns<BulkUpdateLastTriggeredR
     return obj;
   },
 
-  create(base?: DeepPartial<BulkUpdateLastTriggeredRequest>): BulkUpdateLastTriggeredRequest {
-    return BulkUpdateLastTriggeredRequest.fromPartial(base ?? {});
+  create<I extends Exact<DeepPartial<BulkUpdateLastTriggeredRequest>, I>>(base?: I): BulkUpdateLastTriggeredRequest {
+    return BulkUpdateLastTriggeredRequest.fromPartial(base ?? ({} as any));
   },
-  fromPartial(object: DeepPartial<BulkUpdateLastTriggeredRequest>): BulkUpdateLastTriggeredRequest {
+  fromPartial<I extends Exact<DeepPartial<BulkUpdateLastTriggeredRequest>, I>>(
+    object: I,
+  ): BulkUpdateLastTriggeredRequest {
     const message = createBaseBulkUpdateLastTriggeredRequest();
     message.triggers = object.triggers?.map((e) => BulkUpdateLastTriggeredRequest_AlertTrigger.fromPartial(e)) || [];
     return message;
@@ -1968,11 +2055,13 @@ export const BulkUpdateLastTriggeredRequest_AlertTrigger: MessageFns<BulkUpdateL
     return obj;
   },
 
-  create(base?: DeepPartial<BulkUpdateLastTriggeredRequest_AlertTrigger>): BulkUpdateLastTriggeredRequest_AlertTrigger {
-    return BulkUpdateLastTriggeredRequest_AlertTrigger.fromPartial(base ?? {});
+  create<I extends Exact<DeepPartial<BulkUpdateLastTriggeredRequest_AlertTrigger>, I>>(
+    base?: I,
+  ): BulkUpdateLastTriggeredRequest_AlertTrigger {
+    return BulkUpdateLastTriggeredRequest_AlertTrigger.fromPartial(base ?? ({} as any));
   },
-  fromPartial(
-    object: DeepPartial<BulkUpdateLastTriggeredRequest_AlertTrigger>,
+  fromPartial<I extends Exact<DeepPartial<BulkUpdateLastTriggeredRequest_AlertTrigger>, I>>(
+    object: I,
   ): BulkUpdateLastTriggeredRequest_AlertTrigger {
     const message = createBaseBulkUpdateLastTriggeredRequest_AlertTrigger();
     message.alertId = object.alertId ?? "";
@@ -2035,10 +2124,12 @@ export const BulkUpdateLastTriggeredResponse: MessageFns<BulkUpdateLastTriggered
     return obj;
   },
 
-  create(base?: DeepPartial<BulkUpdateLastTriggeredResponse>): BulkUpdateLastTriggeredResponse {
-    return BulkUpdateLastTriggeredResponse.fromPartial(base ?? {});
+  create<I extends Exact<DeepPartial<BulkUpdateLastTriggeredResponse>, I>>(base?: I): BulkUpdateLastTriggeredResponse {
+    return BulkUpdateLastTriggeredResponse.fromPartial(base ?? ({} as any));
   },
-  fromPartial(object: DeepPartial<BulkUpdateLastTriggeredResponse>): BulkUpdateLastTriggeredResponse {
+  fromPartial<I extends Exact<DeepPartial<BulkUpdateLastTriggeredResponse>, I>>(
+    object: I,
+  ): BulkUpdateLastTriggeredResponse {
     const message = createBaseBulkUpdateLastTriggeredResponse();
     message.updatedCount = object.updatedCount ?? 0;
     return message;
@@ -2158,6 +2249,10 @@ export type DeepPartial<T> = T extends Builtin ? T
   : T extends {} ? { [K in keyof T]?: DeepPartial<T[K]> }
   : Partial<T>;
 
+type KeysOfUnion<T> = T extends T ? keyof T : never;
+export type Exact<P, I extends P> = P extends Builtin ? P
+  : P & { [K in keyof P]: Exact<P[K], I[K]> } & { [K in Exclude<keyof I, KeysOfUnion<P>>]: never };
+
 function toTimestamp(date: Date): Timestamp {
   const seconds = Math.trunc(date.getTime() / 1_000);
   const nanos = (date.getTime() % 1_000) * 1_000_000;
@@ -2193,6 +2288,6 @@ export interface MessageFns<T> {
   decode(input: BinaryReader | Uint8Array, length?: number): T;
   fromJSON(object: any): T;
   toJSON(message: T): unknown;
-  create(base?: DeepPartial<T>): T;
-  fromPartial(object: DeepPartial<T>): T;
+  create<I extends Exact<DeepPartial<T>, I>>(base?: I): T;
+  fromPartial<I extends Exact<DeepPartial<T>, I>>(object: I): T;
 }

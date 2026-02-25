@@ -28,6 +28,17 @@ func (q *Queries) BulkUpdateLastTriggered(ctx context.Context, arg BulkUpdateLas
 	return err
 }
 
+const countAlerts = `-- name: CountAlerts :one
+SELECT COUNT(*) FROM alerts
+`
+
+func (q *Queries) CountAlerts(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, countAlerts)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createAlert = `-- name: CreateAlert :one
 INSERT INTO alerts (
     alert_id, name, stock_name, ticker, ticker1, ticker2,
@@ -182,6 +193,66 @@ ORDER BY updated_at DESC, name ASC
 
 func (q *Queries) ListAlerts(ctx context.Context) ([]Alert, error) {
 	rows, err := q.db.Query(ctx, listAlerts)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Alert
+	for rows.Next() {
+		var i Alert
+		if err := rows.Scan(
+			&i.AlertID,
+			&i.Name,
+			&i.StockName,
+			&i.Ticker,
+			&i.Ticker1,
+			&i.Ticker2,
+			&i.Conditions,
+			&i.CombinationLogic,
+			&i.LastTriggered,
+			&i.Action,
+			&i.Timeframe,
+			&i.Exchange,
+			&i.Country,
+			&i.Ratio,
+			&i.IsRatio,
+			&i.AdjustmentMethod,
+			&i.DtpParams,
+			&i.MultiTimeframeParams,
+			&i.MixedTimeframeParams,
+			&i.RawPayload,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listAlertsPaginated = `-- name: ListAlertsPaginated :many
+SELECT
+    alert_id, name, stock_name, ticker, ticker1, ticker2,
+    conditions, combination_logic, last_triggered, action,
+    timeframe, exchange, country, ratio, is_ratio,
+    adjustment_method, dtp_params, multi_timeframe_params,
+    mixed_timeframe_params, raw_payload, created_at, updated_at
+FROM alerts
+ORDER BY updated_at DESC, name ASC
+LIMIT $1 OFFSET $2
+`
+
+type ListAlertsPaginatedParams struct {
+	Limit  int32
+	Offset int32
+}
+
+func (q *Queries) ListAlertsPaginated(ctx context.Context, arg ListAlertsPaginatedParams) ([]Alert, error) {
+	rows, err := q.db.Query(ctx, listAlertsPaginated, arg.Limit, arg.Offset)
 	if err != nil {
 		return nil, err
 	}

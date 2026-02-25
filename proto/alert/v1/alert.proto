@@ -33,11 +33,16 @@ message Alert {
   google.protobuf.Timestamp updated_at = 22;
 }
 
-// ListAlerts
-message ListAlertsRequest {}
+// ListAlerts (paginated)
+message ListAlertsRequest {
+  int32 page_size = 1;  // default 20, max 100
+  int32 page = 2;       // 1-based page number
+}
 
 message ListAlertsResponse {
   repeated Alert alerts = 1;
+  bool has_next_page = 2;
+  int32 total_count = 3;
 }
 
 // GetAlert

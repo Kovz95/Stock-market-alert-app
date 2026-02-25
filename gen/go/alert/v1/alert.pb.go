@@ -236,9 +236,11 @@ func (x *Alert) GetUpdatedAt() *timestamppb.Timestamp {
 	return nil
 }
 
-// ListAlerts
+// ListAlerts (paginated)
 type ListAlertsRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
+	PageSize      int32                  `protobuf:"varint,1,opt,name=page_size,json=pageSize,proto3" json:"page_size,omitempty"` // default 20, max 100
+	Page          int32                  `protobuf:"varint,2,opt,name=page,proto3" json:"page,omitempty"`                         // 1-based page number
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -273,9 +275,25 @@ func (*ListAlertsRequest) Descriptor() ([]byte, []int) {
 	return file_alert_v1_alert_proto_rawDescGZIP(), []int{1}
 }
 
+func (x *ListAlertsRequest) GetPageSize() int32 {
+	if x != nil {
+		return x.PageSize
+	}
+	return 0
+}
+
+func (x *ListAlertsRequest) GetPage() int32 {
+	if x != nil {
+		return x.Page
+	}
+	return 0
+}
+
 type ListAlertsResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Alerts        []*Alert               `protobuf:"bytes,1,rep,name=alerts,proto3" json:"alerts,omitempty"`
+	HasNextPage   bool                   `protobuf:"varint,2,opt,name=has_next_page,json=hasNextPage,proto3" json:"has_next_page,omitempty"`
+	TotalCount    int32                  `protobuf:"varint,3,opt,name=total_count,json=totalCount,proto3" json:"total_count,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -315,6 +333,20 @@ func (x *ListAlertsResponse) GetAlerts() []*Alert {
 		return x.Alerts
 	}
 	return nil
+}
+
+func (x *ListAlertsResponse) GetHasNextPage() bool {
+	if x != nil {
+		return x.HasNextPage
+	}
+	return false
+}
+
+func (x *ListAlertsResponse) GetTotalCount() int32 {
+	if x != nil {
+		return x.TotalCount
+	}
+	return 0
 }
 
 // GetAlert
@@ -1121,10 +1153,15 @@ const file_alert_v1_alert_proto_rawDesc = "" +
 	"\n" +
 	"created_at\x18\x15 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x129\n" +
 	"\n" +
-	"updated_at\x18\x16 \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\"\x13\n" +
-	"\x11ListAlertsRequest\"H\n" +
+	"updated_at\x18\x16 \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\"D\n" +
+	"\x11ListAlertsRequest\x12\x1b\n" +
+	"\tpage_size\x18\x01 \x01(\x05R\bpageSize\x12\x12\n" +
+	"\x04page\x18\x02 \x01(\x05R\x04page\"\x8d\x01\n" +
 	"\x12ListAlertsResponse\x122\n" +
-	"\x06alerts\x18\x01 \x03(\v2\x1a.stockalert.alert.v1.AlertR\x06alerts\",\n" +
+	"\x06alerts\x18\x01 \x03(\v2\x1a.stockalert.alert.v1.AlertR\x06alerts\x12\"\n" +
+	"\rhas_next_page\x18\x02 \x01(\bR\vhasNextPage\x12\x1f\n" +
+	"\vtotal_count\x18\x03 \x01(\x05R\n" +
+	"totalCount\",\n" +
 	"\x0fGetAlertRequest\x12\x19\n" +
 	"\balert_id\x18\x01 \x01(\tR\aalertId\"D\n" +
 	"\x10GetAlertResponse\x120\n" +
@@ -1201,7 +1238,9 @@ const file_alert_v1_alert_proto_rawDesc = "" +
 	"\vCreateAlert\x12'.stockalert.alert.v1.CreateAlertRequest\x1a(.stockalert.alert.v1.CreateAlertResponse\x12`\n" +
 	"\vUpdateAlert\x12'.stockalert.alert.v1.UpdateAlertRequest\x1a(.stockalert.alert.v1.UpdateAlertResponse\x12`\n" +
 	"\vDeleteAlert\x12'.stockalert.alert.v1.DeleteAlertRequest\x1a(.stockalert.alert.v1.DeleteAlertResponse\x12\x84\x01\n" +
-	"\x17BulkUpdateLastTriggered\x123.stockalert.alert.v1.BulkUpdateLastTriggeredRequest\x1a4.stockalert.alert.v1.BulkUpdateLastTriggeredResponseB$Z\"stockalert/gen/go/alert/v1;alertv1b\x06proto3"
+	"\x17BulkUpdateLastTriggered\x123.stockalert.alert.v1.BulkUpdateLastTriggeredRequest\x1a4.stockalert.alert.v1.BulkUpdateLastTriggeredResponseB\xb7\x01\n" +
+	"\x17com.stockalert.alert.v1B\n" +
+	"AlertProtoP\x01Z\"stockalert/gen/go/alert/v1;alertv1\xa2\x02\x03SAX\xaa\x02\x13Stockalert.Alert.V1\xca\x02\x13Stockalert\\Alert\\V1\xe2\x02\x1fStockalert\\Alert\\V1\\GPBMetadata\xea\x02\x15Stockalert::Alert::V1b\x06proto3"
 
 var (
 	file_alert_v1_alert_proto_rawDescOnce sync.Once

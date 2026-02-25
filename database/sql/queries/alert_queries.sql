@@ -8,6 +8,20 @@ SELECT
 FROM alerts
 ORDER BY updated_at DESC, name ASC;
 
+-- name: ListAlertsPaginated :many
+SELECT
+    alert_id, name, stock_name, ticker, ticker1, ticker2,
+    conditions, combination_logic, last_triggered, action,
+    timeframe, exchange, country, ratio, is_ratio,
+    adjustment_method, dtp_params, multi_timeframe_params,
+    mixed_timeframe_params, raw_payload, created_at, updated_at
+FROM alerts
+ORDER BY updated_at DESC, name ASC
+LIMIT $1 OFFSET $2;
+
+-- name: CountAlerts :one
+SELECT COUNT(*) FROM alerts;
+
 -- name: GetAlert :one
 SELECT
     alert_id, name, stock_name, ticker, ticker1, ticker2,
