@@ -28,6 +28,11 @@ static_resources:
                           route:
                             cluster: discord_service
                             timeout: 30s
+                        - match:
+                            prefix: "/stockalert.price.v1.PriceService/"
+                          route:
+                            cluster: price_service
+                            timeout: 30s
                       cors:
                         allow_origin_string_match:
                           - prefix: "*"
@@ -82,4 +87,22 @@ static_resources:
                   address:
                     socket_address:
                       address: discord_service
+                      port_value: 50051
+    - name: price_service
+      connect_timeout: 5s
+      type: LOGICAL_DNS
+      lb_policy: ROUND_ROBIN
+      typed_extension_protocol_options:
+        envoy.extensions.upstreams.http.v3.HttpProtocolOptions:
+          "@type": type.googleapis.com/envoy.extensions.upstreams.http.v3.HttpProtocolOptions
+          explicit_http_config:
+            http2_protocol_options: {}
+      load_assignment:
+        cluster_name: price_service
+        endpoints:
+          - lb_endpoints:
+              - endpoint:
+                  address:
+                    socket_address:
+                      address: price_service
                       port_value: 50051

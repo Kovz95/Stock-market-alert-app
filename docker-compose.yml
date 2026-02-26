@@ -57,6 +57,23 @@ services:
       timeout: 5s
       retries: 5
 
+  price_service:
+    build:
+      context: .
+      dockerfile: apps/grpc/price_service/Dockerfile
+    container_name: stockalert-price-service
+    restart: unless-stopped
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-stockalertapp}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-stockalertapp}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "/bin/grpc_health_probe", "-addr=:50051"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   discord_service:
     build:
       context: .

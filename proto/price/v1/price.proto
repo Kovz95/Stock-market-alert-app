@@ -1,0 +1,91 @@
+syntax = "proto3";
+
+package stockalert.price.v1;
+
+option go_package = "stockalert/gen/go/price/v1;pricev1";
+
+import "google/protobuf/timestamp.proto";
+
+// StockMetadata is a single row from stock_metadata for filters and display.
+message StockMetadata {
+  string symbol = 1;
+  string name = 2;
+  string exchange = 3;
+  string isin = 4;
+}
+
+// GetStockMetadataMap returns all stock metadata for the price DB UI (filters, ticker list).
+message GetStockMetadataMapRequest {}
+
+message GetStockMetadataMapResponse {
+  repeated StockMetadata items = 1;
+}
+
+// DatabaseStats holds record counts, ticker counts, and date ranges per timeframe.
+message DatabaseStats {
+  int64 hourly_records = 1;
+  int64 daily_records = 2;
+  int64 weekly_records = 3;
+  int32 hourly_tickers = 4;
+  int32 daily_tickers = 5;
+  int32 weekly_tickers = 6;
+  google.protobuf.Timestamp hourly_min = 7;
+  google.protobuf.Timestamp hourly_max = 8;
+  google.protobuf.Timestamp daily_min = 9;
+  google.protobuf.Timestamp daily_max = 10;
+  google.protobuf.Timestamp weekly_min = 11;
+  google.protobuf.Timestamp weekly_max = 12;
+}
+
+message GetDatabaseStatsRequest {}
+
+message GetDatabaseStatsResponse {
+  DatabaseStats stats = 1;
+}
+
+// Timeframe for price data.
+enum Timeframe {
+  TIMEFRAME_UNSPECIFIED = 0;
+  TIMEFRAME_HOURLY = 1;
+  TIMEFRAME_DAILY = 2;
+  TIMEFRAME_WEEKLY = 3;
+}
+
+// DayFilter for filtering by weekdays/weekends.
+enum DayFilter {
+  DAY_FILTER_UNSPECIFIED = 0;
+  DAY_FILTER_ALL = 1;
+  DAY_FILTER_WEEKDAYS = 2;
+  DAY_FILTER_WEEKENDS = 3;
+}
+
+// PriceRow is a single OHLCV bar (daily, hourly, or weekly).
+message PriceRow {
+  string ticker = 1;
+  google.protobuf.Timestamp time = 2;  // date for daily, week_ending for weekly, datetime for hourly
+  double open = 3;
+  double high = 4;
+  double low = 5;
+  double close = 6;
+  int64 volume = 7;
+}
+
+message LoadPriceDataRequest {
+  Timeframe timeframe = 1;
+  repeated string tickers = 2;  // empty = all tickers
+  google.protobuf.Timestamp start_date = 3;
+  google.protobuf.Timestamp end_date = 4;
+  int32 max_rows = 5;  // required, e.g. 5000
+  DayFilter day_filter = 6;
+}
+
+message LoadPriceDataResponse {
+  repeated PriceRow rows = 1;
+}
+
+// PriceService provides read-only access to the price database.
+service PriceService {
+  rpc GetStockMetadataMap(GetStockMetadataMapRequest) returns (GetStockMetadataMapResponse);
+  rpc GetDatabaseStats(GetDatabaseStatsRequest) returns (GetDatabaseStatsResponse);
+  rpc LoadPriceData(LoadPriceDataRequest) returns (LoadPriceDataResponse);
+}
