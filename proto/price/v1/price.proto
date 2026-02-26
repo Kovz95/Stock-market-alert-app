@@ -83,9 +83,73 @@ message LoadPriceDataResponse {
   repeated PriceRow rows = 1;
 }
 
+// --- Stale scan (read-only) ---
+
+// StaleTickerRow represents one ticker that is behind expected (daily or weekly).
+message StaleTickerRow {
+  string ticker = 1;
+  google.protobuf.Timestamp last_update = 2;  // last date or week_ending
+  int32 days_old = 3;
+  string company_name = 4;
+  string exchange = 5;
+}
+
+// ScanStaleDaily: tickers where last daily bar < expected trading day.
+message ScanStaleDailyRequest {
+  int32 limit = 1;  // max rows to return, 0 = no limit
+}
+
+message ScanStaleDailyResponse {
+  repeated StaleTickerRow rows = 1;
+}
+
+// ScanStaleWeekly: tickers where last week_ending < expected Friday.
+message ScanStaleWeeklyRequest {
+  int32 limit = 1;
+}
+
+message ScanStaleWeeklyResponse {
+  repeated StaleTickerRow rows = 1;
+}
+
+// StaleHourlyRow: one ticker behind on hourly data.
+message StaleHourlyRow {
+  string ticker = 1;
+  google.protobuf.Timestamp last_hour = 2;
+  double hours_behind = 3;
+}
+
+// ScanStaleHourly: tickers missing the most recent hourly bar.
+message ScanStaleHourlyRequest {
+  int32 limit = 1;
+}
+
+message ScanStaleHourlyResponse {
+  repeated StaleHourlyRow rows = 1;
+  google.protobuf.Timestamp latest_hour = 2;   // reference expected hour used
+  int32 total_tickers = 3;
+  int32 up_to_date_count = 4;
+}
+
+// GetHourlyDataQuality: freshness and gap metrics for hourly_prices.
+message GetHourlyDataQualityRequest {}
+
+message GetHourlyDataQualityResponse {
+  int32 total_tickers = 1;
+  int32 stale_tickers = 2;       // last_dt < now - 48h
+  google.protobuf.Timestamp oldest_stale = 3;
+  int32 gap_tickers = 4;         // tickers with trading gap > 72h in last 60d
+  double worst_gap_hours = 5;    // max trading-hour gap
+  double worst_calendar_gap_hours = 6;
+}
+
 // PriceService provides read-only access to the price database.
 service PriceService {
   rpc GetStockMetadataMap(GetStockMetadataMapRequest) returns (GetStockMetadataMapResponse);
   rpc GetDatabaseStats(GetDatabaseStatsRequest) returns (GetDatabaseStatsResponse);
   rpc LoadPriceData(LoadPriceDataRequest) returns (LoadPriceDataResponse);
+  rpc ScanStaleDaily(ScanStaleDailyRequest) returns (ScanStaleDailyResponse);
+  rpc ScanStaleWeekly(ScanStaleWeeklyRequest) returns (ScanStaleWeeklyResponse);
+  rpc ScanStaleHourly(ScanStaleHourlyRequest) returns (ScanStaleHourlyResponse);
+  rpc GetHourlyDataQuality(GetHourlyDataQualityRequest) returns (GetHourlyDataQualityResponse);
 }

@@ -271,3 +271,162 @@ func pgInt64(i pgtype.Int8) int64 {
 	}
 	return i.Int64
 }
+
+// --- Stale scan handlers ---
+
+func (s *Server) ScanStaleDaily(ctx context.Context, req *pricev1.ScanStaleDailyRequest) (*pricev1.ScanStaleDailyResponse, error) {
+	conn, err := s.pool.Acquire(ctx)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to acquire connection: %v", err)
+	}
+	defer conn.Release()
+
+	rows, err := db.New(conn).LastDailyPerTicker(ctx)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to list last daily per ticker: %v", err)
+	}
+
+	expected := expectedLastTradingDayUTC(time.Now().UTC())
+	expectedDate := time.Date(expected.Year(), expected.Month(), expected.Day(), 0, 0, 0, 0, time.UTC)
+	var out []*pricev1.StaleTickerRow
+	limit := req.Limit
+	if limit <= 0 {
+		limit = 10000
+	}
+	for _, r := range rows {
+		if !r.LastDate.Valid {
+			continue
+		}
+		lastDate := time.Date(r.LastDate.Time.Year(), r.LastDate.Time.Month(), r.LastDate.Time.Day(), 0, 0, 0, 0, time.UTC)
+		if !lastDate.Before(expectedDate) {
+			continue
+		}
+		daysOld := int32(expectedDate.Sub(lastDate).Hours() / 24)
+		out = append(out, &pricev1.StaleTickerRow{
+			Ticker:      r.Ticker,
+			LastUpdate:  timestamppb.New(lastDate),
+			DaysOld:     daysOld,
+			CompanyName: pgTextString(r.Name),
+			Exchange:    pgTextString(r.Exchange),
+		})
+		if int32(len(out)) >= limit {
+			break
+		}
+	}
+	return &pricev1.ScanStaleDailyResponse{Rows: out}, nil
+}
+
+func (s *Server) ScanStaleWeekly(ctx context.Context, req *pricev1.ScanStaleWeeklyRequest) (*pricev1.ScanStaleWeeklyResponse, error) {
+	conn, err := s.pool.Acquire(ctx)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to acquire connection: %v", err)
+	}
+	defer conn.Release()
+
+	expected := expectedWeekEndingUTC(time.Now().UTC())
+	limit := req.Limit
+	if limit <= 0 {
+		limit = 10000
+	}
+	rows, err := db.New(conn).StaleWeeklyTickers(ctx, db.StaleWeeklyTickersParams{
+		ExpectedWeekEnding: pgtype.Date{Time: expected, Valid: true},
+		LimitRows:          limit,
+	})
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to list stale weekly tickers: %v", err)
+	}
+
+	out := make([]*pricev1.StaleTickerRow, 0, len(rows))
+	for _, r := range rows {
+		var lastUpdate *timestamppb.Timestamp
+		if r.LastDate.Valid {
+			lastUpdate = timestamppb.New(dateToTime(r.LastDate))
+		}
+		out = append(out, &pricev1.StaleTickerRow{
+			Ticker:      r.Ticker,
+			LastUpdate:  lastUpdate,
+			DaysOld:     r.DaysOld,
+			CompanyName: pgTextString(r.Name),
+			Exchange:    pgTextString(r.Exchange),
+		})
+	}
+	return &pricev1.ScanStaleWeeklyResponse{Rows: out}, nil
+}
+
+func (s *Server) ScanStaleHourly(ctx context.Context, req *pricev1.ScanStaleHourlyRequest) (*pricev1.ScanStaleHourlyResponse, error) {
+	conn, err := s.pool.Acquire(ctx)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to acquire connection: %v", err)
+	}
+	defer conn.Release()
+
+	rows, err := db.New(conn).LastHourlyPerTicker(ctx)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to list last hourly per ticker: %v", err)
+	}
+
+	refHour := referenceHourUTC(time.Now().UTC())
+	limit := req.Limit
+	if limit <= 0 {
+		limit = 10000
+	}
+	var staleRows []*pricev1.StaleHourlyRow
+	upToDate := int32(0)
+	for _, r := range rows {
+		lastDt, ok := r.LastDt.(time.Time)
+		if !ok {
+			continue
+		}
+		lastHour := lastDt.Truncate(time.Hour)
+		if !lastHour.Before(refHour) {
+			upToDate++
+			continue
+		}
+		hoursBehind := refHour.Sub(lastHour).Hours()
+		staleRows = append(staleRows, &pricev1.StaleHourlyRow{
+			Ticker:      r.Ticker,
+			LastHour:    timestamppb.New(lastDt),
+			HoursBehind: hoursBehind,
+		})
+		if int32(len(staleRows)) >= limit {
+			break
+		}
+	}
+	return &pricev1.ScanStaleHourlyResponse{
+		Rows:           staleRows,
+		LatestHour:    timestamppb.New(refHour),
+		TotalTickers:  int32(len(rows)),
+		UpToDateCount: upToDate,
+	}, nil
+}
+
+func (s *Server) GetHourlyDataQuality(ctx context.Context, req *pricev1.GetHourlyDataQualityRequest) (*pricev1.GetHourlyDataQualityResponse, error) {
+	conn, err := s.pool.Acquire(ctx)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to acquire connection: %v", err)
+	}
+	defer conn.Release()
+
+	q := db.New(conn)
+	resp := &pricev1.GetHourlyDataQualityResponse{}
+
+	staleRow, err := q.HourlyQualityStale(ctx)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to get hourly quality stale: %v", err)
+	}
+	resp.TotalTickers = staleRow.TotalTickers
+	resp.StaleTickers = staleRow.StaleTickers
+	if t, ok := staleRow.OldestStale.(time.Time); ok {
+		resp.OldestStale = timestamppb.New(t)
+	}
+
+	gapsRow, err := q.HourlyQualityGaps(ctx)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to get hourly quality gaps: %v", err)
+	}
+	resp.GapTickers = gapsRow.GapTickers
+	resp.WorstGapHours = gapsRow.WorstGapHours
+	resp.WorstCalendarGapHours = gapsRow.WorstCalendarGapHours
+
+	return resp, nil
+}

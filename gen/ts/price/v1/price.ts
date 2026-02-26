@@ -171,6 +171,73 @@ export interface LoadPriceDataResponse {
   rows: PriceRow[];
 }
 
+/** StaleTickerRow represents one ticker that is behind expected (daily or weekly). */
+export interface StaleTickerRow {
+  ticker: string;
+  /** last date or week_ending */
+  lastUpdate?: Date | undefined;
+  daysOld: number;
+  companyName: string;
+  exchange: string;
+}
+
+/** ScanStaleDaily: tickers where last daily bar < expected trading day. */
+export interface ScanStaleDailyRequest {
+  /** max rows to return, 0 = no limit */
+  limit: number;
+}
+
+export interface ScanStaleDailyResponse {
+  rows: StaleTickerRow[];
+}
+
+/** ScanStaleWeekly: tickers where last week_ending < expected Friday. */
+export interface ScanStaleWeeklyRequest {
+  limit: number;
+}
+
+export interface ScanStaleWeeklyResponse {
+  rows: StaleTickerRow[];
+}
+
+/** StaleHourlyRow: one ticker behind on hourly data. */
+export interface StaleHourlyRow {
+  ticker: string;
+  lastHour?: Date | undefined;
+  hoursBehind: number;
+}
+
+/** ScanStaleHourly: tickers missing the most recent hourly bar. */
+export interface ScanStaleHourlyRequest {
+  limit: number;
+}
+
+export interface ScanStaleHourlyResponse {
+  rows: StaleHourlyRow[];
+  /** reference expected hour used */
+  latestHour?: Date | undefined;
+  totalTickers: number;
+  upToDateCount: number;
+}
+
+/** GetHourlyDataQuality: freshness and gap metrics for hourly_prices. */
+export interface GetHourlyDataQualityRequest {
+}
+
+export interface GetHourlyDataQualityResponse {
+  totalTickers: number;
+  /** last_dt < now - 48h */
+  staleTickers: number;
+  oldestStale?:
+    | Date
+    | undefined;
+  /** tickers with trading gap > 72h in last 60d */
+  gapTickers: number;
+  /** max trading-hour gap */
+  worstGapHours: number;
+  worstCalendarGapHours: number;
+}
+
 function createBaseStockMetadata(): StockMetadata {
   return { symbol: "", name: "", exchange: "", isin: "" };
 }
@@ -1152,6 +1219,870 @@ export const LoadPriceDataResponse: MessageFns<LoadPriceDataResponse> = {
   },
 };
 
+function createBaseStaleTickerRow(): StaleTickerRow {
+  return { ticker: "", lastUpdate: undefined, daysOld: 0, companyName: "", exchange: "" };
+}
+
+export const StaleTickerRow: MessageFns<StaleTickerRow> = {
+  encode(message: StaleTickerRow, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.ticker !== "") {
+      writer.uint32(10).string(message.ticker);
+    }
+    if (message.lastUpdate !== undefined) {
+      Timestamp.encode(toTimestamp(message.lastUpdate), writer.uint32(18).fork()).join();
+    }
+    if (message.daysOld !== 0) {
+      writer.uint32(24).int32(message.daysOld);
+    }
+    if (message.companyName !== "") {
+      writer.uint32(34).string(message.companyName);
+    }
+    if (message.exchange !== "") {
+      writer.uint32(42).string(message.exchange);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): StaleTickerRow {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseStaleTickerRow();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.ticker = reader.string();
+          continue;
+        }
+        case 2: {
+          if (tag !== 18) {
+            break;
+          }
+
+          message.lastUpdate = fromTimestamp(Timestamp.decode(reader, reader.uint32()));
+          continue;
+        }
+        case 3: {
+          if (tag !== 24) {
+            break;
+          }
+
+          message.daysOld = reader.int32();
+          continue;
+        }
+        case 4: {
+          if (tag !== 34) {
+            break;
+          }
+
+          message.companyName = reader.string();
+          continue;
+        }
+        case 5: {
+          if (tag !== 42) {
+            break;
+          }
+
+          message.exchange = reader.string();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): StaleTickerRow {
+    return {
+      ticker: isSet(object.ticker) ? globalThis.String(object.ticker) : "",
+      lastUpdate: isSet(object.lastUpdate)
+        ? fromJsonTimestamp(object.lastUpdate)
+        : isSet(object.last_update)
+        ? fromJsonTimestamp(object.last_update)
+        : undefined,
+      daysOld: isSet(object.daysOld)
+        ? globalThis.Number(object.daysOld)
+        : isSet(object.days_old)
+        ? globalThis.Number(object.days_old)
+        : 0,
+      companyName: isSet(object.companyName)
+        ? globalThis.String(object.companyName)
+        : isSet(object.company_name)
+        ? globalThis.String(object.company_name)
+        : "",
+      exchange: isSet(object.exchange) ? globalThis.String(object.exchange) : "",
+    };
+  },
+
+  toJSON(message: StaleTickerRow): unknown {
+    const obj: any = {};
+    if (message.ticker !== "") {
+      obj.ticker = message.ticker;
+    }
+    if (message.lastUpdate !== undefined) {
+      obj.lastUpdate = message.lastUpdate.toISOString();
+    }
+    if (message.daysOld !== 0) {
+      obj.daysOld = Math.round(message.daysOld);
+    }
+    if (message.companyName !== "") {
+      obj.companyName = message.companyName;
+    }
+    if (message.exchange !== "") {
+      obj.exchange = message.exchange;
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<StaleTickerRow>, I>>(base?: I): StaleTickerRow {
+    return StaleTickerRow.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<StaleTickerRow>, I>>(object: I): StaleTickerRow {
+    const message = createBaseStaleTickerRow();
+    message.ticker = object.ticker ?? "";
+    message.lastUpdate = object.lastUpdate ?? undefined;
+    message.daysOld = object.daysOld ?? 0;
+    message.companyName = object.companyName ?? "";
+    message.exchange = object.exchange ?? "";
+    return message;
+  },
+};
+
+function createBaseScanStaleDailyRequest(): ScanStaleDailyRequest {
+  return { limit: 0 };
+}
+
+export const ScanStaleDailyRequest: MessageFns<ScanStaleDailyRequest> = {
+  encode(message: ScanStaleDailyRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.limit !== 0) {
+      writer.uint32(8).int32(message.limit);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): ScanStaleDailyRequest {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseScanStaleDailyRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 8) {
+            break;
+          }
+
+          message.limit = reader.int32();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): ScanStaleDailyRequest {
+    return { limit: isSet(object.limit) ? globalThis.Number(object.limit) : 0 };
+  },
+
+  toJSON(message: ScanStaleDailyRequest): unknown {
+    const obj: any = {};
+    if (message.limit !== 0) {
+      obj.limit = Math.round(message.limit);
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<ScanStaleDailyRequest>, I>>(base?: I): ScanStaleDailyRequest {
+    return ScanStaleDailyRequest.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<ScanStaleDailyRequest>, I>>(object: I): ScanStaleDailyRequest {
+    const message = createBaseScanStaleDailyRequest();
+    message.limit = object.limit ?? 0;
+    return message;
+  },
+};
+
+function createBaseScanStaleDailyResponse(): ScanStaleDailyResponse {
+  return { rows: [] };
+}
+
+export const ScanStaleDailyResponse: MessageFns<ScanStaleDailyResponse> = {
+  encode(message: ScanStaleDailyResponse, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    for (const v of message.rows) {
+      StaleTickerRow.encode(v!, writer.uint32(10).fork()).join();
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): ScanStaleDailyResponse {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseScanStaleDailyResponse();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.rows.push(StaleTickerRow.decode(reader, reader.uint32()));
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): ScanStaleDailyResponse {
+    return {
+      rows: globalThis.Array.isArray(object?.rows) ? object.rows.map((e: any) => StaleTickerRow.fromJSON(e)) : [],
+    };
+  },
+
+  toJSON(message: ScanStaleDailyResponse): unknown {
+    const obj: any = {};
+    if (message.rows?.length) {
+      obj.rows = message.rows.map((e) => StaleTickerRow.toJSON(e));
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<ScanStaleDailyResponse>, I>>(base?: I): ScanStaleDailyResponse {
+    return ScanStaleDailyResponse.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<ScanStaleDailyResponse>, I>>(object: I): ScanStaleDailyResponse {
+    const message = createBaseScanStaleDailyResponse();
+    message.rows = object.rows?.map((e) => StaleTickerRow.fromPartial(e)) || [];
+    return message;
+  },
+};
+
+function createBaseScanStaleWeeklyRequest(): ScanStaleWeeklyRequest {
+  return { limit: 0 };
+}
+
+export const ScanStaleWeeklyRequest: MessageFns<ScanStaleWeeklyRequest> = {
+  encode(message: ScanStaleWeeklyRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.limit !== 0) {
+      writer.uint32(8).int32(message.limit);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): ScanStaleWeeklyRequest {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseScanStaleWeeklyRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 8) {
+            break;
+          }
+
+          message.limit = reader.int32();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): ScanStaleWeeklyRequest {
+    return { limit: isSet(object.limit) ? globalThis.Number(object.limit) : 0 };
+  },
+
+  toJSON(message: ScanStaleWeeklyRequest): unknown {
+    const obj: any = {};
+    if (message.limit !== 0) {
+      obj.limit = Math.round(message.limit);
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<ScanStaleWeeklyRequest>, I>>(base?: I): ScanStaleWeeklyRequest {
+    return ScanStaleWeeklyRequest.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<ScanStaleWeeklyRequest>, I>>(object: I): ScanStaleWeeklyRequest {
+    const message = createBaseScanStaleWeeklyRequest();
+    message.limit = object.limit ?? 0;
+    return message;
+  },
+};
+
+function createBaseScanStaleWeeklyResponse(): ScanStaleWeeklyResponse {
+  return { rows: [] };
+}
+
+export const ScanStaleWeeklyResponse: MessageFns<ScanStaleWeeklyResponse> = {
+  encode(message: ScanStaleWeeklyResponse, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    for (const v of message.rows) {
+      StaleTickerRow.encode(v!, writer.uint32(10).fork()).join();
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): ScanStaleWeeklyResponse {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseScanStaleWeeklyResponse();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.rows.push(StaleTickerRow.decode(reader, reader.uint32()));
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): ScanStaleWeeklyResponse {
+    return {
+      rows: globalThis.Array.isArray(object?.rows) ? object.rows.map((e: any) => StaleTickerRow.fromJSON(e)) : [],
+    };
+  },
+
+  toJSON(message: ScanStaleWeeklyResponse): unknown {
+    const obj: any = {};
+    if (message.rows?.length) {
+      obj.rows = message.rows.map((e) => StaleTickerRow.toJSON(e));
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<ScanStaleWeeklyResponse>, I>>(base?: I): ScanStaleWeeklyResponse {
+    return ScanStaleWeeklyResponse.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<ScanStaleWeeklyResponse>, I>>(object: I): ScanStaleWeeklyResponse {
+    const message = createBaseScanStaleWeeklyResponse();
+    message.rows = object.rows?.map((e) => StaleTickerRow.fromPartial(e)) || [];
+    return message;
+  },
+};
+
+function createBaseStaleHourlyRow(): StaleHourlyRow {
+  return { ticker: "", lastHour: undefined, hoursBehind: 0 };
+}
+
+export const StaleHourlyRow: MessageFns<StaleHourlyRow> = {
+  encode(message: StaleHourlyRow, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.ticker !== "") {
+      writer.uint32(10).string(message.ticker);
+    }
+    if (message.lastHour !== undefined) {
+      Timestamp.encode(toTimestamp(message.lastHour), writer.uint32(18).fork()).join();
+    }
+    if (message.hoursBehind !== 0) {
+      writer.uint32(25).double(message.hoursBehind);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): StaleHourlyRow {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseStaleHourlyRow();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.ticker = reader.string();
+          continue;
+        }
+        case 2: {
+          if (tag !== 18) {
+            break;
+          }
+
+          message.lastHour = fromTimestamp(Timestamp.decode(reader, reader.uint32()));
+          continue;
+        }
+        case 3: {
+          if (tag !== 25) {
+            break;
+          }
+
+          message.hoursBehind = reader.double();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): StaleHourlyRow {
+    return {
+      ticker: isSet(object.ticker) ? globalThis.String(object.ticker) : "",
+      lastHour: isSet(object.lastHour)
+        ? fromJsonTimestamp(object.lastHour)
+        : isSet(object.last_hour)
+        ? fromJsonTimestamp(object.last_hour)
+        : undefined,
+      hoursBehind: isSet(object.hoursBehind)
+        ? globalThis.Number(object.hoursBehind)
+        : isSet(object.hours_behind)
+        ? globalThis.Number(object.hours_behind)
+        : 0,
+    };
+  },
+
+  toJSON(message: StaleHourlyRow): unknown {
+    const obj: any = {};
+    if (message.ticker !== "") {
+      obj.ticker = message.ticker;
+    }
+    if (message.lastHour !== undefined) {
+      obj.lastHour = message.lastHour.toISOString();
+    }
+    if (message.hoursBehind !== 0) {
+      obj.hoursBehind = message.hoursBehind;
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<StaleHourlyRow>, I>>(base?: I): StaleHourlyRow {
+    return StaleHourlyRow.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<StaleHourlyRow>, I>>(object: I): StaleHourlyRow {
+    const message = createBaseStaleHourlyRow();
+    message.ticker = object.ticker ?? "";
+    message.lastHour = object.lastHour ?? undefined;
+    message.hoursBehind = object.hoursBehind ?? 0;
+    return message;
+  },
+};
+
+function createBaseScanStaleHourlyRequest(): ScanStaleHourlyRequest {
+  return { limit: 0 };
+}
+
+export const ScanStaleHourlyRequest: MessageFns<ScanStaleHourlyRequest> = {
+  encode(message: ScanStaleHourlyRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.limit !== 0) {
+      writer.uint32(8).int32(message.limit);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): ScanStaleHourlyRequest {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseScanStaleHourlyRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 8) {
+            break;
+          }
+
+          message.limit = reader.int32();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): ScanStaleHourlyRequest {
+    return { limit: isSet(object.limit) ? globalThis.Number(object.limit) : 0 };
+  },
+
+  toJSON(message: ScanStaleHourlyRequest): unknown {
+    const obj: any = {};
+    if (message.limit !== 0) {
+      obj.limit = Math.round(message.limit);
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<ScanStaleHourlyRequest>, I>>(base?: I): ScanStaleHourlyRequest {
+    return ScanStaleHourlyRequest.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<ScanStaleHourlyRequest>, I>>(object: I): ScanStaleHourlyRequest {
+    const message = createBaseScanStaleHourlyRequest();
+    message.limit = object.limit ?? 0;
+    return message;
+  },
+};
+
+function createBaseScanStaleHourlyResponse(): ScanStaleHourlyResponse {
+  return { rows: [], latestHour: undefined, totalTickers: 0, upToDateCount: 0 };
+}
+
+export const ScanStaleHourlyResponse: MessageFns<ScanStaleHourlyResponse> = {
+  encode(message: ScanStaleHourlyResponse, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    for (const v of message.rows) {
+      StaleHourlyRow.encode(v!, writer.uint32(10).fork()).join();
+    }
+    if (message.latestHour !== undefined) {
+      Timestamp.encode(toTimestamp(message.latestHour), writer.uint32(18).fork()).join();
+    }
+    if (message.totalTickers !== 0) {
+      writer.uint32(24).int32(message.totalTickers);
+    }
+    if (message.upToDateCount !== 0) {
+      writer.uint32(32).int32(message.upToDateCount);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): ScanStaleHourlyResponse {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseScanStaleHourlyResponse();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.rows.push(StaleHourlyRow.decode(reader, reader.uint32()));
+          continue;
+        }
+        case 2: {
+          if (tag !== 18) {
+            break;
+          }
+
+          message.latestHour = fromTimestamp(Timestamp.decode(reader, reader.uint32()));
+          continue;
+        }
+        case 3: {
+          if (tag !== 24) {
+            break;
+          }
+
+          message.totalTickers = reader.int32();
+          continue;
+        }
+        case 4: {
+          if (tag !== 32) {
+            break;
+          }
+
+          message.upToDateCount = reader.int32();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): ScanStaleHourlyResponse {
+    return {
+      rows: globalThis.Array.isArray(object?.rows) ? object.rows.map((e: any) => StaleHourlyRow.fromJSON(e)) : [],
+      latestHour: isSet(object.latestHour)
+        ? fromJsonTimestamp(object.latestHour)
+        : isSet(object.latest_hour)
+        ? fromJsonTimestamp(object.latest_hour)
+        : undefined,
+      totalTickers: isSet(object.totalTickers)
+        ? globalThis.Number(object.totalTickers)
+        : isSet(object.total_tickers)
+        ? globalThis.Number(object.total_tickers)
+        : 0,
+      upToDateCount: isSet(object.upToDateCount)
+        ? globalThis.Number(object.upToDateCount)
+        : isSet(object.up_to_date_count)
+        ? globalThis.Number(object.up_to_date_count)
+        : 0,
+    };
+  },
+
+  toJSON(message: ScanStaleHourlyResponse): unknown {
+    const obj: any = {};
+    if (message.rows?.length) {
+      obj.rows = message.rows.map((e) => StaleHourlyRow.toJSON(e));
+    }
+    if (message.latestHour !== undefined) {
+      obj.latestHour = message.latestHour.toISOString();
+    }
+    if (message.totalTickers !== 0) {
+      obj.totalTickers = Math.round(message.totalTickers);
+    }
+    if (message.upToDateCount !== 0) {
+      obj.upToDateCount = Math.round(message.upToDateCount);
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<ScanStaleHourlyResponse>, I>>(base?: I): ScanStaleHourlyResponse {
+    return ScanStaleHourlyResponse.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<ScanStaleHourlyResponse>, I>>(object: I): ScanStaleHourlyResponse {
+    const message = createBaseScanStaleHourlyResponse();
+    message.rows = object.rows?.map((e) => StaleHourlyRow.fromPartial(e)) || [];
+    message.latestHour = object.latestHour ?? undefined;
+    message.totalTickers = object.totalTickers ?? 0;
+    message.upToDateCount = object.upToDateCount ?? 0;
+    return message;
+  },
+};
+
+function createBaseGetHourlyDataQualityRequest(): GetHourlyDataQualityRequest {
+  return {};
+}
+
+export const GetHourlyDataQualityRequest: MessageFns<GetHourlyDataQualityRequest> = {
+  encode(_: GetHourlyDataQualityRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): GetHourlyDataQualityRequest {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseGetHourlyDataQualityRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(_: any): GetHourlyDataQualityRequest {
+    return {};
+  },
+
+  toJSON(_: GetHourlyDataQualityRequest): unknown {
+    const obj: any = {};
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<GetHourlyDataQualityRequest>, I>>(base?: I): GetHourlyDataQualityRequest {
+    return GetHourlyDataQualityRequest.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<GetHourlyDataQualityRequest>, I>>(_: I): GetHourlyDataQualityRequest {
+    const message = createBaseGetHourlyDataQualityRequest();
+    return message;
+  },
+};
+
+function createBaseGetHourlyDataQualityResponse(): GetHourlyDataQualityResponse {
+  return {
+    totalTickers: 0,
+    staleTickers: 0,
+    oldestStale: undefined,
+    gapTickers: 0,
+    worstGapHours: 0,
+    worstCalendarGapHours: 0,
+  };
+}
+
+export const GetHourlyDataQualityResponse: MessageFns<GetHourlyDataQualityResponse> = {
+  encode(message: GetHourlyDataQualityResponse, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.totalTickers !== 0) {
+      writer.uint32(8).int32(message.totalTickers);
+    }
+    if (message.staleTickers !== 0) {
+      writer.uint32(16).int32(message.staleTickers);
+    }
+    if (message.oldestStale !== undefined) {
+      Timestamp.encode(toTimestamp(message.oldestStale), writer.uint32(26).fork()).join();
+    }
+    if (message.gapTickers !== 0) {
+      writer.uint32(32).int32(message.gapTickers);
+    }
+    if (message.worstGapHours !== 0) {
+      writer.uint32(41).double(message.worstGapHours);
+    }
+    if (message.worstCalendarGapHours !== 0) {
+      writer.uint32(49).double(message.worstCalendarGapHours);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): GetHourlyDataQualityResponse {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseGetHourlyDataQualityResponse();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 8) {
+            break;
+          }
+
+          message.totalTickers = reader.int32();
+          continue;
+        }
+        case 2: {
+          if (tag !== 16) {
+            break;
+          }
+
+          message.staleTickers = reader.int32();
+          continue;
+        }
+        case 3: {
+          if (tag !== 26) {
+            break;
+          }
+
+          message.oldestStale = fromTimestamp(Timestamp.decode(reader, reader.uint32()));
+          continue;
+        }
+        case 4: {
+          if (tag !== 32) {
+            break;
+          }
+
+          message.gapTickers = reader.int32();
+          continue;
+        }
+        case 5: {
+          if (tag !== 41) {
+            break;
+          }
+
+          message.worstGapHours = reader.double();
+          continue;
+        }
+        case 6: {
+          if (tag !== 49) {
+            break;
+          }
+
+          message.worstCalendarGapHours = reader.double();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): GetHourlyDataQualityResponse {
+    return {
+      totalTickers: isSet(object.totalTickers)
+        ? globalThis.Number(object.totalTickers)
+        : isSet(object.total_tickers)
+        ? globalThis.Number(object.total_tickers)
+        : 0,
+      staleTickers: isSet(object.staleTickers)
+        ? globalThis.Number(object.staleTickers)
+        : isSet(object.stale_tickers)
+        ? globalThis.Number(object.stale_tickers)
+        : 0,
+      oldestStale: isSet(object.oldestStale)
+        ? fromJsonTimestamp(object.oldestStale)
+        : isSet(object.oldest_stale)
+        ? fromJsonTimestamp(object.oldest_stale)
+        : undefined,
+      gapTickers: isSet(object.gapTickers)
+        ? globalThis.Number(object.gapTickers)
+        : isSet(object.gap_tickers)
+        ? globalThis.Number(object.gap_tickers)
+        : 0,
+      worstGapHours: isSet(object.worstGapHours)
+        ? globalThis.Number(object.worstGapHours)
+        : isSet(object.worst_gap_hours)
+        ? globalThis.Number(object.worst_gap_hours)
+        : 0,
+      worstCalendarGapHours: isSet(object.worstCalendarGapHours)
+        ? globalThis.Number(object.worstCalendarGapHours)
+        : isSet(object.worst_calendar_gap_hours)
+        ? globalThis.Number(object.worst_calendar_gap_hours)
+        : 0,
+    };
+  },
+
+  toJSON(message: GetHourlyDataQualityResponse): unknown {
+    const obj: any = {};
+    if (message.totalTickers !== 0) {
+      obj.totalTickers = Math.round(message.totalTickers);
+    }
+    if (message.staleTickers !== 0) {
+      obj.staleTickers = Math.round(message.staleTickers);
+    }
+    if (message.oldestStale !== undefined) {
+      obj.oldestStale = message.oldestStale.toISOString();
+    }
+    if (message.gapTickers !== 0) {
+      obj.gapTickers = Math.round(message.gapTickers);
+    }
+    if (message.worstGapHours !== 0) {
+      obj.worstGapHours = message.worstGapHours;
+    }
+    if (message.worstCalendarGapHours !== 0) {
+      obj.worstCalendarGapHours = message.worstCalendarGapHours;
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<GetHourlyDataQualityResponse>, I>>(base?: I): GetHourlyDataQualityResponse {
+    return GetHourlyDataQualityResponse.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<GetHourlyDataQualityResponse>, I>>(object: I): GetHourlyDataQualityResponse {
+    const message = createBaseGetHourlyDataQualityResponse();
+    message.totalTickers = object.totalTickers ?? 0;
+    message.staleTickers = object.staleTickers ?? 0;
+    message.oldestStale = object.oldestStale ?? undefined;
+    message.gapTickers = object.gapTickers ?? 0;
+    message.worstGapHours = object.worstGapHours ?? 0;
+    message.worstCalendarGapHours = object.worstCalendarGapHours ?? 0;
+    return message;
+  },
+};
+
 /** PriceService provides read-only access to the price database. */
 export type PriceServiceDefinition = typeof PriceServiceDefinition;
 export const PriceServiceDefinition = {
@@ -1182,6 +2113,38 @@ export const PriceServiceDefinition = {
       responseStream: false,
       options: {},
     },
+    scanStaleDaily: {
+      name: "ScanStaleDaily",
+      requestType: ScanStaleDailyRequest,
+      requestStream: false,
+      responseType: ScanStaleDailyResponse,
+      responseStream: false,
+      options: {},
+    },
+    scanStaleWeekly: {
+      name: "ScanStaleWeekly",
+      requestType: ScanStaleWeeklyRequest,
+      requestStream: false,
+      responseType: ScanStaleWeeklyResponse,
+      responseStream: false,
+      options: {},
+    },
+    scanStaleHourly: {
+      name: "ScanStaleHourly",
+      requestType: ScanStaleHourlyRequest,
+      requestStream: false,
+      responseType: ScanStaleHourlyResponse,
+      responseStream: false,
+      options: {},
+    },
+    getHourlyDataQuality: {
+      name: "GetHourlyDataQuality",
+      requestType: GetHourlyDataQualityRequest,
+      requestStream: false,
+      responseType: GetHourlyDataQualityResponse,
+      responseStream: false,
+      options: {},
+    },
   },
 } as const;
 
@@ -1198,6 +2161,22 @@ export interface PriceServiceImplementation<CallContextExt = {}> {
     request: LoadPriceDataRequest,
     context: CallContext & CallContextExt,
   ): Promise<DeepPartial<LoadPriceDataResponse>>;
+  scanStaleDaily(
+    request: ScanStaleDailyRequest,
+    context: CallContext & CallContextExt,
+  ): Promise<DeepPartial<ScanStaleDailyResponse>>;
+  scanStaleWeekly(
+    request: ScanStaleWeeklyRequest,
+    context: CallContext & CallContextExt,
+  ): Promise<DeepPartial<ScanStaleWeeklyResponse>>;
+  scanStaleHourly(
+    request: ScanStaleHourlyRequest,
+    context: CallContext & CallContextExt,
+  ): Promise<DeepPartial<ScanStaleHourlyResponse>>;
+  getHourlyDataQuality(
+    request: GetHourlyDataQualityRequest,
+    context: CallContext & CallContextExt,
+  ): Promise<DeepPartial<GetHourlyDataQualityResponse>>;
 }
 
 export interface PriceServiceClient<CallOptionsExt = {}> {
@@ -1213,6 +2192,22 @@ export interface PriceServiceClient<CallOptionsExt = {}> {
     request: DeepPartial<LoadPriceDataRequest>,
     options?: CallOptions & CallOptionsExt,
   ): Promise<LoadPriceDataResponse>;
+  scanStaleDaily(
+    request: DeepPartial<ScanStaleDailyRequest>,
+    options?: CallOptions & CallOptionsExt,
+  ): Promise<ScanStaleDailyResponse>;
+  scanStaleWeekly(
+    request: DeepPartial<ScanStaleWeeklyRequest>,
+    options?: CallOptions & CallOptionsExt,
+  ): Promise<ScanStaleWeeklyResponse>;
+  scanStaleHourly(
+    request: DeepPartial<ScanStaleHourlyRequest>,
+    options?: CallOptions & CallOptionsExt,
+  ): Promise<ScanStaleHourlyResponse>;
+  getHourlyDataQuality(
+    request: DeepPartial<GetHourlyDataQualityRequest>,
+    options?: CallOptions & CallOptionsExt,
+  ): Promise<GetHourlyDataQualityResponse>;
 }
 
 type Builtin = Date | Function | Uint8Array | string | number | boolean | undefined;

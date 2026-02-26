@@ -97,6 +97,150 @@ func (q *Queries) GetWeeklyStats(ctx context.Context) (GetWeeklyStatsRow, error)
 	return i, err
 }
 
+const hourlyQualityGaps = `-- name: HourlyQualityGaps :one
+WITH recent AS (
+    SELECT ticker, datetime
+    FROM hourly_prices
+    WHERE datetime >= NOW() - INTERVAL '60 days'
+),
+ordered AS (
+    SELECT ticker, datetime,
+           LEAD(datetime) OVER (PARTITION BY ticker ORDER BY datetime) AS next_dt
+    FROM recent
+),
+gaps AS (
+    SELECT ticker,
+           EXTRACT(EPOCH FROM (next_dt - datetime))/3600.0 AS gap_hours,
+           (SELECT COUNT(*)::float FROM generate_series(datetime, next_dt - INTERVAL '1 hour', INTERVAL '1 hour') gs(dt)
+            WHERE EXTRACT(ISODOW FROM gs.dt) BETWEEN 1 AND 5) AS trading_gap_hours
+    FROM ordered
+    WHERE next_dt IS NOT NULL
+)
+SELECT
+    COUNT(DISTINCT ticker) FILTER (WHERE trading_gap_hours > 72)::int AS gap_tickers,
+    COALESCE(MAX(trading_gap_hours), 0)::double precision AS worst_gap_hours,
+    COALESCE(MAX(gap_hours), 0)::double precision AS worst_calendar_gap_hours
+FROM gaps
+`
+
+type HourlyQualityGapsRow struct {
+	GapTickers            int32
+	WorstGapHours         float64
+	WorstCalendarGapHours float64
+}
+
+// Hourly data quality: gap metrics (trading-hour gaps in last 60 days).
+func (q *Queries) HourlyQualityGaps(ctx context.Context) (HourlyQualityGapsRow, error) {
+	row := q.db.QueryRow(ctx, hourlyQualityGaps)
+	var i HourlyQualityGapsRow
+	err := row.Scan(&i.GapTickers, &i.WorstGapHours, &i.WorstCalendarGapHours)
+	return i, err
+}
+
+const hourlyQualityStale = `-- name: HourlyQualityStale :one
+WITH last_points AS (
+    SELECT ticker, MAX(datetime) AS last_dt
+    FROM hourly_prices
+    GROUP BY ticker
+)
+SELECT
+    COUNT(*)::int AS total_tickers,
+    COUNT(*) FILTER (WHERE last_dt < NOW() - INTERVAL '48 hours')::int AS stale_tickers,
+    MIN(last_dt) FILTER (WHERE last_dt < NOW() - INTERVAL '48 hours') AS oldest_stale
+FROM last_points
+`
+
+type HourlyQualityStaleRow struct {
+	TotalTickers int32
+	StaleTickers int32
+	OldestStale  interface{}
+}
+
+// Hourly data quality: stale count (last_dt < now - 48h).
+func (q *Queries) HourlyQualityStale(ctx context.Context) (HourlyQualityStaleRow, error) {
+	row := q.db.QueryRow(ctx, hourlyQualityStale)
+	var i HourlyQualityStaleRow
+	err := row.Scan(&i.TotalTickers, &i.StaleTickers, &i.OldestStale)
+	return i, err
+}
+
+const lastDailyPerTicker = `-- name: LastDailyPerTicker :many
+SELECT d.ticker, d.last_date, m.name, m.exchange
+FROM (
+    SELECT ticker, MAX(date)::date AS last_date
+    FROM daily_prices
+    GROUP BY ticker
+) d
+LEFT JOIN stock_metadata m ON m.symbol = d.ticker
+ORDER BY d.last_date ASC
+`
+
+type LastDailyPerTickerRow struct {
+	Ticker   string
+	LastDate pgtype.Date
+	Name     pgtype.Text
+	Exchange pgtype.Text
+}
+
+// Stale scan: last date per ticker for daily (join metadata for exchange/name; Go filters by expected date).
+func (q *Queries) LastDailyPerTicker(ctx context.Context) ([]LastDailyPerTickerRow, error) {
+	rows, err := q.db.Query(ctx, lastDailyPerTicker)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []LastDailyPerTickerRow
+	for rows.Next() {
+		var i LastDailyPerTickerRow
+		if err := rows.Scan(
+			&i.Ticker,
+			&i.LastDate,
+			&i.Name,
+			&i.Exchange,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const lastHourlyPerTicker = `-- name: LastHourlyPerTicker :many
+SELECT ticker, MAX(datetime) AS last_dt
+FROM hourly_prices
+GROUP BY ticker
+ORDER BY MAX(datetime) ASC
+`
+
+type LastHourlyPerTickerRow struct {
+	Ticker string
+	LastDt interface{}
+}
+
+// Stale hourly: last datetime per ticker (Go computes expected hour and hours_behind).
+func (q *Queries) LastHourlyPerTicker(ctx context.Context) ([]LastHourlyPerTickerRow, error) {
+	rows, err := q.db.Query(ctx, lastHourlyPerTicker)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []LastHourlyPerTickerRow
+	for rows.Next() {
+		var i LastHourlyPerTickerRow
+		if err := rows.Scan(&i.Ticker, &i.LastDt); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listDailyPrices = `-- name: ListDailyPrices :many
 SELECT ticker, date, open, high, low, close, volume
 FROM daily_prices
@@ -326,6 +470,59 @@ func (q *Queries) ListWeeklyPrices(ctx context.Context, arg ListWeeklyPricesPara
 			&i.Low,
 			&i.Close,
 			&i.Volume,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const staleWeeklyTickers = `-- name: StaleWeeklyTickers :many
+SELECT w.ticker, w.last_date, ($1::date - w.last_date)::int AS days_old, m.name, m.exchange
+FROM (
+    SELECT ticker, MAX(week_ending)::date AS last_date
+    FROM weekly_prices
+    GROUP BY ticker
+    HAVING MAX(week_ending) < $1::date
+) w
+LEFT JOIN stock_metadata m ON m.symbol = w.ticker
+ORDER BY w.last_date ASC
+LIMIT $2
+`
+
+type StaleWeeklyTickersParams struct {
+	ExpectedWeekEnding pgtype.Date
+	LimitRows          int32
+}
+
+type StaleWeeklyTickersRow struct {
+	Ticker   string
+	LastDate pgtype.Date
+	DaysOld  int32
+	Name     pgtype.Text
+	Exchange pgtype.Text
+}
+
+// Stale weekly: tickers where max(week_ending) < expected_week_ending; optional limit.
+func (q *Queries) StaleWeeklyTickers(ctx context.Context, arg StaleWeeklyTickersParams) ([]StaleWeeklyTickersRow, error) {
+	rows, err := q.db.Query(ctx, staleWeeklyTickers, arg.ExpectedWeekEnding, arg.LimitRows)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []StaleWeeklyTickersRow
+	for rows.Next() {
+		var i StaleWeeklyTickersRow
+		if err := rows.Scan(
+			&i.Ticker,
+			&i.LastDate,
+			&i.DaysOld,
+			&i.Name,
+			&i.Exchange,
 		); err != nil {
 			return nil, err
 		}

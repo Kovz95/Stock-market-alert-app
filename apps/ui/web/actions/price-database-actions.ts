@@ -113,3 +113,89 @@ export async function loadPriceData(
     volume: Number(row.volume ?? 0),
   }));
 }
+
+// --- Stale scan (Phase 4) ---
+
+export type StaleTickerRowData = {
+  ticker: string;
+  lastUpdate: string | null;
+  daysOld: number;
+  companyName: string;
+  exchange: string;
+};
+
+export async function scanStaleDaily(
+  limit?: number
+): Promise<StaleTickerRowData[]> {
+  const res = await priceClient.scanStaleDaily({ limit: limit ?? 0 });
+  return (res.rows ?? []).map((row) => ({
+    ticker: row.ticker,
+    lastUpdate: row.lastUpdate ? row.lastUpdate.toISOString() : null,
+    daysOld: Number(row.daysOld ?? 0),
+    companyName: row.companyName ?? "",
+    exchange: row.exchange ?? "",
+  }));
+}
+
+export async function scanStaleWeekly(
+  limit?: number
+): Promise<StaleTickerRowData[]> {
+  const res = await priceClient.scanStaleWeekly({ limit: limit ?? 0 });
+  return (res.rows ?? []).map((row) => ({
+    ticker: row.ticker,
+    lastUpdate: row.lastUpdate ? row.lastUpdate.toISOString() : null,
+    daysOld: Number(row.daysOld ?? 0),
+    companyName: row.companyName ?? "",
+    exchange: row.exchange ?? "",
+  }));
+}
+
+export type StaleHourlyRowData = {
+  ticker: string;
+  lastHour: string | null;
+  hoursBehind: number;
+};
+
+export type ScanStaleHourlyResult = {
+  rows: StaleHourlyRowData[];
+  latestHour: string | null;
+  totalTickers: number;
+  upToDateCount: number;
+};
+
+export async function scanStaleHourly(
+  limit?: number
+): Promise<ScanStaleHourlyResult> {
+  const res = await priceClient.scanStaleHourly({ limit: limit ?? 0 });
+  return {
+    rows: (res.rows ?? []).map((row) => ({
+      ticker: row.ticker,
+      lastHour: row.lastHour ? row.lastHour.toISOString() : null,
+      hoursBehind: Number(row.hoursBehind ?? 0),
+    })),
+    latestHour: res.latestHour ? res.latestHour.toISOString() : null,
+    totalTickers: Number(res.totalTickers ?? 0),
+    upToDateCount: Number(res.upToDateCount ?? 0),
+  };
+}
+
+export type HourlyDataQualityData = {
+  totalTickers: number;
+  staleTickers: number;
+  oldestStale: string | null;
+  gapTickers: number;
+  worstGapHours: number;
+  worstCalendarGapHours: number;
+};
+
+export async function getHourlyDataQuality(): Promise<HourlyDataQualityData> {
+  const res = await priceClient.getHourlyDataQuality({});
+  return {
+    totalTickers: Number(res.totalTickers ?? 0),
+    staleTickers: Number(res.staleTickers ?? 0),
+    oldestStale: res.oldestStale ? res.oldestStale.toISOString() : null,
+    gapTickers: Number(res.gapTickers ?? 0),
+    worstGapHours: Number(res.worstGapHours ?? 0),
+    worstCalendarGapHours: Number(res.worstCalendarGapHours ?? 0),
+  };
+}

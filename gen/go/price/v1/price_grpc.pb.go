@@ -19,9 +19,13 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	PriceService_GetStockMetadataMap_FullMethodName = "/stockalert.price.v1.PriceService/GetStockMetadataMap"
-	PriceService_GetDatabaseStats_FullMethodName    = "/stockalert.price.v1.PriceService/GetDatabaseStats"
-	PriceService_LoadPriceData_FullMethodName       = "/stockalert.price.v1.PriceService/LoadPriceData"
+	PriceService_GetStockMetadataMap_FullMethodName  = "/stockalert.price.v1.PriceService/GetStockMetadataMap"
+	PriceService_GetDatabaseStats_FullMethodName     = "/stockalert.price.v1.PriceService/GetDatabaseStats"
+	PriceService_LoadPriceData_FullMethodName        = "/stockalert.price.v1.PriceService/LoadPriceData"
+	PriceService_ScanStaleDaily_FullMethodName       = "/stockalert.price.v1.PriceService/ScanStaleDaily"
+	PriceService_ScanStaleWeekly_FullMethodName      = "/stockalert.price.v1.PriceService/ScanStaleWeekly"
+	PriceService_ScanStaleHourly_FullMethodName      = "/stockalert.price.v1.PriceService/ScanStaleHourly"
+	PriceService_GetHourlyDataQuality_FullMethodName = "/stockalert.price.v1.PriceService/GetHourlyDataQuality"
 )
 
 // PriceServiceClient is the client API for PriceService service.
@@ -33,6 +37,10 @@ type PriceServiceClient interface {
 	GetStockMetadataMap(ctx context.Context, in *GetStockMetadataMapRequest, opts ...grpc.CallOption) (*GetStockMetadataMapResponse, error)
 	GetDatabaseStats(ctx context.Context, in *GetDatabaseStatsRequest, opts ...grpc.CallOption) (*GetDatabaseStatsResponse, error)
 	LoadPriceData(ctx context.Context, in *LoadPriceDataRequest, opts ...grpc.CallOption) (*LoadPriceDataResponse, error)
+	ScanStaleDaily(ctx context.Context, in *ScanStaleDailyRequest, opts ...grpc.CallOption) (*ScanStaleDailyResponse, error)
+	ScanStaleWeekly(ctx context.Context, in *ScanStaleWeeklyRequest, opts ...grpc.CallOption) (*ScanStaleWeeklyResponse, error)
+	ScanStaleHourly(ctx context.Context, in *ScanStaleHourlyRequest, opts ...grpc.CallOption) (*ScanStaleHourlyResponse, error)
+	GetHourlyDataQuality(ctx context.Context, in *GetHourlyDataQualityRequest, opts ...grpc.CallOption) (*GetHourlyDataQualityResponse, error)
 }
 
 type priceServiceClient struct {
@@ -73,6 +81,46 @@ func (c *priceServiceClient) LoadPriceData(ctx context.Context, in *LoadPriceDat
 	return out, nil
 }
 
+func (c *priceServiceClient) ScanStaleDaily(ctx context.Context, in *ScanStaleDailyRequest, opts ...grpc.CallOption) (*ScanStaleDailyResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ScanStaleDailyResponse)
+	err := c.cc.Invoke(ctx, PriceService_ScanStaleDaily_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *priceServiceClient) ScanStaleWeekly(ctx context.Context, in *ScanStaleWeeklyRequest, opts ...grpc.CallOption) (*ScanStaleWeeklyResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ScanStaleWeeklyResponse)
+	err := c.cc.Invoke(ctx, PriceService_ScanStaleWeekly_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *priceServiceClient) ScanStaleHourly(ctx context.Context, in *ScanStaleHourlyRequest, opts ...grpc.CallOption) (*ScanStaleHourlyResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ScanStaleHourlyResponse)
+	err := c.cc.Invoke(ctx, PriceService_ScanStaleHourly_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *priceServiceClient) GetHourlyDataQuality(ctx context.Context, in *GetHourlyDataQualityRequest, opts ...grpc.CallOption) (*GetHourlyDataQualityResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetHourlyDataQualityResponse)
+	err := c.cc.Invoke(ctx, PriceService_GetHourlyDataQuality_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // PriceServiceServer is the server API for PriceService service.
 // All implementations must embed UnimplementedPriceServiceServer
 // for forward compatibility.
@@ -82,6 +130,10 @@ type PriceServiceServer interface {
 	GetStockMetadataMap(context.Context, *GetStockMetadataMapRequest) (*GetStockMetadataMapResponse, error)
 	GetDatabaseStats(context.Context, *GetDatabaseStatsRequest) (*GetDatabaseStatsResponse, error)
 	LoadPriceData(context.Context, *LoadPriceDataRequest) (*LoadPriceDataResponse, error)
+	ScanStaleDaily(context.Context, *ScanStaleDailyRequest) (*ScanStaleDailyResponse, error)
+	ScanStaleWeekly(context.Context, *ScanStaleWeeklyRequest) (*ScanStaleWeeklyResponse, error)
+	ScanStaleHourly(context.Context, *ScanStaleHourlyRequest) (*ScanStaleHourlyResponse, error)
+	GetHourlyDataQuality(context.Context, *GetHourlyDataQualityRequest) (*GetHourlyDataQualityResponse, error)
 	mustEmbedUnimplementedPriceServiceServer()
 }
 
@@ -100,6 +152,18 @@ func (UnimplementedPriceServiceServer) GetDatabaseStats(context.Context, *GetDat
 }
 func (UnimplementedPriceServiceServer) LoadPriceData(context.Context, *LoadPriceDataRequest) (*LoadPriceDataResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method LoadPriceData not implemented")
+}
+func (UnimplementedPriceServiceServer) ScanStaleDaily(context.Context, *ScanStaleDailyRequest) (*ScanStaleDailyResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ScanStaleDaily not implemented")
+}
+func (UnimplementedPriceServiceServer) ScanStaleWeekly(context.Context, *ScanStaleWeeklyRequest) (*ScanStaleWeeklyResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ScanStaleWeekly not implemented")
+}
+func (UnimplementedPriceServiceServer) ScanStaleHourly(context.Context, *ScanStaleHourlyRequest) (*ScanStaleHourlyResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ScanStaleHourly not implemented")
+}
+func (UnimplementedPriceServiceServer) GetHourlyDataQuality(context.Context, *GetHourlyDataQualityRequest) (*GetHourlyDataQualityResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetHourlyDataQuality not implemented")
 }
 func (UnimplementedPriceServiceServer) mustEmbedUnimplementedPriceServiceServer() {}
 func (UnimplementedPriceServiceServer) testEmbeddedByValue()                      {}
@@ -176,6 +240,78 @@ func _PriceService_LoadPriceData_Handler(srv interface{}, ctx context.Context, d
 	return interceptor(ctx, in, info, handler)
 }
 
+func _PriceService_ScanStaleDaily_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ScanStaleDailyRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PriceServiceServer).ScanStaleDaily(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PriceService_ScanStaleDaily_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PriceServiceServer).ScanStaleDaily(ctx, req.(*ScanStaleDailyRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PriceService_ScanStaleWeekly_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ScanStaleWeeklyRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PriceServiceServer).ScanStaleWeekly(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PriceService_ScanStaleWeekly_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PriceServiceServer).ScanStaleWeekly(ctx, req.(*ScanStaleWeeklyRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PriceService_ScanStaleHourly_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ScanStaleHourlyRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PriceServiceServer).ScanStaleHourly(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PriceService_ScanStaleHourly_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PriceServiceServer).ScanStaleHourly(ctx, req.(*ScanStaleHourlyRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PriceService_GetHourlyDataQuality_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetHourlyDataQualityRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PriceServiceServer).GetHourlyDataQuality(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PriceService_GetHourlyDataQuality_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PriceServiceServer).GetHourlyDataQuality(ctx, req.(*GetHourlyDataQualityRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // PriceService_ServiceDesc is the grpc.ServiceDesc for PriceService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -194,6 +330,22 @@ var PriceService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "LoadPriceData",
 			Handler:    _PriceService_LoadPriceData_Handler,
+		},
+		{
+			MethodName: "ScanStaleDaily",
+			Handler:    _PriceService_ScanStaleDaily_Handler,
+		},
+		{
+			MethodName: "ScanStaleWeekly",
+			Handler:    _PriceService_ScanStaleWeekly_Handler,
+		},
+		{
+			MethodName: "ScanStaleHourly",
+			Handler:    _PriceService_ScanStaleHourly_Handler,
+		},
+		{
+			MethodName: "GetHourlyDataQuality",
+			Handler:    _PriceService_GetHourlyDataQuality_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

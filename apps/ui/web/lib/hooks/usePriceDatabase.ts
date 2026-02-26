@@ -5,15 +5,27 @@ import {
   getStockMetadataMap,
   getDatabaseStats,
   loadPriceData,
+  scanStaleDaily,
+  scanStaleWeekly,
+  scanStaleHourly,
+  getHourlyDataQuality,
   type LoadPriceDataParams,
   type StockMetadataItem,
   type DatabaseStatsData,
   type PriceRowData,
+  type StaleTickerRowData,
+  type StaleHourlyRowData,
+  type ScanStaleHourlyResult,
+  type HourlyDataQualityData,
 } from "@/actions/price-database-actions";
 
 export const PRICE_METADATA_KEY = ["price", "metadata"] as const;
 export const PRICE_STATS_KEY = ["price", "stats"] as const;
 export const PRICE_DATA_KEY = ["price", "data"] as const;
+export const STALE_DAILY_KEY = ["price", "stale", "daily"] as const;
+export const STALE_WEEKLY_KEY = ["price", "stale", "weekly"] as const;
+export const STALE_HOURLY_KEY = ["price", "stale", "hourly"] as const;
+export const HOURLY_QUALITY_KEY = ["price", "hourly", "quality"] as const;
 
 export function useStockMetadata() {
   return useQuery({
@@ -50,9 +62,42 @@ export function useStockMetadataMap(): {
   return { data: map, isLoading, error: error as Error | null };
 }
 
+// Stale scan: mutations (user triggers scan)
+export function useScanStaleDaily() {
+  return useMutation({
+    mutationFn: (limit?: number) => scanStaleDaily(limit),
+  });
+}
+
+export function useScanStaleWeekly() {
+  return useMutation({
+    mutationFn: (limit?: number) => scanStaleWeekly(limit),
+  });
+}
+
+export function useScanStaleHourly() {
+  return useMutation({
+    mutationFn: (limit?: number) => scanStaleHourly(limit),
+  });
+}
+
+// Hourly data quality: query (can refetch on tab focus)
+export function useHourlyDataQuality(enabled = true) {
+  return useQuery({
+    queryKey: HOURLY_QUALITY_KEY,
+    queryFn: getHourlyDataQuality,
+    enabled,
+    staleTime: 1000 * 60 * 2, // 2 minutes
+  });
+}
+
 export type {
   StockMetadataItem,
   DatabaseStatsData,
   PriceRowData,
   LoadPriceDataParams,
+  StaleTickerRowData,
+  StaleHourlyRowData,
+  ScanStaleHourlyResult,
+  HourlyDataQualityData,
 };
