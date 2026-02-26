@@ -21,6 +21,41 @@ message GetStockMetadataMapResponse {
   repeated StockMetadata items = 1;
 }
 
+// FullStockMetadata is a full row from stock_metadata plus flattened ETF fields from raw_payload (for Stock Database UI).
+message FullStockMetadata {
+  string symbol = 1;
+  string name = 2;
+  string exchange = 3;
+  string country = 4;
+  string isin = 5;
+  string asset_type = 6;
+  string rbics_economy = 7;
+  string rbics_sector = 8;
+  string rbics_subsector = 9;
+  string rbics_industry_group = 10;
+  string rbics_industry = 11;
+  string rbics_subindustry = 12;
+  optional double closing_price = 13;
+  optional double market_value = 14;
+  optional double sales = 15;
+  optional double avg_daily_volume = 16;
+  string data_source = 17;
+  google.protobuf.Timestamp last_updated = 18;
+  // ETF fields (from raw_payload when present).
+  string etf_issuer = 19;
+  string etf_asset_class = 20;
+  string etf_focus = 21;
+  string etf_niche = 22;
+  optional double expense_ratio = 23;
+  optional double aum = 24;
+}
+
+message GetFullStockMetadataRequest {}
+
+message GetFullStockMetadataResponse {
+  repeated FullStockMetadata items = 1;
+}
+
 // DatabaseStats holds record counts, ticker counts, and date ranges per timeframe.
 message DatabaseStats {
   int64 hourly_records = 1;
@@ -146,6 +181,7 @@ message GetHourlyDataQualityResponse {
 // PriceService provides read-only access to the price database.
 service PriceService {
   rpc GetStockMetadataMap(GetStockMetadataMapRequest) returns (GetStockMetadataMapResponse);
+  rpc GetFullStockMetadata(GetFullStockMetadataRequest) returns (GetFullStockMetadataResponse);
   rpc GetDatabaseStats(GetDatabaseStatsRequest) returns (GetDatabaseStatsResponse);
   rpc LoadPriceData(LoadPriceDataRequest) returns (LoadPriceDataResponse);
   rpc ScanStaleDaily(ScanStaleDailyRequest) returns (ScanStaleDailyResponse);

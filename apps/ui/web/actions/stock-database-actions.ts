@@ -1,0 +1,86 @@
+"use server";
+
+import { priceClient } from "@/lib/grpc/channel";
+
+/**
+ * One row of full stock metadata (table columns + flattened ETF fields from raw_payload).
+ * Matches the shape returned by the price service GetFullStockMetadata RPC.
+ */
+export type FullStockMetadataRow = {
+  symbol: string;
+  name: string;
+  exchange: string;
+  country: string;
+  isin: string;
+  assetType: string;
+  rbicsEconomy: string;
+  rbicsSector: string;
+  rbicsSubsector: string;
+  rbicsIndustryGroup: string;
+  rbicsIndustry: string;
+  rbicsSubindustry: string;
+  closingPrice?: number;
+  marketValue?: number;
+  sales?: number;
+  avgDailyVolume?: number;
+  dataSource: string;
+  lastUpdated?: Date;
+  etfIssuer: string;
+  etfAssetClass: string;
+  etfFocus: string;
+  etfNiche: string;
+  expenseRatio?: number;
+  aum?: number;
+};
+
+function mapItem(item: Record<string, unknown>): FullStockMetadataRow {
+  const get = (key: string) => item[key] ?? item[key.replace(/([A-Z])/g, "_$1").toLowerCase().replace(/^_/, "")];
+  const str = (key: string) => (get(key) != null ? String(get(key)) : "") as string;
+  const num = (key: string) => (get(key) != null ? Number(get(key)) : undefined) as number | undefined;
+  const date = (key: string) => {
+    const v = get(key);
+    if (v instanceof Date) return v;
+    if (typeof v === "string") return new Date(v);
+    return undefined;
+  };
+  return {
+    symbol: str("symbol"),
+    name: str("name"),
+    exchange: str("exchange"),
+    country: str("country"),
+    isin: str("isin"),
+    assetType: str("assetType") || str("asset_type"),
+    rbicsEconomy: str("rbicsEconomy") || str("rbics_economy"),
+    rbicsSector: str("rbicsSector") || str("rbics_sector"),
+    rbicsSubsector: str("rbicsSubsector") || str("rbics_subsector"),
+    rbicsIndustryGroup: str("rbicsIndustryGroup") || str("rbics_industry_group"),
+    rbicsIndustry: str("rbicsIndustry") || str("rbics_industry"),
+    rbicsSubindustry: str("rbicsSubindustry") || str("rbics_subindustry"),
+    closingPrice: num("closingPrice") ?? num("closing_price"),
+    marketValue: num("marketValue") ?? num("market_value"),
+    sales: num("sales"),
+    avgDailyVolume: num("avgDailyVolume") ?? num("avg_daily_volume"),
+    dataSource: str("dataSource") || str("data_source"),
+    lastUpdated: date("lastUpdated") ?? date("last_updated"),
+    etfIssuer: str("etfIssuer") || str("etf_issuer"),
+    etfAssetClass: str("etfAssetClass") || str("etf_asset_class"),
+    etfFocus: str("etfFocus") || str("etf_focus"),
+    etfNiche: str("etfNiche") || str("etf_niche"),
+    expenseRatio: num("expenseRatio") ?? num("expense_ratio"),
+    aum: num("aum"),
+  };
+}
+
+export type GetFullStockMetadataResult =
+  | { data: FullStockMetadataRow[] }
+  | { error: string };
+
+export async function getFullStockMetadata(): Promise<GetFullStockMetadataResult> {
+  try {
+    const res = await priceClient.getFullStockMetadata({});
+    return { data: res.items ?? [] };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return { error: message };
+  }
+}

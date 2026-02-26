@@ -309,6 +309,109 @@ func (q *Queries) ListDailyPrices(ctx context.Context, arg ListDailyPricesParams
 	return items, nil
 }
 
+const listFullStockMetadata = `-- name: ListFullStockMetadata :many
+SELECT
+    symbol,
+    isin,
+    name,
+    exchange,
+    country,
+    rbics_economy,
+    rbics_sector,
+    rbics_subsector,
+    rbics_industry_group,
+    rbics_industry,
+    rbics_subindustry,
+    closing_price,
+    market_value,
+    sales,
+    avg_daily_volume,
+    data_source,
+    last_updated,
+    asset_type,
+    raw_payload->>'etf_issuer' AS etf_issuer,
+    raw_payload->>'asset_class' AS etf_asset_class,
+    raw_payload->>'etf_focus' AS etf_focus,
+    raw_payload->>'etf_niche' AS etf_niche,
+    COALESCE((raw_payload->>'expense_ratio')::double precision, 0) AS expense_ratio,
+    COALESCE((raw_payload->>'aum')::double precision, 0) AS aum
+FROM stock_metadata
+ORDER BY symbol
+`
+
+type ListFullStockMetadataRow struct {
+	Symbol             string
+	Isin               pgtype.Text
+	Name               pgtype.Text
+	Exchange           pgtype.Text
+	Country            pgtype.Text
+	RbicsEconomy       pgtype.Text
+	RbicsSector        pgtype.Text
+	RbicsSubsector     pgtype.Text
+	RbicsIndustryGroup pgtype.Text
+	RbicsIndustry      pgtype.Text
+	RbicsSubindustry   pgtype.Text
+	ClosingPrice       pgtype.Float8
+	MarketValue        pgtype.Float8
+	Sales              pgtype.Float8
+	AvgDailyVolume     pgtype.Float8
+	DataSource         pgtype.Text
+	LastUpdated        pgtype.Timestamptz
+	AssetType          pgtype.Text
+	EtfIssuer          interface{}
+	EtfAssetClass      interface{}
+	EtfFocus           interface{}
+	EtfNiche           interface{}
+	ExpenseRatio       interface{}
+	Aum                interface{}
+}
+
+// ListFullStockMetadata returns all stock_metadata columns plus ETF fields from raw_payload for the Stock Database UI.
+func (q *Queries) ListFullStockMetadata(ctx context.Context) ([]ListFullStockMetadataRow, error) {
+	rows, err := q.db.Query(ctx, listFullStockMetadata)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListFullStockMetadataRow
+	for rows.Next() {
+		var i ListFullStockMetadataRow
+		if err := rows.Scan(
+			&i.Symbol,
+			&i.Isin,
+			&i.Name,
+			&i.Exchange,
+			&i.Country,
+			&i.RbicsEconomy,
+			&i.RbicsSector,
+			&i.RbicsSubsector,
+			&i.RbicsIndustryGroup,
+			&i.RbicsIndustry,
+			&i.RbicsSubindustry,
+			&i.ClosingPrice,
+			&i.MarketValue,
+			&i.Sales,
+			&i.AvgDailyVolume,
+			&i.DataSource,
+			&i.LastUpdated,
+			&i.AssetType,
+			&i.EtfIssuer,
+			&i.EtfAssetClass,
+			&i.EtfFocus,
+			&i.EtfNiche,
+			&i.ExpenseRatio,
+			&i.Aum,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listHourlyPrices = `-- name: ListHourlyPrices :many
 SELECT ticker, datetime, open, high, low, close, volume
 FROM hourly_prices

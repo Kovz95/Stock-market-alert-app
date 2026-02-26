@@ -119,6 +119,44 @@ export interface GetStockMetadataMapResponse {
   items: StockMetadata[];
 }
 
+/** FullStockMetadata is a full row from stock_metadata plus flattened ETF fields from raw_payload (for Stock Database UI). */
+export interface FullStockMetadata {
+  symbol: string;
+  name: string;
+  exchange: string;
+  country: string;
+  isin: string;
+  assetType: string;
+  rbicsEconomy: string;
+  rbicsSector: string;
+  rbicsSubsector: string;
+  rbicsIndustryGroup: string;
+  rbicsIndustry: string;
+  rbicsSubindustry: string;
+  closingPrice?: number | undefined;
+  marketValue?: number | undefined;
+  sales?: number | undefined;
+  avgDailyVolume?: number | undefined;
+  dataSource: string;
+  lastUpdated?:
+    | Date
+    | undefined;
+  /** ETF fields (from raw_payload when present). */
+  etfIssuer: string;
+  etfAssetClass: string;
+  etfFocus: string;
+  etfNiche: string;
+  expenseRatio?: number | undefined;
+  aum?: number | undefined;
+}
+
+export interface GetFullStockMetadataRequest {
+}
+
+export interface GetFullStockMetadataResponse {
+  items: FullStockMetadata[];
+}
+
 /** DatabaseStats holds record counts, ticker counts, and date ranges per timeframe. */
 export interface DatabaseStats {
   hourlyRecords: number;
@@ -445,6 +483,630 @@ export const GetStockMetadataMapResponse: MessageFns<GetStockMetadataMapResponse
   fromPartial<I extends Exact<DeepPartial<GetStockMetadataMapResponse>, I>>(object: I): GetStockMetadataMapResponse {
     const message = createBaseGetStockMetadataMapResponse();
     message.items = object.items?.map((e) => StockMetadata.fromPartial(e)) || [];
+    return message;
+  },
+};
+
+function createBaseFullStockMetadata(): FullStockMetadata {
+  return {
+    symbol: "",
+    name: "",
+    exchange: "",
+    country: "",
+    isin: "",
+    assetType: "",
+    rbicsEconomy: "",
+    rbicsSector: "",
+    rbicsSubsector: "",
+    rbicsIndustryGroup: "",
+    rbicsIndustry: "",
+    rbicsSubindustry: "",
+    closingPrice: undefined,
+    marketValue: undefined,
+    sales: undefined,
+    avgDailyVolume: undefined,
+    dataSource: "",
+    lastUpdated: undefined,
+    etfIssuer: "",
+    etfAssetClass: "",
+    etfFocus: "",
+    etfNiche: "",
+    expenseRatio: undefined,
+    aum: undefined,
+  };
+}
+
+export const FullStockMetadata: MessageFns<FullStockMetadata> = {
+  encode(message: FullStockMetadata, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.symbol !== "") {
+      writer.uint32(10).string(message.symbol);
+    }
+    if (message.name !== "") {
+      writer.uint32(18).string(message.name);
+    }
+    if (message.exchange !== "") {
+      writer.uint32(26).string(message.exchange);
+    }
+    if (message.country !== "") {
+      writer.uint32(34).string(message.country);
+    }
+    if (message.isin !== "") {
+      writer.uint32(42).string(message.isin);
+    }
+    if (message.assetType !== "") {
+      writer.uint32(50).string(message.assetType);
+    }
+    if (message.rbicsEconomy !== "") {
+      writer.uint32(58).string(message.rbicsEconomy);
+    }
+    if (message.rbicsSector !== "") {
+      writer.uint32(66).string(message.rbicsSector);
+    }
+    if (message.rbicsSubsector !== "") {
+      writer.uint32(74).string(message.rbicsSubsector);
+    }
+    if (message.rbicsIndustryGroup !== "") {
+      writer.uint32(82).string(message.rbicsIndustryGroup);
+    }
+    if (message.rbicsIndustry !== "") {
+      writer.uint32(90).string(message.rbicsIndustry);
+    }
+    if (message.rbicsSubindustry !== "") {
+      writer.uint32(98).string(message.rbicsSubindustry);
+    }
+    if (message.closingPrice !== undefined) {
+      writer.uint32(105).double(message.closingPrice);
+    }
+    if (message.marketValue !== undefined) {
+      writer.uint32(113).double(message.marketValue);
+    }
+    if (message.sales !== undefined) {
+      writer.uint32(121).double(message.sales);
+    }
+    if (message.avgDailyVolume !== undefined) {
+      writer.uint32(129).double(message.avgDailyVolume);
+    }
+    if (message.dataSource !== "") {
+      writer.uint32(138).string(message.dataSource);
+    }
+    if (message.lastUpdated !== undefined) {
+      Timestamp.encode(toTimestamp(message.lastUpdated), writer.uint32(146).fork()).join();
+    }
+    if (message.etfIssuer !== "") {
+      writer.uint32(154).string(message.etfIssuer);
+    }
+    if (message.etfAssetClass !== "") {
+      writer.uint32(162).string(message.etfAssetClass);
+    }
+    if (message.etfFocus !== "") {
+      writer.uint32(170).string(message.etfFocus);
+    }
+    if (message.etfNiche !== "") {
+      writer.uint32(178).string(message.etfNiche);
+    }
+    if (message.expenseRatio !== undefined) {
+      writer.uint32(185).double(message.expenseRatio);
+    }
+    if (message.aum !== undefined) {
+      writer.uint32(193).double(message.aum);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): FullStockMetadata {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseFullStockMetadata();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.symbol = reader.string();
+          continue;
+        }
+        case 2: {
+          if (tag !== 18) {
+            break;
+          }
+
+          message.name = reader.string();
+          continue;
+        }
+        case 3: {
+          if (tag !== 26) {
+            break;
+          }
+
+          message.exchange = reader.string();
+          continue;
+        }
+        case 4: {
+          if (tag !== 34) {
+            break;
+          }
+
+          message.country = reader.string();
+          continue;
+        }
+        case 5: {
+          if (tag !== 42) {
+            break;
+          }
+
+          message.isin = reader.string();
+          continue;
+        }
+        case 6: {
+          if (tag !== 50) {
+            break;
+          }
+
+          message.assetType = reader.string();
+          continue;
+        }
+        case 7: {
+          if (tag !== 58) {
+            break;
+          }
+
+          message.rbicsEconomy = reader.string();
+          continue;
+        }
+        case 8: {
+          if (tag !== 66) {
+            break;
+          }
+
+          message.rbicsSector = reader.string();
+          continue;
+        }
+        case 9: {
+          if (tag !== 74) {
+            break;
+          }
+
+          message.rbicsSubsector = reader.string();
+          continue;
+        }
+        case 10: {
+          if (tag !== 82) {
+            break;
+          }
+
+          message.rbicsIndustryGroup = reader.string();
+          continue;
+        }
+        case 11: {
+          if (tag !== 90) {
+            break;
+          }
+
+          message.rbicsIndustry = reader.string();
+          continue;
+        }
+        case 12: {
+          if (tag !== 98) {
+            break;
+          }
+
+          message.rbicsSubindustry = reader.string();
+          continue;
+        }
+        case 13: {
+          if (tag !== 105) {
+            break;
+          }
+
+          message.closingPrice = reader.double();
+          continue;
+        }
+        case 14: {
+          if (tag !== 113) {
+            break;
+          }
+
+          message.marketValue = reader.double();
+          continue;
+        }
+        case 15: {
+          if (tag !== 121) {
+            break;
+          }
+
+          message.sales = reader.double();
+          continue;
+        }
+        case 16: {
+          if (tag !== 129) {
+            break;
+          }
+
+          message.avgDailyVolume = reader.double();
+          continue;
+        }
+        case 17: {
+          if (tag !== 138) {
+            break;
+          }
+
+          message.dataSource = reader.string();
+          continue;
+        }
+        case 18: {
+          if (tag !== 146) {
+            break;
+          }
+
+          message.lastUpdated = fromTimestamp(Timestamp.decode(reader, reader.uint32()));
+          continue;
+        }
+        case 19: {
+          if (tag !== 154) {
+            break;
+          }
+
+          message.etfIssuer = reader.string();
+          continue;
+        }
+        case 20: {
+          if (tag !== 162) {
+            break;
+          }
+
+          message.etfAssetClass = reader.string();
+          continue;
+        }
+        case 21: {
+          if (tag !== 170) {
+            break;
+          }
+
+          message.etfFocus = reader.string();
+          continue;
+        }
+        case 22: {
+          if (tag !== 178) {
+            break;
+          }
+
+          message.etfNiche = reader.string();
+          continue;
+        }
+        case 23: {
+          if (tag !== 185) {
+            break;
+          }
+
+          message.expenseRatio = reader.double();
+          continue;
+        }
+        case 24: {
+          if (tag !== 193) {
+            break;
+          }
+
+          message.aum = reader.double();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): FullStockMetadata {
+    return {
+      symbol: isSet(object.symbol) ? globalThis.String(object.symbol) : "",
+      name: isSet(object.name) ? globalThis.String(object.name) : "",
+      exchange: isSet(object.exchange) ? globalThis.String(object.exchange) : "",
+      country: isSet(object.country) ? globalThis.String(object.country) : "",
+      isin: isSet(object.isin) ? globalThis.String(object.isin) : "",
+      assetType: isSet(object.assetType)
+        ? globalThis.String(object.assetType)
+        : isSet(object.asset_type)
+        ? globalThis.String(object.asset_type)
+        : "",
+      rbicsEconomy: isSet(object.rbicsEconomy)
+        ? globalThis.String(object.rbicsEconomy)
+        : isSet(object.rbics_economy)
+        ? globalThis.String(object.rbics_economy)
+        : "",
+      rbicsSector: isSet(object.rbicsSector)
+        ? globalThis.String(object.rbicsSector)
+        : isSet(object.rbics_sector)
+        ? globalThis.String(object.rbics_sector)
+        : "",
+      rbicsSubsector: isSet(object.rbicsSubsector)
+        ? globalThis.String(object.rbicsSubsector)
+        : isSet(object.rbics_subsector)
+        ? globalThis.String(object.rbics_subsector)
+        : "",
+      rbicsIndustryGroup: isSet(object.rbicsIndustryGroup)
+        ? globalThis.String(object.rbicsIndustryGroup)
+        : isSet(object.rbics_industry_group)
+        ? globalThis.String(object.rbics_industry_group)
+        : "",
+      rbicsIndustry: isSet(object.rbicsIndustry)
+        ? globalThis.String(object.rbicsIndustry)
+        : isSet(object.rbics_industry)
+        ? globalThis.String(object.rbics_industry)
+        : "",
+      rbicsSubindustry: isSet(object.rbicsSubindustry)
+        ? globalThis.String(object.rbicsSubindustry)
+        : isSet(object.rbics_subindustry)
+        ? globalThis.String(object.rbics_subindustry)
+        : "",
+      closingPrice: isSet(object.closingPrice)
+        ? globalThis.Number(object.closingPrice)
+        : isSet(object.closing_price)
+        ? globalThis.Number(object.closing_price)
+        : undefined,
+      marketValue: isSet(object.marketValue)
+        ? globalThis.Number(object.marketValue)
+        : isSet(object.market_value)
+        ? globalThis.Number(object.market_value)
+        : undefined,
+      sales: isSet(object.sales) ? globalThis.Number(object.sales) : undefined,
+      avgDailyVolume: isSet(object.avgDailyVolume)
+        ? globalThis.Number(object.avgDailyVolume)
+        : isSet(object.avg_daily_volume)
+        ? globalThis.Number(object.avg_daily_volume)
+        : undefined,
+      dataSource: isSet(object.dataSource)
+        ? globalThis.String(object.dataSource)
+        : isSet(object.data_source)
+        ? globalThis.String(object.data_source)
+        : "",
+      lastUpdated: isSet(object.lastUpdated)
+        ? fromJsonTimestamp(object.lastUpdated)
+        : isSet(object.last_updated)
+        ? fromJsonTimestamp(object.last_updated)
+        : undefined,
+      etfIssuer: isSet(object.etfIssuer)
+        ? globalThis.String(object.etfIssuer)
+        : isSet(object.etf_issuer)
+        ? globalThis.String(object.etf_issuer)
+        : "",
+      etfAssetClass: isSet(object.etfAssetClass)
+        ? globalThis.String(object.etfAssetClass)
+        : isSet(object.etf_asset_class)
+        ? globalThis.String(object.etf_asset_class)
+        : "",
+      etfFocus: isSet(object.etfFocus)
+        ? globalThis.String(object.etfFocus)
+        : isSet(object.etf_focus)
+        ? globalThis.String(object.etf_focus)
+        : "",
+      etfNiche: isSet(object.etfNiche)
+        ? globalThis.String(object.etfNiche)
+        : isSet(object.etf_niche)
+        ? globalThis.String(object.etf_niche)
+        : "",
+      expenseRatio: isSet(object.expenseRatio)
+        ? globalThis.Number(object.expenseRatio)
+        : isSet(object.expense_ratio)
+        ? globalThis.Number(object.expense_ratio)
+        : undefined,
+      aum: isSet(object.aum) ? globalThis.Number(object.aum) : undefined,
+    };
+  },
+
+  toJSON(message: FullStockMetadata): unknown {
+    const obj: any = {};
+    if (message.symbol !== "") {
+      obj.symbol = message.symbol;
+    }
+    if (message.name !== "") {
+      obj.name = message.name;
+    }
+    if (message.exchange !== "") {
+      obj.exchange = message.exchange;
+    }
+    if (message.country !== "") {
+      obj.country = message.country;
+    }
+    if (message.isin !== "") {
+      obj.isin = message.isin;
+    }
+    if (message.assetType !== "") {
+      obj.assetType = message.assetType;
+    }
+    if (message.rbicsEconomy !== "") {
+      obj.rbicsEconomy = message.rbicsEconomy;
+    }
+    if (message.rbicsSector !== "") {
+      obj.rbicsSector = message.rbicsSector;
+    }
+    if (message.rbicsSubsector !== "") {
+      obj.rbicsSubsector = message.rbicsSubsector;
+    }
+    if (message.rbicsIndustryGroup !== "") {
+      obj.rbicsIndustryGroup = message.rbicsIndustryGroup;
+    }
+    if (message.rbicsIndustry !== "") {
+      obj.rbicsIndustry = message.rbicsIndustry;
+    }
+    if (message.rbicsSubindustry !== "") {
+      obj.rbicsSubindustry = message.rbicsSubindustry;
+    }
+    if (message.closingPrice !== undefined) {
+      obj.closingPrice = message.closingPrice;
+    }
+    if (message.marketValue !== undefined) {
+      obj.marketValue = message.marketValue;
+    }
+    if (message.sales !== undefined) {
+      obj.sales = message.sales;
+    }
+    if (message.avgDailyVolume !== undefined) {
+      obj.avgDailyVolume = message.avgDailyVolume;
+    }
+    if (message.dataSource !== "") {
+      obj.dataSource = message.dataSource;
+    }
+    if (message.lastUpdated !== undefined) {
+      obj.lastUpdated = message.lastUpdated.toISOString();
+    }
+    if (message.etfIssuer !== "") {
+      obj.etfIssuer = message.etfIssuer;
+    }
+    if (message.etfAssetClass !== "") {
+      obj.etfAssetClass = message.etfAssetClass;
+    }
+    if (message.etfFocus !== "") {
+      obj.etfFocus = message.etfFocus;
+    }
+    if (message.etfNiche !== "") {
+      obj.etfNiche = message.etfNiche;
+    }
+    if (message.expenseRatio !== undefined) {
+      obj.expenseRatio = message.expenseRatio;
+    }
+    if (message.aum !== undefined) {
+      obj.aum = message.aum;
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<FullStockMetadata>, I>>(base?: I): FullStockMetadata {
+    return FullStockMetadata.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<FullStockMetadata>, I>>(object: I): FullStockMetadata {
+    const message = createBaseFullStockMetadata();
+    message.symbol = object.symbol ?? "";
+    message.name = object.name ?? "";
+    message.exchange = object.exchange ?? "";
+    message.country = object.country ?? "";
+    message.isin = object.isin ?? "";
+    message.assetType = object.assetType ?? "";
+    message.rbicsEconomy = object.rbicsEconomy ?? "";
+    message.rbicsSector = object.rbicsSector ?? "";
+    message.rbicsSubsector = object.rbicsSubsector ?? "";
+    message.rbicsIndustryGroup = object.rbicsIndustryGroup ?? "";
+    message.rbicsIndustry = object.rbicsIndustry ?? "";
+    message.rbicsSubindustry = object.rbicsSubindustry ?? "";
+    message.closingPrice = object.closingPrice ?? undefined;
+    message.marketValue = object.marketValue ?? undefined;
+    message.sales = object.sales ?? undefined;
+    message.avgDailyVolume = object.avgDailyVolume ?? undefined;
+    message.dataSource = object.dataSource ?? "";
+    message.lastUpdated = object.lastUpdated ?? undefined;
+    message.etfIssuer = object.etfIssuer ?? "";
+    message.etfAssetClass = object.etfAssetClass ?? "";
+    message.etfFocus = object.etfFocus ?? "";
+    message.etfNiche = object.etfNiche ?? "";
+    message.expenseRatio = object.expenseRatio ?? undefined;
+    message.aum = object.aum ?? undefined;
+    return message;
+  },
+};
+
+function createBaseGetFullStockMetadataRequest(): GetFullStockMetadataRequest {
+  return {};
+}
+
+export const GetFullStockMetadataRequest: MessageFns<GetFullStockMetadataRequest> = {
+  encode(_: GetFullStockMetadataRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): GetFullStockMetadataRequest {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseGetFullStockMetadataRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(_: any): GetFullStockMetadataRequest {
+    return {};
+  },
+
+  toJSON(_: GetFullStockMetadataRequest): unknown {
+    const obj: any = {};
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<GetFullStockMetadataRequest>, I>>(base?: I): GetFullStockMetadataRequest {
+    return GetFullStockMetadataRequest.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<GetFullStockMetadataRequest>, I>>(_: I): GetFullStockMetadataRequest {
+    const message = createBaseGetFullStockMetadataRequest();
+    return message;
+  },
+};
+
+function createBaseGetFullStockMetadataResponse(): GetFullStockMetadataResponse {
+  return { items: [] };
+}
+
+export const GetFullStockMetadataResponse: MessageFns<GetFullStockMetadataResponse> = {
+  encode(message: GetFullStockMetadataResponse, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    for (const v of message.items) {
+      FullStockMetadata.encode(v!, writer.uint32(10).fork()).join();
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): GetFullStockMetadataResponse {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseGetFullStockMetadataResponse();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.items.push(FullStockMetadata.decode(reader, reader.uint32()));
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): GetFullStockMetadataResponse {
+    return {
+      items: globalThis.Array.isArray(object?.items) ? object.items.map((e: any) => FullStockMetadata.fromJSON(e)) : [],
+    };
+  },
+
+  toJSON(message: GetFullStockMetadataResponse): unknown {
+    const obj: any = {};
+    if (message.items?.length) {
+      obj.items = message.items.map((e) => FullStockMetadata.toJSON(e));
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<GetFullStockMetadataResponse>, I>>(base?: I): GetFullStockMetadataResponse {
+    return GetFullStockMetadataResponse.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<GetFullStockMetadataResponse>, I>>(object: I): GetFullStockMetadataResponse {
+    const message = createBaseGetFullStockMetadataResponse();
+    message.items = object.items?.map((e) => FullStockMetadata.fromPartial(e)) || [];
     return message;
   },
 };
@@ -2097,6 +2759,14 @@ export const PriceServiceDefinition = {
       responseStream: false,
       options: {},
     },
+    getFullStockMetadata: {
+      name: "GetFullStockMetadata",
+      requestType: GetFullStockMetadataRequest,
+      requestStream: false,
+      responseType: GetFullStockMetadataResponse,
+      responseStream: false,
+      options: {},
+    },
     getDatabaseStats: {
       name: "GetDatabaseStats",
       requestType: GetDatabaseStatsRequest,
@@ -2153,6 +2823,10 @@ export interface PriceServiceImplementation<CallContextExt = {}> {
     request: GetStockMetadataMapRequest,
     context: CallContext & CallContextExt,
   ): Promise<DeepPartial<GetStockMetadataMapResponse>>;
+  getFullStockMetadata(
+    request: GetFullStockMetadataRequest,
+    context: CallContext & CallContextExt,
+  ): Promise<DeepPartial<GetFullStockMetadataResponse>>;
   getDatabaseStats(
     request: GetDatabaseStatsRequest,
     context: CallContext & CallContextExt,
@@ -2184,6 +2858,10 @@ export interface PriceServiceClient<CallOptionsExt = {}> {
     request: DeepPartial<GetStockMetadataMapRequest>,
     options?: CallOptions & CallOptionsExt,
   ): Promise<GetStockMetadataMapResponse>;
+  getFullStockMetadata(
+    request: DeepPartial<GetFullStockMetadataRequest>,
+    options?: CallOptions & CallOptionsExt,
+  ): Promise<GetFullStockMetadataResponse>;
   getDatabaseStats(
     request: DeepPartial<GetDatabaseStatsRequest>,
     options?: CallOptions & CallOptionsExt,

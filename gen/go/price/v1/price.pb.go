@@ -278,6 +278,316 @@ func (x *GetStockMetadataMapResponse) GetItems() []*StockMetadata {
 	return nil
 }
 
+// FullStockMetadata is a full row from stock_metadata plus flattened ETF fields from raw_payload (for Stock Database UI).
+type FullStockMetadata struct {
+	state              protoimpl.MessageState `protogen:"open.v1"`
+	Symbol             string                 `protobuf:"bytes,1,opt,name=symbol,proto3" json:"symbol,omitempty"`
+	Name               string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	Exchange           string                 `protobuf:"bytes,3,opt,name=exchange,proto3" json:"exchange,omitempty"`
+	Country            string                 `protobuf:"bytes,4,opt,name=country,proto3" json:"country,omitempty"`
+	Isin               string                 `protobuf:"bytes,5,opt,name=isin,proto3" json:"isin,omitempty"`
+	AssetType          string                 `protobuf:"bytes,6,opt,name=asset_type,json=assetType,proto3" json:"asset_type,omitempty"`
+	RbicsEconomy       string                 `protobuf:"bytes,7,opt,name=rbics_economy,json=rbicsEconomy,proto3" json:"rbics_economy,omitempty"`
+	RbicsSector        string                 `protobuf:"bytes,8,opt,name=rbics_sector,json=rbicsSector,proto3" json:"rbics_sector,omitempty"`
+	RbicsSubsector     string                 `protobuf:"bytes,9,opt,name=rbics_subsector,json=rbicsSubsector,proto3" json:"rbics_subsector,omitempty"`
+	RbicsIndustryGroup string                 `protobuf:"bytes,10,opt,name=rbics_industry_group,json=rbicsIndustryGroup,proto3" json:"rbics_industry_group,omitempty"`
+	RbicsIndustry      string                 `protobuf:"bytes,11,opt,name=rbics_industry,json=rbicsIndustry,proto3" json:"rbics_industry,omitempty"`
+	RbicsSubindustry   string                 `protobuf:"bytes,12,opt,name=rbics_subindustry,json=rbicsSubindustry,proto3" json:"rbics_subindustry,omitempty"`
+	ClosingPrice       *float64               `protobuf:"fixed64,13,opt,name=closing_price,json=closingPrice,proto3,oneof" json:"closing_price,omitempty"`
+	MarketValue        *float64               `protobuf:"fixed64,14,opt,name=market_value,json=marketValue,proto3,oneof" json:"market_value,omitempty"`
+	Sales              *float64               `protobuf:"fixed64,15,opt,name=sales,proto3,oneof" json:"sales,omitempty"`
+	AvgDailyVolume     *float64               `protobuf:"fixed64,16,opt,name=avg_daily_volume,json=avgDailyVolume,proto3,oneof" json:"avg_daily_volume,omitempty"`
+	DataSource         string                 `protobuf:"bytes,17,opt,name=data_source,json=dataSource,proto3" json:"data_source,omitempty"`
+	LastUpdated        *timestamppb.Timestamp `protobuf:"bytes,18,opt,name=last_updated,json=lastUpdated,proto3" json:"last_updated,omitempty"`
+	// ETF fields (from raw_payload when present).
+	EtfIssuer     string   `protobuf:"bytes,19,opt,name=etf_issuer,json=etfIssuer,proto3" json:"etf_issuer,omitempty"`
+	EtfAssetClass string   `protobuf:"bytes,20,opt,name=etf_asset_class,json=etfAssetClass,proto3" json:"etf_asset_class,omitempty"`
+	EtfFocus      string   `protobuf:"bytes,21,opt,name=etf_focus,json=etfFocus,proto3" json:"etf_focus,omitempty"`
+	EtfNiche      string   `protobuf:"bytes,22,opt,name=etf_niche,json=etfNiche,proto3" json:"etf_niche,omitempty"`
+	ExpenseRatio  *float64 `protobuf:"fixed64,23,opt,name=expense_ratio,json=expenseRatio,proto3,oneof" json:"expense_ratio,omitempty"`
+	Aum           *float64 `protobuf:"fixed64,24,opt,name=aum,proto3,oneof" json:"aum,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *FullStockMetadata) Reset() {
+	*x = FullStockMetadata{}
+	mi := &file_price_v1_price_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *FullStockMetadata) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*FullStockMetadata) ProtoMessage() {}
+
+func (x *FullStockMetadata) ProtoReflect() protoreflect.Message {
+	mi := &file_price_v1_price_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use FullStockMetadata.ProtoReflect.Descriptor instead.
+func (*FullStockMetadata) Descriptor() ([]byte, []int) {
+	return file_price_v1_price_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *FullStockMetadata) GetSymbol() string {
+	if x != nil {
+		return x.Symbol
+	}
+	return ""
+}
+
+func (x *FullStockMetadata) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *FullStockMetadata) GetExchange() string {
+	if x != nil {
+		return x.Exchange
+	}
+	return ""
+}
+
+func (x *FullStockMetadata) GetCountry() string {
+	if x != nil {
+		return x.Country
+	}
+	return ""
+}
+
+func (x *FullStockMetadata) GetIsin() string {
+	if x != nil {
+		return x.Isin
+	}
+	return ""
+}
+
+func (x *FullStockMetadata) GetAssetType() string {
+	if x != nil {
+		return x.AssetType
+	}
+	return ""
+}
+
+func (x *FullStockMetadata) GetRbicsEconomy() string {
+	if x != nil {
+		return x.RbicsEconomy
+	}
+	return ""
+}
+
+func (x *FullStockMetadata) GetRbicsSector() string {
+	if x != nil {
+		return x.RbicsSector
+	}
+	return ""
+}
+
+func (x *FullStockMetadata) GetRbicsSubsector() string {
+	if x != nil {
+		return x.RbicsSubsector
+	}
+	return ""
+}
+
+func (x *FullStockMetadata) GetRbicsIndustryGroup() string {
+	if x != nil {
+		return x.RbicsIndustryGroup
+	}
+	return ""
+}
+
+func (x *FullStockMetadata) GetRbicsIndustry() string {
+	if x != nil {
+		return x.RbicsIndustry
+	}
+	return ""
+}
+
+func (x *FullStockMetadata) GetRbicsSubindustry() string {
+	if x != nil {
+		return x.RbicsSubindustry
+	}
+	return ""
+}
+
+func (x *FullStockMetadata) GetClosingPrice() float64 {
+	if x != nil && x.ClosingPrice != nil {
+		return *x.ClosingPrice
+	}
+	return 0
+}
+
+func (x *FullStockMetadata) GetMarketValue() float64 {
+	if x != nil && x.MarketValue != nil {
+		return *x.MarketValue
+	}
+	return 0
+}
+
+func (x *FullStockMetadata) GetSales() float64 {
+	if x != nil && x.Sales != nil {
+		return *x.Sales
+	}
+	return 0
+}
+
+func (x *FullStockMetadata) GetAvgDailyVolume() float64 {
+	if x != nil && x.AvgDailyVolume != nil {
+		return *x.AvgDailyVolume
+	}
+	return 0
+}
+
+func (x *FullStockMetadata) GetDataSource() string {
+	if x != nil {
+		return x.DataSource
+	}
+	return ""
+}
+
+func (x *FullStockMetadata) GetLastUpdated() *timestamppb.Timestamp {
+	if x != nil {
+		return x.LastUpdated
+	}
+	return nil
+}
+
+func (x *FullStockMetadata) GetEtfIssuer() string {
+	if x != nil {
+		return x.EtfIssuer
+	}
+	return ""
+}
+
+func (x *FullStockMetadata) GetEtfAssetClass() string {
+	if x != nil {
+		return x.EtfAssetClass
+	}
+	return ""
+}
+
+func (x *FullStockMetadata) GetEtfFocus() string {
+	if x != nil {
+		return x.EtfFocus
+	}
+	return ""
+}
+
+func (x *FullStockMetadata) GetEtfNiche() string {
+	if x != nil {
+		return x.EtfNiche
+	}
+	return ""
+}
+
+func (x *FullStockMetadata) GetExpenseRatio() float64 {
+	if x != nil && x.ExpenseRatio != nil {
+		return *x.ExpenseRatio
+	}
+	return 0
+}
+
+func (x *FullStockMetadata) GetAum() float64 {
+	if x != nil && x.Aum != nil {
+		return *x.Aum
+	}
+	return 0
+}
+
+type GetFullStockMetadataRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetFullStockMetadataRequest) Reset() {
+	*x = GetFullStockMetadataRequest{}
+	mi := &file_price_v1_price_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetFullStockMetadataRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetFullStockMetadataRequest) ProtoMessage() {}
+
+func (x *GetFullStockMetadataRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_price_v1_price_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetFullStockMetadataRequest.ProtoReflect.Descriptor instead.
+func (*GetFullStockMetadataRequest) Descriptor() ([]byte, []int) {
+	return file_price_v1_price_proto_rawDescGZIP(), []int{4}
+}
+
+type GetFullStockMetadataResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Items         []*FullStockMetadata   `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetFullStockMetadataResponse) Reset() {
+	*x = GetFullStockMetadataResponse{}
+	mi := &file_price_v1_price_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetFullStockMetadataResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetFullStockMetadataResponse) ProtoMessage() {}
+
+func (x *GetFullStockMetadataResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_price_v1_price_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetFullStockMetadataResponse.ProtoReflect.Descriptor instead.
+func (*GetFullStockMetadataResponse) Descriptor() ([]byte, []int) {
+	return file_price_v1_price_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *GetFullStockMetadataResponse) GetItems() []*FullStockMetadata {
+	if x != nil {
+		return x.Items
+	}
+	return nil
+}
+
 // DatabaseStats holds record counts, ticker counts, and date ranges per timeframe.
 type DatabaseStats struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -299,7 +609,7 @@ type DatabaseStats struct {
 
 func (x *DatabaseStats) Reset() {
 	*x = DatabaseStats{}
-	mi := &file_price_v1_price_proto_msgTypes[3]
+	mi := &file_price_v1_price_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -311,7 +621,7 @@ func (x *DatabaseStats) String() string {
 func (*DatabaseStats) ProtoMessage() {}
 
 func (x *DatabaseStats) ProtoReflect() protoreflect.Message {
-	mi := &file_price_v1_price_proto_msgTypes[3]
+	mi := &file_price_v1_price_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -324,7 +634,7 @@ func (x *DatabaseStats) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DatabaseStats.ProtoReflect.Descriptor instead.
 func (*DatabaseStats) Descriptor() ([]byte, []int) {
-	return file_price_v1_price_proto_rawDescGZIP(), []int{3}
+	return file_price_v1_price_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *DatabaseStats) GetHourlyRecords() int64 {
@@ -419,7 +729,7 @@ type GetDatabaseStatsRequest struct {
 
 func (x *GetDatabaseStatsRequest) Reset() {
 	*x = GetDatabaseStatsRequest{}
-	mi := &file_price_v1_price_proto_msgTypes[4]
+	mi := &file_price_v1_price_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -431,7 +741,7 @@ func (x *GetDatabaseStatsRequest) String() string {
 func (*GetDatabaseStatsRequest) ProtoMessage() {}
 
 func (x *GetDatabaseStatsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_price_v1_price_proto_msgTypes[4]
+	mi := &file_price_v1_price_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -444,7 +754,7 @@ func (x *GetDatabaseStatsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetDatabaseStatsRequest.ProtoReflect.Descriptor instead.
 func (*GetDatabaseStatsRequest) Descriptor() ([]byte, []int) {
-	return file_price_v1_price_proto_rawDescGZIP(), []int{4}
+	return file_price_v1_price_proto_rawDescGZIP(), []int{7}
 }
 
 type GetDatabaseStatsResponse struct {
@@ -456,7 +766,7 @@ type GetDatabaseStatsResponse struct {
 
 func (x *GetDatabaseStatsResponse) Reset() {
 	*x = GetDatabaseStatsResponse{}
-	mi := &file_price_v1_price_proto_msgTypes[5]
+	mi := &file_price_v1_price_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -468,7 +778,7 @@ func (x *GetDatabaseStatsResponse) String() string {
 func (*GetDatabaseStatsResponse) ProtoMessage() {}
 
 func (x *GetDatabaseStatsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_price_v1_price_proto_msgTypes[5]
+	mi := &file_price_v1_price_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -481,7 +791,7 @@ func (x *GetDatabaseStatsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetDatabaseStatsResponse.ProtoReflect.Descriptor instead.
 func (*GetDatabaseStatsResponse) Descriptor() ([]byte, []int) {
-	return file_price_v1_price_proto_rawDescGZIP(), []int{5}
+	return file_price_v1_price_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *GetDatabaseStatsResponse) GetStats() *DatabaseStats {
@@ -507,7 +817,7 @@ type PriceRow struct {
 
 func (x *PriceRow) Reset() {
 	*x = PriceRow{}
-	mi := &file_price_v1_price_proto_msgTypes[6]
+	mi := &file_price_v1_price_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -519,7 +829,7 @@ func (x *PriceRow) String() string {
 func (*PriceRow) ProtoMessage() {}
 
 func (x *PriceRow) ProtoReflect() protoreflect.Message {
-	mi := &file_price_v1_price_proto_msgTypes[6]
+	mi := &file_price_v1_price_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -532,7 +842,7 @@ func (x *PriceRow) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PriceRow.ProtoReflect.Descriptor instead.
 func (*PriceRow) Descriptor() ([]byte, []int) {
-	return file_price_v1_price_proto_rawDescGZIP(), []int{6}
+	return file_price_v1_price_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *PriceRow) GetTicker() string {
@@ -598,7 +908,7 @@ type LoadPriceDataRequest struct {
 
 func (x *LoadPriceDataRequest) Reset() {
 	*x = LoadPriceDataRequest{}
-	mi := &file_price_v1_price_proto_msgTypes[7]
+	mi := &file_price_v1_price_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -610,7 +920,7 @@ func (x *LoadPriceDataRequest) String() string {
 func (*LoadPriceDataRequest) ProtoMessage() {}
 
 func (x *LoadPriceDataRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_price_v1_price_proto_msgTypes[7]
+	mi := &file_price_v1_price_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -623,7 +933,7 @@ func (x *LoadPriceDataRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LoadPriceDataRequest.ProtoReflect.Descriptor instead.
 func (*LoadPriceDataRequest) Descriptor() ([]byte, []int) {
-	return file_price_v1_price_proto_rawDescGZIP(), []int{7}
+	return file_price_v1_price_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *LoadPriceDataRequest) GetTimeframe() Timeframe {
@@ -677,7 +987,7 @@ type LoadPriceDataResponse struct {
 
 func (x *LoadPriceDataResponse) Reset() {
 	*x = LoadPriceDataResponse{}
-	mi := &file_price_v1_price_proto_msgTypes[8]
+	mi := &file_price_v1_price_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -689,7 +999,7 @@ func (x *LoadPriceDataResponse) String() string {
 func (*LoadPriceDataResponse) ProtoMessage() {}
 
 func (x *LoadPriceDataResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_price_v1_price_proto_msgTypes[8]
+	mi := &file_price_v1_price_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -702,7 +1012,7 @@ func (x *LoadPriceDataResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LoadPriceDataResponse.ProtoReflect.Descriptor instead.
 func (*LoadPriceDataResponse) Descriptor() ([]byte, []int) {
-	return file_price_v1_price_proto_rawDescGZIP(), []int{8}
+	return file_price_v1_price_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *LoadPriceDataResponse) GetRows() []*PriceRow {
@@ -726,7 +1036,7 @@ type StaleTickerRow struct {
 
 func (x *StaleTickerRow) Reset() {
 	*x = StaleTickerRow{}
-	mi := &file_price_v1_price_proto_msgTypes[9]
+	mi := &file_price_v1_price_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -738,7 +1048,7 @@ func (x *StaleTickerRow) String() string {
 func (*StaleTickerRow) ProtoMessage() {}
 
 func (x *StaleTickerRow) ProtoReflect() protoreflect.Message {
-	mi := &file_price_v1_price_proto_msgTypes[9]
+	mi := &file_price_v1_price_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -751,7 +1061,7 @@ func (x *StaleTickerRow) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StaleTickerRow.ProtoReflect.Descriptor instead.
 func (*StaleTickerRow) Descriptor() ([]byte, []int) {
-	return file_price_v1_price_proto_rawDescGZIP(), []int{9}
+	return file_price_v1_price_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *StaleTickerRow) GetTicker() string {
@@ -799,7 +1109,7 @@ type ScanStaleDailyRequest struct {
 
 func (x *ScanStaleDailyRequest) Reset() {
 	*x = ScanStaleDailyRequest{}
-	mi := &file_price_v1_price_proto_msgTypes[10]
+	mi := &file_price_v1_price_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -811,7 +1121,7 @@ func (x *ScanStaleDailyRequest) String() string {
 func (*ScanStaleDailyRequest) ProtoMessage() {}
 
 func (x *ScanStaleDailyRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_price_v1_price_proto_msgTypes[10]
+	mi := &file_price_v1_price_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -824,7 +1134,7 @@ func (x *ScanStaleDailyRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ScanStaleDailyRequest.ProtoReflect.Descriptor instead.
 func (*ScanStaleDailyRequest) Descriptor() ([]byte, []int) {
-	return file_price_v1_price_proto_rawDescGZIP(), []int{10}
+	return file_price_v1_price_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *ScanStaleDailyRequest) GetLimit() int32 {
@@ -843,7 +1153,7 @@ type ScanStaleDailyResponse struct {
 
 func (x *ScanStaleDailyResponse) Reset() {
 	*x = ScanStaleDailyResponse{}
-	mi := &file_price_v1_price_proto_msgTypes[11]
+	mi := &file_price_v1_price_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -855,7 +1165,7 @@ func (x *ScanStaleDailyResponse) String() string {
 func (*ScanStaleDailyResponse) ProtoMessage() {}
 
 func (x *ScanStaleDailyResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_price_v1_price_proto_msgTypes[11]
+	mi := &file_price_v1_price_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -868,7 +1178,7 @@ func (x *ScanStaleDailyResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ScanStaleDailyResponse.ProtoReflect.Descriptor instead.
 func (*ScanStaleDailyResponse) Descriptor() ([]byte, []int) {
-	return file_price_v1_price_proto_rawDescGZIP(), []int{11}
+	return file_price_v1_price_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *ScanStaleDailyResponse) GetRows() []*StaleTickerRow {
@@ -888,7 +1198,7 @@ type ScanStaleWeeklyRequest struct {
 
 func (x *ScanStaleWeeklyRequest) Reset() {
 	*x = ScanStaleWeeklyRequest{}
-	mi := &file_price_v1_price_proto_msgTypes[12]
+	mi := &file_price_v1_price_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -900,7 +1210,7 @@ func (x *ScanStaleWeeklyRequest) String() string {
 func (*ScanStaleWeeklyRequest) ProtoMessage() {}
 
 func (x *ScanStaleWeeklyRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_price_v1_price_proto_msgTypes[12]
+	mi := &file_price_v1_price_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -913,7 +1223,7 @@ func (x *ScanStaleWeeklyRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ScanStaleWeeklyRequest.ProtoReflect.Descriptor instead.
 func (*ScanStaleWeeklyRequest) Descriptor() ([]byte, []int) {
-	return file_price_v1_price_proto_rawDescGZIP(), []int{12}
+	return file_price_v1_price_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *ScanStaleWeeklyRequest) GetLimit() int32 {
@@ -932,7 +1242,7 @@ type ScanStaleWeeklyResponse struct {
 
 func (x *ScanStaleWeeklyResponse) Reset() {
 	*x = ScanStaleWeeklyResponse{}
-	mi := &file_price_v1_price_proto_msgTypes[13]
+	mi := &file_price_v1_price_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -944,7 +1254,7 @@ func (x *ScanStaleWeeklyResponse) String() string {
 func (*ScanStaleWeeklyResponse) ProtoMessage() {}
 
 func (x *ScanStaleWeeklyResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_price_v1_price_proto_msgTypes[13]
+	mi := &file_price_v1_price_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -957,7 +1267,7 @@ func (x *ScanStaleWeeklyResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ScanStaleWeeklyResponse.ProtoReflect.Descriptor instead.
 func (*ScanStaleWeeklyResponse) Descriptor() ([]byte, []int) {
-	return file_price_v1_price_proto_rawDescGZIP(), []int{13}
+	return file_price_v1_price_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *ScanStaleWeeklyResponse) GetRows() []*StaleTickerRow {
@@ -979,7 +1289,7 @@ type StaleHourlyRow struct {
 
 func (x *StaleHourlyRow) Reset() {
 	*x = StaleHourlyRow{}
-	mi := &file_price_v1_price_proto_msgTypes[14]
+	mi := &file_price_v1_price_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -991,7 +1301,7 @@ func (x *StaleHourlyRow) String() string {
 func (*StaleHourlyRow) ProtoMessage() {}
 
 func (x *StaleHourlyRow) ProtoReflect() protoreflect.Message {
-	mi := &file_price_v1_price_proto_msgTypes[14]
+	mi := &file_price_v1_price_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1004,7 +1314,7 @@ func (x *StaleHourlyRow) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StaleHourlyRow.ProtoReflect.Descriptor instead.
 func (*StaleHourlyRow) Descriptor() ([]byte, []int) {
-	return file_price_v1_price_proto_rawDescGZIP(), []int{14}
+	return file_price_v1_price_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *StaleHourlyRow) GetTicker() string {
@@ -1038,7 +1348,7 @@ type ScanStaleHourlyRequest struct {
 
 func (x *ScanStaleHourlyRequest) Reset() {
 	*x = ScanStaleHourlyRequest{}
-	mi := &file_price_v1_price_proto_msgTypes[15]
+	mi := &file_price_v1_price_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1050,7 +1360,7 @@ func (x *ScanStaleHourlyRequest) String() string {
 func (*ScanStaleHourlyRequest) ProtoMessage() {}
 
 func (x *ScanStaleHourlyRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_price_v1_price_proto_msgTypes[15]
+	mi := &file_price_v1_price_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1063,7 +1373,7 @@ func (x *ScanStaleHourlyRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ScanStaleHourlyRequest.ProtoReflect.Descriptor instead.
 func (*ScanStaleHourlyRequest) Descriptor() ([]byte, []int) {
-	return file_price_v1_price_proto_rawDescGZIP(), []int{15}
+	return file_price_v1_price_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *ScanStaleHourlyRequest) GetLimit() int32 {
@@ -1085,7 +1395,7 @@ type ScanStaleHourlyResponse struct {
 
 func (x *ScanStaleHourlyResponse) Reset() {
 	*x = ScanStaleHourlyResponse{}
-	mi := &file_price_v1_price_proto_msgTypes[16]
+	mi := &file_price_v1_price_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1097,7 +1407,7 @@ func (x *ScanStaleHourlyResponse) String() string {
 func (*ScanStaleHourlyResponse) ProtoMessage() {}
 
 func (x *ScanStaleHourlyResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_price_v1_price_proto_msgTypes[16]
+	mi := &file_price_v1_price_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1110,7 +1420,7 @@ func (x *ScanStaleHourlyResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ScanStaleHourlyResponse.ProtoReflect.Descriptor instead.
 func (*ScanStaleHourlyResponse) Descriptor() ([]byte, []int) {
-	return file_price_v1_price_proto_rawDescGZIP(), []int{16}
+	return file_price_v1_price_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *ScanStaleHourlyResponse) GetRows() []*StaleHourlyRow {
@@ -1150,7 +1460,7 @@ type GetHourlyDataQualityRequest struct {
 
 func (x *GetHourlyDataQualityRequest) Reset() {
 	*x = GetHourlyDataQualityRequest{}
-	mi := &file_price_v1_price_proto_msgTypes[17]
+	mi := &file_price_v1_price_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1162,7 +1472,7 @@ func (x *GetHourlyDataQualityRequest) String() string {
 func (*GetHourlyDataQualityRequest) ProtoMessage() {}
 
 func (x *GetHourlyDataQualityRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_price_v1_price_proto_msgTypes[17]
+	mi := &file_price_v1_price_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1175,7 +1485,7 @@ func (x *GetHourlyDataQualityRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetHourlyDataQualityRequest.ProtoReflect.Descriptor instead.
 func (*GetHourlyDataQualityRequest) Descriptor() ([]byte, []int) {
-	return file_price_v1_price_proto_rawDescGZIP(), []int{17}
+	return file_price_v1_price_proto_rawDescGZIP(), []int{20}
 }
 
 type GetHourlyDataQualityResponse struct {
@@ -1192,7 +1502,7 @@ type GetHourlyDataQualityResponse struct {
 
 func (x *GetHourlyDataQualityResponse) Reset() {
 	*x = GetHourlyDataQualityResponse{}
-	mi := &file_price_v1_price_proto_msgTypes[18]
+	mi := &file_price_v1_price_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1204,7 +1514,7 @@ func (x *GetHourlyDataQualityResponse) String() string {
 func (*GetHourlyDataQualityResponse) ProtoMessage() {}
 
 func (x *GetHourlyDataQualityResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_price_v1_price_proto_msgTypes[18]
+	mi := &file_price_v1_price_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1217,7 +1527,7 @@ func (x *GetHourlyDataQualityResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetHourlyDataQualityResponse.ProtoReflect.Descriptor instead.
 func (*GetHourlyDataQualityResponse) Descriptor() ([]byte, []int) {
-	return file_price_v1_price_proto_rawDescGZIP(), []int{18}
+	return file_price_v1_price_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *GetHourlyDataQualityResponse) GetTotalTickers() int32 {
@@ -1274,7 +1584,45 @@ const file_price_v1_price_proto_rawDesc = "" +
 	"\x04isin\x18\x04 \x01(\tR\x04isin\"\x1c\n" +
 	"\x1aGetStockMetadataMapRequest\"W\n" +
 	"\x1bGetStockMetadataMapResponse\x128\n" +
-	"\x05items\x18\x01 \x03(\v2\".stockalert.price.v1.StockMetadataR\x05items\"\xd3\x04\n" +
+	"\x05items\x18\x01 \x03(\v2\".stockalert.price.v1.StockMetadataR\x05items\"\xb9\a\n" +
+	"\x11FullStockMetadata\x12\x16\n" +
+	"\x06symbol\x18\x01 \x01(\tR\x06symbol\x12\x12\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\x12\x1a\n" +
+	"\bexchange\x18\x03 \x01(\tR\bexchange\x12\x18\n" +
+	"\acountry\x18\x04 \x01(\tR\acountry\x12\x12\n" +
+	"\x04isin\x18\x05 \x01(\tR\x04isin\x12\x1d\n" +
+	"\n" +
+	"asset_type\x18\x06 \x01(\tR\tassetType\x12#\n" +
+	"\rrbics_economy\x18\a \x01(\tR\frbicsEconomy\x12!\n" +
+	"\frbics_sector\x18\b \x01(\tR\vrbicsSector\x12'\n" +
+	"\x0frbics_subsector\x18\t \x01(\tR\x0erbicsSubsector\x120\n" +
+	"\x14rbics_industry_group\x18\n" +
+	" \x01(\tR\x12rbicsIndustryGroup\x12%\n" +
+	"\x0erbics_industry\x18\v \x01(\tR\rrbicsIndustry\x12+\n" +
+	"\x11rbics_subindustry\x18\f \x01(\tR\x10rbicsSubindustry\x12(\n" +
+	"\rclosing_price\x18\r \x01(\x01H\x00R\fclosingPrice\x88\x01\x01\x12&\n" +
+	"\fmarket_value\x18\x0e \x01(\x01H\x01R\vmarketValue\x88\x01\x01\x12\x19\n" +
+	"\x05sales\x18\x0f \x01(\x01H\x02R\x05sales\x88\x01\x01\x12-\n" +
+	"\x10avg_daily_volume\x18\x10 \x01(\x01H\x03R\x0eavgDailyVolume\x88\x01\x01\x12\x1f\n" +
+	"\vdata_source\x18\x11 \x01(\tR\n" +
+	"dataSource\x12=\n" +
+	"\flast_updated\x18\x12 \x01(\v2\x1a.google.protobuf.TimestampR\vlastUpdated\x12\x1d\n" +
+	"\n" +
+	"etf_issuer\x18\x13 \x01(\tR\tetfIssuer\x12&\n" +
+	"\x0fetf_asset_class\x18\x14 \x01(\tR\retfAssetClass\x12\x1b\n" +
+	"\tetf_focus\x18\x15 \x01(\tR\betfFocus\x12\x1b\n" +
+	"\tetf_niche\x18\x16 \x01(\tR\betfNiche\x12(\n" +
+	"\rexpense_ratio\x18\x17 \x01(\x01H\x04R\fexpenseRatio\x88\x01\x01\x12\x15\n" +
+	"\x03aum\x18\x18 \x01(\x01H\x05R\x03aum\x88\x01\x01B\x10\n" +
+	"\x0e_closing_priceB\x0f\n" +
+	"\r_market_valueB\b\n" +
+	"\x06_salesB\x13\n" +
+	"\x11_avg_daily_volumeB\x10\n" +
+	"\x0e_expense_ratioB\x06\n" +
+	"\x04_aum\"\x1d\n" +
+	"\x1bGetFullStockMetadataRequest\"\\\n" +
+	"\x1cGetFullStockMetadataResponse\x12<\n" +
+	"\x05items\x18\x01 \x03(\v2&.stockalert.price.v1.FullStockMetadataR\x05items\"\xd3\x04\n" +
 	"\rDatabaseStats\x12%\n" +
 	"\x0ehourly_records\x18\x01 \x01(\x03R\rhourlyRecords\x12#\n" +
 	"\rdaily_records\x18\x02 \x01(\x03R\fdailyRecords\x12%\n" +
@@ -1360,9 +1708,10 @@ const file_price_v1_price_proto_rawDesc = "" +
 	"\x16DAY_FILTER_UNSPECIFIED\x10\x00\x12\x12\n" +
 	"\x0eDAY_FILTER_ALL\x10\x01\x12\x17\n" +
 	"\x13DAY_FILTER_WEEKDAYS\x10\x02\x12\x17\n" +
-	"\x13DAY_FILTER_WEEKENDS\x10\x032\xa5\x06\n" +
+	"\x13DAY_FILTER_WEEKENDS\x10\x032\xa2\a\n" +
 	"\fPriceService\x12x\n" +
-	"\x13GetStockMetadataMap\x12/.stockalert.price.v1.GetStockMetadataMapRequest\x1a0.stockalert.price.v1.GetStockMetadataMapResponse\x12o\n" +
+	"\x13GetStockMetadataMap\x12/.stockalert.price.v1.GetStockMetadataMapRequest\x1a0.stockalert.price.v1.GetStockMetadataMapResponse\x12{\n" +
+	"\x14GetFullStockMetadata\x120.stockalert.price.v1.GetFullStockMetadataRequest\x1a1.stockalert.price.v1.GetFullStockMetadataResponse\x12o\n" +
 	"\x10GetDatabaseStats\x12,.stockalert.price.v1.GetDatabaseStatsRequest\x1a-.stockalert.price.v1.GetDatabaseStatsResponse\x12f\n" +
 	"\rLoadPriceData\x12).stockalert.price.v1.LoadPriceDataRequest\x1a*.stockalert.price.v1.LoadPriceDataResponse\x12i\n" +
 	"\x0eScanStaleDaily\x12*.stockalert.price.v1.ScanStaleDailyRequest\x1a+.stockalert.price.v1.ScanStaleDailyResponse\x12l\n" +
@@ -1385,72 +1734,79 @@ func file_price_v1_price_proto_rawDescGZIP() []byte {
 }
 
 var file_price_v1_price_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_price_v1_price_proto_msgTypes = make([]protoimpl.MessageInfo, 19)
+var file_price_v1_price_proto_msgTypes = make([]protoimpl.MessageInfo, 22)
 var file_price_v1_price_proto_goTypes = []any{
 	(Timeframe)(0),                       // 0: stockalert.price.v1.Timeframe
 	(DayFilter)(0),                       // 1: stockalert.price.v1.DayFilter
 	(*StockMetadata)(nil),                // 2: stockalert.price.v1.StockMetadata
 	(*GetStockMetadataMapRequest)(nil),   // 3: stockalert.price.v1.GetStockMetadataMapRequest
 	(*GetStockMetadataMapResponse)(nil),  // 4: stockalert.price.v1.GetStockMetadataMapResponse
-	(*DatabaseStats)(nil),                // 5: stockalert.price.v1.DatabaseStats
-	(*GetDatabaseStatsRequest)(nil),      // 6: stockalert.price.v1.GetDatabaseStatsRequest
-	(*GetDatabaseStatsResponse)(nil),     // 7: stockalert.price.v1.GetDatabaseStatsResponse
-	(*PriceRow)(nil),                     // 8: stockalert.price.v1.PriceRow
-	(*LoadPriceDataRequest)(nil),         // 9: stockalert.price.v1.LoadPriceDataRequest
-	(*LoadPriceDataResponse)(nil),        // 10: stockalert.price.v1.LoadPriceDataResponse
-	(*StaleTickerRow)(nil),               // 11: stockalert.price.v1.StaleTickerRow
-	(*ScanStaleDailyRequest)(nil),        // 12: stockalert.price.v1.ScanStaleDailyRequest
-	(*ScanStaleDailyResponse)(nil),       // 13: stockalert.price.v1.ScanStaleDailyResponse
-	(*ScanStaleWeeklyRequest)(nil),       // 14: stockalert.price.v1.ScanStaleWeeklyRequest
-	(*ScanStaleWeeklyResponse)(nil),      // 15: stockalert.price.v1.ScanStaleWeeklyResponse
-	(*StaleHourlyRow)(nil),               // 16: stockalert.price.v1.StaleHourlyRow
-	(*ScanStaleHourlyRequest)(nil),       // 17: stockalert.price.v1.ScanStaleHourlyRequest
-	(*ScanStaleHourlyResponse)(nil),      // 18: stockalert.price.v1.ScanStaleHourlyResponse
-	(*GetHourlyDataQualityRequest)(nil),  // 19: stockalert.price.v1.GetHourlyDataQualityRequest
-	(*GetHourlyDataQualityResponse)(nil), // 20: stockalert.price.v1.GetHourlyDataQualityResponse
-	(*timestamppb.Timestamp)(nil),        // 21: google.protobuf.Timestamp
+	(*FullStockMetadata)(nil),            // 5: stockalert.price.v1.FullStockMetadata
+	(*GetFullStockMetadataRequest)(nil),  // 6: stockalert.price.v1.GetFullStockMetadataRequest
+	(*GetFullStockMetadataResponse)(nil), // 7: stockalert.price.v1.GetFullStockMetadataResponse
+	(*DatabaseStats)(nil),                // 8: stockalert.price.v1.DatabaseStats
+	(*GetDatabaseStatsRequest)(nil),      // 9: stockalert.price.v1.GetDatabaseStatsRequest
+	(*GetDatabaseStatsResponse)(nil),     // 10: stockalert.price.v1.GetDatabaseStatsResponse
+	(*PriceRow)(nil),                     // 11: stockalert.price.v1.PriceRow
+	(*LoadPriceDataRequest)(nil),         // 12: stockalert.price.v1.LoadPriceDataRequest
+	(*LoadPriceDataResponse)(nil),        // 13: stockalert.price.v1.LoadPriceDataResponse
+	(*StaleTickerRow)(nil),               // 14: stockalert.price.v1.StaleTickerRow
+	(*ScanStaleDailyRequest)(nil),        // 15: stockalert.price.v1.ScanStaleDailyRequest
+	(*ScanStaleDailyResponse)(nil),       // 16: stockalert.price.v1.ScanStaleDailyResponse
+	(*ScanStaleWeeklyRequest)(nil),       // 17: stockalert.price.v1.ScanStaleWeeklyRequest
+	(*ScanStaleWeeklyResponse)(nil),      // 18: stockalert.price.v1.ScanStaleWeeklyResponse
+	(*StaleHourlyRow)(nil),               // 19: stockalert.price.v1.StaleHourlyRow
+	(*ScanStaleHourlyRequest)(nil),       // 20: stockalert.price.v1.ScanStaleHourlyRequest
+	(*ScanStaleHourlyResponse)(nil),      // 21: stockalert.price.v1.ScanStaleHourlyResponse
+	(*GetHourlyDataQualityRequest)(nil),  // 22: stockalert.price.v1.GetHourlyDataQualityRequest
+	(*GetHourlyDataQualityResponse)(nil), // 23: stockalert.price.v1.GetHourlyDataQualityResponse
+	(*timestamppb.Timestamp)(nil),        // 24: google.protobuf.Timestamp
 }
 var file_price_v1_price_proto_depIdxs = []int32{
 	2,  // 0: stockalert.price.v1.GetStockMetadataMapResponse.items:type_name -> stockalert.price.v1.StockMetadata
-	21, // 1: stockalert.price.v1.DatabaseStats.hourly_min:type_name -> google.protobuf.Timestamp
-	21, // 2: stockalert.price.v1.DatabaseStats.hourly_max:type_name -> google.protobuf.Timestamp
-	21, // 3: stockalert.price.v1.DatabaseStats.daily_min:type_name -> google.protobuf.Timestamp
-	21, // 4: stockalert.price.v1.DatabaseStats.daily_max:type_name -> google.protobuf.Timestamp
-	21, // 5: stockalert.price.v1.DatabaseStats.weekly_min:type_name -> google.protobuf.Timestamp
-	21, // 6: stockalert.price.v1.DatabaseStats.weekly_max:type_name -> google.protobuf.Timestamp
-	5,  // 7: stockalert.price.v1.GetDatabaseStatsResponse.stats:type_name -> stockalert.price.v1.DatabaseStats
-	21, // 8: stockalert.price.v1.PriceRow.time:type_name -> google.protobuf.Timestamp
-	0,  // 9: stockalert.price.v1.LoadPriceDataRequest.timeframe:type_name -> stockalert.price.v1.Timeframe
-	21, // 10: stockalert.price.v1.LoadPriceDataRequest.start_date:type_name -> google.protobuf.Timestamp
-	21, // 11: stockalert.price.v1.LoadPriceDataRequest.end_date:type_name -> google.protobuf.Timestamp
-	1,  // 12: stockalert.price.v1.LoadPriceDataRequest.day_filter:type_name -> stockalert.price.v1.DayFilter
-	8,  // 13: stockalert.price.v1.LoadPriceDataResponse.rows:type_name -> stockalert.price.v1.PriceRow
-	21, // 14: stockalert.price.v1.StaleTickerRow.last_update:type_name -> google.protobuf.Timestamp
-	11, // 15: stockalert.price.v1.ScanStaleDailyResponse.rows:type_name -> stockalert.price.v1.StaleTickerRow
-	11, // 16: stockalert.price.v1.ScanStaleWeeklyResponse.rows:type_name -> stockalert.price.v1.StaleTickerRow
-	21, // 17: stockalert.price.v1.StaleHourlyRow.last_hour:type_name -> google.protobuf.Timestamp
-	16, // 18: stockalert.price.v1.ScanStaleHourlyResponse.rows:type_name -> stockalert.price.v1.StaleHourlyRow
-	21, // 19: stockalert.price.v1.ScanStaleHourlyResponse.latest_hour:type_name -> google.protobuf.Timestamp
-	21, // 20: stockalert.price.v1.GetHourlyDataQualityResponse.oldest_stale:type_name -> google.protobuf.Timestamp
-	3,  // 21: stockalert.price.v1.PriceService.GetStockMetadataMap:input_type -> stockalert.price.v1.GetStockMetadataMapRequest
-	6,  // 22: stockalert.price.v1.PriceService.GetDatabaseStats:input_type -> stockalert.price.v1.GetDatabaseStatsRequest
-	9,  // 23: stockalert.price.v1.PriceService.LoadPriceData:input_type -> stockalert.price.v1.LoadPriceDataRequest
-	12, // 24: stockalert.price.v1.PriceService.ScanStaleDaily:input_type -> stockalert.price.v1.ScanStaleDailyRequest
-	14, // 25: stockalert.price.v1.PriceService.ScanStaleWeekly:input_type -> stockalert.price.v1.ScanStaleWeeklyRequest
-	17, // 26: stockalert.price.v1.PriceService.ScanStaleHourly:input_type -> stockalert.price.v1.ScanStaleHourlyRequest
-	19, // 27: stockalert.price.v1.PriceService.GetHourlyDataQuality:input_type -> stockalert.price.v1.GetHourlyDataQualityRequest
-	4,  // 28: stockalert.price.v1.PriceService.GetStockMetadataMap:output_type -> stockalert.price.v1.GetStockMetadataMapResponse
-	7,  // 29: stockalert.price.v1.PriceService.GetDatabaseStats:output_type -> stockalert.price.v1.GetDatabaseStatsResponse
-	10, // 30: stockalert.price.v1.PriceService.LoadPriceData:output_type -> stockalert.price.v1.LoadPriceDataResponse
-	13, // 31: stockalert.price.v1.PriceService.ScanStaleDaily:output_type -> stockalert.price.v1.ScanStaleDailyResponse
-	15, // 32: stockalert.price.v1.PriceService.ScanStaleWeekly:output_type -> stockalert.price.v1.ScanStaleWeeklyResponse
-	18, // 33: stockalert.price.v1.PriceService.ScanStaleHourly:output_type -> stockalert.price.v1.ScanStaleHourlyResponse
-	20, // 34: stockalert.price.v1.PriceService.GetHourlyDataQuality:output_type -> stockalert.price.v1.GetHourlyDataQualityResponse
-	28, // [28:35] is the sub-list for method output_type
-	21, // [21:28] is the sub-list for method input_type
-	21, // [21:21] is the sub-list for extension type_name
-	21, // [21:21] is the sub-list for extension extendee
-	0,  // [0:21] is the sub-list for field type_name
+	24, // 1: stockalert.price.v1.FullStockMetadata.last_updated:type_name -> google.protobuf.Timestamp
+	5,  // 2: stockalert.price.v1.GetFullStockMetadataResponse.items:type_name -> stockalert.price.v1.FullStockMetadata
+	24, // 3: stockalert.price.v1.DatabaseStats.hourly_min:type_name -> google.protobuf.Timestamp
+	24, // 4: stockalert.price.v1.DatabaseStats.hourly_max:type_name -> google.protobuf.Timestamp
+	24, // 5: stockalert.price.v1.DatabaseStats.daily_min:type_name -> google.protobuf.Timestamp
+	24, // 6: stockalert.price.v1.DatabaseStats.daily_max:type_name -> google.protobuf.Timestamp
+	24, // 7: stockalert.price.v1.DatabaseStats.weekly_min:type_name -> google.protobuf.Timestamp
+	24, // 8: stockalert.price.v1.DatabaseStats.weekly_max:type_name -> google.protobuf.Timestamp
+	8,  // 9: stockalert.price.v1.GetDatabaseStatsResponse.stats:type_name -> stockalert.price.v1.DatabaseStats
+	24, // 10: stockalert.price.v1.PriceRow.time:type_name -> google.protobuf.Timestamp
+	0,  // 11: stockalert.price.v1.LoadPriceDataRequest.timeframe:type_name -> stockalert.price.v1.Timeframe
+	24, // 12: stockalert.price.v1.LoadPriceDataRequest.start_date:type_name -> google.protobuf.Timestamp
+	24, // 13: stockalert.price.v1.LoadPriceDataRequest.end_date:type_name -> google.protobuf.Timestamp
+	1,  // 14: stockalert.price.v1.LoadPriceDataRequest.day_filter:type_name -> stockalert.price.v1.DayFilter
+	11, // 15: stockalert.price.v1.LoadPriceDataResponse.rows:type_name -> stockalert.price.v1.PriceRow
+	24, // 16: stockalert.price.v1.StaleTickerRow.last_update:type_name -> google.protobuf.Timestamp
+	14, // 17: stockalert.price.v1.ScanStaleDailyResponse.rows:type_name -> stockalert.price.v1.StaleTickerRow
+	14, // 18: stockalert.price.v1.ScanStaleWeeklyResponse.rows:type_name -> stockalert.price.v1.StaleTickerRow
+	24, // 19: stockalert.price.v1.StaleHourlyRow.last_hour:type_name -> google.protobuf.Timestamp
+	19, // 20: stockalert.price.v1.ScanStaleHourlyResponse.rows:type_name -> stockalert.price.v1.StaleHourlyRow
+	24, // 21: stockalert.price.v1.ScanStaleHourlyResponse.latest_hour:type_name -> google.protobuf.Timestamp
+	24, // 22: stockalert.price.v1.GetHourlyDataQualityResponse.oldest_stale:type_name -> google.protobuf.Timestamp
+	3,  // 23: stockalert.price.v1.PriceService.GetStockMetadataMap:input_type -> stockalert.price.v1.GetStockMetadataMapRequest
+	6,  // 24: stockalert.price.v1.PriceService.GetFullStockMetadata:input_type -> stockalert.price.v1.GetFullStockMetadataRequest
+	9,  // 25: stockalert.price.v1.PriceService.GetDatabaseStats:input_type -> stockalert.price.v1.GetDatabaseStatsRequest
+	12, // 26: stockalert.price.v1.PriceService.LoadPriceData:input_type -> stockalert.price.v1.LoadPriceDataRequest
+	15, // 27: stockalert.price.v1.PriceService.ScanStaleDaily:input_type -> stockalert.price.v1.ScanStaleDailyRequest
+	17, // 28: stockalert.price.v1.PriceService.ScanStaleWeekly:input_type -> stockalert.price.v1.ScanStaleWeeklyRequest
+	20, // 29: stockalert.price.v1.PriceService.ScanStaleHourly:input_type -> stockalert.price.v1.ScanStaleHourlyRequest
+	22, // 30: stockalert.price.v1.PriceService.GetHourlyDataQuality:input_type -> stockalert.price.v1.GetHourlyDataQualityRequest
+	4,  // 31: stockalert.price.v1.PriceService.GetStockMetadataMap:output_type -> stockalert.price.v1.GetStockMetadataMapResponse
+	7,  // 32: stockalert.price.v1.PriceService.GetFullStockMetadata:output_type -> stockalert.price.v1.GetFullStockMetadataResponse
+	10, // 33: stockalert.price.v1.PriceService.GetDatabaseStats:output_type -> stockalert.price.v1.GetDatabaseStatsResponse
+	13, // 34: stockalert.price.v1.PriceService.LoadPriceData:output_type -> stockalert.price.v1.LoadPriceDataResponse
+	16, // 35: stockalert.price.v1.PriceService.ScanStaleDaily:output_type -> stockalert.price.v1.ScanStaleDailyResponse
+	18, // 36: stockalert.price.v1.PriceService.ScanStaleWeekly:output_type -> stockalert.price.v1.ScanStaleWeeklyResponse
+	21, // 37: stockalert.price.v1.PriceService.ScanStaleHourly:output_type -> stockalert.price.v1.ScanStaleHourlyResponse
+	23, // 38: stockalert.price.v1.PriceService.GetHourlyDataQuality:output_type -> stockalert.price.v1.GetHourlyDataQualityResponse
+	31, // [31:39] is the sub-list for method output_type
+	23, // [23:31] is the sub-list for method input_type
+	23, // [23:23] is the sub-list for extension type_name
+	23, // [23:23] is the sub-list for extension extendee
+	0,  // [0:23] is the sub-list for field type_name
 }
 
 func init() { file_price_v1_price_proto_init() }
@@ -1458,13 +1814,14 @@ func file_price_v1_price_proto_init() {
 	if File_price_v1_price_proto != nil {
 		return
 	}
+	file_price_v1_price_proto_msgTypes[3].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_price_v1_price_proto_rawDesc), len(file_price_v1_price_proto_rawDesc)),
 			NumEnums:      2,
-			NumMessages:   19,
+			NumMessages:   22,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

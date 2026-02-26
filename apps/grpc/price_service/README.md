@@ -33,5 +33,6 @@ Envoy routes `/stockalert.price.v1.PriceService/` to the `price_service` cluster
 ## RPCs (Phase 1)
 
 - `GetStockMetadataMap` – list all stock metadata (symbol, name, exchange, isin) for filters and ticker list.
+- `GetFullStockMetadata` – list full stock metadata (all table columns plus ETF fields from `raw_payload`) for the Stock Database UI.
 - `GetDatabaseStats` – record counts, ticker counts, and date ranges for hourly/daily/weekly tables.
 - `LoadPriceData` – filtered OHLCV rows by timeframe, tickers, date range, day filter, and limit.

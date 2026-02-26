@@ -20,6 +20,7 @@ const _ = grpc.SupportPackageIsVersion9
 
 const (
 	PriceService_GetStockMetadataMap_FullMethodName  = "/stockalert.price.v1.PriceService/GetStockMetadataMap"
+	PriceService_GetFullStockMetadata_FullMethodName = "/stockalert.price.v1.PriceService/GetFullStockMetadata"
 	PriceService_GetDatabaseStats_FullMethodName     = "/stockalert.price.v1.PriceService/GetDatabaseStats"
 	PriceService_LoadPriceData_FullMethodName        = "/stockalert.price.v1.PriceService/LoadPriceData"
 	PriceService_ScanStaleDaily_FullMethodName       = "/stockalert.price.v1.PriceService/ScanStaleDaily"
@@ -35,6 +36,7 @@ const (
 // PriceService provides read-only access to the price database.
 type PriceServiceClient interface {
 	GetStockMetadataMap(ctx context.Context, in *GetStockMetadataMapRequest, opts ...grpc.CallOption) (*GetStockMetadataMapResponse, error)
+	GetFullStockMetadata(ctx context.Context, in *GetFullStockMetadataRequest, opts ...grpc.CallOption) (*GetFullStockMetadataResponse, error)
 	GetDatabaseStats(ctx context.Context, in *GetDatabaseStatsRequest, opts ...grpc.CallOption) (*GetDatabaseStatsResponse, error)
 	LoadPriceData(ctx context.Context, in *LoadPriceDataRequest, opts ...grpc.CallOption) (*LoadPriceDataResponse, error)
 	ScanStaleDaily(ctx context.Context, in *ScanStaleDailyRequest, opts ...grpc.CallOption) (*ScanStaleDailyResponse, error)
@@ -55,6 +57,16 @@ func (c *priceServiceClient) GetStockMetadataMap(ctx context.Context, in *GetSto
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(GetStockMetadataMapResponse)
 	err := c.cc.Invoke(ctx, PriceService_GetStockMetadataMap_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *priceServiceClient) GetFullStockMetadata(ctx context.Context, in *GetFullStockMetadataRequest, opts ...grpc.CallOption) (*GetFullStockMetadataResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetFullStockMetadataResponse)
+	err := c.cc.Invoke(ctx, PriceService_GetFullStockMetadata_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -128,6 +140,7 @@ func (c *priceServiceClient) GetHourlyDataQuality(ctx context.Context, in *GetHo
 // PriceService provides read-only access to the price database.
 type PriceServiceServer interface {
 	GetStockMetadataMap(context.Context, *GetStockMetadataMapRequest) (*GetStockMetadataMapResponse, error)
+	GetFullStockMetadata(context.Context, *GetFullStockMetadataRequest) (*GetFullStockMetadataResponse, error)
 	GetDatabaseStats(context.Context, *GetDatabaseStatsRequest) (*GetDatabaseStatsResponse, error)
 	LoadPriceData(context.Context, *LoadPriceDataRequest) (*LoadPriceDataResponse, error)
 	ScanStaleDaily(context.Context, *ScanStaleDailyRequest) (*ScanStaleDailyResponse, error)
@@ -146,6 +159,9 @@ type UnimplementedPriceServiceServer struct{}
 
 func (UnimplementedPriceServiceServer) GetStockMetadataMap(context.Context, *GetStockMetadataMapRequest) (*GetStockMetadataMapResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetStockMetadataMap not implemented")
+}
+func (UnimplementedPriceServiceServer) GetFullStockMetadata(context.Context, *GetFullStockMetadataRequest) (*GetFullStockMetadataResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetFullStockMetadata not implemented")
 }
 func (UnimplementedPriceServiceServer) GetDatabaseStats(context.Context, *GetDatabaseStatsRequest) (*GetDatabaseStatsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetDatabaseStats not implemented")
@@ -200,6 +216,24 @@ func _PriceService_GetStockMetadataMap_Handler(srv interface{}, ctx context.Cont
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(PriceServiceServer).GetStockMetadataMap(ctx, req.(*GetStockMetadataMapRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PriceService_GetFullStockMetadata_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetFullStockMetadataRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PriceServiceServer).GetFullStockMetadata(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PriceService_GetFullStockMetadata_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PriceServiceServer).GetFullStockMetadata(ctx, req.(*GetFullStockMetadataRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -322,6 +356,10 @@ var PriceService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetStockMetadataMap",
 			Handler:    _PriceService_GetStockMetadataMap_Handler,
+		},
+		{
+			MethodName: "GetFullStockMetadata",
+			Handler:    _PriceService_GetFullStockMetadata_Handler,
 		},
 		{
 			MethodName: "GetDatabaseStats",

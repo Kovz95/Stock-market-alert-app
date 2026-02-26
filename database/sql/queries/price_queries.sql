@@ -29,6 +29,36 @@ SELECT symbol, name, exchange, isin
 FROM stock_metadata
 ORDER BY symbol;
 
+-- ListFullStockMetadata returns all stock_metadata columns plus ETF fields from raw_payload for the Stock Database UI.
+-- name: ListFullStockMetadata :many
+SELECT
+    symbol,
+    isin,
+    name,
+    exchange,
+    country,
+    rbics_economy,
+    rbics_sector,
+    rbics_subsector,
+    rbics_industry_group,
+    rbics_industry,
+    rbics_subindustry,
+    closing_price,
+    market_value,
+    sales,
+    avg_daily_volume,
+    data_source,
+    last_updated,
+    asset_type,
+    raw_payload->>'etf_issuer' AS etf_issuer,
+    raw_payload->>'asset_class' AS etf_asset_class,
+    raw_payload->>'etf_focus' AS etf_focus,
+    raw_payload->>'etf_niche' AS etf_niche,
+    COALESCE((raw_payload->>'expense_ratio')::double precision, 0) AS expense_ratio,
+    COALESCE((raw_payload->>'aum')::double precision, 0) AS aum
+FROM stock_metadata
+ORDER BY symbol;
+
 -- ListDailyPrices: tickers null or empty = no ticker filter. day_filter: 0 = all, 1 = weekdays (Mon-Fri), 2 = weekends (Sat-Sun).
 -- name: ListDailyPrices :many
 SELECT ticker, date, open, high, low, close, volume

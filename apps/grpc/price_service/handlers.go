@@ -37,6 +37,77 @@ func (s *Server) GetStockMetadataMap(ctx context.Context, req *pricev1.GetStockM
 	return &pricev1.GetStockMetadataMapResponse{Items: items}, nil
 }
 
+func (s *Server) GetFullStockMetadata(ctx context.Context, req *pricev1.GetFullStockMetadataRequest) (*pricev1.GetFullStockMetadataResponse, error) {
+	conn, err := s.pool.Acquire(ctx)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to acquire connection: %v", err)
+	}
+	defer conn.Release()
+
+	rows, err := db.New(conn).ListFullStockMetadata(ctx)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to list full stock metadata: %v", err)
+	}
+
+	items := make([]*pricev1.FullStockMetadata, 0, len(rows))
+	for _, r := range rows {
+		item := &pricev1.FullStockMetadata{
+			Symbol:             r.Symbol,
+			Name:               pgTextString(r.Name),
+			Exchange:           pgTextString(r.Exchange),
+			Country:            pgTextString(r.Country),
+			Isin:               pgTextString(r.Isin),
+			AssetType:          pgTextString(r.AssetType),
+			RbicsEconomy:       pgTextString(r.RbicsEconomy),
+			RbicsSector:        pgTextString(r.RbicsSector),
+			RbicsSubsector:     pgTextString(r.RbicsSubsector),
+			RbicsIndustryGroup: pgTextString(r.RbicsIndustryGroup),
+			RbicsIndustry:      pgTextString(r.RbicsIndustry),
+			RbicsSubindustry:   pgTextString(r.RbicsSubindustry),
+			DataSource:         pgTextString(r.DataSource),
+			EtfIssuer:          interfaceToString(r.EtfIssuer),
+			EtfAssetClass:      interfaceToString(r.EtfAssetClass),
+			EtfFocus:           interfaceToString(r.EtfFocus),
+			EtfNiche:           interfaceToString(r.EtfNiche),
+		}
+		if r.ClosingPrice.Valid {
+			item.ClosingPrice = &r.ClosingPrice.Float64
+		}
+		if r.MarketValue.Valid {
+			item.MarketValue = &r.MarketValue.Float64
+		}
+		if r.Sales.Valid {
+			item.Sales = &r.Sales.Float64
+		}
+		if r.AvgDailyVolume.Valid {
+			item.AvgDailyVolume = &r.AvgDailyVolume.Float64
+		}
+		if r.LastUpdated.Valid {
+			item.LastUpdated = timestamppb.New(r.LastUpdated.Time)
+		}
+		// ExpenseRatio from sqlc is interface{}; set optional when it's a non-zero float64
+		if expenseRatio, ok := r.ExpenseRatio.(float64); ok && expenseRatio != 0 {
+			item.ExpenseRatio = &expenseRatio
+		}
+
+		if aum, ok := r.Aum.(float64); ok && aum != 0 {
+			item.Aum = &aum
+		}
+		items = append(items, item)
+	}
+	return &pricev1.GetFullStockMetadataResponse{Items: items}, nil
+}
+
+func interfaceToString(v interface{}) string {
+	if v == nil {
+		return ""
+	}
+	if s, ok := v.(string); ok {
+		return s
+	}
+	return ""
+}
+
 func (s *Server) GetDatabaseStats(ctx context.Context, req *pricev1.GetDatabaseStatsRequest) (*pricev1.GetDatabaseStatsResponse, error) {
 	conn, err := s.pool.Acquire(ctx)
 	if err != nil {
@@ -106,8 +177,8 @@ func (s *Server) LoadPriceData(ctx context.Context, req *pricev1.LoadPriceDataRe
 		startTS, endTS := timestampsToTimestamptz(req.StartDate, req.EndDate)
 		rows, err := q.ListHourlyPrices(ctx, db.ListHourlyPricesParams{
 			Tickers:   req.Tickers,
-			StartTs:  startTS,
-			EndTs:    endTS,
+			StartTs:   startTS,
+			EndTs:     endTS,
 			DayFilter: dayFilter,
 			LimitRows: req.MaxRows,
 		})
@@ -393,7 +464,7 @@ func (s *Server) ScanStaleHourly(ctx context.Context, req *pricev1.ScanStaleHour
 		}
 	}
 	return &pricev1.ScanStaleHourlyResponse{
-		Rows:           staleRows,
+		Rows:          staleRows,
 		LatestHour:    timestamppb.New(refHour),
 		TotalTickers:  int32(len(rows)),
 		UpToDateCount: upToDate,
