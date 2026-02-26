@@ -19,19 +19,27 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	AlertService_ListAlerts_FullMethodName              = "/stockalert.alert.v1.AlertService/ListAlerts"
-	AlertService_GetAlert_FullMethodName                = "/stockalert.alert.v1.AlertService/GetAlert"
-	AlertService_CreateAlert_FullMethodName             = "/stockalert.alert.v1.AlertService/CreateAlert"
-	AlertService_UpdateAlert_FullMethodName             = "/stockalert.alert.v1.AlertService/UpdateAlert"
-	AlertService_DeleteAlert_FullMethodName             = "/stockalert.alert.v1.AlertService/DeleteAlert"
-	AlertService_BulkUpdateLastTriggered_FullMethodName = "/stockalert.alert.v1.AlertService/BulkUpdateLastTriggered"
+	AlertService_ListAlerts_FullMethodName                = "/stockalert.alert.v1.AlertService/ListAlerts"
+	AlertService_GetAlert_FullMethodName                  = "/stockalert.alert.v1.AlertService/GetAlert"
+	AlertService_CreateAlert_FullMethodName               = "/stockalert.alert.v1.AlertService/CreateAlert"
+	AlertService_UpdateAlert_FullMethodName               = "/stockalert.alert.v1.AlertService/UpdateAlert"
+	AlertService_DeleteAlert_FullMethodName               = "/stockalert.alert.v1.AlertService/DeleteAlert"
+	AlertService_BulkUpdateLastTriggered_FullMethodName   = "/stockalert.alert.v1.AlertService/BulkUpdateLastTriggered"
+	AlertService_GetAuditSummary_FullMethodName           = "/stockalert.alert.v1.AlertService/GetAuditSummary"
+	AlertService_GetPerformanceMetrics_FullMethodName     = "/stockalert.alert.v1.AlertService/GetPerformanceMetrics"
+	AlertService_GetAlertHistory_FullMethodName           = "/stockalert.alert.v1.AlertService/GetAlertHistory"
+	AlertService_GetFailedPriceData_FullMethodName        = "/stockalert.alert.v1.AlertService/GetFailedPriceData"
+	AlertService_ClearAuditData_FullMethodName            = "/stockalert.alert.v1.AlertService/ClearAuditData"
+	AlertService_GetTriggerHistoryByTicker_FullMethodName = "/stockalert.alert.v1.AlertService/GetTriggerHistoryByTicker"
+	AlertService_SearchStocks_FullMethodName              = "/stockalert.alert.v1.AlertService/SearchStocks"
+	AlertService_ListPortfolios_FullMethodName            = "/stockalert.alert.v1.AlertService/ListPortfolios"
 )
 
 // AlertServiceClient is the client API for AlertService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 //
-// AlertService provides CRUD operations for stock alerts.
+// AlertService provides CRUD operations for stock alerts and audit logs.
 type AlertServiceClient interface {
 	ListAlerts(ctx context.Context, in *ListAlertsRequest, opts ...grpc.CallOption) (*ListAlertsResponse, error)
 	GetAlert(ctx context.Context, in *GetAlertRequest, opts ...grpc.CallOption) (*GetAlertResponse, error)
@@ -39,6 +47,16 @@ type AlertServiceClient interface {
 	UpdateAlert(ctx context.Context, in *UpdateAlertRequest, opts ...grpc.CallOption) (*UpdateAlertResponse, error)
 	DeleteAlert(ctx context.Context, in *DeleteAlertRequest, opts ...grpc.CallOption) (*DeleteAlertResponse, error)
 	BulkUpdateLastTriggered(ctx context.Context, in *BulkUpdateLastTriggeredRequest, opts ...grpc.CallOption) (*BulkUpdateLastTriggeredResponse, error)
+	// Audit logs
+	GetAuditSummary(ctx context.Context, in *GetAuditSummaryRequest, opts ...grpc.CallOption) (*GetAuditSummaryResponse, error)
+	GetPerformanceMetrics(ctx context.Context, in *GetPerformanceMetricsRequest, opts ...grpc.CallOption) (*GetPerformanceMetricsResponse, error)
+	GetAlertHistory(ctx context.Context, in *GetAlertHistoryRequest, opts ...grpc.CallOption) (*GetAlertHistoryResponse, error)
+	GetFailedPriceData(ctx context.Context, in *GetFailedPriceDataRequest, opts ...grpc.CallOption) (*GetFailedPriceDataResponse, error)
+	ClearAuditData(ctx context.Context, in *ClearAuditDataRequest, opts ...grpc.CallOption) (*ClearAuditDataResponse, error)
+	// Alert History Lookup
+	GetTriggerHistoryByTicker(ctx context.Context, in *GetTriggerHistoryByTickerRequest, opts ...grpc.CallOption) (*GetTriggerHistoryByTickerResponse, error)
+	SearchStocks(ctx context.Context, in *SearchStocksRequest, opts ...grpc.CallOption) (*SearchStocksResponse, error)
+	ListPortfolios(ctx context.Context, in *ListPortfoliosRequest, opts ...grpc.CallOption) (*ListPortfoliosResponse, error)
 }
 
 type alertServiceClient struct {
@@ -109,11 +127,91 @@ func (c *alertServiceClient) BulkUpdateLastTriggered(ctx context.Context, in *Bu
 	return out, nil
 }
 
+func (c *alertServiceClient) GetAuditSummary(ctx context.Context, in *GetAuditSummaryRequest, opts ...grpc.CallOption) (*GetAuditSummaryResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetAuditSummaryResponse)
+	err := c.cc.Invoke(ctx, AlertService_GetAuditSummary_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *alertServiceClient) GetPerformanceMetrics(ctx context.Context, in *GetPerformanceMetricsRequest, opts ...grpc.CallOption) (*GetPerformanceMetricsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetPerformanceMetricsResponse)
+	err := c.cc.Invoke(ctx, AlertService_GetPerformanceMetrics_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *alertServiceClient) GetAlertHistory(ctx context.Context, in *GetAlertHistoryRequest, opts ...grpc.CallOption) (*GetAlertHistoryResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetAlertHistoryResponse)
+	err := c.cc.Invoke(ctx, AlertService_GetAlertHistory_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *alertServiceClient) GetFailedPriceData(ctx context.Context, in *GetFailedPriceDataRequest, opts ...grpc.CallOption) (*GetFailedPriceDataResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetFailedPriceDataResponse)
+	err := c.cc.Invoke(ctx, AlertService_GetFailedPriceData_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *alertServiceClient) ClearAuditData(ctx context.Context, in *ClearAuditDataRequest, opts ...grpc.CallOption) (*ClearAuditDataResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ClearAuditDataResponse)
+	err := c.cc.Invoke(ctx, AlertService_ClearAuditData_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *alertServiceClient) GetTriggerHistoryByTicker(ctx context.Context, in *GetTriggerHistoryByTickerRequest, opts ...grpc.CallOption) (*GetTriggerHistoryByTickerResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetTriggerHistoryByTickerResponse)
+	err := c.cc.Invoke(ctx, AlertService_GetTriggerHistoryByTicker_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *alertServiceClient) SearchStocks(ctx context.Context, in *SearchStocksRequest, opts ...grpc.CallOption) (*SearchStocksResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SearchStocksResponse)
+	err := c.cc.Invoke(ctx, AlertService_SearchStocks_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *alertServiceClient) ListPortfolios(ctx context.Context, in *ListPortfoliosRequest, opts ...grpc.CallOption) (*ListPortfoliosResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListPortfoliosResponse)
+	err := c.cc.Invoke(ctx, AlertService_ListPortfolios_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // AlertServiceServer is the server API for AlertService service.
 // All implementations must embed UnimplementedAlertServiceServer
 // for forward compatibility.
 //
-// AlertService provides CRUD operations for stock alerts.
+// AlertService provides CRUD operations for stock alerts and audit logs.
 type AlertServiceServer interface {
 	ListAlerts(context.Context, *ListAlertsRequest) (*ListAlertsResponse, error)
 	GetAlert(context.Context, *GetAlertRequest) (*GetAlertResponse, error)
@@ -121,6 +219,16 @@ type AlertServiceServer interface {
 	UpdateAlert(context.Context, *UpdateAlertRequest) (*UpdateAlertResponse, error)
 	DeleteAlert(context.Context, *DeleteAlertRequest) (*DeleteAlertResponse, error)
 	BulkUpdateLastTriggered(context.Context, *BulkUpdateLastTriggeredRequest) (*BulkUpdateLastTriggeredResponse, error)
+	// Audit logs
+	GetAuditSummary(context.Context, *GetAuditSummaryRequest) (*GetAuditSummaryResponse, error)
+	GetPerformanceMetrics(context.Context, *GetPerformanceMetricsRequest) (*GetPerformanceMetricsResponse, error)
+	GetAlertHistory(context.Context, *GetAlertHistoryRequest) (*GetAlertHistoryResponse, error)
+	GetFailedPriceData(context.Context, *GetFailedPriceDataRequest) (*GetFailedPriceDataResponse, error)
+	ClearAuditData(context.Context, *ClearAuditDataRequest) (*ClearAuditDataResponse, error)
+	// Alert History Lookup
+	GetTriggerHistoryByTicker(context.Context, *GetTriggerHistoryByTickerRequest) (*GetTriggerHistoryByTickerResponse, error)
+	SearchStocks(context.Context, *SearchStocksRequest) (*SearchStocksResponse, error)
+	ListPortfolios(context.Context, *ListPortfoliosRequest) (*ListPortfoliosResponse, error)
 	mustEmbedUnimplementedAlertServiceServer()
 }
 
@@ -148,6 +256,30 @@ func (UnimplementedAlertServiceServer) DeleteAlert(context.Context, *DeleteAlert
 }
 func (UnimplementedAlertServiceServer) BulkUpdateLastTriggered(context.Context, *BulkUpdateLastTriggeredRequest) (*BulkUpdateLastTriggeredResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method BulkUpdateLastTriggered not implemented")
+}
+func (UnimplementedAlertServiceServer) GetAuditSummary(context.Context, *GetAuditSummaryRequest) (*GetAuditSummaryResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetAuditSummary not implemented")
+}
+func (UnimplementedAlertServiceServer) GetPerformanceMetrics(context.Context, *GetPerformanceMetricsRequest) (*GetPerformanceMetricsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetPerformanceMetrics not implemented")
+}
+func (UnimplementedAlertServiceServer) GetAlertHistory(context.Context, *GetAlertHistoryRequest) (*GetAlertHistoryResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetAlertHistory not implemented")
+}
+func (UnimplementedAlertServiceServer) GetFailedPriceData(context.Context, *GetFailedPriceDataRequest) (*GetFailedPriceDataResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetFailedPriceData not implemented")
+}
+func (UnimplementedAlertServiceServer) ClearAuditData(context.Context, *ClearAuditDataRequest) (*ClearAuditDataResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ClearAuditData not implemented")
+}
+func (UnimplementedAlertServiceServer) GetTriggerHistoryByTicker(context.Context, *GetTriggerHistoryByTickerRequest) (*GetTriggerHistoryByTickerResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetTriggerHistoryByTicker not implemented")
+}
+func (UnimplementedAlertServiceServer) SearchStocks(context.Context, *SearchStocksRequest) (*SearchStocksResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SearchStocks not implemented")
+}
+func (UnimplementedAlertServiceServer) ListPortfolios(context.Context, *ListPortfoliosRequest) (*ListPortfoliosResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListPortfolios not implemented")
 }
 func (UnimplementedAlertServiceServer) mustEmbedUnimplementedAlertServiceServer() {}
 func (UnimplementedAlertServiceServer) testEmbeddedByValue()                      {}
@@ -278,6 +410,150 @@ func _AlertService_BulkUpdateLastTriggered_Handler(srv interface{}, ctx context.
 	return interceptor(ctx, in, info, handler)
 }
 
+func _AlertService_GetAuditSummary_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetAuditSummaryRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AlertServiceServer).GetAuditSummary(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AlertService_GetAuditSummary_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AlertServiceServer).GetAuditSummary(ctx, req.(*GetAuditSummaryRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AlertService_GetPerformanceMetrics_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetPerformanceMetricsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AlertServiceServer).GetPerformanceMetrics(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AlertService_GetPerformanceMetrics_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AlertServiceServer).GetPerformanceMetrics(ctx, req.(*GetPerformanceMetricsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AlertService_GetAlertHistory_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetAlertHistoryRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AlertServiceServer).GetAlertHistory(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AlertService_GetAlertHistory_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AlertServiceServer).GetAlertHistory(ctx, req.(*GetAlertHistoryRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AlertService_GetFailedPriceData_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetFailedPriceDataRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AlertServiceServer).GetFailedPriceData(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AlertService_GetFailedPriceData_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AlertServiceServer).GetFailedPriceData(ctx, req.(*GetFailedPriceDataRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AlertService_ClearAuditData_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ClearAuditDataRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AlertServiceServer).ClearAuditData(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AlertService_ClearAuditData_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AlertServiceServer).ClearAuditData(ctx, req.(*ClearAuditDataRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AlertService_GetTriggerHistoryByTicker_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetTriggerHistoryByTickerRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AlertServiceServer).GetTriggerHistoryByTicker(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AlertService_GetTriggerHistoryByTicker_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AlertServiceServer).GetTriggerHistoryByTicker(ctx, req.(*GetTriggerHistoryByTickerRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AlertService_SearchStocks_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SearchStocksRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AlertServiceServer).SearchStocks(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AlertService_SearchStocks_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AlertServiceServer).SearchStocks(ctx, req.(*SearchStocksRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AlertService_ListPortfolios_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListPortfoliosRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AlertServiceServer).ListPortfolios(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AlertService_ListPortfolios_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AlertServiceServer).ListPortfolios(ctx, req.(*ListPortfoliosRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // AlertService_ServiceDesc is the grpc.ServiceDesc for AlertService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -308,6 +584,38 @@ var AlertService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "BulkUpdateLastTriggered",
 			Handler:    _AlertService_BulkUpdateLastTriggered_Handler,
+		},
+		{
+			MethodName: "GetAuditSummary",
+			Handler:    _AlertService_GetAuditSummary_Handler,
+		},
+		{
+			MethodName: "GetPerformanceMetrics",
+			Handler:    _AlertService_GetPerformanceMetrics_Handler,
+		},
+		{
+			MethodName: "GetAlertHistory",
+			Handler:    _AlertService_GetAlertHistory_Handler,
+		},
+		{
+			MethodName: "GetFailedPriceData",
+			Handler:    _AlertService_GetFailedPriceData_Handler,
+		},
+		{
+			MethodName: "ClearAuditData",
+			Handler:    _AlertService_ClearAuditData_Handler,
+		},
+		{
+			MethodName: "GetTriggerHistoryByTicker",
+			Handler:    _AlertService_GetTriggerHistoryByTicker_Handler,
+		},
+		{
+			MethodName: "SearchStocks",
+			Handler:    _AlertService_SearchStocks_Handler,
+		},
+		{
+			MethodName: "ListPortfolios",
+			Handler:    _AlertService_ListPortfolios_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

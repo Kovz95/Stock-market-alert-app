@@ -136,6 +136,172 @@ export interface BulkUpdateLastTriggeredResponse {
   updatedCount: number;
 }
 
+export interface GetAuditSummaryRequest {
+  /** default 7, how many days back */
+  days: number;
+}
+
+export interface AuditSummaryRow {
+  alertId: string;
+  ticker: string;
+  stockName: string;
+  exchange: string;
+  timeframe: string;
+  action: string;
+  evaluationType: string;
+  totalChecks: number;
+  successfulPricePulls: number;
+  successfulEvaluations: number;
+  totalTriggers: number;
+  avgExecutionTimeMs: number;
+  lastCheck?: Date | undefined;
+  firstCheck?: Date | undefined;
+}
+
+export interface GetAuditSummaryResponse {
+  rows: AuditSummaryRow[];
+}
+
+export interface GetPerformanceMetricsRequest {
+  days: number;
+}
+
+export interface GetPerformanceMetricsResponse {
+  totalChecks: number;
+  successfulPricePulls: number;
+  successRate: number;
+  cacheHitRate: number;
+  avgExecutionTimeMs: number;
+  totalErrors: number;
+  errorRate: number;
+  analysisPeriodDays: number;
+}
+
+export interface GetAlertHistoryRequest {
+  alertId: string;
+  /** default 100 */
+  limit: number;
+}
+
+export interface AuditHistoryRow {
+  id: number;
+  timestamp?: Date | undefined;
+  alertId: string;
+  ticker: string;
+  stockName: string;
+  exchange: string;
+  timeframe: string;
+  action: string;
+  evaluationType: string;
+  priceDataPulled: boolean;
+  priceDataSource: string;
+  conditionsEvaluated: boolean;
+  alertTriggered: boolean;
+  triggerReason: string;
+  executionTimeMs: number;
+  cacheHit: boolean;
+  errorMessage: string;
+  /** optional; populated by GetTriggerHistoryByTicker */
+  alertName: string;
+}
+
+export interface GetAlertHistoryResponse {
+  rows: AuditHistoryRow[];
+}
+
+export interface GetFailedPriceDataRequest {
+  days: number;
+}
+
+export interface FailedAlertRow {
+  alertId: string;
+  ticker: string;
+  stockName: string;
+  exchange: string;
+  timeframe: string;
+  /** Stock, ETF, Unknown */
+  assetType: string;
+  failureCount: number;
+  lastFailure?: Date | undefined;
+  firstFailure?: Date | undefined;
+  avgExecutionTime: number;
+}
+
+export interface AssetTypeBreakdownRow {
+  assetType: string;
+  failedAlerts: number;
+  failureCount: number;
+}
+
+export interface ExchangeBreakdownRow {
+  exchange: string;
+  failedAlerts: number;
+  failureCount: number;
+}
+
+export interface GetFailedPriceDataResponse {
+  rows: FailedAlertRow[];
+  totalFailedAlerts: number;
+  totalFailures: number;
+  failureRate: number;
+  assetTypeBreakdown: AssetTypeBreakdownRow[];
+  exchangeBreakdown: ExchangeBreakdownRow[];
+}
+
+export interface ClearAuditDataRequest {
+}
+
+export interface ClearAuditDataResponse {
+  deletedCount: number;
+}
+
+export interface GetTriggerHistoryByTickerRequest {
+  ticker: string;
+  /** if false, only rows where alert_triggered = true */
+  includeAllEvaluations: boolean;
+  /** default 50, max 500 */
+  limit: number;
+  /** optional; filter to last N days (0 = no filter) */
+  daysBack: number;
+}
+
+export interface GetTriggerHistoryByTickerResponse {
+  rows: AuditHistoryRow[];
+}
+
+export interface SearchStocksRequest {
+  query: string;
+  /** default 20, max 50 */
+  limit: number;
+}
+
+export interface StockSearchResult {
+  ticker: string;
+  name: string;
+  exchange: string;
+  /** asset_type from stock_metadata */
+  type: string;
+  /** optional */
+  rbicsEconomy: string;
+}
+
+export interface SearchStocksResponse {
+  results: StockSearchResult[];
+}
+
+export interface ListPortfoliosRequest {
+}
+
+export interface Portfolio {
+  portfolioId: string;
+  name: string;
+  tickers: string[];
+}
+
+export interface ListPortfoliosResponse {
+  portfolios: Portfolio[];
+}
+
 function createBaseAlert(): Alert {
   return {
     alertId: "",
@@ -2136,7 +2302,2690 @@ export const BulkUpdateLastTriggeredResponse: MessageFns<BulkUpdateLastTriggered
   },
 };
 
-/** AlertService provides CRUD operations for stock alerts. */
+function createBaseGetAuditSummaryRequest(): GetAuditSummaryRequest {
+  return { days: 0 };
+}
+
+export const GetAuditSummaryRequest: MessageFns<GetAuditSummaryRequest> = {
+  encode(message: GetAuditSummaryRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.days !== 0) {
+      writer.uint32(8).int32(message.days);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): GetAuditSummaryRequest {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseGetAuditSummaryRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 8) {
+            break;
+          }
+
+          message.days = reader.int32();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): GetAuditSummaryRequest {
+    return { days: isSet(object.days) ? globalThis.Number(object.days) : 0 };
+  },
+
+  toJSON(message: GetAuditSummaryRequest): unknown {
+    const obj: any = {};
+    if (message.days !== 0) {
+      obj.days = Math.round(message.days);
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<GetAuditSummaryRequest>, I>>(base?: I): GetAuditSummaryRequest {
+    return GetAuditSummaryRequest.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<GetAuditSummaryRequest>, I>>(object: I): GetAuditSummaryRequest {
+    const message = createBaseGetAuditSummaryRequest();
+    message.days = object.days ?? 0;
+    return message;
+  },
+};
+
+function createBaseAuditSummaryRow(): AuditSummaryRow {
+  return {
+    alertId: "",
+    ticker: "",
+    stockName: "",
+    exchange: "",
+    timeframe: "",
+    action: "",
+    evaluationType: "",
+    totalChecks: 0,
+    successfulPricePulls: 0,
+    successfulEvaluations: 0,
+    totalTriggers: 0,
+    avgExecutionTimeMs: 0,
+    lastCheck: undefined,
+    firstCheck: undefined,
+  };
+}
+
+export const AuditSummaryRow: MessageFns<AuditSummaryRow> = {
+  encode(message: AuditSummaryRow, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.alertId !== "") {
+      writer.uint32(10).string(message.alertId);
+    }
+    if (message.ticker !== "") {
+      writer.uint32(18).string(message.ticker);
+    }
+    if (message.stockName !== "") {
+      writer.uint32(26).string(message.stockName);
+    }
+    if (message.exchange !== "") {
+      writer.uint32(34).string(message.exchange);
+    }
+    if (message.timeframe !== "") {
+      writer.uint32(42).string(message.timeframe);
+    }
+    if (message.action !== "") {
+      writer.uint32(50).string(message.action);
+    }
+    if (message.evaluationType !== "") {
+      writer.uint32(58).string(message.evaluationType);
+    }
+    if (message.totalChecks !== 0) {
+      writer.uint32(64).int64(message.totalChecks);
+    }
+    if (message.successfulPricePulls !== 0) {
+      writer.uint32(72).int64(message.successfulPricePulls);
+    }
+    if (message.successfulEvaluations !== 0) {
+      writer.uint32(80).int64(message.successfulEvaluations);
+    }
+    if (message.totalTriggers !== 0) {
+      writer.uint32(88).int64(message.totalTriggers);
+    }
+    if (message.avgExecutionTimeMs !== 0) {
+      writer.uint32(97).double(message.avgExecutionTimeMs);
+    }
+    if (message.lastCheck !== undefined) {
+      Timestamp.encode(toTimestamp(message.lastCheck), writer.uint32(106).fork()).join();
+    }
+    if (message.firstCheck !== undefined) {
+      Timestamp.encode(toTimestamp(message.firstCheck), writer.uint32(114).fork()).join();
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): AuditSummaryRow {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseAuditSummaryRow();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.alertId = reader.string();
+          continue;
+        }
+        case 2: {
+          if (tag !== 18) {
+            break;
+          }
+
+          message.ticker = reader.string();
+          continue;
+        }
+        case 3: {
+          if (tag !== 26) {
+            break;
+          }
+
+          message.stockName = reader.string();
+          continue;
+        }
+        case 4: {
+          if (tag !== 34) {
+            break;
+          }
+
+          message.exchange = reader.string();
+          continue;
+        }
+        case 5: {
+          if (tag !== 42) {
+            break;
+          }
+
+          message.timeframe = reader.string();
+          continue;
+        }
+        case 6: {
+          if (tag !== 50) {
+            break;
+          }
+
+          message.action = reader.string();
+          continue;
+        }
+        case 7: {
+          if (tag !== 58) {
+            break;
+          }
+
+          message.evaluationType = reader.string();
+          continue;
+        }
+        case 8: {
+          if (tag !== 64) {
+            break;
+          }
+
+          message.totalChecks = longToNumber(reader.int64());
+          continue;
+        }
+        case 9: {
+          if (tag !== 72) {
+            break;
+          }
+
+          message.successfulPricePulls = longToNumber(reader.int64());
+          continue;
+        }
+        case 10: {
+          if (tag !== 80) {
+            break;
+          }
+
+          message.successfulEvaluations = longToNumber(reader.int64());
+          continue;
+        }
+        case 11: {
+          if (tag !== 88) {
+            break;
+          }
+
+          message.totalTriggers = longToNumber(reader.int64());
+          continue;
+        }
+        case 12: {
+          if (tag !== 97) {
+            break;
+          }
+
+          message.avgExecutionTimeMs = reader.double();
+          continue;
+        }
+        case 13: {
+          if (tag !== 106) {
+            break;
+          }
+
+          message.lastCheck = fromTimestamp(Timestamp.decode(reader, reader.uint32()));
+          continue;
+        }
+        case 14: {
+          if (tag !== 114) {
+            break;
+          }
+
+          message.firstCheck = fromTimestamp(Timestamp.decode(reader, reader.uint32()));
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): AuditSummaryRow {
+    return {
+      alertId: isSet(object.alertId)
+        ? globalThis.String(object.alertId)
+        : isSet(object.alert_id)
+        ? globalThis.String(object.alert_id)
+        : "",
+      ticker: isSet(object.ticker) ? globalThis.String(object.ticker) : "",
+      stockName: isSet(object.stockName)
+        ? globalThis.String(object.stockName)
+        : isSet(object.stock_name)
+        ? globalThis.String(object.stock_name)
+        : "",
+      exchange: isSet(object.exchange) ? globalThis.String(object.exchange) : "",
+      timeframe: isSet(object.timeframe) ? globalThis.String(object.timeframe) : "",
+      action: isSet(object.action) ? globalThis.String(object.action) : "",
+      evaluationType: isSet(object.evaluationType)
+        ? globalThis.String(object.evaluationType)
+        : isSet(object.evaluation_type)
+        ? globalThis.String(object.evaluation_type)
+        : "",
+      totalChecks: isSet(object.totalChecks)
+        ? globalThis.Number(object.totalChecks)
+        : isSet(object.total_checks)
+        ? globalThis.Number(object.total_checks)
+        : 0,
+      successfulPricePulls: isSet(object.successfulPricePulls)
+        ? globalThis.Number(object.successfulPricePulls)
+        : isSet(object.successful_price_pulls)
+        ? globalThis.Number(object.successful_price_pulls)
+        : 0,
+      successfulEvaluations: isSet(object.successfulEvaluations)
+        ? globalThis.Number(object.successfulEvaluations)
+        : isSet(object.successful_evaluations)
+        ? globalThis.Number(object.successful_evaluations)
+        : 0,
+      totalTriggers: isSet(object.totalTriggers)
+        ? globalThis.Number(object.totalTriggers)
+        : isSet(object.total_triggers)
+        ? globalThis.Number(object.total_triggers)
+        : 0,
+      avgExecutionTimeMs: isSet(object.avgExecutionTimeMs)
+        ? globalThis.Number(object.avgExecutionTimeMs)
+        : isSet(object.avg_execution_time_ms)
+        ? globalThis.Number(object.avg_execution_time_ms)
+        : 0,
+      lastCheck: isSet(object.lastCheck)
+        ? fromJsonTimestamp(object.lastCheck)
+        : isSet(object.last_check)
+        ? fromJsonTimestamp(object.last_check)
+        : undefined,
+      firstCheck: isSet(object.firstCheck)
+        ? fromJsonTimestamp(object.firstCheck)
+        : isSet(object.first_check)
+        ? fromJsonTimestamp(object.first_check)
+        : undefined,
+    };
+  },
+
+  toJSON(message: AuditSummaryRow): unknown {
+    const obj: any = {};
+    if (message.alertId !== "") {
+      obj.alertId = message.alertId;
+    }
+    if (message.ticker !== "") {
+      obj.ticker = message.ticker;
+    }
+    if (message.stockName !== "") {
+      obj.stockName = message.stockName;
+    }
+    if (message.exchange !== "") {
+      obj.exchange = message.exchange;
+    }
+    if (message.timeframe !== "") {
+      obj.timeframe = message.timeframe;
+    }
+    if (message.action !== "") {
+      obj.action = message.action;
+    }
+    if (message.evaluationType !== "") {
+      obj.evaluationType = message.evaluationType;
+    }
+    if (message.totalChecks !== 0) {
+      obj.totalChecks = Math.round(message.totalChecks);
+    }
+    if (message.successfulPricePulls !== 0) {
+      obj.successfulPricePulls = Math.round(message.successfulPricePulls);
+    }
+    if (message.successfulEvaluations !== 0) {
+      obj.successfulEvaluations = Math.round(message.successfulEvaluations);
+    }
+    if (message.totalTriggers !== 0) {
+      obj.totalTriggers = Math.round(message.totalTriggers);
+    }
+    if (message.avgExecutionTimeMs !== 0) {
+      obj.avgExecutionTimeMs = message.avgExecutionTimeMs;
+    }
+    if (message.lastCheck !== undefined) {
+      obj.lastCheck = message.lastCheck.toISOString();
+    }
+    if (message.firstCheck !== undefined) {
+      obj.firstCheck = message.firstCheck.toISOString();
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<AuditSummaryRow>, I>>(base?: I): AuditSummaryRow {
+    return AuditSummaryRow.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<AuditSummaryRow>, I>>(object: I): AuditSummaryRow {
+    const message = createBaseAuditSummaryRow();
+    message.alertId = object.alertId ?? "";
+    message.ticker = object.ticker ?? "";
+    message.stockName = object.stockName ?? "";
+    message.exchange = object.exchange ?? "";
+    message.timeframe = object.timeframe ?? "";
+    message.action = object.action ?? "";
+    message.evaluationType = object.evaluationType ?? "";
+    message.totalChecks = object.totalChecks ?? 0;
+    message.successfulPricePulls = object.successfulPricePulls ?? 0;
+    message.successfulEvaluations = object.successfulEvaluations ?? 0;
+    message.totalTriggers = object.totalTriggers ?? 0;
+    message.avgExecutionTimeMs = object.avgExecutionTimeMs ?? 0;
+    message.lastCheck = object.lastCheck ?? undefined;
+    message.firstCheck = object.firstCheck ?? undefined;
+    return message;
+  },
+};
+
+function createBaseGetAuditSummaryResponse(): GetAuditSummaryResponse {
+  return { rows: [] };
+}
+
+export const GetAuditSummaryResponse: MessageFns<GetAuditSummaryResponse> = {
+  encode(message: GetAuditSummaryResponse, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    for (const v of message.rows) {
+      AuditSummaryRow.encode(v!, writer.uint32(10).fork()).join();
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): GetAuditSummaryResponse {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseGetAuditSummaryResponse();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.rows.push(AuditSummaryRow.decode(reader, reader.uint32()));
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): GetAuditSummaryResponse {
+    return {
+      rows: globalThis.Array.isArray(object?.rows) ? object.rows.map((e: any) => AuditSummaryRow.fromJSON(e)) : [],
+    };
+  },
+
+  toJSON(message: GetAuditSummaryResponse): unknown {
+    const obj: any = {};
+    if (message.rows?.length) {
+      obj.rows = message.rows.map((e) => AuditSummaryRow.toJSON(e));
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<GetAuditSummaryResponse>, I>>(base?: I): GetAuditSummaryResponse {
+    return GetAuditSummaryResponse.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<GetAuditSummaryResponse>, I>>(object: I): GetAuditSummaryResponse {
+    const message = createBaseGetAuditSummaryResponse();
+    message.rows = object.rows?.map((e) => AuditSummaryRow.fromPartial(e)) || [];
+    return message;
+  },
+};
+
+function createBaseGetPerformanceMetricsRequest(): GetPerformanceMetricsRequest {
+  return { days: 0 };
+}
+
+export const GetPerformanceMetricsRequest: MessageFns<GetPerformanceMetricsRequest> = {
+  encode(message: GetPerformanceMetricsRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.days !== 0) {
+      writer.uint32(8).int32(message.days);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): GetPerformanceMetricsRequest {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseGetPerformanceMetricsRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 8) {
+            break;
+          }
+
+          message.days = reader.int32();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): GetPerformanceMetricsRequest {
+    return { days: isSet(object.days) ? globalThis.Number(object.days) : 0 };
+  },
+
+  toJSON(message: GetPerformanceMetricsRequest): unknown {
+    const obj: any = {};
+    if (message.days !== 0) {
+      obj.days = Math.round(message.days);
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<GetPerformanceMetricsRequest>, I>>(base?: I): GetPerformanceMetricsRequest {
+    return GetPerformanceMetricsRequest.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<GetPerformanceMetricsRequest>, I>>(object: I): GetPerformanceMetricsRequest {
+    const message = createBaseGetPerformanceMetricsRequest();
+    message.days = object.days ?? 0;
+    return message;
+  },
+};
+
+function createBaseGetPerformanceMetricsResponse(): GetPerformanceMetricsResponse {
+  return {
+    totalChecks: 0,
+    successfulPricePulls: 0,
+    successRate: 0,
+    cacheHitRate: 0,
+    avgExecutionTimeMs: 0,
+    totalErrors: 0,
+    errorRate: 0,
+    analysisPeriodDays: 0,
+  };
+}
+
+export const GetPerformanceMetricsResponse: MessageFns<GetPerformanceMetricsResponse> = {
+  encode(message: GetPerformanceMetricsResponse, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.totalChecks !== 0) {
+      writer.uint32(8).int64(message.totalChecks);
+    }
+    if (message.successfulPricePulls !== 0) {
+      writer.uint32(16).int64(message.successfulPricePulls);
+    }
+    if (message.successRate !== 0) {
+      writer.uint32(25).double(message.successRate);
+    }
+    if (message.cacheHitRate !== 0) {
+      writer.uint32(33).double(message.cacheHitRate);
+    }
+    if (message.avgExecutionTimeMs !== 0) {
+      writer.uint32(41).double(message.avgExecutionTimeMs);
+    }
+    if (message.totalErrors !== 0) {
+      writer.uint32(48).int64(message.totalErrors);
+    }
+    if (message.errorRate !== 0) {
+      writer.uint32(57).double(message.errorRate);
+    }
+    if (message.analysisPeriodDays !== 0) {
+      writer.uint32(64).int32(message.analysisPeriodDays);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): GetPerformanceMetricsResponse {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseGetPerformanceMetricsResponse();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 8) {
+            break;
+          }
+
+          message.totalChecks = longToNumber(reader.int64());
+          continue;
+        }
+        case 2: {
+          if (tag !== 16) {
+            break;
+          }
+
+          message.successfulPricePulls = longToNumber(reader.int64());
+          continue;
+        }
+        case 3: {
+          if (tag !== 25) {
+            break;
+          }
+
+          message.successRate = reader.double();
+          continue;
+        }
+        case 4: {
+          if (tag !== 33) {
+            break;
+          }
+
+          message.cacheHitRate = reader.double();
+          continue;
+        }
+        case 5: {
+          if (tag !== 41) {
+            break;
+          }
+
+          message.avgExecutionTimeMs = reader.double();
+          continue;
+        }
+        case 6: {
+          if (tag !== 48) {
+            break;
+          }
+
+          message.totalErrors = longToNumber(reader.int64());
+          continue;
+        }
+        case 7: {
+          if (tag !== 57) {
+            break;
+          }
+
+          message.errorRate = reader.double();
+          continue;
+        }
+        case 8: {
+          if (tag !== 64) {
+            break;
+          }
+
+          message.analysisPeriodDays = reader.int32();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): GetPerformanceMetricsResponse {
+    return {
+      totalChecks: isSet(object.totalChecks)
+        ? globalThis.Number(object.totalChecks)
+        : isSet(object.total_checks)
+        ? globalThis.Number(object.total_checks)
+        : 0,
+      successfulPricePulls: isSet(object.successfulPricePulls)
+        ? globalThis.Number(object.successfulPricePulls)
+        : isSet(object.successful_price_pulls)
+        ? globalThis.Number(object.successful_price_pulls)
+        : 0,
+      successRate: isSet(object.successRate)
+        ? globalThis.Number(object.successRate)
+        : isSet(object.success_rate)
+        ? globalThis.Number(object.success_rate)
+        : 0,
+      cacheHitRate: isSet(object.cacheHitRate)
+        ? globalThis.Number(object.cacheHitRate)
+        : isSet(object.cache_hit_rate)
+        ? globalThis.Number(object.cache_hit_rate)
+        : 0,
+      avgExecutionTimeMs: isSet(object.avgExecutionTimeMs)
+        ? globalThis.Number(object.avgExecutionTimeMs)
+        : isSet(object.avg_execution_time_ms)
+        ? globalThis.Number(object.avg_execution_time_ms)
+        : 0,
+      totalErrors: isSet(object.totalErrors)
+        ? globalThis.Number(object.totalErrors)
+        : isSet(object.total_errors)
+        ? globalThis.Number(object.total_errors)
+        : 0,
+      errorRate: isSet(object.errorRate)
+        ? globalThis.Number(object.errorRate)
+        : isSet(object.error_rate)
+        ? globalThis.Number(object.error_rate)
+        : 0,
+      analysisPeriodDays: isSet(object.analysisPeriodDays)
+        ? globalThis.Number(object.analysisPeriodDays)
+        : isSet(object.analysis_period_days)
+        ? globalThis.Number(object.analysis_period_days)
+        : 0,
+    };
+  },
+
+  toJSON(message: GetPerformanceMetricsResponse): unknown {
+    const obj: any = {};
+    if (message.totalChecks !== 0) {
+      obj.totalChecks = Math.round(message.totalChecks);
+    }
+    if (message.successfulPricePulls !== 0) {
+      obj.successfulPricePulls = Math.round(message.successfulPricePulls);
+    }
+    if (message.successRate !== 0) {
+      obj.successRate = message.successRate;
+    }
+    if (message.cacheHitRate !== 0) {
+      obj.cacheHitRate = message.cacheHitRate;
+    }
+    if (message.avgExecutionTimeMs !== 0) {
+      obj.avgExecutionTimeMs = message.avgExecutionTimeMs;
+    }
+    if (message.totalErrors !== 0) {
+      obj.totalErrors = Math.round(message.totalErrors);
+    }
+    if (message.errorRate !== 0) {
+      obj.errorRate = message.errorRate;
+    }
+    if (message.analysisPeriodDays !== 0) {
+      obj.analysisPeriodDays = Math.round(message.analysisPeriodDays);
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<GetPerformanceMetricsResponse>, I>>(base?: I): GetPerformanceMetricsResponse {
+    return GetPerformanceMetricsResponse.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<GetPerformanceMetricsResponse>, I>>(
+    object: I,
+  ): GetPerformanceMetricsResponse {
+    const message = createBaseGetPerformanceMetricsResponse();
+    message.totalChecks = object.totalChecks ?? 0;
+    message.successfulPricePulls = object.successfulPricePulls ?? 0;
+    message.successRate = object.successRate ?? 0;
+    message.cacheHitRate = object.cacheHitRate ?? 0;
+    message.avgExecutionTimeMs = object.avgExecutionTimeMs ?? 0;
+    message.totalErrors = object.totalErrors ?? 0;
+    message.errorRate = object.errorRate ?? 0;
+    message.analysisPeriodDays = object.analysisPeriodDays ?? 0;
+    return message;
+  },
+};
+
+function createBaseGetAlertHistoryRequest(): GetAlertHistoryRequest {
+  return { alertId: "", limit: 0 };
+}
+
+export const GetAlertHistoryRequest: MessageFns<GetAlertHistoryRequest> = {
+  encode(message: GetAlertHistoryRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.alertId !== "") {
+      writer.uint32(10).string(message.alertId);
+    }
+    if (message.limit !== 0) {
+      writer.uint32(16).int32(message.limit);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): GetAlertHistoryRequest {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseGetAlertHistoryRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.alertId = reader.string();
+          continue;
+        }
+        case 2: {
+          if (tag !== 16) {
+            break;
+          }
+
+          message.limit = reader.int32();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): GetAlertHistoryRequest {
+    return {
+      alertId: isSet(object.alertId)
+        ? globalThis.String(object.alertId)
+        : isSet(object.alert_id)
+        ? globalThis.String(object.alert_id)
+        : "",
+      limit: isSet(object.limit) ? globalThis.Number(object.limit) : 0,
+    };
+  },
+
+  toJSON(message: GetAlertHistoryRequest): unknown {
+    const obj: any = {};
+    if (message.alertId !== "") {
+      obj.alertId = message.alertId;
+    }
+    if (message.limit !== 0) {
+      obj.limit = Math.round(message.limit);
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<GetAlertHistoryRequest>, I>>(base?: I): GetAlertHistoryRequest {
+    return GetAlertHistoryRequest.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<GetAlertHistoryRequest>, I>>(object: I): GetAlertHistoryRequest {
+    const message = createBaseGetAlertHistoryRequest();
+    message.alertId = object.alertId ?? "";
+    message.limit = object.limit ?? 0;
+    return message;
+  },
+};
+
+function createBaseAuditHistoryRow(): AuditHistoryRow {
+  return {
+    id: 0,
+    timestamp: undefined,
+    alertId: "",
+    ticker: "",
+    stockName: "",
+    exchange: "",
+    timeframe: "",
+    action: "",
+    evaluationType: "",
+    priceDataPulled: false,
+    priceDataSource: "",
+    conditionsEvaluated: false,
+    alertTriggered: false,
+    triggerReason: "",
+    executionTimeMs: 0,
+    cacheHit: false,
+    errorMessage: "",
+    alertName: "",
+  };
+}
+
+export const AuditHistoryRow: MessageFns<AuditHistoryRow> = {
+  encode(message: AuditHistoryRow, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.id !== 0) {
+      writer.uint32(8).int64(message.id);
+    }
+    if (message.timestamp !== undefined) {
+      Timestamp.encode(toTimestamp(message.timestamp), writer.uint32(18).fork()).join();
+    }
+    if (message.alertId !== "") {
+      writer.uint32(26).string(message.alertId);
+    }
+    if (message.ticker !== "") {
+      writer.uint32(34).string(message.ticker);
+    }
+    if (message.stockName !== "") {
+      writer.uint32(42).string(message.stockName);
+    }
+    if (message.exchange !== "") {
+      writer.uint32(50).string(message.exchange);
+    }
+    if (message.timeframe !== "") {
+      writer.uint32(58).string(message.timeframe);
+    }
+    if (message.action !== "") {
+      writer.uint32(66).string(message.action);
+    }
+    if (message.evaluationType !== "") {
+      writer.uint32(74).string(message.evaluationType);
+    }
+    if (message.priceDataPulled !== false) {
+      writer.uint32(80).bool(message.priceDataPulled);
+    }
+    if (message.priceDataSource !== "") {
+      writer.uint32(90).string(message.priceDataSource);
+    }
+    if (message.conditionsEvaluated !== false) {
+      writer.uint32(96).bool(message.conditionsEvaluated);
+    }
+    if (message.alertTriggered !== false) {
+      writer.uint32(104).bool(message.alertTriggered);
+    }
+    if (message.triggerReason !== "") {
+      writer.uint32(114).string(message.triggerReason);
+    }
+    if (message.executionTimeMs !== 0) {
+      writer.uint32(120).int32(message.executionTimeMs);
+    }
+    if (message.cacheHit !== false) {
+      writer.uint32(128).bool(message.cacheHit);
+    }
+    if (message.errorMessage !== "") {
+      writer.uint32(138).string(message.errorMessage);
+    }
+    if (message.alertName !== "") {
+      writer.uint32(146).string(message.alertName);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): AuditHistoryRow {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseAuditHistoryRow();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 8) {
+            break;
+          }
+
+          message.id = longToNumber(reader.int64());
+          continue;
+        }
+        case 2: {
+          if (tag !== 18) {
+            break;
+          }
+
+          message.timestamp = fromTimestamp(Timestamp.decode(reader, reader.uint32()));
+          continue;
+        }
+        case 3: {
+          if (tag !== 26) {
+            break;
+          }
+
+          message.alertId = reader.string();
+          continue;
+        }
+        case 4: {
+          if (tag !== 34) {
+            break;
+          }
+
+          message.ticker = reader.string();
+          continue;
+        }
+        case 5: {
+          if (tag !== 42) {
+            break;
+          }
+
+          message.stockName = reader.string();
+          continue;
+        }
+        case 6: {
+          if (tag !== 50) {
+            break;
+          }
+
+          message.exchange = reader.string();
+          continue;
+        }
+        case 7: {
+          if (tag !== 58) {
+            break;
+          }
+
+          message.timeframe = reader.string();
+          continue;
+        }
+        case 8: {
+          if (tag !== 66) {
+            break;
+          }
+
+          message.action = reader.string();
+          continue;
+        }
+        case 9: {
+          if (tag !== 74) {
+            break;
+          }
+
+          message.evaluationType = reader.string();
+          continue;
+        }
+        case 10: {
+          if (tag !== 80) {
+            break;
+          }
+
+          message.priceDataPulled = reader.bool();
+          continue;
+        }
+        case 11: {
+          if (tag !== 90) {
+            break;
+          }
+
+          message.priceDataSource = reader.string();
+          continue;
+        }
+        case 12: {
+          if (tag !== 96) {
+            break;
+          }
+
+          message.conditionsEvaluated = reader.bool();
+          continue;
+        }
+        case 13: {
+          if (tag !== 104) {
+            break;
+          }
+
+          message.alertTriggered = reader.bool();
+          continue;
+        }
+        case 14: {
+          if (tag !== 114) {
+            break;
+          }
+
+          message.triggerReason = reader.string();
+          continue;
+        }
+        case 15: {
+          if (tag !== 120) {
+            break;
+          }
+
+          message.executionTimeMs = reader.int32();
+          continue;
+        }
+        case 16: {
+          if (tag !== 128) {
+            break;
+          }
+
+          message.cacheHit = reader.bool();
+          continue;
+        }
+        case 17: {
+          if (tag !== 138) {
+            break;
+          }
+
+          message.errorMessage = reader.string();
+          continue;
+        }
+        case 18: {
+          if (tag !== 146) {
+            break;
+          }
+
+          message.alertName = reader.string();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): AuditHistoryRow {
+    return {
+      id: isSet(object.id) ? globalThis.Number(object.id) : 0,
+      timestamp: isSet(object.timestamp) ? fromJsonTimestamp(object.timestamp) : undefined,
+      alertId: isSet(object.alertId)
+        ? globalThis.String(object.alertId)
+        : isSet(object.alert_id)
+        ? globalThis.String(object.alert_id)
+        : "",
+      ticker: isSet(object.ticker) ? globalThis.String(object.ticker) : "",
+      stockName: isSet(object.stockName)
+        ? globalThis.String(object.stockName)
+        : isSet(object.stock_name)
+        ? globalThis.String(object.stock_name)
+        : "",
+      exchange: isSet(object.exchange) ? globalThis.String(object.exchange) : "",
+      timeframe: isSet(object.timeframe) ? globalThis.String(object.timeframe) : "",
+      action: isSet(object.action) ? globalThis.String(object.action) : "",
+      evaluationType: isSet(object.evaluationType)
+        ? globalThis.String(object.evaluationType)
+        : isSet(object.evaluation_type)
+        ? globalThis.String(object.evaluation_type)
+        : "",
+      priceDataPulled: isSet(object.priceDataPulled)
+        ? globalThis.Boolean(object.priceDataPulled)
+        : isSet(object.price_data_pulled)
+        ? globalThis.Boolean(object.price_data_pulled)
+        : false,
+      priceDataSource: isSet(object.priceDataSource)
+        ? globalThis.String(object.priceDataSource)
+        : isSet(object.price_data_source)
+        ? globalThis.String(object.price_data_source)
+        : "",
+      conditionsEvaluated: isSet(object.conditionsEvaluated)
+        ? globalThis.Boolean(object.conditionsEvaluated)
+        : isSet(object.conditions_evaluated)
+        ? globalThis.Boolean(object.conditions_evaluated)
+        : false,
+      alertTriggered: isSet(object.alertTriggered)
+        ? globalThis.Boolean(object.alertTriggered)
+        : isSet(object.alert_triggered)
+        ? globalThis.Boolean(object.alert_triggered)
+        : false,
+      triggerReason: isSet(object.triggerReason)
+        ? globalThis.String(object.triggerReason)
+        : isSet(object.trigger_reason)
+        ? globalThis.String(object.trigger_reason)
+        : "",
+      executionTimeMs: isSet(object.executionTimeMs)
+        ? globalThis.Number(object.executionTimeMs)
+        : isSet(object.execution_time_ms)
+        ? globalThis.Number(object.execution_time_ms)
+        : 0,
+      cacheHit: isSet(object.cacheHit)
+        ? globalThis.Boolean(object.cacheHit)
+        : isSet(object.cache_hit)
+        ? globalThis.Boolean(object.cache_hit)
+        : false,
+      errorMessage: isSet(object.errorMessage)
+        ? globalThis.String(object.errorMessage)
+        : isSet(object.error_message)
+        ? globalThis.String(object.error_message)
+        : "",
+      alertName: isSet(object.alertName)
+        ? globalThis.String(object.alertName)
+        : isSet(object.alert_name)
+        ? globalThis.String(object.alert_name)
+        : "",
+    };
+  },
+
+  toJSON(message: AuditHistoryRow): unknown {
+    const obj: any = {};
+    if (message.id !== 0) {
+      obj.id = Math.round(message.id);
+    }
+    if (message.timestamp !== undefined) {
+      obj.timestamp = message.timestamp.toISOString();
+    }
+    if (message.alertId !== "") {
+      obj.alertId = message.alertId;
+    }
+    if (message.ticker !== "") {
+      obj.ticker = message.ticker;
+    }
+    if (message.stockName !== "") {
+      obj.stockName = message.stockName;
+    }
+    if (message.exchange !== "") {
+      obj.exchange = message.exchange;
+    }
+    if (message.timeframe !== "") {
+      obj.timeframe = message.timeframe;
+    }
+    if (message.action !== "") {
+      obj.action = message.action;
+    }
+    if (message.evaluationType !== "") {
+      obj.evaluationType = message.evaluationType;
+    }
+    if (message.priceDataPulled !== false) {
+      obj.priceDataPulled = message.priceDataPulled;
+    }
+    if (message.priceDataSource !== "") {
+      obj.priceDataSource = message.priceDataSource;
+    }
+    if (message.conditionsEvaluated !== false) {
+      obj.conditionsEvaluated = message.conditionsEvaluated;
+    }
+    if (message.alertTriggered !== false) {
+      obj.alertTriggered = message.alertTriggered;
+    }
+    if (message.triggerReason !== "") {
+      obj.triggerReason = message.triggerReason;
+    }
+    if (message.executionTimeMs !== 0) {
+      obj.executionTimeMs = Math.round(message.executionTimeMs);
+    }
+    if (message.cacheHit !== false) {
+      obj.cacheHit = message.cacheHit;
+    }
+    if (message.errorMessage !== "") {
+      obj.errorMessage = message.errorMessage;
+    }
+    if (message.alertName !== "") {
+      obj.alertName = message.alertName;
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<AuditHistoryRow>, I>>(base?: I): AuditHistoryRow {
+    return AuditHistoryRow.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<AuditHistoryRow>, I>>(object: I): AuditHistoryRow {
+    const message = createBaseAuditHistoryRow();
+    message.id = object.id ?? 0;
+    message.timestamp = object.timestamp ?? undefined;
+    message.alertId = object.alertId ?? "";
+    message.ticker = object.ticker ?? "";
+    message.stockName = object.stockName ?? "";
+    message.exchange = object.exchange ?? "";
+    message.timeframe = object.timeframe ?? "";
+    message.action = object.action ?? "";
+    message.evaluationType = object.evaluationType ?? "";
+    message.priceDataPulled = object.priceDataPulled ?? false;
+    message.priceDataSource = object.priceDataSource ?? "";
+    message.conditionsEvaluated = object.conditionsEvaluated ?? false;
+    message.alertTriggered = object.alertTriggered ?? false;
+    message.triggerReason = object.triggerReason ?? "";
+    message.executionTimeMs = object.executionTimeMs ?? 0;
+    message.cacheHit = object.cacheHit ?? false;
+    message.errorMessage = object.errorMessage ?? "";
+    message.alertName = object.alertName ?? "";
+    return message;
+  },
+};
+
+function createBaseGetAlertHistoryResponse(): GetAlertHistoryResponse {
+  return { rows: [] };
+}
+
+export const GetAlertHistoryResponse: MessageFns<GetAlertHistoryResponse> = {
+  encode(message: GetAlertHistoryResponse, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    for (const v of message.rows) {
+      AuditHistoryRow.encode(v!, writer.uint32(10).fork()).join();
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): GetAlertHistoryResponse {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseGetAlertHistoryResponse();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.rows.push(AuditHistoryRow.decode(reader, reader.uint32()));
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): GetAlertHistoryResponse {
+    return {
+      rows: globalThis.Array.isArray(object?.rows) ? object.rows.map((e: any) => AuditHistoryRow.fromJSON(e)) : [],
+    };
+  },
+
+  toJSON(message: GetAlertHistoryResponse): unknown {
+    const obj: any = {};
+    if (message.rows?.length) {
+      obj.rows = message.rows.map((e) => AuditHistoryRow.toJSON(e));
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<GetAlertHistoryResponse>, I>>(base?: I): GetAlertHistoryResponse {
+    return GetAlertHistoryResponse.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<GetAlertHistoryResponse>, I>>(object: I): GetAlertHistoryResponse {
+    const message = createBaseGetAlertHistoryResponse();
+    message.rows = object.rows?.map((e) => AuditHistoryRow.fromPartial(e)) || [];
+    return message;
+  },
+};
+
+function createBaseGetFailedPriceDataRequest(): GetFailedPriceDataRequest {
+  return { days: 0 };
+}
+
+export const GetFailedPriceDataRequest: MessageFns<GetFailedPriceDataRequest> = {
+  encode(message: GetFailedPriceDataRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.days !== 0) {
+      writer.uint32(8).int32(message.days);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): GetFailedPriceDataRequest {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseGetFailedPriceDataRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 8) {
+            break;
+          }
+
+          message.days = reader.int32();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): GetFailedPriceDataRequest {
+    return { days: isSet(object.days) ? globalThis.Number(object.days) : 0 };
+  },
+
+  toJSON(message: GetFailedPriceDataRequest): unknown {
+    const obj: any = {};
+    if (message.days !== 0) {
+      obj.days = Math.round(message.days);
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<GetFailedPriceDataRequest>, I>>(base?: I): GetFailedPriceDataRequest {
+    return GetFailedPriceDataRequest.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<GetFailedPriceDataRequest>, I>>(object: I): GetFailedPriceDataRequest {
+    const message = createBaseGetFailedPriceDataRequest();
+    message.days = object.days ?? 0;
+    return message;
+  },
+};
+
+function createBaseFailedAlertRow(): FailedAlertRow {
+  return {
+    alertId: "",
+    ticker: "",
+    stockName: "",
+    exchange: "",
+    timeframe: "",
+    assetType: "",
+    failureCount: 0,
+    lastFailure: undefined,
+    firstFailure: undefined,
+    avgExecutionTime: 0,
+  };
+}
+
+export const FailedAlertRow: MessageFns<FailedAlertRow> = {
+  encode(message: FailedAlertRow, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.alertId !== "") {
+      writer.uint32(10).string(message.alertId);
+    }
+    if (message.ticker !== "") {
+      writer.uint32(18).string(message.ticker);
+    }
+    if (message.stockName !== "") {
+      writer.uint32(26).string(message.stockName);
+    }
+    if (message.exchange !== "") {
+      writer.uint32(34).string(message.exchange);
+    }
+    if (message.timeframe !== "") {
+      writer.uint32(42).string(message.timeframe);
+    }
+    if (message.assetType !== "") {
+      writer.uint32(50).string(message.assetType);
+    }
+    if (message.failureCount !== 0) {
+      writer.uint32(56).int64(message.failureCount);
+    }
+    if (message.lastFailure !== undefined) {
+      Timestamp.encode(toTimestamp(message.lastFailure), writer.uint32(66).fork()).join();
+    }
+    if (message.firstFailure !== undefined) {
+      Timestamp.encode(toTimestamp(message.firstFailure), writer.uint32(74).fork()).join();
+    }
+    if (message.avgExecutionTime !== 0) {
+      writer.uint32(81).double(message.avgExecutionTime);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): FailedAlertRow {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseFailedAlertRow();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.alertId = reader.string();
+          continue;
+        }
+        case 2: {
+          if (tag !== 18) {
+            break;
+          }
+
+          message.ticker = reader.string();
+          continue;
+        }
+        case 3: {
+          if (tag !== 26) {
+            break;
+          }
+
+          message.stockName = reader.string();
+          continue;
+        }
+        case 4: {
+          if (tag !== 34) {
+            break;
+          }
+
+          message.exchange = reader.string();
+          continue;
+        }
+        case 5: {
+          if (tag !== 42) {
+            break;
+          }
+
+          message.timeframe = reader.string();
+          continue;
+        }
+        case 6: {
+          if (tag !== 50) {
+            break;
+          }
+
+          message.assetType = reader.string();
+          continue;
+        }
+        case 7: {
+          if (tag !== 56) {
+            break;
+          }
+
+          message.failureCount = longToNumber(reader.int64());
+          continue;
+        }
+        case 8: {
+          if (tag !== 66) {
+            break;
+          }
+
+          message.lastFailure = fromTimestamp(Timestamp.decode(reader, reader.uint32()));
+          continue;
+        }
+        case 9: {
+          if (tag !== 74) {
+            break;
+          }
+
+          message.firstFailure = fromTimestamp(Timestamp.decode(reader, reader.uint32()));
+          continue;
+        }
+        case 10: {
+          if (tag !== 81) {
+            break;
+          }
+
+          message.avgExecutionTime = reader.double();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): FailedAlertRow {
+    return {
+      alertId: isSet(object.alertId)
+        ? globalThis.String(object.alertId)
+        : isSet(object.alert_id)
+        ? globalThis.String(object.alert_id)
+        : "",
+      ticker: isSet(object.ticker) ? globalThis.String(object.ticker) : "",
+      stockName: isSet(object.stockName)
+        ? globalThis.String(object.stockName)
+        : isSet(object.stock_name)
+        ? globalThis.String(object.stock_name)
+        : "",
+      exchange: isSet(object.exchange) ? globalThis.String(object.exchange) : "",
+      timeframe: isSet(object.timeframe) ? globalThis.String(object.timeframe) : "",
+      assetType: isSet(object.assetType)
+        ? globalThis.String(object.assetType)
+        : isSet(object.asset_type)
+        ? globalThis.String(object.asset_type)
+        : "",
+      failureCount: isSet(object.failureCount)
+        ? globalThis.Number(object.failureCount)
+        : isSet(object.failure_count)
+        ? globalThis.Number(object.failure_count)
+        : 0,
+      lastFailure: isSet(object.lastFailure)
+        ? fromJsonTimestamp(object.lastFailure)
+        : isSet(object.last_failure)
+        ? fromJsonTimestamp(object.last_failure)
+        : undefined,
+      firstFailure: isSet(object.firstFailure)
+        ? fromJsonTimestamp(object.firstFailure)
+        : isSet(object.first_failure)
+        ? fromJsonTimestamp(object.first_failure)
+        : undefined,
+      avgExecutionTime: isSet(object.avgExecutionTime)
+        ? globalThis.Number(object.avgExecutionTime)
+        : isSet(object.avg_execution_time)
+        ? globalThis.Number(object.avg_execution_time)
+        : 0,
+    };
+  },
+
+  toJSON(message: FailedAlertRow): unknown {
+    const obj: any = {};
+    if (message.alertId !== "") {
+      obj.alertId = message.alertId;
+    }
+    if (message.ticker !== "") {
+      obj.ticker = message.ticker;
+    }
+    if (message.stockName !== "") {
+      obj.stockName = message.stockName;
+    }
+    if (message.exchange !== "") {
+      obj.exchange = message.exchange;
+    }
+    if (message.timeframe !== "") {
+      obj.timeframe = message.timeframe;
+    }
+    if (message.assetType !== "") {
+      obj.assetType = message.assetType;
+    }
+    if (message.failureCount !== 0) {
+      obj.failureCount = Math.round(message.failureCount);
+    }
+    if (message.lastFailure !== undefined) {
+      obj.lastFailure = message.lastFailure.toISOString();
+    }
+    if (message.firstFailure !== undefined) {
+      obj.firstFailure = message.firstFailure.toISOString();
+    }
+    if (message.avgExecutionTime !== 0) {
+      obj.avgExecutionTime = message.avgExecutionTime;
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<FailedAlertRow>, I>>(base?: I): FailedAlertRow {
+    return FailedAlertRow.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<FailedAlertRow>, I>>(object: I): FailedAlertRow {
+    const message = createBaseFailedAlertRow();
+    message.alertId = object.alertId ?? "";
+    message.ticker = object.ticker ?? "";
+    message.stockName = object.stockName ?? "";
+    message.exchange = object.exchange ?? "";
+    message.timeframe = object.timeframe ?? "";
+    message.assetType = object.assetType ?? "";
+    message.failureCount = object.failureCount ?? 0;
+    message.lastFailure = object.lastFailure ?? undefined;
+    message.firstFailure = object.firstFailure ?? undefined;
+    message.avgExecutionTime = object.avgExecutionTime ?? 0;
+    return message;
+  },
+};
+
+function createBaseAssetTypeBreakdownRow(): AssetTypeBreakdownRow {
+  return { assetType: "", failedAlerts: 0, failureCount: 0 };
+}
+
+export const AssetTypeBreakdownRow: MessageFns<AssetTypeBreakdownRow> = {
+  encode(message: AssetTypeBreakdownRow, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.assetType !== "") {
+      writer.uint32(10).string(message.assetType);
+    }
+    if (message.failedAlerts !== 0) {
+      writer.uint32(16).int64(message.failedAlerts);
+    }
+    if (message.failureCount !== 0) {
+      writer.uint32(24).int64(message.failureCount);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): AssetTypeBreakdownRow {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseAssetTypeBreakdownRow();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.assetType = reader.string();
+          continue;
+        }
+        case 2: {
+          if (tag !== 16) {
+            break;
+          }
+
+          message.failedAlerts = longToNumber(reader.int64());
+          continue;
+        }
+        case 3: {
+          if (tag !== 24) {
+            break;
+          }
+
+          message.failureCount = longToNumber(reader.int64());
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): AssetTypeBreakdownRow {
+    return {
+      assetType: isSet(object.assetType)
+        ? globalThis.String(object.assetType)
+        : isSet(object.asset_type)
+        ? globalThis.String(object.asset_type)
+        : "",
+      failedAlerts: isSet(object.failedAlerts)
+        ? globalThis.Number(object.failedAlerts)
+        : isSet(object.failed_alerts)
+        ? globalThis.Number(object.failed_alerts)
+        : 0,
+      failureCount: isSet(object.failureCount)
+        ? globalThis.Number(object.failureCount)
+        : isSet(object.failure_count)
+        ? globalThis.Number(object.failure_count)
+        : 0,
+    };
+  },
+
+  toJSON(message: AssetTypeBreakdownRow): unknown {
+    const obj: any = {};
+    if (message.assetType !== "") {
+      obj.assetType = message.assetType;
+    }
+    if (message.failedAlerts !== 0) {
+      obj.failedAlerts = Math.round(message.failedAlerts);
+    }
+    if (message.failureCount !== 0) {
+      obj.failureCount = Math.round(message.failureCount);
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<AssetTypeBreakdownRow>, I>>(base?: I): AssetTypeBreakdownRow {
+    return AssetTypeBreakdownRow.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<AssetTypeBreakdownRow>, I>>(object: I): AssetTypeBreakdownRow {
+    const message = createBaseAssetTypeBreakdownRow();
+    message.assetType = object.assetType ?? "";
+    message.failedAlerts = object.failedAlerts ?? 0;
+    message.failureCount = object.failureCount ?? 0;
+    return message;
+  },
+};
+
+function createBaseExchangeBreakdownRow(): ExchangeBreakdownRow {
+  return { exchange: "", failedAlerts: 0, failureCount: 0 };
+}
+
+export const ExchangeBreakdownRow: MessageFns<ExchangeBreakdownRow> = {
+  encode(message: ExchangeBreakdownRow, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.exchange !== "") {
+      writer.uint32(10).string(message.exchange);
+    }
+    if (message.failedAlerts !== 0) {
+      writer.uint32(16).int64(message.failedAlerts);
+    }
+    if (message.failureCount !== 0) {
+      writer.uint32(24).int64(message.failureCount);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): ExchangeBreakdownRow {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseExchangeBreakdownRow();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.exchange = reader.string();
+          continue;
+        }
+        case 2: {
+          if (tag !== 16) {
+            break;
+          }
+
+          message.failedAlerts = longToNumber(reader.int64());
+          continue;
+        }
+        case 3: {
+          if (tag !== 24) {
+            break;
+          }
+
+          message.failureCount = longToNumber(reader.int64());
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): ExchangeBreakdownRow {
+    return {
+      exchange: isSet(object.exchange) ? globalThis.String(object.exchange) : "",
+      failedAlerts: isSet(object.failedAlerts)
+        ? globalThis.Number(object.failedAlerts)
+        : isSet(object.failed_alerts)
+        ? globalThis.Number(object.failed_alerts)
+        : 0,
+      failureCount: isSet(object.failureCount)
+        ? globalThis.Number(object.failureCount)
+        : isSet(object.failure_count)
+        ? globalThis.Number(object.failure_count)
+        : 0,
+    };
+  },
+
+  toJSON(message: ExchangeBreakdownRow): unknown {
+    const obj: any = {};
+    if (message.exchange !== "") {
+      obj.exchange = message.exchange;
+    }
+    if (message.failedAlerts !== 0) {
+      obj.failedAlerts = Math.round(message.failedAlerts);
+    }
+    if (message.failureCount !== 0) {
+      obj.failureCount = Math.round(message.failureCount);
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<ExchangeBreakdownRow>, I>>(base?: I): ExchangeBreakdownRow {
+    return ExchangeBreakdownRow.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<ExchangeBreakdownRow>, I>>(object: I): ExchangeBreakdownRow {
+    const message = createBaseExchangeBreakdownRow();
+    message.exchange = object.exchange ?? "";
+    message.failedAlerts = object.failedAlerts ?? 0;
+    message.failureCount = object.failureCount ?? 0;
+    return message;
+  },
+};
+
+function createBaseGetFailedPriceDataResponse(): GetFailedPriceDataResponse {
+  return {
+    rows: [],
+    totalFailedAlerts: 0,
+    totalFailures: 0,
+    failureRate: 0,
+    assetTypeBreakdown: [],
+    exchangeBreakdown: [],
+  };
+}
+
+export const GetFailedPriceDataResponse: MessageFns<GetFailedPriceDataResponse> = {
+  encode(message: GetFailedPriceDataResponse, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    for (const v of message.rows) {
+      FailedAlertRow.encode(v!, writer.uint32(10).fork()).join();
+    }
+    if (message.totalFailedAlerts !== 0) {
+      writer.uint32(16).int64(message.totalFailedAlerts);
+    }
+    if (message.totalFailures !== 0) {
+      writer.uint32(24).int64(message.totalFailures);
+    }
+    if (message.failureRate !== 0) {
+      writer.uint32(33).double(message.failureRate);
+    }
+    for (const v of message.assetTypeBreakdown) {
+      AssetTypeBreakdownRow.encode(v!, writer.uint32(42).fork()).join();
+    }
+    for (const v of message.exchangeBreakdown) {
+      ExchangeBreakdownRow.encode(v!, writer.uint32(50).fork()).join();
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): GetFailedPriceDataResponse {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseGetFailedPriceDataResponse();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.rows.push(FailedAlertRow.decode(reader, reader.uint32()));
+          continue;
+        }
+        case 2: {
+          if (tag !== 16) {
+            break;
+          }
+
+          message.totalFailedAlerts = longToNumber(reader.int64());
+          continue;
+        }
+        case 3: {
+          if (tag !== 24) {
+            break;
+          }
+
+          message.totalFailures = longToNumber(reader.int64());
+          continue;
+        }
+        case 4: {
+          if (tag !== 33) {
+            break;
+          }
+
+          message.failureRate = reader.double();
+          continue;
+        }
+        case 5: {
+          if (tag !== 42) {
+            break;
+          }
+
+          message.assetTypeBreakdown.push(AssetTypeBreakdownRow.decode(reader, reader.uint32()));
+          continue;
+        }
+        case 6: {
+          if (tag !== 50) {
+            break;
+          }
+
+          message.exchangeBreakdown.push(ExchangeBreakdownRow.decode(reader, reader.uint32()));
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): GetFailedPriceDataResponse {
+    return {
+      rows: globalThis.Array.isArray(object?.rows) ? object.rows.map((e: any) => FailedAlertRow.fromJSON(e)) : [],
+      totalFailedAlerts: isSet(object.totalFailedAlerts)
+        ? globalThis.Number(object.totalFailedAlerts)
+        : isSet(object.total_failed_alerts)
+        ? globalThis.Number(object.total_failed_alerts)
+        : 0,
+      totalFailures: isSet(object.totalFailures)
+        ? globalThis.Number(object.totalFailures)
+        : isSet(object.total_failures)
+        ? globalThis.Number(object.total_failures)
+        : 0,
+      failureRate: isSet(object.failureRate)
+        ? globalThis.Number(object.failureRate)
+        : isSet(object.failure_rate)
+        ? globalThis.Number(object.failure_rate)
+        : 0,
+      assetTypeBreakdown: globalThis.Array.isArray(object?.assetTypeBreakdown)
+        ? object.assetTypeBreakdown.map((e: any) => AssetTypeBreakdownRow.fromJSON(e))
+        : globalThis.Array.isArray(object?.asset_type_breakdown)
+        ? object.asset_type_breakdown.map((e: any) => AssetTypeBreakdownRow.fromJSON(e))
+        : [],
+      exchangeBreakdown: globalThis.Array.isArray(object?.exchangeBreakdown)
+        ? object.exchangeBreakdown.map((e: any) => ExchangeBreakdownRow.fromJSON(e))
+        : globalThis.Array.isArray(object?.exchange_breakdown)
+        ? object.exchange_breakdown.map((e: any) => ExchangeBreakdownRow.fromJSON(e))
+        : [],
+    };
+  },
+
+  toJSON(message: GetFailedPriceDataResponse): unknown {
+    const obj: any = {};
+    if (message.rows?.length) {
+      obj.rows = message.rows.map((e) => FailedAlertRow.toJSON(e));
+    }
+    if (message.totalFailedAlerts !== 0) {
+      obj.totalFailedAlerts = Math.round(message.totalFailedAlerts);
+    }
+    if (message.totalFailures !== 0) {
+      obj.totalFailures = Math.round(message.totalFailures);
+    }
+    if (message.failureRate !== 0) {
+      obj.failureRate = message.failureRate;
+    }
+    if (message.assetTypeBreakdown?.length) {
+      obj.assetTypeBreakdown = message.assetTypeBreakdown.map((e) => AssetTypeBreakdownRow.toJSON(e));
+    }
+    if (message.exchangeBreakdown?.length) {
+      obj.exchangeBreakdown = message.exchangeBreakdown.map((e) => ExchangeBreakdownRow.toJSON(e));
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<GetFailedPriceDataResponse>, I>>(base?: I): GetFailedPriceDataResponse {
+    return GetFailedPriceDataResponse.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<GetFailedPriceDataResponse>, I>>(object: I): GetFailedPriceDataResponse {
+    const message = createBaseGetFailedPriceDataResponse();
+    message.rows = object.rows?.map((e) => FailedAlertRow.fromPartial(e)) || [];
+    message.totalFailedAlerts = object.totalFailedAlerts ?? 0;
+    message.totalFailures = object.totalFailures ?? 0;
+    message.failureRate = object.failureRate ?? 0;
+    message.assetTypeBreakdown = object.assetTypeBreakdown?.map((e) => AssetTypeBreakdownRow.fromPartial(e)) || [];
+    message.exchangeBreakdown = object.exchangeBreakdown?.map((e) => ExchangeBreakdownRow.fromPartial(e)) || [];
+    return message;
+  },
+};
+
+function createBaseClearAuditDataRequest(): ClearAuditDataRequest {
+  return {};
+}
+
+export const ClearAuditDataRequest: MessageFns<ClearAuditDataRequest> = {
+  encode(_: ClearAuditDataRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): ClearAuditDataRequest {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseClearAuditDataRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(_: any): ClearAuditDataRequest {
+    return {};
+  },
+
+  toJSON(_: ClearAuditDataRequest): unknown {
+    const obj: any = {};
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<ClearAuditDataRequest>, I>>(base?: I): ClearAuditDataRequest {
+    return ClearAuditDataRequest.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<ClearAuditDataRequest>, I>>(_: I): ClearAuditDataRequest {
+    const message = createBaseClearAuditDataRequest();
+    return message;
+  },
+};
+
+function createBaseClearAuditDataResponse(): ClearAuditDataResponse {
+  return { deletedCount: 0 };
+}
+
+export const ClearAuditDataResponse: MessageFns<ClearAuditDataResponse> = {
+  encode(message: ClearAuditDataResponse, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.deletedCount !== 0) {
+      writer.uint32(8).int64(message.deletedCount);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): ClearAuditDataResponse {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseClearAuditDataResponse();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 8) {
+            break;
+          }
+
+          message.deletedCount = longToNumber(reader.int64());
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): ClearAuditDataResponse {
+    return {
+      deletedCount: isSet(object.deletedCount)
+        ? globalThis.Number(object.deletedCount)
+        : isSet(object.deleted_count)
+        ? globalThis.Number(object.deleted_count)
+        : 0,
+    };
+  },
+
+  toJSON(message: ClearAuditDataResponse): unknown {
+    const obj: any = {};
+    if (message.deletedCount !== 0) {
+      obj.deletedCount = Math.round(message.deletedCount);
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<ClearAuditDataResponse>, I>>(base?: I): ClearAuditDataResponse {
+    return ClearAuditDataResponse.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<ClearAuditDataResponse>, I>>(object: I): ClearAuditDataResponse {
+    const message = createBaseClearAuditDataResponse();
+    message.deletedCount = object.deletedCount ?? 0;
+    return message;
+  },
+};
+
+function createBaseGetTriggerHistoryByTickerRequest(): GetTriggerHistoryByTickerRequest {
+  return { ticker: "", includeAllEvaluations: false, limit: 0, daysBack: 0 };
+}
+
+export const GetTriggerHistoryByTickerRequest: MessageFns<GetTriggerHistoryByTickerRequest> = {
+  encode(message: GetTriggerHistoryByTickerRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.ticker !== "") {
+      writer.uint32(10).string(message.ticker);
+    }
+    if (message.includeAllEvaluations !== false) {
+      writer.uint32(16).bool(message.includeAllEvaluations);
+    }
+    if (message.limit !== 0) {
+      writer.uint32(24).int32(message.limit);
+    }
+    if (message.daysBack !== 0) {
+      writer.uint32(32).int32(message.daysBack);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): GetTriggerHistoryByTickerRequest {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseGetTriggerHistoryByTickerRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.ticker = reader.string();
+          continue;
+        }
+        case 2: {
+          if (tag !== 16) {
+            break;
+          }
+
+          message.includeAllEvaluations = reader.bool();
+          continue;
+        }
+        case 3: {
+          if (tag !== 24) {
+            break;
+          }
+
+          message.limit = reader.int32();
+          continue;
+        }
+        case 4: {
+          if (tag !== 32) {
+            break;
+          }
+
+          message.daysBack = reader.int32();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): GetTriggerHistoryByTickerRequest {
+    return {
+      ticker: isSet(object.ticker) ? globalThis.String(object.ticker) : "",
+      includeAllEvaluations: isSet(object.includeAllEvaluations)
+        ? globalThis.Boolean(object.includeAllEvaluations)
+        : isSet(object.include_all_evaluations)
+        ? globalThis.Boolean(object.include_all_evaluations)
+        : false,
+      limit: isSet(object.limit) ? globalThis.Number(object.limit) : 0,
+      daysBack: isSet(object.daysBack)
+        ? globalThis.Number(object.daysBack)
+        : isSet(object.days_back)
+        ? globalThis.Number(object.days_back)
+        : 0,
+    };
+  },
+
+  toJSON(message: GetTriggerHistoryByTickerRequest): unknown {
+    const obj: any = {};
+    if (message.ticker !== "") {
+      obj.ticker = message.ticker;
+    }
+    if (message.includeAllEvaluations !== false) {
+      obj.includeAllEvaluations = message.includeAllEvaluations;
+    }
+    if (message.limit !== 0) {
+      obj.limit = Math.round(message.limit);
+    }
+    if (message.daysBack !== 0) {
+      obj.daysBack = Math.round(message.daysBack);
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<GetTriggerHistoryByTickerRequest>, I>>(
+    base?: I,
+  ): GetTriggerHistoryByTickerRequest {
+    return GetTriggerHistoryByTickerRequest.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<GetTriggerHistoryByTickerRequest>, I>>(
+    object: I,
+  ): GetTriggerHistoryByTickerRequest {
+    const message = createBaseGetTriggerHistoryByTickerRequest();
+    message.ticker = object.ticker ?? "";
+    message.includeAllEvaluations = object.includeAllEvaluations ?? false;
+    message.limit = object.limit ?? 0;
+    message.daysBack = object.daysBack ?? 0;
+    return message;
+  },
+};
+
+function createBaseGetTriggerHistoryByTickerResponse(): GetTriggerHistoryByTickerResponse {
+  return { rows: [] };
+}
+
+export const GetTriggerHistoryByTickerResponse: MessageFns<GetTriggerHistoryByTickerResponse> = {
+  encode(message: GetTriggerHistoryByTickerResponse, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    for (const v of message.rows) {
+      AuditHistoryRow.encode(v!, writer.uint32(10).fork()).join();
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): GetTriggerHistoryByTickerResponse {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseGetTriggerHistoryByTickerResponse();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.rows.push(AuditHistoryRow.decode(reader, reader.uint32()));
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): GetTriggerHistoryByTickerResponse {
+    return {
+      rows: globalThis.Array.isArray(object?.rows) ? object.rows.map((e: any) => AuditHistoryRow.fromJSON(e)) : [],
+    };
+  },
+
+  toJSON(message: GetTriggerHistoryByTickerResponse): unknown {
+    const obj: any = {};
+    if (message.rows?.length) {
+      obj.rows = message.rows.map((e) => AuditHistoryRow.toJSON(e));
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<GetTriggerHistoryByTickerResponse>, I>>(
+    base?: I,
+  ): GetTriggerHistoryByTickerResponse {
+    return GetTriggerHistoryByTickerResponse.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<GetTriggerHistoryByTickerResponse>, I>>(
+    object: I,
+  ): GetTriggerHistoryByTickerResponse {
+    const message = createBaseGetTriggerHistoryByTickerResponse();
+    message.rows = object.rows?.map((e) => AuditHistoryRow.fromPartial(e)) || [];
+    return message;
+  },
+};
+
+function createBaseSearchStocksRequest(): SearchStocksRequest {
+  return { query: "", limit: 0 };
+}
+
+export const SearchStocksRequest: MessageFns<SearchStocksRequest> = {
+  encode(message: SearchStocksRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.query !== "") {
+      writer.uint32(10).string(message.query);
+    }
+    if (message.limit !== 0) {
+      writer.uint32(16).int32(message.limit);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): SearchStocksRequest {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseSearchStocksRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.query = reader.string();
+          continue;
+        }
+        case 2: {
+          if (tag !== 16) {
+            break;
+          }
+
+          message.limit = reader.int32();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): SearchStocksRequest {
+    return {
+      query: isSet(object.query) ? globalThis.String(object.query) : "",
+      limit: isSet(object.limit) ? globalThis.Number(object.limit) : 0,
+    };
+  },
+
+  toJSON(message: SearchStocksRequest): unknown {
+    const obj: any = {};
+    if (message.query !== "") {
+      obj.query = message.query;
+    }
+    if (message.limit !== 0) {
+      obj.limit = Math.round(message.limit);
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<SearchStocksRequest>, I>>(base?: I): SearchStocksRequest {
+    return SearchStocksRequest.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<SearchStocksRequest>, I>>(object: I): SearchStocksRequest {
+    const message = createBaseSearchStocksRequest();
+    message.query = object.query ?? "";
+    message.limit = object.limit ?? 0;
+    return message;
+  },
+};
+
+function createBaseStockSearchResult(): StockSearchResult {
+  return { ticker: "", name: "", exchange: "", type: "", rbicsEconomy: "" };
+}
+
+export const StockSearchResult: MessageFns<StockSearchResult> = {
+  encode(message: StockSearchResult, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.ticker !== "") {
+      writer.uint32(10).string(message.ticker);
+    }
+    if (message.name !== "") {
+      writer.uint32(18).string(message.name);
+    }
+    if (message.exchange !== "") {
+      writer.uint32(26).string(message.exchange);
+    }
+    if (message.type !== "") {
+      writer.uint32(34).string(message.type);
+    }
+    if (message.rbicsEconomy !== "") {
+      writer.uint32(42).string(message.rbicsEconomy);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): StockSearchResult {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseStockSearchResult();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.ticker = reader.string();
+          continue;
+        }
+        case 2: {
+          if (tag !== 18) {
+            break;
+          }
+
+          message.name = reader.string();
+          continue;
+        }
+        case 3: {
+          if (tag !== 26) {
+            break;
+          }
+
+          message.exchange = reader.string();
+          continue;
+        }
+        case 4: {
+          if (tag !== 34) {
+            break;
+          }
+
+          message.type = reader.string();
+          continue;
+        }
+        case 5: {
+          if (tag !== 42) {
+            break;
+          }
+
+          message.rbicsEconomy = reader.string();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): StockSearchResult {
+    return {
+      ticker: isSet(object.ticker) ? globalThis.String(object.ticker) : "",
+      name: isSet(object.name) ? globalThis.String(object.name) : "",
+      exchange: isSet(object.exchange) ? globalThis.String(object.exchange) : "",
+      type: isSet(object.type) ? globalThis.String(object.type) : "",
+      rbicsEconomy: isSet(object.rbicsEconomy)
+        ? globalThis.String(object.rbicsEconomy)
+        : isSet(object.rbics_economy)
+        ? globalThis.String(object.rbics_economy)
+        : "",
+    };
+  },
+
+  toJSON(message: StockSearchResult): unknown {
+    const obj: any = {};
+    if (message.ticker !== "") {
+      obj.ticker = message.ticker;
+    }
+    if (message.name !== "") {
+      obj.name = message.name;
+    }
+    if (message.exchange !== "") {
+      obj.exchange = message.exchange;
+    }
+    if (message.type !== "") {
+      obj.type = message.type;
+    }
+    if (message.rbicsEconomy !== "") {
+      obj.rbicsEconomy = message.rbicsEconomy;
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<StockSearchResult>, I>>(base?: I): StockSearchResult {
+    return StockSearchResult.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<StockSearchResult>, I>>(object: I): StockSearchResult {
+    const message = createBaseStockSearchResult();
+    message.ticker = object.ticker ?? "";
+    message.name = object.name ?? "";
+    message.exchange = object.exchange ?? "";
+    message.type = object.type ?? "";
+    message.rbicsEconomy = object.rbicsEconomy ?? "";
+    return message;
+  },
+};
+
+function createBaseSearchStocksResponse(): SearchStocksResponse {
+  return { results: [] };
+}
+
+export const SearchStocksResponse: MessageFns<SearchStocksResponse> = {
+  encode(message: SearchStocksResponse, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    for (const v of message.results) {
+      StockSearchResult.encode(v!, writer.uint32(10).fork()).join();
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): SearchStocksResponse {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseSearchStocksResponse();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.results.push(StockSearchResult.decode(reader, reader.uint32()));
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): SearchStocksResponse {
+    return {
+      results: globalThis.Array.isArray(object?.results)
+        ? object.results.map((e: any) => StockSearchResult.fromJSON(e))
+        : [],
+    };
+  },
+
+  toJSON(message: SearchStocksResponse): unknown {
+    const obj: any = {};
+    if (message.results?.length) {
+      obj.results = message.results.map((e) => StockSearchResult.toJSON(e));
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<SearchStocksResponse>, I>>(base?: I): SearchStocksResponse {
+    return SearchStocksResponse.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<SearchStocksResponse>, I>>(object: I): SearchStocksResponse {
+    const message = createBaseSearchStocksResponse();
+    message.results = object.results?.map((e) => StockSearchResult.fromPartial(e)) || [];
+    return message;
+  },
+};
+
+function createBaseListPortfoliosRequest(): ListPortfoliosRequest {
+  return {};
+}
+
+export const ListPortfoliosRequest: MessageFns<ListPortfoliosRequest> = {
+  encode(_: ListPortfoliosRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): ListPortfoliosRequest {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseListPortfoliosRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(_: any): ListPortfoliosRequest {
+    return {};
+  },
+
+  toJSON(_: ListPortfoliosRequest): unknown {
+    const obj: any = {};
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<ListPortfoliosRequest>, I>>(base?: I): ListPortfoliosRequest {
+    return ListPortfoliosRequest.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<ListPortfoliosRequest>, I>>(_: I): ListPortfoliosRequest {
+    const message = createBaseListPortfoliosRequest();
+    return message;
+  },
+};
+
+function createBasePortfolio(): Portfolio {
+  return { portfolioId: "", name: "", tickers: [] };
+}
+
+export const Portfolio: MessageFns<Portfolio> = {
+  encode(message: Portfolio, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.portfolioId !== "") {
+      writer.uint32(10).string(message.portfolioId);
+    }
+    if (message.name !== "") {
+      writer.uint32(18).string(message.name);
+    }
+    for (const v of message.tickers) {
+      writer.uint32(26).string(v!);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): Portfolio {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBasePortfolio();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.portfolioId = reader.string();
+          continue;
+        }
+        case 2: {
+          if (tag !== 18) {
+            break;
+          }
+
+          message.name = reader.string();
+          continue;
+        }
+        case 3: {
+          if (tag !== 26) {
+            break;
+          }
+
+          message.tickers.push(reader.string());
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): Portfolio {
+    return {
+      portfolioId: isSet(object.portfolioId)
+        ? globalThis.String(object.portfolioId)
+        : isSet(object.portfolio_id)
+        ? globalThis.String(object.portfolio_id)
+        : "",
+      name: isSet(object.name) ? globalThis.String(object.name) : "",
+      tickers: globalThis.Array.isArray(object?.tickers) ? object.tickers.map((e: any) => globalThis.String(e)) : [],
+    };
+  },
+
+  toJSON(message: Portfolio): unknown {
+    const obj: any = {};
+    if (message.portfolioId !== "") {
+      obj.portfolioId = message.portfolioId;
+    }
+    if (message.name !== "") {
+      obj.name = message.name;
+    }
+    if (message.tickers?.length) {
+      obj.tickers = message.tickers;
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<Portfolio>, I>>(base?: I): Portfolio {
+    return Portfolio.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<Portfolio>, I>>(object: I): Portfolio {
+    const message = createBasePortfolio();
+    message.portfolioId = object.portfolioId ?? "";
+    message.name = object.name ?? "";
+    message.tickers = object.tickers?.map((e) => e) || [];
+    return message;
+  },
+};
+
+function createBaseListPortfoliosResponse(): ListPortfoliosResponse {
+  return { portfolios: [] };
+}
+
+export const ListPortfoliosResponse: MessageFns<ListPortfoliosResponse> = {
+  encode(message: ListPortfoliosResponse, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    for (const v of message.portfolios) {
+      Portfolio.encode(v!, writer.uint32(10).fork()).join();
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): ListPortfoliosResponse {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseListPortfoliosResponse();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.portfolios.push(Portfolio.decode(reader, reader.uint32()));
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): ListPortfoliosResponse {
+    return {
+      portfolios: globalThis.Array.isArray(object?.portfolios)
+        ? object.portfolios.map((e: any) => Portfolio.fromJSON(e))
+        : [],
+    };
+  },
+
+  toJSON(message: ListPortfoliosResponse): unknown {
+    const obj: any = {};
+    if (message.portfolios?.length) {
+      obj.portfolios = message.portfolios.map((e) => Portfolio.toJSON(e));
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<ListPortfoliosResponse>, I>>(base?: I): ListPortfoliosResponse {
+    return ListPortfoliosResponse.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<ListPortfoliosResponse>, I>>(object: I): ListPortfoliosResponse {
+    const message = createBaseListPortfoliosResponse();
+    message.portfolios = object.portfolios?.map((e) => Portfolio.fromPartial(e)) || [];
+    return message;
+  },
+};
+
+/** AlertService provides CRUD operations for stock alerts and audit logs. */
 export type AlertServiceDefinition = typeof AlertServiceDefinition;
 export const AlertServiceDefinition = {
   name: "AlertService",
@@ -2190,6 +5039,72 @@ export const AlertServiceDefinition = {
       responseStream: false,
       options: {},
     },
+    /** Audit logs */
+    getAuditSummary: {
+      name: "GetAuditSummary",
+      requestType: GetAuditSummaryRequest,
+      requestStream: false,
+      responseType: GetAuditSummaryResponse,
+      responseStream: false,
+      options: {},
+    },
+    getPerformanceMetrics: {
+      name: "GetPerformanceMetrics",
+      requestType: GetPerformanceMetricsRequest,
+      requestStream: false,
+      responseType: GetPerformanceMetricsResponse,
+      responseStream: false,
+      options: {},
+    },
+    getAlertHistory: {
+      name: "GetAlertHistory",
+      requestType: GetAlertHistoryRequest,
+      requestStream: false,
+      responseType: GetAlertHistoryResponse,
+      responseStream: false,
+      options: {},
+    },
+    getFailedPriceData: {
+      name: "GetFailedPriceData",
+      requestType: GetFailedPriceDataRequest,
+      requestStream: false,
+      responseType: GetFailedPriceDataResponse,
+      responseStream: false,
+      options: {},
+    },
+    clearAuditData: {
+      name: "ClearAuditData",
+      requestType: ClearAuditDataRequest,
+      requestStream: false,
+      responseType: ClearAuditDataResponse,
+      responseStream: false,
+      options: {},
+    },
+    /** Alert History Lookup */
+    getTriggerHistoryByTicker: {
+      name: "GetTriggerHistoryByTicker",
+      requestType: GetTriggerHistoryByTickerRequest,
+      requestStream: false,
+      responseType: GetTriggerHistoryByTickerResponse,
+      responseStream: false,
+      options: {},
+    },
+    searchStocks: {
+      name: "SearchStocks",
+      requestType: SearchStocksRequest,
+      requestStream: false,
+      responseType: SearchStocksResponse,
+      responseStream: false,
+      options: {},
+    },
+    listPortfolios: {
+      name: "ListPortfolios",
+      requestType: ListPortfoliosRequest,
+      requestStream: false,
+      responseType: ListPortfoliosResponse,
+      responseStream: false,
+      options: {},
+    },
   },
 } as const;
 
@@ -2215,6 +5130,40 @@ export interface AlertServiceImplementation<CallContextExt = {}> {
     request: BulkUpdateLastTriggeredRequest,
     context: CallContext & CallContextExt,
   ): Promise<DeepPartial<BulkUpdateLastTriggeredResponse>>;
+  /** Audit logs */
+  getAuditSummary(
+    request: GetAuditSummaryRequest,
+    context: CallContext & CallContextExt,
+  ): Promise<DeepPartial<GetAuditSummaryResponse>>;
+  getPerformanceMetrics(
+    request: GetPerformanceMetricsRequest,
+    context: CallContext & CallContextExt,
+  ): Promise<DeepPartial<GetPerformanceMetricsResponse>>;
+  getAlertHistory(
+    request: GetAlertHistoryRequest,
+    context: CallContext & CallContextExt,
+  ): Promise<DeepPartial<GetAlertHistoryResponse>>;
+  getFailedPriceData(
+    request: GetFailedPriceDataRequest,
+    context: CallContext & CallContextExt,
+  ): Promise<DeepPartial<GetFailedPriceDataResponse>>;
+  clearAuditData(
+    request: ClearAuditDataRequest,
+    context: CallContext & CallContextExt,
+  ): Promise<DeepPartial<ClearAuditDataResponse>>;
+  /** Alert History Lookup */
+  getTriggerHistoryByTicker(
+    request: GetTriggerHistoryByTickerRequest,
+    context: CallContext & CallContextExt,
+  ): Promise<DeepPartial<GetTriggerHistoryByTickerResponse>>;
+  searchStocks(
+    request: SearchStocksRequest,
+    context: CallContext & CallContextExt,
+  ): Promise<DeepPartial<SearchStocksResponse>>;
+  listPortfolios(
+    request: ListPortfoliosRequest,
+    context: CallContext & CallContextExt,
+  ): Promise<DeepPartial<ListPortfoliosResponse>>;
 }
 
 export interface AlertServiceClient<CallOptionsExt = {}> {
@@ -2239,6 +5188,40 @@ export interface AlertServiceClient<CallOptionsExt = {}> {
     request: DeepPartial<BulkUpdateLastTriggeredRequest>,
     options?: CallOptions & CallOptionsExt,
   ): Promise<BulkUpdateLastTriggeredResponse>;
+  /** Audit logs */
+  getAuditSummary(
+    request: DeepPartial<GetAuditSummaryRequest>,
+    options?: CallOptions & CallOptionsExt,
+  ): Promise<GetAuditSummaryResponse>;
+  getPerformanceMetrics(
+    request: DeepPartial<GetPerformanceMetricsRequest>,
+    options?: CallOptions & CallOptionsExt,
+  ): Promise<GetPerformanceMetricsResponse>;
+  getAlertHistory(
+    request: DeepPartial<GetAlertHistoryRequest>,
+    options?: CallOptions & CallOptionsExt,
+  ): Promise<GetAlertHistoryResponse>;
+  getFailedPriceData(
+    request: DeepPartial<GetFailedPriceDataRequest>,
+    options?: CallOptions & CallOptionsExt,
+  ): Promise<GetFailedPriceDataResponse>;
+  clearAuditData(
+    request: DeepPartial<ClearAuditDataRequest>,
+    options?: CallOptions & CallOptionsExt,
+  ): Promise<ClearAuditDataResponse>;
+  /** Alert History Lookup */
+  getTriggerHistoryByTicker(
+    request: DeepPartial<GetTriggerHistoryByTickerRequest>,
+    options?: CallOptions & CallOptionsExt,
+  ): Promise<GetTriggerHistoryByTickerResponse>;
+  searchStocks(
+    request: DeepPartial<SearchStocksRequest>,
+    options?: CallOptions & CallOptionsExt,
+  ): Promise<SearchStocksResponse>;
+  listPortfolios(
+    request: DeepPartial<ListPortfoliosRequest>,
+    options?: CallOptions & CallOptionsExt,
+  ): Promise<ListPortfoliosResponse>;
 }
 
 type Builtin = Date | Function | Uint8Array | string | number | boolean | undefined;
@@ -2273,6 +5256,17 @@ function fromJsonTimestamp(o: any): Date {
   } else {
     return fromTimestamp(Timestamp.fromJSON(o));
   }
+}
+
+function longToNumber(int64: { toString(): string }): number {
+  const num = globalThis.Number(int64.toString());
+  if (num > globalThis.Number.MAX_SAFE_INTEGER) {
+    throw new globalThis.Error("Value is larger than Number.MAX_SAFE_INTEGER");
+  }
+  if (num < globalThis.Number.MIN_SAFE_INTEGER) {
+    throw new globalThis.Error("Value is smaller than Number.MIN_SAFE_INTEGER");
+  }
+  return num;
 }
 
 function isObject(value: any): boolean {

@@ -2,6 +2,7 @@ go 1.24.0
 
 use (
 	./apps/grpc/alert_service
+	./apps/grpc/discord_service
 	./database
 	./gen/go
 )

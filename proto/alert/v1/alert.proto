@@ -127,7 +127,169 @@ message BulkUpdateLastTriggeredResponse {
   int32 updated_count = 1;
 }
 
-// AlertService provides CRUD operations for stock alerts.
+// ---------------------------------------------------------------------------
+// Alert Audit Logs (audit summary, metrics, history, failed price data)
+// ---------------------------------------------------------------------------
+
+message GetAuditSummaryRequest {
+  int32 days = 1;  // default 7, how many days back
+}
+
+message AuditSummaryRow {
+  string alert_id = 1;
+  string ticker = 2;
+  string stock_name = 3;
+  string exchange = 4;
+  string timeframe = 5;
+  string action = 6;
+  string evaluation_type = 7;
+  int64 total_checks = 8;
+  int64 successful_price_pulls = 9;
+  int64 successful_evaluations = 10;
+  int64 total_triggers = 11;
+  double avg_execution_time_ms = 12;
+  google.protobuf.Timestamp last_check = 13;
+  google.protobuf.Timestamp first_check = 14;
+}
+
+message GetAuditSummaryResponse {
+  repeated AuditSummaryRow rows = 1;
+}
+
+message GetPerformanceMetricsRequest {
+  int32 days = 1;
+}
+
+message GetPerformanceMetricsResponse {
+  int64 total_checks = 1;
+  int64 successful_price_pulls = 2;
+  double success_rate = 3;
+  double cache_hit_rate = 4;
+  double avg_execution_time_ms = 5;
+  int64 total_errors = 6;
+  double error_rate = 7;
+  int32 analysis_period_days = 8;
+}
+
+message GetAlertHistoryRequest {
+  string alert_id = 1;
+  int32 limit = 2;  // default 100
+}
+
+message AuditHistoryRow {
+  int64 id = 1;
+  google.protobuf.Timestamp timestamp = 2;
+  string alert_id = 3;
+  string ticker = 4;
+  string stock_name = 5;
+  string exchange = 6;
+  string timeframe = 7;
+  string action = 8;
+  string evaluation_type = 9;
+  bool price_data_pulled = 10;
+  string price_data_source = 11;
+  bool conditions_evaluated = 12;
+  bool alert_triggered = 13;
+  string trigger_reason = 14;
+  int32 execution_time_ms = 15;
+  bool cache_hit = 16;
+  string error_message = 17;
+  string alert_name = 18;  // optional; populated by GetTriggerHistoryByTicker
+}
+
+message GetAlertHistoryResponse {
+  repeated AuditHistoryRow rows = 1;
+}
+
+message GetFailedPriceDataRequest {
+  int32 days = 1;
+}
+
+message FailedAlertRow {
+  string alert_id = 1;
+  string ticker = 2;
+  string stock_name = 3;
+  string exchange = 4;
+  string timeframe = 5;
+  string asset_type = 6;  // Stock, ETF, Unknown
+  int64 failure_count = 7;
+  google.protobuf.Timestamp last_failure = 8;
+  google.protobuf.Timestamp first_failure = 9;
+  double avg_execution_time = 10;
+}
+
+message AssetTypeBreakdownRow {
+  string asset_type = 1;
+  int64 failed_alerts = 2;
+  int64 failure_count = 3;
+}
+
+message ExchangeBreakdownRow {
+  string exchange = 1;
+  int64 failed_alerts = 2;
+  int64 failure_count = 3;
+}
+
+message GetFailedPriceDataResponse {
+  repeated FailedAlertRow rows = 1;
+  int64 total_failed_alerts = 2;
+  int64 total_failures = 3;
+  double failure_rate = 4;
+  repeated AssetTypeBreakdownRow asset_type_breakdown = 5;
+  repeated ExchangeBreakdownRow exchange_breakdown = 6;
+}
+
+message ClearAuditDataRequest {}
+
+message ClearAuditDataResponse {
+  int64 deleted_count = 1;
+}
+
+// ---------------------------------------------------------------------------
+// Alert History Lookup (trigger history by ticker, stock search, portfolios)
+// ---------------------------------------------------------------------------
+
+message GetTriggerHistoryByTickerRequest {
+  string ticker = 1;
+  bool include_all_evaluations = 2;  // if false, only rows where alert_triggered = true
+  int32 limit = 3;                   // default 50, max 500
+  int32 days_back = 4;               // optional; filter to last N days (0 = no filter)
+}
+
+message GetTriggerHistoryByTickerResponse {
+  repeated AuditHistoryRow rows = 1;
+}
+
+message SearchStocksRequest {
+  string query = 1;
+  int32 limit = 2;  // default 20, max 50
+}
+
+message StockSearchResult {
+  string ticker = 1;
+  string name = 2;
+  string exchange = 3;
+  string type = 4;           // asset_type from stock_metadata
+  string rbics_economy = 5;   // optional
+}
+
+message SearchStocksResponse {
+  repeated StockSearchResult results = 1;
+}
+
+message ListPortfoliosRequest {}
+
+message Portfolio {
+  string portfolio_id = 1;
+  string name = 2;
+  repeated string tickers = 3;
+}
+
+message ListPortfoliosResponse {
+  repeated Portfolio portfolios = 1;
+}
+
+// AlertService provides CRUD operations for stock alerts and audit logs.
 service AlertService {
   rpc ListAlerts(ListAlertsRequest) returns (ListAlertsResponse);
   rpc GetAlert(GetAlertRequest) returns (GetAlertResponse);
@@ -135,4 +297,16 @@ service AlertService {
   rpc UpdateAlert(UpdateAlertRequest) returns (UpdateAlertResponse);
   rpc DeleteAlert(DeleteAlertRequest) returns (DeleteAlertResponse);
   rpc BulkUpdateLastTriggered(BulkUpdateLastTriggeredRequest) returns (BulkUpdateLastTriggeredResponse);
+
+  // Audit logs
+  rpc GetAuditSummary(GetAuditSummaryRequest) returns (GetAuditSummaryResponse);
+  rpc GetPerformanceMetrics(GetPerformanceMetricsRequest) returns (GetPerformanceMetricsResponse);
+  rpc GetAlertHistory(GetAlertHistoryRequest) returns (GetAlertHistoryResponse);
+  rpc GetFailedPriceData(GetFailedPriceDataRequest) returns (GetFailedPriceDataResponse);
+  rpc ClearAuditData(ClearAuditDataRequest) returns (ClearAuditDataResponse);
+
+  // Alert History Lookup
+  rpc GetTriggerHistoryByTicker(GetTriggerHistoryByTickerRequest) returns (GetTriggerHistoryByTickerResponse);
+  rpc SearchStocks(SearchStocksRequest) returns (SearchStocksResponse);
+  rpc ListPortfolios(ListPortfoliosRequest) returns (ListPortfoliosResponse);
 }

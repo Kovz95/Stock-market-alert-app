@@ -24,6 +24,8 @@ export type AlertData = {
   lastTriggered: string | null;
   createdAt: string | null;
   updatedAt: string | null;
+  /** Optional; used by Alert History for condition filter/display */
+  conditions?: unknown;
 };
 
 function toAlertData(alert: AlertProto): AlertData {
@@ -45,6 +47,7 @@ function toAlertData(alert: AlertProto): AlertData {
     lastTriggered: alert.lastTriggered?.toISOString() ?? null,
     createdAt: alert.createdAt?.toISOString() ?? null,
     updatedAt: alert.updatedAt?.toISOString() ?? null,
+    conditions: alert.conditions,
   };
 }
 
@@ -74,16 +77,82 @@ export async function listAlertsPaginated(
   };
 }
 
+/** Fetch all alerts (multiple pages); used by Alert History browse tab. */
+export async function listAllAlertsForHistory(): Promise<AlertData[]> {
+  const all: AlertData[] = [];
+  let page = 1;
+  while (true) {
+    const result = await listAlertsPaginated(page, MAX_PAGE_SIZE);
+    all.push(...result.alerts);
+    if (!result.hasNextPage || result.alerts.length === 0) break;
+    page++;
+  }
+  return all;
+}
+
 export async function getAlert(alertId: string): Promise<AlertData | null> {
   const response = await alertClient.getAlert({ alertId });
   return response.alert ? toAlertData(response.alert) : null;
 }
 
-export async function createAlert(
-  data: Omit<CreateAlertRequest, "conditions" | "dtpParams" | "multiTimeframeParams" | "mixedTimeframeParams" | "rawPayload">
-): Promise<AlertData | null> {
-  const response = await alertClient.createAlert(data);
+export type CreateAlertInput = Partial<CreateAlertRequest> & {
+  name: string;
+  stockName: string;
+  ticker: string;
+  ticker1: string;
+  ticker2: string;
+  combinationLogic: string;
+  action: string;
+  timeframe: string;
+  exchange: string;
+  country: string;
+  ratio: string;
+  isRatio: boolean;
+  adjustmentMethod: string;
+};
+
+export async function createAlert(data: CreateAlertInput): Promise<AlertData | null> {
+  const response = await alertClient.createAlert(data as CreateAlertRequest);
   return response.alert ? toAlertData(response.alert) : null;
+}
+
+export type BulkCreateResult = {
+  created: number;
+  failed: number;
+  skippedDuplicates: number;
+  errors: string[];
+};
+
+export async function createAlertsBulk(
+  shared: Omit<CreateAlertInput, "name" | "stockName" | "ticker">,
+  items: { ticker: string; stockName: string; name?: string }[]
+): Promise<BulkCreateResult> {
+  const result: BulkCreateResult = {
+    created: 0,
+    failed: 0,
+    skippedDuplicates: 0,
+    errors: [],
+  };
+  for (const item of items) {
+    try {
+      const name = item.name?.trim() || `${item.stockName || item.ticker} Alert`;
+      const stockName = item.stockName?.trim() || item.ticker;
+      const alert = await createAlert({
+        ...shared,
+        name,
+        stockName,
+        ticker: item.ticker.trim(),
+      });
+      if (alert) result.created++;
+      else result.failed++;
+    } catch (e) {
+      result.failed++;
+      result.errors.push(
+        `${item.ticker}: ${e instanceof Error ? e.message : String(e)}`
+      );
+    }
+  }
+  return result;
 }
 
 export async function updateAlert(

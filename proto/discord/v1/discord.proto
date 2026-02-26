@@ -1,0 +1,109 @@
+syntax = "proto3";
+
+package stockalert.discord.v1;
+
+option go_package = "stockalert/gen/go/discord/v1;discordv1";
+
+// Hourly Discord config and channel management.
+
+message GetHourlyDiscordConfigRequest {}
+
+message HourlyChannelInfo {
+  string name = 1;           // economy or special channel key (e.g. Technology, ETFs)
+  string channel_name = 2;   // display name (e.g. tech-hourly-alerts)
+  string description = 3;
+  bool configured = 4;       // has non-placeholder webhook
+}
+
+message GetHourlyDiscordConfigResponse {
+  bool enable_industry_routing = 1;
+  bool log_routing_decisions = 2;
+  repeated HourlyChannelInfo channels = 3;
+  int32 configured_count = 4;
+  int32 total_count = 5;
+}
+
+message CopyDailyToHourlyRequest {}
+
+message CopyDailyToHourlyResponse {
+  bool success = 1;
+  string error_message = 2;  // set if success is false
+}
+
+message UpdateHourlyChannelWebhookRequest {
+  string channel_name = 1;    // economy/special key (e.g. Technology, ETFs)
+  string webhook_url = 2;
+}
+
+message UpdateHourlyChannelWebhookResponse {
+  bool success = 1;
+  string error_message = 2;
+}
+
+message ResolveHourlyChannelForTickerRequest {
+  string ticker = 1;
+}
+
+message ResolveHourlyChannelForTickerResponse {
+  string economy = 1;              // e.g. Technology (empty if not found)
+  string hourly_channel_name = 2;   // display name for the channel
+  bool webhook_configured = 3;      // true if that channel has a webhook set
+}
+
+message SendHourlyTestMessageRequest {
+  string channel_name = 1;   // economy/special key (e.g. Technology); server resolves webhook
+}
+
+message SendHourlyTestMessageResponse {
+  bool success = 1;
+  string error_message = 2;
+}
+
+// ---------------------------------------------------------------------------
+// Daily Discord config (same shape as hourly; reuses response types)
+// ---------------------------------------------------------------------------
+
+message GetDailyDiscordConfigRequest {}
+message CopyBaseToDailyRequest {}
+message UpdateDailyChannelWebhookRequest {
+  string channel_name = 1;
+  string webhook_url = 2;
+}
+message ResolveDailyChannelForTickerRequest { string ticker = 1; }
+message SendDailyTestMessageRequest { string channel_name = 1; }
+
+// ---------------------------------------------------------------------------
+// Weekly Discord config (same shape as hourly; reuses response types)
+// ---------------------------------------------------------------------------
+
+message GetWeeklyDiscordConfigRequest {}
+message CopyBaseToWeeklyRequest {}
+message UpdateWeeklyChannelWebhookRequest {
+  string channel_name = 1;
+  string webhook_url = 2;
+}
+message ResolveWeeklyChannelForTickerRequest { string ticker = 1; }
+message SendWeeklyTestMessageRequest { string channel_name = 1; }
+
+service DiscordConfigService {
+  // Hourly
+  rpc GetHourlyDiscordConfig(GetHourlyDiscordConfigRequest) returns (GetHourlyDiscordConfigResponse);
+  rpc CopyDailyToHourly(CopyDailyToHourlyRequest) returns (CopyDailyToHourlyResponse);
+  rpc UpdateHourlyChannelWebhook(UpdateHourlyChannelWebhookRequest) returns (UpdateHourlyChannelWebhookResponse);
+  rpc ResolveHourlyChannelForTicker(ResolveHourlyChannelForTickerRequest) returns (ResolveHourlyChannelForTickerResponse);
+  rpc SendHourlyTestMessage(SendHourlyTestMessageRequest) returns (SendHourlyTestMessageResponse);
+
+  // Daily
+  rpc GetDailyDiscordConfig(GetDailyDiscordConfigRequest) returns (GetHourlyDiscordConfigResponse);
+  rpc CopyBaseToDaily(CopyBaseToDailyRequest) returns (CopyDailyToHourlyResponse);
+  rpc UpdateDailyChannelWebhook(UpdateDailyChannelWebhookRequest) returns (UpdateHourlyChannelWebhookResponse);
+  rpc ResolveDailyChannelForTicker(ResolveDailyChannelForTickerRequest) returns (ResolveHourlyChannelForTickerResponse);
+  rpc SendDailyTestMessage(SendDailyTestMessageRequest) returns (SendHourlyTestMessageResponse);
+
+  // Weekly
+  rpc GetWeeklyDiscordConfig(GetWeeklyDiscordConfigRequest) returns (GetHourlyDiscordConfigResponse);
+  rpc CopyBaseToWeekly(CopyBaseToWeeklyRequest) returns (CopyDailyToHourlyResponse);
+  rpc UpdateWeeklyChannelWebhook(UpdateWeeklyChannelWebhookRequest) returns (UpdateHourlyChannelWebhookResponse);
+  rpc ResolveWeeklyChannelForTicker(ResolveWeeklyChannelForTickerRequest) returns (ResolveHourlyChannelForTickerResponse);
+  rpc SendWeeklyTestMessage(SendWeeklyTestMessageRequest) returns (SendHourlyTestMessageResponse);
+}

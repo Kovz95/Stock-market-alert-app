@@ -1066,6 +1066,1530 @@ func (x *BulkUpdateLastTriggeredResponse) GetUpdatedCount() int32 {
 	return 0
 }
 
+type GetAuditSummaryRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Days          int32                  `protobuf:"varint,1,opt,name=days,proto3" json:"days,omitempty"` // default 7, how many days back
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetAuditSummaryRequest) Reset() {
+	*x = GetAuditSummaryRequest{}
+	mi := &file_alert_v1_alert_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetAuditSummaryRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetAuditSummaryRequest) ProtoMessage() {}
+
+func (x *GetAuditSummaryRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_alert_v1_alert_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetAuditSummaryRequest.ProtoReflect.Descriptor instead.
+func (*GetAuditSummaryRequest) Descriptor() ([]byte, []int) {
+	return file_alert_v1_alert_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *GetAuditSummaryRequest) GetDays() int32 {
+	if x != nil {
+		return x.Days
+	}
+	return 0
+}
+
+type AuditSummaryRow struct {
+	state                 protoimpl.MessageState `protogen:"open.v1"`
+	AlertId               string                 `protobuf:"bytes,1,opt,name=alert_id,json=alertId,proto3" json:"alert_id,omitempty"`
+	Ticker                string                 `protobuf:"bytes,2,opt,name=ticker,proto3" json:"ticker,omitempty"`
+	StockName             string                 `protobuf:"bytes,3,opt,name=stock_name,json=stockName,proto3" json:"stock_name,omitempty"`
+	Exchange              string                 `protobuf:"bytes,4,opt,name=exchange,proto3" json:"exchange,omitempty"`
+	Timeframe             string                 `protobuf:"bytes,5,opt,name=timeframe,proto3" json:"timeframe,omitempty"`
+	Action                string                 `protobuf:"bytes,6,opt,name=action,proto3" json:"action,omitempty"`
+	EvaluationType        string                 `protobuf:"bytes,7,opt,name=evaluation_type,json=evaluationType,proto3" json:"evaluation_type,omitempty"`
+	TotalChecks           int64                  `protobuf:"varint,8,opt,name=total_checks,json=totalChecks,proto3" json:"total_checks,omitempty"`
+	SuccessfulPricePulls  int64                  `protobuf:"varint,9,opt,name=successful_price_pulls,json=successfulPricePulls,proto3" json:"successful_price_pulls,omitempty"`
+	SuccessfulEvaluations int64                  `protobuf:"varint,10,opt,name=successful_evaluations,json=successfulEvaluations,proto3" json:"successful_evaluations,omitempty"`
+	TotalTriggers         int64                  `protobuf:"varint,11,opt,name=total_triggers,json=totalTriggers,proto3" json:"total_triggers,omitempty"`
+	AvgExecutionTimeMs    float64                `protobuf:"fixed64,12,opt,name=avg_execution_time_ms,json=avgExecutionTimeMs,proto3" json:"avg_execution_time_ms,omitempty"`
+	LastCheck             *timestamppb.Timestamp `protobuf:"bytes,13,opt,name=last_check,json=lastCheck,proto3" json:"last_check,omitempty"`
+	FirstCheck            *timestamppb.Timestamp `protobuf:"bytes,14,opt,name=first_check,json=firstCheck,proto3" json:"first_check,omitempty"`
+	unknownFields         protoimpl.UnknownFields
+	sizeCache             protoimpl.SizeCache
+}
+
+func (x *AuditSummaryRow) Reset() {
+	*x = AuditSummaryRow{}
+	mi := &file_alert_v1_alert_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AuditSummaryRow) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AuditSummaryRow) ProtoMessage() {}
+
+func (x *AuditSummaryRow) ProtoReflect() protoreflect.Message {
+	mi := &file_alert_v1_alert_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AuditSummaryRow.ProtoReflect.Descriptor instead.
+func (*AuditSummaryRow) Descriptor() ([]byte, []int) {
+	return file_alert_v1_alert_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *AuditSummaryRow) GetAlertId() string {
+	if x != nil {
+		return x.AlertId
+	}
+	return ""
+}
+
+func (x *AuditSummaryRow) GetTicker() string {
+	if x != nil {
+		return x.Ticker
+	}
+	return ""
+}
+
+func (x *AuditSummaryRow) GetStockName() string {
+	if x != nil {
+		return x.StockName
+	}
+	return ""
+}
+
+func (x *AuditSummaryRow) GetExchange() string {
+	if x != nil {
+		return x.Exchange
+	}
+	return ""
+}
+
+func (x *AuditSummaryRow) GetTimeframe() string {
+	if x != nil {
+		return x.Timeframe
+	}
+	return ""
+}
+
+func (x *AuditSummaryRow) GetAction() string {
+	if x != nil {
+		return x.Action
+	}
+	return ""
+}
+
+func (x *AuditSummaryRow) GetEvaluationType() string {
+	if x != nil {
+		return x.EvaluationType
+	}
+	return ""
+}
+
+func (x *AuditSummaryRow) GetTotalChecks() int64 {
+	if x != nil {
+		return x.TotalChecks
+	}
+	return 0
+}
+
+func (x *AuditSummaryRow) GetSuccessfulPricePulls() int64 {
+	if x != nil {
+		return x.SuccessfulPricePulls
+	}
+	return 0
+}
+
+func (x *AuditSummaryRow) GetSuccessfulEvaluations() int64 {
+	if x != nil {
+		return x.SuccessfulEvaluations
+	}
+	return 0
+}
+
+func (x *AuditSummaryRow) GetTotalTriggers() int64 {
+	if x != nil {
+		return x.TotalTriggers
+	}
+	return 0
+}
+
+func (x *AuditSummaryRow) GetAvgExecutionTimeMs() float64 {
+	if x != nil {
+		return x.AvgExecutionTimeMs
+	}
+	return 0
+}
+
+func (x *AuditSummaryRow) GetLastCheck() *timestamppb.Timestamp {
+	if x != nil {
+		return x.LastCheck
+	}
+	return nil
+}
+
+func (x *AuditSummaryRow) GetFirstCheck() *timestamppb.Timestamp {
+	if x != nil {
+		return x.FirstCheck
+	}
+	return nil
+}
+
+type GetAuditSummaryResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Rows          []*AuditSummaryRow     `protobuf:"bytes,1,rep,name=rows,proto3" json:"rows,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetAuditSummaryResponse) Reset() {
+	*x = GetAuditSummaryResponse{}
+	mi := &file_alert_v1_alert_proto_msgTypes[15]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetAuditSummaryResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetAuditSummaryResponse) ProtoMessage() {}
+
+func (x *GetAuditSummaryResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_alert_v1_alert_proto_msgTypes[15]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetAuditSummaryResponse.ProtoReflect.Descriptor instead.
+func (*GetAuditSummaryResponse) Descriptor() ([]byte, []int) {
+	return file_alert_v1_alert_proto_rawDescGZIP(), []int{15}
+}
+
+func (x *GetAuditSummaryResponse) GetRows() []*AuditSummaryRow {
+	if x != nil {
+		return x.Rows
+	}
+	return nil
+}
+
+type GetPerformanceMetricsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Days          int32                  `protobuf:"varint,1,opt,name=days,proto3" json:"days,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetPerformanceMetricsRequest) Reset() {
+	*x = GetPerformanceMetricsRequest{}
+	mi := &file_alert_v1_alert_proto_msgTypes[16]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetPerformanceMetricsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetPerformanceMetricsRequest) ProtoMessage() {}
+
+func (x *GetPerformanceMetricsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_alert_v1_alert_proto_msgTypes[16]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetPerformanceMetricsRequest.ProtoReflect.Descriptor instead.
+func (*GetPerformanceMetricsRequest) Descriptor() ([]byte, []int) {
+	return file_alert_v1_alert_proto_rawDescGZIP(), []int{16}
+}
+
+func (x *GetPerformanceMetricsRequest) GetDays() int32 {
+	if x != nil {
+		return x.Days
+	}
+	return 0
+}
+
+type GetPerformanceMetricsResponse struct {
+	state                protoimpl.MessageState `protogen:"open.v1"`
+	TotalChecks          int64                  `protobuf:"varint,1,opt,name=total_checks,json=totalChecks,proto3" json:"total_checks,omitempty"`
+	SuccessfulPricePulls int64                  `protobuf:"varint,2,opt,name=successful_price_pulls,json=successfulPricePulls,proto3" json:"successful_price_pulls,omitempty"`
+	SuccessRate          float64                `protobuf:"fixed64,3,opt,name=success_rate,json=successRate,proto3" json:"success_rate,omitempty"`
+	CacheHitRate         float64                `protobuf:"fixed64,4,opt,name=cache_hit_rate,json=cacheHitRate,proto3" json:"cache_hit_rate,omitempty"`
+	AvgExecutionTimeMs   float64                `protobuf:"fixed64,5,opt,name=avg_execution_time_ms,json=avgExecutionTimeMs,proto3" json:"avg_execution_time_ms,omitempty"`
+	TotalErrors          int64                  `protobuf:"varint,6,opt,name=total_errors,json=totalErrors,proto3" json:"total_errors,omitempty"`
+	ErrorRate            float64                `protobuf:"fixed64,7,opt,name=error_rate,json=errorRate,proto3" json:"error_rate,omitempty"`
+	AnalysisPeriodDays   int32                  `protobuf:"varint,8,opt,name=analysis_period_days,json=analysisPeriodDays,proto3" json:"analysis_period_days,omitempty"`
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
+}
+
+func (x *GetPerformanceMetricsResponse) Reset() {
+	*x = GetPerformanceMetricsResponse{}
+	mi := &file_alert_v1_alert_proto_msgTypes[17]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetPerformanceMetricsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetPerformanceMetricsResponse) ProtoMessage() {}
+
+func (x *GetPerformanceMetricsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_alert_v1_alert_proto_msgTypes[17]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetPerformanceMetricsResponse.ProtoReflect.Descriptor instead.
+func (*GetPerformanceMetricsResponse) Descriptor() ([]byte, []int) {
+	return file_alert_v1_alert_proto_rawDescGZIP(), []int{17}
+}
+
+func (x *GetPerformanceMetricsResponse) GetTotalChecks() int64 {
+	if x != nil {
+		return x.TotalChecks
+	}
+	return 0
+}
+
+func (x *GetPerformanceMetricsResponse) GetSuccessfulPricePulls() int64 {
+	if x != nil {
+		return x.SuccessfulPricePulls
+	}
+	return 0
+}
+
+func (x *GetPerformanceMetricsResponse) GetSuccessRate() float64 {
+	if x != nil {
+		return x.SuccessRate
+	}
+	return 0
+}
+
+func (x *GetPerformanceMetricsResponse) GetCacheHitRate() float64 {
+	if x != nil {
+		return x.CacheHitRate
+	}
+	return 0
+}
+
+func (x *GetPerformanceMetricsResponse) GetAvgExecutionTimeMs() float64 {
+	if x != nil {
+		return x.AvgExecutionTimeMs
+	}
+	return 0
+}
+
+func (x *GetPerformanceMetricsResponse) GetTotalErrors() int64 {
+	if x != nil {
+		return x.TotalErrors
+	}
+	return 0
+}
+
+func (x *GetPerformanceMetricsResponse) GetErrorRate() float64 {
+	if x != nil {
+		return x.ErrorRate
+	}
+	return 0
+}
+
+func (x *GetPerformanceMetricsResponse) GetAnalysisPeriodDays() int32 {
+	if x != nil {
+		return x.AnalysisPeriodDays
+	}
+	return 0
+}
+
+type GetAlertHistoryRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	AlertId       string                 `protobuf:"bytes,1,opt,name=alert_id,json=alertId,proto3" json:"alert_id,omitempty"`
+	Limit         int32                  `protobuf:"varint,2,opt,name=limit,proto3" json:"limit,omitempty"` // default 100
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetAlertHistoryRequest) Reset() {
+	*x = GetAlertHistoryRequest{}
+	mi := &file_alert_v1_alert_proto_msgTypes[18]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetAlertHistoryRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetAlertHistoryRequest) ProtoMessage() {}
+
+func (x *GetAlertHistoryRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_alert_v1_alert_proto_msgTypes[18]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetAlertHistoryRequest.ProtoReflect.Descriptor instead.
+func (*GetAlertHistoryRequest) Descriptor() ([]byte, []int) {
+	return file_alert_v1_alert_proto_rawDescGZIP(), []int{18}
+}
+
+func (x *GetAlertHistoryRequest) GetAlertId() string {
+	if x != nil {
+		return x.AlertId
+	}
+	return ""
+}
+
+func (x *GetAlertHistoryRequest) GetLimit() int32 {
+	if x != nil {
+		return x.Limit
+	}
+	return 0
+}
+
+type AuditHistoryRow struct {
+	state               protoimpl.MessageState `protogen:"open.v1"`
+	Id                  int64                  `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
+	Timestamp           *timestamppb.Timestamp `protobuf:"bytes,2,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
+	AlertId             string                 `protobuf:"bytes,3,opt,name=alert_id,json=alertId,proto3" json:"alert_id,omitempty"`
+	Ticker              string                 `protobuf:"bytes,4,opt,name=ticker,proto3" json:"ticker,omitempty"`
+	StockName           string                 `protobuf:"bytes,5,opt,name=stock_name,json=stockName,proto3" json:"stock_name,omitempty"`
+	Exchange            string                 `protobuf:"bytes,6,opt,name=exchange,proto3" json:"exchange,omitempty"`
+	Timeframe           string                 `protobuf:"bytes,7,opt,name=timeframe,proto3" json:"timeframe,omitempty"`
+	Action              string                 `protobuf:"bytes,8,opt,name=action,proto3" json:"action,omitempty"`
+	EvaluationType      string                 `protobuf:"bytes,9,opt,name=evaluation_type,json=evaluationType,proto3" json:"evaluation_type,omitempty"`
+	PriceDataPulled     bool                   `protobuf:"varint,10,opt,name=price_data_pulled,json=priceDataPulled,proto3" json:"price_data_pulled,omitempty"`
+	PriceDataSource     string                 `protobuf:"bytes,11,opt,name=price_data_source,json=priceDataSource,proto3" json:"price_data_source,omitempty"`
+	ConditionsEvaluated bool                   `protobuf:"varint,12,opt,name=conditions_evaluated,json=conditionsEvaluated,proto3" json:"conditions_evaluated,omitempty"`
+	AlertTriggered      bool                   `protobuf:"varint,13,opt,name=alert_triggered,json=alertTriggered,proto3" json:"alert_triggered,omitempty"`
+	TriggerReason       string                 `protobuf:"bytes,14,opt,name=trigger_reason,json=triggerReason,proto3" json:"trigger_reason,omitempty"`
+	ExecutionTimeMs     int32                  `protobuf:"varint,15,opt,name=execution_time_ms,json=executionTimeMs,proto3" json:"execution_time_ms,omitempty"`
+	CacheHit            bool                   `protobuf:"varint,16,opt,name=cache_hit,json=cacheHit,proto3" json:"cache_hit,omitempty"`
+	ErrorMessage        string                 `protobuf:"bytes,17,opt,name=error_message,json=errorMessage,proto3" json:"error_message,omitempty"`
+	AlertName           string                 `protobuf:"bytes,18,opt,name=alert_name,json=alertName,proto3" json:"alert_name,omitempty"` // optional; populated by GetTriggerHistoryByTicker
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
+}
+
+func (x *AuditHistoryRow) Reset() {
+	*x = AuditHistoryRow{}
+	mi := &file_alert_v1_alert_proto_msgTypes[19]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AuditHistoryRow) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AuditHistoryRow) ProtoMessage() {}
+
+func (x *AuditHistoryRow) ProtoReflect() protoreflect.Message {
+	mi := &file_alert_v1_alert_proto_msgTypes[19]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AuditHistoryRow.ProtoReflect.Descriptor instead.
+func (*AuditHistoryRow) Descriptor() ([]byte, []int) {
+	return file_alert_v1_alert_proto_rawDescGZIP(), []int{19}
+}
+
+func (x *AuditHistoryRow) GetId() int64 {
+	if x != nil {
+		return x.Id
+	}
+	return 0
+}
+
+func (x *AuditHistoryRow) GetTimestamp() *timestamppb.Timestamp {
+	if x != nil {
+		return x.Timestamp
+	}
+	return nil
+}
+
+func (x *AuditHistoryRow) GetAlertId() string {
+	if x != nil {
+		return x.AlertId
+	}
+	return ""
+}
+
+func (x *AuditHistoryRow) GetTicker() string {
+	if x != nil {
+		return x.Ticker
+	}
+	return ""
+}
+
+func (x *AuditHistoryRow) GetStockName() string {
+	if x != nil {
+		return x.StockName
+	}
+	return ""
+}
+
+func (x *AuditHistoryRow) GetExchange() string {
+	if x != nil {
+		return x.Exchange
+	}
+	return ""
+}
+
+func (x *AuditHistoryRow) GetTimeframe() string {
+	if x != nil {
+		return x.Timeframe
+	}
+	return ""
+}
+
+func (x *AuditHistoryRow) GetAction() string {
+	if x != nil {
+		return x.Action
+	}
+	return ""
+}
+
+func (x *AuditHistoryRow) GetEvaluationType() string {
+	if x != nil {
+		return x.EvaluationType
+	}
+	return ""
+}
+
+func (x *AuditHistoryRow) GetPriceDataPulled() bool {
+	if x != nil {
+		return x.PriceDataPulled
+	}
+	return false
+}
+
+func (x *AuditHistoryRow) GetPriceDataSource() string {
+	if x != nil {
+		return x.PriceDataSource
+	}
+	return ""
+}
+
+func (x *AuditHistoryRow) GetConditionsEvaluated() bool {
+	if x != nil {
+		return x.ConditionsEvaluated
+	}
+	return false
+}
+
+func (x *AuditHistoryRow) GetAlertTriggered() bool {
+	if x != nil {
+		return x.AlertTriggered
+	}
+	return false
+}
+
+func (x *AuditHistoryRow) GetTriggerReason() string {
+	if x != nil {
+		return x.TriggerReason
+	}
+	return ""
+}
+
+func (x *AuditHistoryRow) GetExecutionTimeMs() int32 {
+	if x != nil {
+		return x.ExecutionTimeMs
+	}
+	return 0
+}
+
+func (x *AuditHistoryRow) GetCacheHit() bool {
+	if x != nil {
+		return x.CacheHit
+	}
+	return false
+}
+
+func (x *AuditHistoryRow) GetErrorMessage() string {
+	if x != nil {
+		return x.ErrorMessage
+	}
+	return ""
+}
+
+func (x *AuditHistoryRow) GetAlertName() string {
+	if x != nil {
+		return x.AlertName
+	}
+	return ""
+}
+
+type GetAlertHistoryResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Rows          []*AuditHistoryRow     `protobuf:"bytes,1,rep,name=rows,proto3" json:"rows,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetAlertHistoryResponse) Reset() {
+	*x = GetAlertHistoryResponse{}
+	mi := &file_alert_v1_alert_proto_msgTypes[20]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetAlertHistoryResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetAlertHistoryResponse) ProtoMessage() {}
+
+func (x *GetAlertHistoryResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_alert_v1_alert_proto_msgTypes[20]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetAlertHistoryResponse.ProtoReflect.Descriptor instead.
+func (*GetAlertHistoryResponse) Descriptor() ([]byte, []int) {
+	return file_alert_v1_alert_proto_rawDescGZIP(), []int{20}
+}
+
+func (x *GetAlertHistoryResponse) GetRows() []*AuditHistoryRow {
+	if x != nil {
+		return x.Rows
+	}
+	return nil
+}
+
+type GetFailedPriceDataRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Days          int32                  `protobuf:"varint,1,opt,name=days,proto3" json:"days,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetFailedPriceDataRequest) Reset() {
+	*x = GetFailedPriceDataRequest{}
+	mi := &file_alert_v1_alert_proto_msgTypes[21]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetFailedPriceDataRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetFailedPriceDataRequest) ProtoMessage() {}
+
+func (x *GetFailedPriceDataRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_alert_v1_alert_proto_msgTypes[21]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetFailedPriceDataRequest.ProtoReflect.Descriptor instead.
+func (*GetFailedPriceDataRequest) Descriptor() ([]byte, []int) {
+	return file_alert_v1_alert_proto_rawDescGZIP(), []int{21}
+}
+
+func (x *GetFailedPriceDataRequest) GetDays() int32 {
+	if x != nil {
+		return x.Days
+	}
+	return 0
+}
+
+type FailedAlertRow struct {
+	state            protoimpl.MessageState `protogen:"open.v1"`
+	AlertId          string                 `protobuf:"bytes,1,opt,name=alert_id,json=alertId,proto3" json:"alert_id,omitempty"`
+	Ticker           string                 `protobuf:"bytes,2,opt,name=ticker,proto3" json:"ticker,omitempty"`
+	StockName        string                 `protobuf:"bytes,3,opt,name=stock_name,json=stockName,proto3" json:"stock_name,omitempty"`
+	Exchange         string                 `protobuf:"bytes,4,opt,name=exchange,proto3" json:"exchange,omitempty"`
+	Timeframe        string                 `protobuf:"bytes,5,opt,name=timeframe,proto3" json:"timeframe,omitempty"`
+	AssetType        string                 `protobuf:"bytes,6,opt,name=asset_type,json=assetType,proto3" json:"asset_type,omitempty"` // Stock, ETF, Unknown
+	FailureCount     int64                  `protobuf:"varint,7,opt,name=failure_count,json=failureCount,proto3" json:"failure_count,omitempty"`
+	LastFailure      *timestamppb.Timestamp `protobuf:"bytes,8,opt,name=last_failure,json=lastFailure,proto3" json:"last_failure,omitempty"`
+	FirstFailure     *timestamppb.Timestamp `protobuf:"bytes,9,opt,name=first_failure,json=firstFailure,proto3" json:"first_failure,omitempty"`
+	AvgExecutionTime float64                `protobuf:"fixed64,10,opt,name=avg_execution_time,json=avgExecutionTime,proto3" json:"avg_execution_time,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *FailedAlertRow) Reset() {
+	*x = FailedAlertRow{}
+	mi := &file_alert_v1_alert_proto_msgTypes[22]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *FailedAlertRow) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*FailedAlertRow) ProtoMessage() {}
+
+func (x *FailedAlertRow) ProtoReflect() protoreflect.Message {
+	mi := &file_alert_v1_alert_proto_msgTypes[22]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use FailedAlertRow.ProtoReflect.Descriptor instead.
+func (*FailedAlertRow) Descriptor() ([]byte, []int) {
+	return file_alert_v1_alert_proto_rawDescGZIP(), []int{22}
+}
+
+func (x *FailedAlertRow) GetAlertId() string {
+	if x != nil {
+		return x.AlertId
+	}
+	return ""
+}
+
+func (x *FailedAlertRow) GetTicker() string {
+	if x != nil {
+		return x.Ticker
+	}
+	return ""
+}
+
+func (x *FailedAlertRow) GetStockName() string {
+	if x != nil {
+		return x.StockName
+	}
+	return ""
+}
+
+func (x *FailedAlertRow) GetExchange() string {
+	if x != nil {
+		return x.Exchange
+	}
+	return ""
+}
+
+func (x *FailedAlertRow) GetTimeframe() string {
+	if x != nil {
+		return x.Timeframe
+	}
+	return ""
+}
+
+func (x *FailedAlertRow) GetAssetType() string {
+	if x != nil {
+		return x.AssetType
+	}
+	return ""
+}
+
+func (x *FailedAlertRow) GetFailureCount() int64 {
+	if x != nil {
+		return x.FailureCount
+	}
+	return 0
+}
+
+func (x *FailedAlertRow) GetLastFailure() *timestamppb.Timestamp {
+	if x != nil {
+		return x.LastFailure
+	}
+	return nil
+}
+
+func (x *FailedAlertRow) GetFirstFailure() *timestamppb.Timestamp {
+	if x != nil {
+		return x.FirstFailure
+	}
+	return nil
+}
+
+func (x *FailedAlertRow) GetAvgExecutionTime() float64 {
+	if x != nil {
+		return x.AvgExecutionTime
+	}
+	return 0
+}
+
+type AssetTypeBreakdownRow struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	AssetType     string                 `protobuf:"bytes,1,opt,name=asset_type,json=assetType,proto3" json:"asset_type,omitempty"`
+	FailedAlerts  int64                  `protobuf:"varint,2,opt,name=failed_alerts,json=failedAlerts,proto3" json:"failed_alerts,omitempty"`
+	FailureCount  int64                  `protobuf:"varint,3,opt,name=failure_count,json=failureCount,proto3" json:"failure_count,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AssetTypeBreakdownRow) Reset() {
+	*x = AssetTypeBreakdownRow{}
+	mi := &file_alert_v1_alert_proto_msgTypes[23]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AssetTypeBreakdownRow) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AssetTypeBreakdownRow) ProtoMessage() {}
+
+func (x *AssetTypeBreakdownRow) ProtoReflect() protoreflect.Message {
+	mi := &file_alert_v1_alert_proto_msgTypes[23]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AssetTypeBreakdownRow.ProtoReflect.Descriptor instead.
+func (*AssetTypeBreakdownRow) Descriptor() ([]byte, []int) {
+	return file_alert_v1_alert_proto_rawDescGZIP(), []int{23}
+}
+
+func (x *AssetTypeBreakdownRow) GetAssetType() string {
+	if x != nil {
+		return x.AssetType
+	}
+	return ""
+}
+
+func (x *AssetTypeBreakdownRow) GetFailedAlerts() int64 {
+	if x != nil {
+		return x.FailedAlerts
+	}
+	return 0
+}
+
+func (x *AssetTypeBreakdownRow) GetFailureCount() int64 {
+	if x != nil {
+		return x.FailureCount
+	}
+	return 0
+}
+
+type ExchangeBreakdownRow struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Exchange      string                 `protobuf:"bytes,1,opt,name=exchange,proto3" json:"exchange,omitempty"`
+	FailedAlerts  int64                  `protobuf:"varint,2,opt,name=failed_alerts,json=failedAlerts,proto3" json:"failed_alerts,omitempty"`
+	FailureCount  int64                  `protobuf:"varint,3,opt,name=failure_count,json=failureCount,proto3" json:"failure_count,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ExchangeBreakdownRow) Reset() {
+	*x = ExchangeBreakdownRow{}
+	mi := &file_alert_v1_alert_proto_msgTypes[24]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ExchangeBreakdownRow) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ExchangeBreakdownRow) ProtoMessage() {}
+
+func (x *ExchangeBreakdownRow) ProtoReflect() protoreflect.Message {
+	mi := &file_alert_v1_alert_proto_msgTypes[24]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ExchangeBreakdownRow.ProtoReflect.Descriptor instead.
+func (*ExchangeBreakdownRow) Descriptor() ([]byte, []int) {
+	return file_alert_v1_alert_proto_rawDescGZIP(), []int{24}
+}
+
+func (x *ExchangeBreakdownRow) GetExchange() string {
+	if x != nil {
+		return x.Exchange
+	}
+	return ""
+}
+
+func (x *ExchangeBreakdownRow) GetFailedAlerts() int64 {
+	if x != nil {
+		return x.FailedAlerts
+	}
+	return 0
+}
+
+func (x *ExchangeBreakdownRow) GetFailureCount() int64 {
+	if x != nil {
+		return x.FailureCount
+	}
+	return 0
+}
+
+type GetFailedPriceDataResponse struct {
+	state              protoimpl.MessageState   `protogen:"open.v1"`
+	Rows               []*FailedAlertRow        `protobuf:"bytes,1,rep,name=rows,proto3" json:"rows,omitempty"`
+	TotalFailedAlerts  int64                    `protobuf:"varint,2,opt,name=total_failed_alerts,json=totalFailedAlerts,proto3" json:"total_failed_alerts,omitempty"`
+	TotalFailures      int64                    `protobuf:"varint,3,opt,name=total_failures,json=totalFailures,proto3" json:"total_failures,omitempty"`
+	FailureRate        float64                  `protobuf:"fixed64,4,opt,name=failure_rate,json=failureRate,proto3" json:"failure_rate,omitempty"`
+	AssetTypeBreakdown []*AssetTypeBreakdownRow `protobuf:"bytes,5,rep,name=asset_type_breakdown,json=assetTypeBreakdown,proto3" json:"asset_type_breakdown,omitempty"`
+	ExchangeBreakdown  []*ExchangeBreakdownRow  `protobuf:"bytes,6,rep,name=exchange_breakdown,json=exchangeBreakdown,proto3" json:"exchange_breakdown,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
+}
+
+func (x *GetFailedPriceDataResponse) Reset() {
+	*x = GetFailedPriceDataResponse{}
+	mi := &file_alert_v1_alert_proto_msgTypes[25]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetFailedPriceDataResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetFailedPriceDataResponse) ProtoMessage() {}
+
+func (x *GetFailedPriceDataResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_alert_v1_alert_proto_msgTypes[25]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetFailedPriceDataResponse.ProtoReflect.Descriptor instead.
+func (*GetFailedPriceDataResponse) Descriptor() ([]byte, []int) {
+	return file_alert_v1_alert_proto_rawDescGZIP(), []int{25}
+}
+
+func (x *GetFailedPriceDataResponse) GetRows() []*FailedAlertRow {
+	if x != nil {
+		return x.Rows
+	}
+	return nil
+}
+
+func (x *GetFailedPriceDataResponse) GetTotalFailedAlerts() int64 {
+	if x != nil {
+		return x.TotalFailedAlerts
+	}
+	return 0
+}
+
+func (x *GetFailedPriceDataResponse) GetTotalFailures() int64 {
+	if x != nil {
+		return x.TotalFailures
+	}
+	return 0
+}
+
+func (x *GetFailedPriceDataResponse) GetFailureRate() float64 {
+	if x != nil {
+		return x.FailureRate
+	}
+	return 0
+}
+
+func (x *GetFailedPriceDataResponse) GetAssetTypeBreakdown() []*AssetTypeBreakdownRow {
+	if x != nil {
+		return x.AssetTypeBreakdown
+	}
+	return nil
+}
+
+func (x *GetFailedPriceDataResponse) GetExchangeBreakdown() []*ExchangeBreakdownRow {
+	if x != nil {
+		return x.ExchangeBreakdown
+	}
+	return nil
+}
+
+type ClearAuditDataRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ClearAuditDataRequest) Reset() {
+	*x = ClearAuditDataRequest{}
+	mi := &file_alert_v1_alert_proto_msgTypes[26]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ClearAuditDataRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ClearAuditDataRequest) ProtoMessage() {}
+
+func (x *ClearAuditDataRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_alert_v1_alert_proto_msgTypes[26]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ClearAuditDataRequest.ProtoReflect.Descriptor instead.
+func (*ClearAuditDataRequest) Descriptor() ([]byte, []int) {
+	return file_alert_v1_alert_proto_rawDescGZIP(), []int{26}
+}
+
+type ClearAuditDataResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	DeletedCount  int64                  `protobuf:"varint,1,opt,name=deleted_count,json=deletedCount,proto3" json:"deleted_count,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ClearAuditDataResponse) Reset() {
+	*x = ClearAuditDataResponse{}
+	mi := &file_alert_v1_alert_proto_msgTypes[27]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ClearAuditDataResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ClearAuditDataResponse) ProtoMessage() {}
+
+func (x *ClearAuditDataResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_alert_v1_alert_proto_msgTypes[27]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ClearAuditDataResponse.ProtoReflect.Descriptor instead.
+func (*ClearAuditDataResponse) Descriptor() ([]byte, []int) {
+	return file_alert_v1_alert_proto_rawDescGZIP(), []int{27}
+}
+
+func (x *ClearAuditDataResponse) GetDeletedCount() int64 {
+	if x != nil {
+		return x.DeletedCount
+	}
+	return 0
+}
+
+type GetTriggerHistoryByTickerRequest struct {
+	state                 protoimpl.MessageState `protogen:"open.v1"`
+	Ticker                string                 `protobuf:"bytes,1,opt,name=ticker,proto3" json:"ticker,omitempty"`
+	IncludeAllEvaluations bool                   `protobuf:"varint,2,opt,name=include_all_evaluations,json=includeAllEvaluations,proto3" json:"include_all_evaluations,omitempty"` // if false, only rows where alert_triggered = true
+	Limit                 int32                  `protobuf:"varint,3,opt,name=limit,proto3" json:"limit,omitempty"`                                                                // default 50, max 500
+	DaysBack              int32                  `protobuf:"varint,4,opt,name=days_back,json=daysBack,proto3" json:"days_back,omitempty"`                                          // optional; filter to last N days (0 = no filter)
+	unknownFields         protoimpl.UnknownFields
+	sizeCache             protoimpl.SizeCache
+}
+
+func (x *GetTriggerHistoryByTickerRequest) Reset() {
+	*x = GetTriggerHistoryByTickerRequest{}
+	mi := &file_alert_v1_alert_proto_msgTypes[28]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetTriggerHistoryByTickerRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetTriggerHistoryByTickerRequest) ProtoMessage() {}
+
+func (x *GetTriggerHistoryByTickerRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_alert_v1_alert_proto_msgTypes[28]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetTriggerHistoryByTickerRequest.ProtoReflect.Descriptor instead.
+func (*GetTriggerHistoryByTickerRequest) Descriptor() ([]byte, []int) {
+	return file_alert_v1_alert_proto_rawDescGZIP(), []int{28}
+}
+
+func (x *GetTriggerHistoryByTickerRequest) GetTicker() string {
+	if x != nil {
+		return x.Ticker
+	}
+	return ""
+}
+
+func (x *GetTriggerHistoryByTickerRequest) GetIncludeAllEvaluations() bool {
+	if x != nil {
+		return x.IncludeAllEvaluations
+	}
+	return false
+}
+
+func (x *GetTriggerHistoryByTickerRequest) GetLimit() int32 {
+	if x != nil {
+		return x.Limit
+	}
+	return 0
+}
+
+func (x *GetTriggerHistoryByTickerRequest) GetDaysBack() int32 {
+	if x != nil {
+		return x.DaysBack
+	}
+	return 0
+}
+
+type GetTriggerHistoryByTickerResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Rows          []*AuditHistoryRow     `protobuf:"bytes,1,rep,name=rows,proto3" json:"rows,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetTriggerHistoryByTickerResponse) Reset() {
+	*x = GetTriggerHistoryByTickerResponse{}
+	mi := &file_alert_v1_alert_proto_msgTypes[29]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetTriggerHistoryByTickerResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetTriggerHistoryByTickerResponse) ProtoMessage() {}
+
+func (x *GetTriggerHistoryByTickerResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_alert_v1_alert_proto_msgTypes[29]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetTriggerHistoryByTickerResponse.ProtoReflect.Descriptor instead.
+func (*GetTriggerHistoryByTickerResponse) Descriptor() ([]byte, []int) {
+	return file_alert_v1_alert_proto_rawDescGZIP(), []int{29}
+}
+
+func (x *GetTriggerHistoryByTickerResponse) GetRows() []*AuditHistoryRow {
+	if x != nil {
+		return x.Rows
+	}
+	return nil
+}
+
+type SearchStocksRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Query         string                 `protobuf:"bytes,1,opt,name=query,proto3" json:"query,omitempty"`
+	Limit         int32                  `protobuf:"varint,2,opt,name=limit,proto3" json:"limit,omitempty"` // default 20, max 50
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SearchStocksRequest) Reset() {
+	*x = SearchStocksRequest{}
+	mi := &file_alert_v1_alert_proto_msgTypes[30]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SearchStocksRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SearchStocksRequest) ProtoMessage() {}
+
+func (x *SearchStocksRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_alert_v1_alert_proto_msgTypes[30]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SearchStocksRequest.ProtoReflect.Descriptor instead.
+func (*SearchStocksRequest) Descriptor() ([]byte, []int) {
+	return file_alert_v1_alert_proto_rawDescGZIP(), []int{30}
+}
+
+func (x *SearchStocksRequest) GetQuery() string {
+	if x != nil {
+		return x.Query
+	}
+	return ""
+}
+
+func (x *SearchStocksRequest) GetLimit() int32 {
+	if x != nil {
+		return x.Limit
+	}
+	return 0
+}
+
+type StockSearchResult struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Ticker        string                 `protobuf:"bytes,1,opt,name=ticker,proto3" json:"ticker,omitempty"`
+	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	Exchange      string                 `protobuf:"bytes,3,opt,name=exchange,proto3" json:"exchange,omitempty"`
+	Type          string                 `protobuf:"bytes,4,opt,name=type,proto3" json:"type,omitempty"`                                     // asset_type from stock_metadata
+	RbicsEconomy  string                 `protobuf:"bytes,5,opt,name=rbics_economy,json=rbicsEconomy,proto3" json:"rbics_economy,omitempty"` // optional
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *StockSearchResult) Reset() {
+	*x = StockSearchResult{}
+	mi := &file_alert_v1_alert_proto_msgTypes[31]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *StockSearchResult) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*StockSearchResult) ProtoMessage() {}
+
+func (x *StockSearchResult) ProtoReflect() protoreflect.Message {
+	mi := &file_alert_v1_alert_proto_msgTypes[31]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use StockSearchResult.ProtoReflect.Descriptor instead.
+func (*StockSearchResult) Descriptor() ([]byte, []int) {
+	return file_alert_v1_alert_proto_rawDescGZIP(), []int{31}
+}
+
+func (x *StockSearchResult) GetTicker() string {
+	if x != nil {
+		return x.Ticker
+	}
+	return ""
+}
+
+func (x *StockSearchResult) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *StockSearchResult) GetExchange() string {
+	if x != nil {
+		return x.Exchange
+	}
+	return ""
+}
+
+func (x *StockSearchResult) GetType() string {
+	if x != nil {
+		return x.Type
+	}
+	return ""
+}
+
+func (x *StockSearchResult) GetRbicsEconomy() string {
+	if x != nil {
+		return x.RbicsEconomy
+	}
+	return ""
+}
+
+type SearchStocksResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Results       []*StockSearchResult   `protobuf:"bytes,1,rep,name=results,proto3" json:"results,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SearchStocksResponse) Reset() {
+	*x = SearchStocksResponse{}
+	mi := &file_alert_v1_alert_proto_msgTypes[32]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SearchStocksResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SearchStocksResponse) ProtoMessage() {}
+
+func (x *SearchStocksResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_alert_v1_alert_proto_msgTypes[32]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SearchStocksResponse.ProtoReflect.Descriptor instead.
+func (*SearchStocksResponse) Descriptor() ([]byte, []int) {
+	return file_alert_v1_alert_proto_rawDescGZIP(), []int{32}
+}
+
+func (x *SearchStocksResponse) GetResults() []*StockSearchResult {
+	if x != nil {
+		return x.Results
+	}
+	return nil
+}
+
+type ListPortfoliosRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListPortfoliosRequest) Reset() {
+	*x = ListPortfoliosRequest{}
+	mi := &file_alert_v1_alert_proto_msgTypes[33]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListPortfoliosRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListPortfoliosRequest) ProtoMessage() {}
+
+func (x *ListPortfoliosRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_alert_v1_alert_proto_msgTypes[33]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListPortfoliosRequest.ProtoReflect.Descriptor instead.
+func (*ListPortfoliosRequest) Descriptor() ([]byte, []int) {
+	return file_alert_v1_alert_proto_rawDescGZIP(), []int{33}
+}
+
+type Portfolio struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	PortfolioId   string                 `protobuf:"bytes,1,opt,name=portfolio_id,json=portfolioId,proto3" json:"portfolio_id,omitempty"`
+	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	Tickers       []string               `protobuf:"bytes,3,rep,name=tickers,proto3" json:"tickers,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Portfolio) Reset() {
+	*x = Portfolio{}
+	mi := &file_alert_v1_alert_proto_msgTypes[34]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Portfolio) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Portfolio) ProtoMessage() {}
+
+func (x *Portfolio) ProtoReflect() protoreflect.Message {
+	mi := &file_alert_v1_alert_proto_msgTypes[34]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Portfolio.ProtoReflect.Descriptor instead.
+func (*Portfolio) Descriptor() ([]byte, []int) {
+	return file_alert_v1_alert_proto_rawDescGZIP(), []int{34}
+}
+
+func (x *Portfolio) GetPortfolioId() string {
+	if x != nil {
+		return x.PortfolioId
+	}
+	return ""
+}
+
+func (x *Portfolio) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *Portfolio) GetTickers() []string {
+	if x != nil {
+		return x.Tickers
+	}
+	return nil
+}
+
+type ListPortfoliosResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Portfolios    []*Portfolio           `protobuf:"bytes,1,rep,name=portfolios,proto3" json:"portfolios,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListPortfoliosResponse) Reset() {
+	*x = ListPortfoliosResponse{}
+	mi := &file_alert_v1_alert_proto_msgTypes[35]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListPortfoliosResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListPortfoliosResponse) ProtoMessage() {}
+
+func (x *ListPortfoliosResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_alert_v1_alert_proto_msgTypes[35]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListPortfoliosResponse.ProtoReflect.Descriptor instead.
+func (*ListPortfoliosResponse) Descriptor() ([]byte, []int) {
+	return file_alert_v1_alert_proto_rawDescGZIP(), []int{35}
+}
+
+func (x *ListPortfoliosResponse) GetPortfolios() []*Portfolio {
+	if x != nil {
+		return x.Portfolios
+	}
+	return nil
+}
+
 type BulkUpdateLastTriggeredRequest_AlertTrigger struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	AlertId       string                 `protobuf:"bytes,1,opt,name=alert_id,json=alertId,proto3" json:"alert_id,omitempty"`
@@ -1076,7 +2600,7 @@ type BulkUpdateLastTriggeredRequest_AlertTrigger struct {
 
 func (x *BulkUpdateLastTriggeredRequest_AlertTrigger) Reset() {
 	*x = BulkUpdateLastTriggeredRequest_AlertTrigger{}
-	mi := &file_alert_v1_alert_proto_msgTypes[13]
+	mi := &file_alert_v1_alert_proto_msgTypes[36]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1088,7 +2612,7 @@ func (x *BulkUpdateLastTriggeredRequest_AlertTrigger) String() string {
 func (*BulkUpdateLastTriggeredRequest_AlertTrigger) ProtoMessage() {}
 
 func (x *BulkUpdateLastTriggeredRequest_AlertTrigger) ProtoReflect() protoreflect.Message {
-	mi := &file_alert_v1_alert_proto_msgTypes[13]
+	mi := &file_alert_v1_alert_proto_msgTypes[36]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1230,7 +2754,131 @@ const file_alert_v1_alert_proto_rawDesc = "" +
 	"\balert_id\x18\x01 \x01(\tR\aalertId\x12A\n" +
 	"\x0elast_triggered\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\rlastTriggered\"F\n" +
 	"\x1fBulkUpdateLastTriggeredResponse\x12#\n" +
-	"\rupdated_count\x18\x01 \x01(\x05R\fupdatedCount2\xf3\x04\n" +
+	"\rupdated_count\x18\x01 \x01(\x05R\fupdatedCount\",\n" +
+	"\x16GetAuditSummaryRequest\x12\x12\n" +
+	"\x04days\x18\x01 \x01(\x05R\x04days\"\xc0\x04\n" +
+	"\x0fAuditSummaryRow\x12\x19\n" +
+	"\balert_id\x18\x01 \x01(\tR\aalertId\x12\x16\n" +
+	"\x06ticker\x18\x02 \x01(\tR\x06ticker\x12\x1d\n" +
+	"\n" +
+	"stock_name\x18\x03 \x01(\tR\tstockName\x12\x1a\n" +
+	"\bexchange\x18\x04 \x01(\tR\bexchange\x12\x1c\n" +
+	"\ttimeframe\x18\x05 \x01(\tR\ttimeframe\x12\x16\n" +
+	"\x06action\x18\x06 \x01(\tR\x06action\x12'\n" +
+	"\x0fevaluation_type\x18\a \x01(\tR\x0eevaluationType\x12!\n" +
+	"\ftotal_checks\x18\b \x01(\x03R\vtotalChecks\x124\n" +
+	"\x16successful_price_pulls\x18\t \x01(\x03R\x14successfulPricePulls\x125\n" +
+	"\x16successful_evaluations\x18\n" +
+	" \x01(\x03R\x15successfulEvaluations\x12%\n" +
+	"\x0etotal_triggers\x18\v \x01(\x03R\rtotalTriggers\x121\n" +
+	"\x15avg_execution_time_ms\x18\f \x01(\x01R\x12avgExecutionTimeMs\x129\n" +
+	"\n" +
+	"last_check\x18\r \x01(\v2\x1a.google.protobuf.TimestampR\tlastCheck\x12;\n" +
+	"\vfirst_check\x18\x0e \x01(\v2\x1a.google.protobuf.TimestampR\n" +
+	"firstCheck\"S\n" +
+	"\x17GetAuditSummaryResponse\x128\n" +
+	"\x04rows\x18\x01 \x03(\v2$.stockalert.alert.v1.AuditSummaryRowR\x04rows\"2\n" +
+	"\x1cGetPerformanceMetricsRequest\x12\x12\n" +
+	"\x04days\x18\x01 \x01(\x05R\x04days\"\xe8\x02\n" +
+	"\x1dGetPerformanceMetricsResponse\x12!\n" +
+	"\ftotal_checks\x18\x01 \x01(\x03R\vtotalChecks\x124\n" +
+	"\x16successful_price_pulls\x18\x02 \x01(\x03R\x14successfulPricePulls\x12!\n" +
+	"\fsuccess_rate\x18\x03 \x01(\x01R\vsuccessRate\x12$\n" +
+	"\x0ecache_hit_rate\x18\x04 \x01(\x01R\fcacheHitRate\x121\n" +
+	"\x15avg_execution_time_ms\x18\x05 \x01(\x01R\x12avgExecutionTimeMs\x12!\n" +
+	"\ftotal_errors\x18\x06 \x01(\x03R\vtotalErrors\x12\x1d\n" +
+	"\n" +
+	"error_rate\x18\a \x01(\x01R\terrorRate\x120\n" +
+	"\x14analysis_period_days\x18\b \x01(\x05R\x12analysisPeriodDays\"I\n" +
+	"\x16GetAlertHistoryRequest\x12\x19\n" +
+	"\balert_id\x18\x01 \x01(\tR\aalertId\x12\x14\n" +
+	"\x05limit\x18\x02 \x01(\x05R\x05limit\"\x90\x05\n" +
+	"\x0fAuditHistoryRow\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\x03R\x02id\x128\n" +
+	"\ttimestamp\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\ttimestamp\x12\x19\n" +
+	"\balert_id\x18\x03 \x01(\tR\aalertId\x12\x16\n" +
+	"\x06ticker\x18\x04 \x01(\tR\x06ticker\x12\x1d\n" +
+	"\n" +
+	"stock_name\x18\x05 \x01(\tR\tstockName\x12\x1a\n" +
+	"\bexchange\x18\x06 \x01(\tR\bexchange\x12\x1c\n" +
+	"\ttimeframe\x18\a \x01(\tR\ttimeframe\x12\x16\n" +
+	"\x06action\x18\b \x01(\tR\x06action\x12'\n" +
+	"\x0fevaluation_type\x18\t \x01(\tR\x0eevaluationType\x12*\n" +
+	"\x11price_data_pulled\x18\n" +
+	" \x01(\bR\x0fpriceDataPulled\x12*\n" +
+	"\x11price_data_source\x18\v \x01(\tR\x0fpriceDataSource\x121\n" +
+	"\x14conditions_evaluated\x18\f \x01(\bR\x13conditionsEvaluated\x12'\n" +
+	"\x0falert_triggered\x18\r \x01(\bR\x0ealertTriggered\x12%\n" +
+	"\x0etrigger_reason\x18\x0e \x01(\tR\rtriggerReason\x12*\n" +
+	"\x11execution_time_ms\x18\x0f \x01(\x05R\x0fexecutionTimeMs\x12\x1b\n" +
+	"\tcache_hit\x18\x10 \x01(\bR\bcacheHit\x12#\n" +
+	"\rerror_message\x18\x11 \x01(\tR\ferrorMessage\x12\x1d\n" +
+	"\n" +
+	"alert_name\x18\x12 \x01(\tR\talertName\"S\n" +
+	"\x17GetAlertHistoryResponse\x128\n" +
+	"\x04rows\x18\x01 \x03(\v2$.stockalert.alert.v1.AuditHistoryRowR\x04rows\"/\n" +
+	"\x19GetFailedPriceDataRequest\x12\x12\n" +
+	"\x04days\x18\x01 \x01(\x05R\x04days\"\x8e\x03\n" +
+	"\x0eFailedAlertRow\x12\x19\n" +
+	"\balert_id\x18\x01 \x01(\tR\aalertId\x12\x16\n" +
+	"\x06ticker\x18\x02 \x01(\tR\x06ticker\x12\x1d\n" +
+	"\n" +
+	"stock_name\x18\x03 \x01(\tR\tstockName\x12\x1a\n" +
+	"\bexchange\x18\x04 \x01(\tR\bexchange\x12\x1c\n" +
+	"\ttimeframe\x18\x05 \x01(\tR\ttimeframe\x12\x1d\n" +
+	"\n" +
+	"asset_type\x18\x06 \x01(\tR\tassetType\x12#\n" +
+	"\rfailure_count\x18\a \x01(\x03R\ffailureCount\x12=\n" +
+	"\flast_failure\x18\b \x01(\v2\x1a.google.protobuf.TimestampR\vlastFailure\x12?\n" +
+	"\rfirst_failure\x18\t \x01(\v2\x1a.google.protobuf.TimestampR\ffirstFailure\x12,\n" +
+	"\x12avg_execution_time\x18\n" +
+	" \x01(\x01R\x10avgExecutionTime\"\x80\x01\n" +
+	"\x15AssetTypeBreakdownRow\x12\x1d\n" +
+	"\n" +
+	"asset_type\x18\x01 \x01(\tR\tassetType\x12#\n" +
+	"\rfailed_alerts\x18\x02 \x01(\x03R\ffailedAlerts\x12#\n" +
+	"\rfailure_count\x18\x03 \x01(\x03R\ffailureCount\"|\n" +
+	"\x14ExchangeBreakdownRow\x12\x1a\n" +
+	"\bexchange\x18\x01 \x01(\tR\bexchange\x12#\n" +
+	"\rfailed_alerts\x18\x02 \x01(\x03R\ffailedAlerts\x12#\n" +
+	"\rfailure_count\x18\x03 \x01(\x03R\ffailureCount\"\x87\x03\n" +
+	"\x1aGetFailedPriceDataResponse\x127\n" +
+	"\x04rows\x18\x01 \x03(\v2#.stockalert.alert.v1.FailedAlertRowR\x04rows\x12.\n" +
+	"\x13total_failed_alerts\x18\x02 \x01(\x03R\x11totalFailedAlerts\x12%\n" +
+	"\x0etotal_failures\x18\x03 \x01(\x03R\rtotalFailures\x12!\n" +
+	"\ffailure_rate\x18\x04 \x01(\x01R\vfailureRate\x12\\\n" +
+	"\x14asset_type_breakdown\x18\x05 \x03(\v2*.stockalert.alert.v1.AssetTypeBreakdownRowR\x12assetTypeBreakdown\x12X\n" +
+	"\x12exchange_breakdown\x18\x06 \x03(\v2).stockalert.alert.v1.ExchangeBreakdownRowR\x11exchangeBreakdown\"\x17\n" +
+	"\x15ClearAuditDataRequest\"=\n" +
+	"\x16ClearAuditDataResponse\x12#\n" +
+	"\rdeleted_count\x18\x01 \x01(\x03R\fdeletedCount\"\xa5\x01\n" +
+	" GetTriggerHistoryByTickerRequest\x12\x16\n" +
+	"\x06ticker\x18\x01 \x01(\tR\x06ticker\x126\n" +
+	"\x17include_all_evaluations\x18\x02 \x01(\bR\x15includeAllEvaluations\x12\x14\n" +
+	"\x05limit\x18\x03 \x01(\x05R\x05limit\x12\x1b\n" +
+	"\tdays_back\x18\x04 \x01(\x05R\bdaysBack\"]\n" +
+	"!GetTriggerHistoryByTickerResponse\x128\n" +
+	"\x04rows\x18\x01 \x03(\v2$.stockalert.alert.v1.AuditHistoryRowR\x04rows\"A\n" +
+	"\x13SearchStocksRequest\x12\x14\n" +
+	"\x05query\x18\x01 \x01(\tR\x05query\x12\x14\n" +
+	"\x05limit\x18\x02 \x01(\x05R\x05limit\"\x94\x01\n" +
+	"\x11StockSearchResult\x12\x16\n" +
+	"\x06ticker\x18\x01 \x01(\tR\x06ticker\x12\x12\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\x12\x1a\n" +
+	"\bexchange\x18\x03 \x01(\tR\bexchange\x12\x12\n" +
+	"\x04type\x18\x04 \x01(\tR\x04type\x12#\n" +
+	"\rrbics_economy\x18\x05 \x01(\tR\frbicsEconomy\"X\n" +
+	"\x14SearchStocksResponse\x12@\n" +
+	"\aresults\x18\x01 \x03(\v2&.stockalert.alert.v1.StockSearchResultR\aresults\"\x17\n" +
+	"\x15ListPortfoliosRequest\"\\\n" +
+	"\tPortfolio\x12!\n" +
+	"\fportfolio_id\x18\x01 \x01(\tR\vportfolioId\x12\x12\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\x12\x18\n" +
+	"\atickers\x18\x03 \x03(\tR\atickers\"X\n" +
+	"\x16ListPortfoliosResponse\x12>\n" +
+	"\n" +
+	"portfolios\x18\x01 \x03(\v2\x1e.stockalert.alert.v1.PortfolioR\n" +
+	"portfolios2\x8e\f\n" +
 	"\fAlertService\x12]\n" +
 	"\n" +
 	"ListAlerts\x12&.stockalert.alert.v1.ListAlertsRequest\x1a'.stockalert.alert.v1.ListAlertsResponse\x12W\n" +
@@ -1238,7 +2886,15 @@ const file_alert_v1_alert_proto_rawDesc = "" +
 	"\vCreateAlert\x12'.stockalert.alert.v1.CreateAlertRequest\x1a(.stockalert.alert.v1.CreateAlertResponse\x12`\n" +
 	"\vUpdateAlert\x12'.stockalert.alert.v1.UpdateAlertRequest\x1a(.stockalert.alert.v1.UpdateAlertResponse\x12`\n" +
 	"\vDeleteAlert\x12'.stockalert.alert.v1.DeleteAlertRequest\x1a(.stockalert.alert.v1.DeleteAlertResponse\x12\x84\x01\n" +
-	"\x17BulkUpdateLastTriggered\x123.stockalert.alert.v1.BulkUpdateLastTriggeredRequest\x1a4.stockalert.alert.v1.BulkUpdateLastTriggeredResponseB\xb7\x01\n" +
+	"\x17BulkUpdateLastTriggered\x123.stockalert.alert.v1.BulkUpdateLastTriggeredRequest\x1a4.stockalert.alert.v1.BulkUpdateLastTriggeredResponse\x12l\n" +
+	"\x0fGetAuditSummary\x12+.stockalert.alert.v1.GetAuditSummaryRequest\x1a,.stockalert.alert.v1.GetAuditSummaryResponse\x12~\n" +
+	"\x15GetPerformanceMetrics\x121.stockalert.alert.v1.GetPerformanceMetricsRequest\x1a2.stockalert.alert.v1.GetPerformanceMetricsResponse\x12l\n" +
+	"\x0fGetAlertHistory\x12+.stockalert.alert.v1.GetAlertHistoryRequest\x1a,.stockalert.alert.v1.GetAlertHistoryResponse\x12u\n" +
+	"\x12GetFailedPriceData\x12..stockalert.alert.v1.GetFailedPriceDataRequest\x1a/.stockalert.alert.v1.GetFailedPriceDataResponse\x12i\n" +
+	"\x0eClearAuditData\x12*.stockalert.alert.v1.ClearAuditDataRequest\x1a+.stockalert.alert.v1.ClearAuditDataResponse\x12\x8a\x01\n" +
+	"\x19GetTriggerHistoryByTicker\x125.stockalert.alert.v1.GetTriggerHistoryByTickerRequest\x1a6.stockalert.alert.v1.GetTriggerHistoryByTickerResponse\x12c\n" +
+	"\fSearchStocks\x12(.stockalert.alert.v1.SearchStocksRequest\x1a).stockalert.alert.v1.SearchStocksResponse\x12i\n" +
+	"\x0eListPortfolios\x12*.stockalert.alert.v1.ListPortfoliosRequest\x1a+.stockalert.alert.v1.ListPortfoliosResponseB\xb7\x01\n" +
 	"\x17com.stockalert.alert.v1B\n" +
 	"AlertProtoP\x01Z\"stockalert/gen/go/alert/v1;alertv1\xa2\x02\x03SAX\xaa\x02\x13Stockalert.Alert.V1\xca\x02\x13Stockalert\\Alert\\V1\xe2\x02\x1fStockalert\\Alert\\V1\\GPBMetadata\xea\x02\x15Stockalert::Alert::V1b\x06proto3"
 
@@ -1254,7 +2910,7 @@ func file_alert_v1_alert_proto_rawDescGZIP() []byte {
 	return file_alert_v1_alert_proto_rawDescData
 }
 
-var file_alert_v1_alert_proto_msgTypes = make([]protoimpl.MessageInfo, 14)
+var file_alert_v1_alert_proto_msgTypes = make([]protoimpl.MessageInfo, 37)
 var file_alert_v1_alert_proto_goTypes = []any{
 	(*Alert)(nil),                                       // 0: stockalert.alert.v1.Alert
 	(*ListAlertsRequest)(nil),                           // 1: stockalert.alert.v1.ListAlertsRequest
@@ -1269,52 +2925,104 @@ var file_alert_v1_alert_proto_goTypes = []any{
 	(*DeleteAlertResponse)(nil),                         // 10: stockalert.alert.v1.DeleteAlertResponse
 	(*BulkUpdateLastTriggeredRequest)(nil),              // 11: stockalert.alert.v1.BulkUpdateLastTriggeredRequest
 	(*BulkUpdateLastTriggeredResponse)(nil),             // 12: stockalert.alert.v1.BulkUpdateLastTriggeredResponse
-	(*BulkUpdateLastTriggeredRequest_AlertTrigger)(nil), // 13: stockalert.alert.v1.BulkUpdateLastTriggeredRequest.AlertTrigger
-	(*structpb.Struct)(nil),                             // 14: google.protobuf.Struct
-	(*timestamppb.Timestamp)(nil),                       // 15: google.protobuf.Timestamp
+	(*GetAuditSummaryRequest)(nil),                      // 13: stockalert.alert.v1.GetAuditSummaryRequest
+	(*AuditSummaryRow)(nil),                             // 14: stockalert.alert.v1.AuditSummaryRow
+	(*GetAuditSummaryResponse)(nil),                     // 15: stockalert.alert.v1.GetAuditSummaryResponse
+	(*GetPerformanceMetricsRequest)(nil),                // 16: stockalert.alert.v1.GetPerformanceMetricsRequest
+	(*GetPerformanceMetricsResponse)(nil),               // 17: stockalert.alert.v1.GetPerformanceMetricsResponse
+	(*GetAlertHistoryRequest)(nil),                      // 18: stockalert.alert.v1.GetAlertHistoryRequest
+	(*AuditHistoryRow)(nil),                             // 19: stockalert.alert.v1.AuditHistoryRow
+	(*GetAlertHistoryResponse)(nil),                     // 20: stockalert.alert.v1.GetAlertHistoryResponse
+	(*GetFailedPriceDataRequest)(nil),                   // 21: stockalert.alert.v1.GetFailedPriceDataRequest
+	(*FailedAlertRow)(nil),                              // 22: stockalert.alert.v1.FailedAlertRow
+	(*AssetTypeBreakdownRow)(nil),                       // 23: stockalert.alert.v1.AssetTypeBreakdownRow
+	(*ExchangeBreakdownRow)(nil),                        // 24: stockalert.alert.v1.ExchangeBreakdownRow
+	(*GetFailedPriceDataResponse)(nil),                  // 25: stockalert.alert.v1.GetFailedPriceDataResponse
+	(*ClearAuditDataRequest)(nil),                       // 26: stockalert.alert.v1.ClearAuditDataRequest
+	(*ClearAuditDataResponse)(nil),                      // 27: stockalert.alert.v1.ClearAuditDataResponse
+	(*GetTriggerHistoryByTickerRequest)(nil),            // 28: stockalert.alert.v1.GetTriggerHistoryByTickerRequest
+	(*GetTriggerHistoryByTickerResponse)(nil),           // 29: stockalert.alert.v1.GetTriggerHistoryByTickerResponse
+	(*SearchStocksRequest)(nil),                         // 30: stockalert.alert.v1.SearchStocksRequest
+	(*StockSearchResult)(nil),                           // 31: stockalert.alert.v1.StockSearchResult
+	(*SearchStocksResponse)(nil),                        // 32: stockalert.alert.v1.SearchStocksResponse
+	(*ListPortfoliosRequest)(nil),                       // 33: stockalert.alert.v1.ListPortfoliosRequest
+	(*Portfolio)(nil),                                   // 34: stockalert.alert.v1.Portfolio
+	(*ListPortfoliosResponse)(nil),                      // 35: stockalert.alert.v1.ListPortfoliosResponse
+	(*BulkUpdateLastTriggeredRequest_AlertTrigger)(nil), // 36: stockalert.alert.v1.BulkUpdateLastTriggeredRequest.AlertTrigger
+	(*structpb.Struct)(nil),                             // 37: google.protobuf.Struct
+	(*timestamppb.Timestamp)(nil),                       // 38: google.protobuf.Timestamp
 }
 var file_alert_v1_alert_proto_depIdxs = []int32{
-	14, // 0: stockalert.alert.v1.Alert.conditions:type_name -> google.protobuf.Struct
-	15, // 1: stockalert.alert.v1.Alert.last_triggered:type_name -> google.protobuf.Timestamp
-	14, // 2: stockalert.alert.v1.Alert.dtp_params:type_name -> google.protobuf.Struct
-	14, // 3: stockalert.alert.v1.Alert.multi_timeframe_params:type_name -> google.protobuf.Struct
-	14, // 4: stockalert.alert.v1.Alert.mixed_timeframe_params:type_name -> google.protobuf.Struct
-	14, // 5: stockalert.alert.v1.Alert.raw_payload:type_name -> google.protobuf.Struct
-	15, // 6: stockalert.alert.v1.Alert.created_at:type_name -> google.protobuf.Timestamp
-	15, // 7: stockalert.alert.v1.Alert.updated_at:type_name -> google.protobuf.Timestamp
+	37, // 0: stockalert.alert.v1.Alert.conditions:type_name -> google.protobuf.Struct
+	38, // 1: stockalert.alert.v1.Alert.last_triggered:type_name -> google.protobuf.Timestamp
+	37, // 2: stockalert.alert.v1.Alert.dtp_params:type_name -> google.protobuf.Struct
+	37, // 3: stockalert.alert.v1.Alert.multi_timeframe_params:type_name -> google.protobuf.Struct
+	37, // 4: stockalert.alert.v1.Alert.mixed_timeframe_params:type_name -> google.protobuf.Struct
+	37, // 5: stockalert.alert.v1.Alert.raw_payload:type_name -> google.protobuf.Struct
+	38, // 6: stockalert.alert.v1.Alert.created_at:type_name -> google.protobuf.Timestamp
+	38, // 7: stockalert.alert.v1.Alert.updated_at:type_name -> google.protobuf.Timestamp
 	0,  // 8: stockalert.alert.v1.ListAlertsResponse.alerts:type_name -> stockalert.alert.v1.Alert
 	0,  // 9: stockalert.alert.v1.GetAlertResponse.alert:type_name -> stockalert.alert.v1.Alert
-	14, // 10: stockalert.alert.v1.CreateAlertRequest.conditions:type_name -> google.protobuf.Struct
-	14, // 11: stockalert.alert.v1.CreateAlertRequest.dtp_params:type_name -> google.protobuf.Struct
-	14, // 12: stockalert.alert.v1.CreateAlertRequest.multi_timeframe_params:type_name -> google.protobuf.Struct
-	14, // 13: stockalert.alert.v1.CreateAlertRequest.mixed_timeframe_params:type_name -> google.protobuf.Struct
-	14, // 14: stockalert.alert.v1.CreateAlertRequest.raw_payload:type_name -> google.protobuf.Struct
+	37, // 10: stockalert.alert.v1.CreateAlertRequest.conditions:type_name -> google.protobuf.Struct
+	37, // 11: stockalert.alert.v1.CreateAlertRequest.dtp_params:type_name -> google.protobuf.Struct
+	37, // 12: stockalert.alert.v1.CreateAlertRequest.multi_timeframe_params:type_name -> google.protobuf.Struct
+	37, // 13: stockalert.alert.v1.CreateAlertRequest.mixed_timeframe_params:type_name -> google.protobuf.Struct
+	37, // 14: stockalert.alert.v1.CreateAlertRequest.raw_payload:type_name -> google.protobuf.Struct
 	0,  // 15: stockalert.alert.v1.CreateAlertResponse.alert:type_name -> stockalert.alert.v1.Alert
-	14, // 16: stockalert.alert.v1.UpdateAlertRequest.conditions:type_name -> google.protobuf.Struct
-	14, // 17: stockalert.alert.v1.UpdateAlertRequest.dtp_params:type_name -> google.protobuf.Struct
-	14, // 18: stockalert.alert.v1.UpdateAlertRequest.multi_timeframe_params:type_name -> google.protobuf.Struct
-	14, // 19: stockalert.alert.v1.UpdateAlertRequest.mixed_timeframe_params:type_name -> google.protobuf.Struct
-	14, // 20: stockalert.alert.v1.UpdateAlertRequest.raw_payload:type_name -> google.protobuf.Struct
+	37, // 16: stockalert.alert.v1.UpdateAlertRequest.conditions:type_name -> google.protobuf.Struct
+	37, // 17: stockalert.alert.v1.UpdateAlertRequest.dtp_params:type_name -> google.protobuf.Struct
+	37, // 18: stockalert.alert.v1.UpdateAlertRequest.multi_timeframe_params:type_name -> google.protobuf.Struct
+	37, // 19: stockalert.alert.v1.UpdateAlertRequest.mixed_timeframe_params:type_name -> google.protobuf.Struct
+	37, // 20: stockalert.alert.v1.UpdateAlertRequest.raw_payload:type_name -> google.protobuf.Struct
 	0,  // 21: stockalert.alert.v1.UpdateAlertResponse.alert:type_name -> stockalert.alert.v1.Alert
-	13, // 22: stockalert.alert.v1.BulkUpdateLastTriggeredRequest.triggers:type_name -> stockalert.alert.v1.BulkUpdateLastTriggeredRequest.AlertTrigger
-	15, // 23: stockalert.alert.v1.BulkUpdateLastTriggeredRequest.AlertTrigger.last_triggered:type_name -> google.protobuf.Timestamp
-	1,  // 24: stockalert.alert.v1.AlertService.ListAlerts:input_type -> stockalert.alert.v1.ListAlertsRequest
-	3,  // 25: stockalert.alert.v1.AlertService.GetAlert:input_type -> stockalert.alert.v1.GetAlertRequest
-	5,  // 26: stockalert.alert.v1.AlertService.CreateAlert:input_type -> stockalert.alert.v1.CreateAlertRequest
-	7,  // 27: stockalert.alert.v1.AlertService.UpdateAlert:input_type -> stockalert.alert.v1.UpdateAlertRequest
-	9,  // 28: stockalert.alert.v1.AlertService.DeleteAlert:input_type -> stockalert.alert.v1.DeleteAlertRequest
-	11, // 29: stockalert.alert.v1.AlertService.BulkUpdateLastTriggered:input_type -> stockalert.alert.v1.BulkUpdateLastTriggeredRequest
-	2,  // 30: stockalert.alert.v1.AlertService.ListAlerts:output_type -> stockalert.alert.v1.ListAlertsResponse
-	4,  // 31: stockalert.alert.v1.AlertService.GetAlert:output_type -> stockalert.alert.v1.GetAlertResponse
-	6,  // 32: stockalert.alert.v1.AlertService.CreateAlert:output_type -> stockalert.alert.v1.CreateAlertResponse
-	8,  // 33: stockalert.alert.v1.AlertService.UpdateAlert:output_type -> stockalert.alert.v1.UpdateAlertResponse
-	10, // 34: stockalert.alert.v1.AlertService.DeleteAlert:output_type -> stockalert.alert.v1.DeleteAlertResponse
-	12, // 35: stockalert.alert.v1.AlertService.BulkUpdateLastTriggered:output_type -> stockalert.alert.v1.BulkUpdateLastTriggeredResponse
-	30, // [30:36] is the sub-list for method output_type
-	24, // [24:30] is the sub-list for method input_type
-	24, // [24:24] is the sub-list for extension type_name
-	24, // [24:24] is the sub-list for extension extendee
-	0,  // [0:24] is the sub-list for field type_name
+	36, // 22: stockalert.alert.v1.BulkUpdateLastTriggeredRequest.triggers:type_name -> stockalert.alert.v1.BulkUpdateLastTriggeredRequest.AlertTrigger
+	38, // 23: stockalert.alert.v1.AuditSummaryRow.last_check:type_name -> google.protobuf.Timestamp
+	38, // 24: stockalert.alert.v1.AuditSummaryRow.first_check:type_name -> google.protobuf.Timestamp
+	14, // 25: stockalert.alert.v1.GetAuditSummaryResponse.rows:type_name -> stockalert.alert.v1.AuditSummaryRow
+	38, // 26: stockalert.alert.v1.AuditHistoryRow.timestamp:type_name -> google.protobuf.Timestamp
+	19, // 27: stockalert.alert.v1.GetAlertHistoryResponse.rows:type_name -> stockalert.alert.v1.AuditHistoryRow
+	38, // 28: stockalert.alert.v1.FailedAlertRow.last_failure:type_name -> google.protobuf.Timestamp
+	38, // 29: stockalert.alert.v1.FailedAlertRow.first_failure:type_name -> google.protobuf.Timestamp
+	22, // 30: stockalert.alert.v1.GetFailedPriceDataResponse.rows:type_name -> stockalert.alert.v1.FailedAlertRow
+	23, // 31: stockalert.alert.v1.GetFailedPriceDataResponse.asset_type_breakdown:type_name -> stockalert.alert.v1.AssetTypeBreakdownRow
+	24, // 32: stockalert.alert.v1.GetFailedPriceDataResponse.exchange_breakdown:type_name -> stockalert.alert.v1.ExchangeBreakdownRow
+	19, // 33: stockalert.alert.v1.GetTriggerHistoryByTickerResponse.rows:type_name -> stockalert.alert.v1.AuditHistoryRow
+	31, // 34: stockalert.alert.v1.SearchStocksResponse.results:type_name -> stockalert.alert.v1.StockSearchResult
+	34, // 35: stockalert.alert.v1.ListPortfoliosResponse.portfolios:type_name -> stockalert.alert.v1.Portfolio
+	38, // 36: stockalert.alert.v1.BulkUpdateLastTriggeredRequest.AlertTrigger.last_triggered:type_name -> google.protobuf.Timestamp
+	1,  // 37: stockalert.alert.v1.AlertService.ListAlerts:input_type -> stockalert.alert.v1.ListAlertsRequest
+	3,  // 38: stockalert.alert.v1.AlertService.GetAlert:input_type -> stockalert.alert.v1.GetAlertRequest
+	5,  // 39: stockalert.alert.v1.AlertService.CreateAlert:input_type -> stockalert.alert.v1.CreateAlertRequest
+	7,  // 40: stockalert.alert.v1.AlertService.UpdateAlert:input_type -> stockalert.alert.v1.UpdateAlertRequest
+	9,  // 41: stockalert.alert.v1.AlertService.DeleteAlert:input_type -> stockalert.alert.v1.DeleteAlertRequest
+	11, // 42: stockalert.alert.v1.AlertService.BulkUpdateLastTriggered:input_type -> stockalert.alert.v1.BulkUpdateLastTriggeredRequest
+	13, // 43: stockalert.alert.v1.AlertService.GetAuditSummary:input_type -> stockalert.alert.v1.GetAuditSummaryRequest
+	16, // 44: stockalert.alert.v1.AlertService.GetPerformanceMetrics:input_type -> stockalert.alert.v1.GetPerformanceMetricsRequest
+	18, // 45: stockalert.alert.v1.AlertService.GetAlertHistory:input_type -> stockalert.alert.v1.GetAlertHistoryRequest
+	21, // 46: stockalert.alert.v1.AlertService.GetFailedPriceData:input_type -> stockalert.alert.v1.GetFailedPriceDataRequest
+	26, // 47: stockalert.alert.v1.AlertService.ClearAuditData:input_type -> stockalert.alert.v1.ClearAuditDataRequest
+	28, // 48: stockalert.alert.v1.AlertService.GetTriggerHistoryByTicker:input_type -> stockalert.alert.v1.GetTriggerHistoryByTickerRequest
+	30, // 49: stockalert.alert.v1.AlertService.SearchStocks:input_type -> stockalert.alert.v1.SearchStocksRequest
+	33, // 50: stockalert.alert.v1.AlertService.ListPortfolios:input_type -> stockalert.alert.v1.ListPortfoliosRequest
+	2,  // 51: stockalert.alert.v1.AlertService.ListAlerts:output_type -> stockalert.alert.v1.ListAlertsResponse
+	4,  // 52: stockalert.alert.v1.AlertService.GetAlert:output_type -> stockalert.alert.v1.GetAlertResponse
+	6,  // 53: stockalert.alert.v1.AlertService.CreateAlert:output_type -> stockalert.alert.v1.CreateAlertResponse
+	8,  // 54: stockalert.alert.v1.AlertService.UpdateAlert:output_type -> stockalert.alert.v1.UpdateAlertResponse
+	10, // 55: stockalert.alert.v1.AlertService.DeleteAlert:output_type -> stockalert.alert.v1.DeleteAlertResponse
+	12, // 56: stockalert.alert.v1.AlertService.BulkUpdateLastTriggered:output_type -> stockalert.alert.v1.BulkUpdateLastTriggeredResponse
+	15, // 57: stockalert.alert.v1.AlertService.GetAuditSummary:output_type -> stockalert.alert.v1.GetAuditSummaryResponse
+	17, // 58: stockalert.alert.v1.AlertService.GetPerformanceMetrics:output_type -> stockalert.alert.v1.GetPerformanceMetricsResponse
+	20, // 59: stockalert.alert.v1.AlertService.GetAlertHistory:output_type -> stockalert.alert.v1.GetAlertHistoryResponse
+	25, // 60: stockalert.alert.v1.AlertService.GetFailedPriceData:output_type -> stockalert.alert.v1.GetFailedPriceDataResponse
+	27, // 61: stockalert.alert.v1.AlertService.ClearAuditData:output_type -> stockalert.alert.v1.ClearAuditDataResponse
+	29, // 62: stockalert.alert.v1.AlertService.GetTriggerHistoryByTicker:output_type -> stockalert.alert.v1.GetTriggerHistoryByTickerResponse
+	32, // 63: stockalert.alert.v1.AlertService.SearchStocks:output_type -> stockalert.alert.v1.SearchStocksResponse
+	35, // 64: stockalert.alert.v1.AlertService.ListPortfolios:output_type -> stockalert.alert.v1.ListPortfoliosResponse
+	51, // [51:65] is the sub-list for method output_type
+	37, // [37:51] is the sub-list for method input_type
+	37, // [37:37] is the sub-list for extension type_name
+	37, // [37:37] is the sub-list for extension extendee
+	0,  // [0:37] is the sub-list for field type_name
 }
 
 func init() { file_alert_v1_alert_proto_init() }
@@ -1328,7 +3036,7 @@ func file_alert_v1_alert_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_alert_v1_alert_proto_rawDesc), len(file_alert_v1_alert_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   14,
+			NumMessages:   37,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

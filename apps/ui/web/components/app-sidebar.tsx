@@ -87,8 +87,8 @@ const data = {
       ),
     },
     {
-      title: "Add Alerts",
-      url: "#",
+      title: "Add Alert",
+      url: "/alerts/add",
       icon: (
         <ListIcon
         />
@@ -96,7 +96,7 @@ const data = {
     },
     {
       title: "Alert Audit",
-      url: "#",
+      url: "/alerts/audit",
       icon: (
         <ChartBarIcon
         />
@@ -104,7 +104,7 @@ const data = {
     },
     {
       title: "Alert History",
-      url: "#",
+      url: "/alerts/history",
       icon: (
         <FolderIcon
         />
@@ -114,7 +114,7 @@ const data = {
   discord: [
     {
       title: "Hourly Discord Management",
-      url: "#",
+      url: "/discord/hourly",
       icon: (
         <UsersIcon
         />
@@ -122,7 +122,7 @@ const data = {
     },
     {
       title: "Daily Discord Management",
-      url: "#",
+      url: "/discord/daily",
       icon: (
         <ChartBarIcon
         />
@@ -130,7 +130,7 @@ const data = {
     },
     {
       title: "Weekly Discord Management",
-      url: "#",
+      url: "/discord/weekly",
       icon: (
         <FolderIcon
         />
@@ -149,12 +149,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               asChild
               className="data-[slot=sidebar-menu-button]:p-1.5!"
             >
-              <a href="#">
+              <Link href={'/'}>
                 <CommandIcon className="size-5!" />
-                <Link href={'/'}>
-                  <span className="text-base font-semibold">Kovich Stock Alerts</span>
-                </Link>
-              </a>
+                <span className="text-base font-semibold">Kovich Stock Alerts</span>
+              </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>

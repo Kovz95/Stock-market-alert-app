@@ -6,6 +6,7 @@ import {
   listAlertsPaginated,
   getAlert,
   createAlert,
+  createAlertsBulk,
   updateAlert,
   deleteAlert,
 } from "@/actions/alert-actions";
@@ -34,6 +35,22 @@ export function useCreateAlert() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: createAlert,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ALERTS_KEY });
+    },
+  });
+}
+
+export function useCreateAlertsBulk() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      shared,
+      items,
+    }: {
+      shared: Parameters<typeof createAlertsBulk>[0];
+      items: Parameters<typeof createAlertsBulk>[1];
+    }) => createAlertsBulk(shared, items),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ALERTS_KEY });
     },
