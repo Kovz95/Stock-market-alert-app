@@ -15,7 +15,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
-import { LayoutDashboardIcon, ListIcon, ChartBarIcon, FolderIcon, UsersIcon, CameraIcon, FileTextIcon, Settings2Icon, CircleHelpIcon, SearchIcon, DatabaseIcon, FileChartColumnIcon, FileIcon, CommandIcon, BellIcon } from "lucide-react"
+import { LayoutDashboardIcon, ListIcon, ChartBarIcon, FolderIcon, UsersIcon, CameraIcon, FileTextIcon, Settings2Icon, CircleHelpIcon, SearchIcon, DatabaseIcon, FileChartColumnIcon, FileIcon, CommandIcon, BellIcon, CurrencyIcon, StarIcon } from "lucide-react"
 import { NavAlerts } from "./nav-alerts"
 import Link from "next/link"
 
@@ -137,6 +137,24 @@ const data = {
       ),
     },
   ],
+  database: [
+    {
+      title: "Price",
+      url: "/database/price",
+      icon: (
+        <CurrencyIcon
+        />
+      ),
+    },
+    {
+      title: "Stock",
+      url: "/database/stock",
+      icon: (
+        <StarIcon
+        />
+      ),
+    },
+  ]
 }
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {

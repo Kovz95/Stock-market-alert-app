@@ -1,12 +1,15 @@
 "use server";
 
 import { discordClient } from "@/lib/grpc/channel";
-import type {
-  GetHourlyDiscordConfigResponse,
-  HourlyChannelInfo,
-} from "../../../../gen/ts/discord/v1/discord";
+import type { GetHourlyDiscordConfigResponse } from "../../../../gen/ts/discord/v1/discord";
 
-export type { HourlyChannelInfo };
+/** Local type for hourly channel; matches proto HourlyChannelInfo to avoid runtime re-export in server actions. */
+export type HourlyChannelInfo = {
+  name: string;
+  channelName: string;
+  description: string;
+  configured: boolean;
+};
 
 export type HourlyDiscordConfig = {
   enableIndustryRouting: boolean;

@@ -26,7 +26,7 @@ func main() {
 
 	port := os.Getenv("PORT")
 	if port == "" {
-		port = "50052"
+		port = "50051"
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
