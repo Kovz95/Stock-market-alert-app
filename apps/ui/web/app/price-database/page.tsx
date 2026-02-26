@@ -11,6 +11,8 @@ import {
   DatabaseStatsCards,
   PriceDataTable,
   ExportSection,
+  PriceChartsSection,
+  AnalysisSection,
   defaultFilters,
   getLoadParams,
 } from "./_components";
@@ -114,10 +116,18 @@ export default function PriceDatabasePage() {
             <Tabs defaultValue="table" className="w-full">
               <TabsList>
                 <TabsTrigger value="table">Data table</TabsTrigger>
+                <TabsTrigger value="charts">Charts</TabsTrigger>
+                <TabsTrigger value="analysis">Analysis</TabsTrigger>
                 <TabsTrigger value="export">Export</TabsTrigger>
               </TabsList>
               <TabsContent value="table" className="mt-4">
                 <PriceDataTable data={loadedData} />
+              </TabsContent>
+              <TabsContent value="charts" className="mt-4">
+                <PriceChartsSection data={loadedData} />
+              </TabsContent>
+              <TabsContent value="analysis" className="mt-4">
+                <AnalysisSection data={loadedData} />
               </TabsContent>
               <TabsContent value="export" className="mt-4">
                 <ExportSection
