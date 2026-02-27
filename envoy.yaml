@@ -12,6 +12,7 @@ static_resources:
                 "@type": type.googleapis.com/envoy.extensions.filters.network.http_connection_manager.v3.HttpConnectionManager
                 codec_type: AUTO
                 stat_prefix: ingress_http
+                stream_idle_timeout: 620s
                 route_config:
                   name: local_route
                   virtual_hosts:
@@ -32,7 +33,7 @@ static_resources:
                             prefix: "/stockalert.price.v1.PriceService/"
                           route:
                             cluster: price_service
-                            timeout: 30s
+                            timeout: 600s
                       cors:
                         allow_origin_string_match:
                           - prefix: "*"
@@ -89,7 +90,7 @@ static_resources:
                       address: discord_service
                       port_value: 50051
     - name: price_service
-      connect_timeout: 5s
+      connect_timeout: 30s
       type: LOGICAL_DNS
       lb_policy: ROUND_ROBIN
       typed_extension_protocol_options:

@@ -80,3 +80,58 @@ UPDATE alerts SET
     last_triggered = $2,
     updated_at = NOW()
 WHERE alert_id = $1;
+
+-- Scheduler queries: filter alerts by exchange(s) for a specific job run.
+
+-- name: ListAlertsByExchange :many
+SELECT
+    alert_id, name, stock_name, ticker, ticker1, ticker2,
+    conditions, combination_logic, last_triggered, action,
+    timeframe, exchange, country, ratio, is_ratio,
+    adjustment_method, dtp_params, multi_timeframe_params,
+    mixed_timeframe_params, raw_payload, created_at, updated_at
+FROM alerts
+WHERE exchange = ANY(sqlc.arg(exchanges)::text[])
+ORDER BY updated_at DESC, name ASC;
+
+-- name: ListAlertsByExchangeAndTimeframe :many
+SELECT
+    alert_id, name, stock_name, ticker, ticker1, ticker2,
+    conditions, combination_logic, last_triggered, action,
+    timeframe, exchange, country, ratio, is_ratio,
+    adjustment_method, dtp_params, multi_timeframe_params,
+    mixed_timeframe_params, raw_payload, created_at, updated_at
+FROM alerts
+WHERE exchange = ANY(sqlc.arg(exchanges)::text[])
+  AND timeframe = sqlc.arg(timeframe)
+ORDER BY updated_at DESC, name ASC;
+
+-- Audit trail: single insert for deferred audit records.
+
+-- name: InsertAlertAudit :exec
+INSERT INTO alert_audits (
+    timestamp, alert_id, ticker, stock_name, exchange, timeframe, action,
+    evaluation_type, price_data_pulled, price_data_source, conditions_evaluated,
+    alert_triggered, trigger_reason, execution_time_ms, cache_hit,
+    error_message, additional_data
+) VALUES (
+    $1, $2, $3, $4, $5, $6, $7,
+    $8, $9, $10, $11,
+    $12, $13, $14, $15,
+    $16, $17
+);
+
+-- Bulk audit insert via COPY protocol (pgx CopyFrom).
+
+-- name: CopyAlertAudits :copyfrom
+INSERT INTO alert_audits (
+    timestamp, alert_id, ticker, stock_name, exchange, timeframe, action,
+    evaluation_type, price_data_pulled, price_data_source, conditions_evaluated,
+    alert_triggered, trigger_reason, execution_time_ms, cache_hit,
+    error_message, additional_data
+) VALUES (
+    $1, $2, $3, $4, $5, $6, $7,
+    $8, $9, $10, $11,
+    $12, $13, $14, $15,
+    $16, $17
+);

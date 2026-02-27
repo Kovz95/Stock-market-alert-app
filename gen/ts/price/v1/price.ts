@@ -276,6 +276,59 @@ export interface GetHourlyDataQualityResponse {
   worstCalendarGapHours: number;
 }
 
+/** SymbolFilter filters the universe for RunScan when tickers is not set. */
+export interface SymbolFilter {
+  /** e.g. "Stock", "ETF" */
+  assetTypes: string[];
+  countries: string[];
+  exchanges: string[];
+  rbicsEconomy: string[];
+  rbicsSector: string[];
+  rbicsSubsector: string[];
+  rbicsIndustryGroup: string[];
+  rbicsIndustry: string[];
+  rbicsSubindustry: string[];
+}
+
+/** RunScanRequest runs a single-symbol scan. Either tickers or symbol_filter is used. */
+export interface RunScanRequest {
+  timeframe: Timeframe;
+  conditions: string[];
+  /** e.g. "AND", "OR", "1 AND (2 OR 3)" */
+  combinationLogic: string;
+  /** if non-empty, scan only these; else use symbol_filter */
+  tickers: string[];
+  symbolFilter?:
+    | SymbolFilter
+    | undefined;
+  /** cap on symbols to scan (e.g. 20000), 0 = no limit */
+  maxTickers: number;
+}
+
+/** ScanMatch is one symbol that matched the scan conditions. */
+export interface ScanMatch {
+  ticker: string;
+  name: string;
+  exchange: string;
+  country: string;
+  assetType: string;
+  price: number;
+  rbicsEconomy: string;
+  rbicsSector: string;
+  rbicsSubsector: string;
+  rbicsIndustryGroup: string;
+  rbicsIndustry: string;
+  rbicsSubindustry: string;
+  /** optional display string for condition values */
+  conditionValues: string;
+}
+
+export interface RunScanResponse {
+  matches: ScanMatch[];
+  /** set if scan failed */
+  errorMessage: string;
+}
+
 function createBaseStockMetadata(): StockMetadata {
   return { symbol: "", name: "", exchange: "", isin: "" };
 }
@@ -2745,6 +2798,770 @@ export const GetHourlyDataQualityResponse: MessageFns<GetHourlyDataQualityRespon
   },
 };
 
+function createBaseSymbolFilter(): SymbolFilter {
+  return {
+    assetTypes: [],
+    countries: [],
+    exchanges: [],
+    rbicsEconomy: [],
+    rbicsSector: [],
+    rbicsSubsector: [],
+    rbicsIndustryGroup: [],
+    rbicsIndustry: [],
+    rbicsSubindustry: [],
+  };
+}
+
+export const SymbolFilter: MessageFns<SymbolFilter> = {
+  encode(message: SymbolFilter, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    for (const v of message.assetTypes) {
+      writer.uint32(10).string(v!);
+    }
+    for (const v of message.countries) {
+      writer.uint32(18).string(v!);
+    }
+    for (const v of message.exchanges) {
+      writer.uint32(26).string(v!);
+    }
+    for (const v of message.rbicsEconomy) {
+      writer.uint32(34).string(v!);
+    }
+    for (const v of message.rbicsSector) {
+      writer.uint32(42).string(v!);
+    }
+    for (const v of message.rbicsSubsector) {
+      writer.uint32(50).string(v!);
+    }
+    for (const v of message.rbicsIndustryGroup) {
+      writer.uint32(58).string(v!);
+    }
+    for (const v of message.rbicsIndustry) {
+      writer.uint32(66).string(v!);
+    }
+    for (const v of message.rbicsSubindustry) {
+      writer.uint32(74).string(v!);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): SymbolFilter {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseSymbolFilter();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.assetTypes.push(reader.string());
+          continue;
+        }
+        case 2: {
+          if (tag !== 18) {
+            break;
+          }
+
+          message.countries.push(reader.string());
+          continue;
+        }
+        case 3: {
+          if (tag !== 26) {
+            break;
+          }
+
+          message.exchanges.push(reader.string());
+          continue;
+        }
+        case 4: {
+          if (tag !== 34) {
+            break;
+          }
+
+          message.rbicsEconomy.push(reader.string());
+          continue;
+        }
+        case 5: {
+          if (tag !== 42) {
+            break;
+          }
+
+          message.rbicsSector.push(reader.string());
+          continue;
+        }
+        case 6: {
+          if (tag !== 50) {
+            break;
+          }
+
+          message.rbicsSubsector.push(reader.string());
+          continue;
+        }
+        case 7: {
+          if (tag !== 58) {
+            break;
+          }
+
+          message.rbicsIndustryGroup.push(reader.string());
+          continue;
+        }
+        case 8: {
+          if (tag !== 66) {
+            break;
+          }
+
+          message.rbicsIndustry.push(reader.string());
+          continue;
+        }
+        case 9: {
+          if (tag !== 74) {
+            break;
+          }
+
+          message.rbicsSubindustry.push(reader.string());
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): SymbolFilter {
+    return {
+      assetTypes: globalThis.Array.isArray(object?.assetTypes)
+        ? object.assetTypes.map((e: any) => globalThis.String(e))
+        : globalThis.Array.isArray(object?.asset_types)
+        ? object.asset_types.map((e: any) => globalThis.String(e))
+        : [],
+      countries: globalThis.Array.isArray(object?.countries)
+        ? object.countries.map((e: any) => globalThis.String(e))
+        : [],
+      exchanges: globalThis.Array.isArray(object?.exchanges)
+        ? object.exchanges.map((e: any) => globalThis.String(e))
+        : [],
+      rbicsEconomy: globalThis.Array.isArray(object?.rbicsEconomy)
+        ? object.rbicsEconomy.map((e: any) => globalThis.String(e))
+        : globalThis.Array.isArray(object?.rbics_economy)
+        ? object.rbics_economy.map((e: any) => globalThis.String(e))
+        : [],
+      rbicsSector: globalThis.Array.isArray(object?.rbicsSector)
+        ? object.rbicsSector.map((e: any) => globalThis.String(e))
+        : globalThis.Array.isArray(object?.rbics_sector)
+        ? object.rbics_sector.map((e: any) => globalThis.String(e))
+        : [],
+      rbicsSubsector: globalThis.Array.isArray(object?.rbicsSubsector)
+        ? object.rbicsSubsector.map((e: any) => globalThis.String(e))
+        : globalThis.Array.isArray(object?.rbics_subsector)
+        ? object.rbics_subsector.map((e: any) => globalThis.String(e))
+        : [],
+      rbicsIndustryGroup: globalThis.Array.isArray(object?.rbicsIndustryGroup)
+        ? object.rbicsIndustryGroup.map((e: any) => globalThis.String(e))
+        : globalThis.Array.isArray(object?.rbics_industry_group)
+        ? object.rbics_industry_group.map((e: any) => globalThis.String(e))
+        : [],
+      rbicsIndustry: globalThis.Array.isArray(object?.rbicsIndustry)
+        ? object.rbicsIndustry.map((e: any) => globalThis.String(e))
+        : globalThis.Array.isArray(object?.rbics_industry)
+        ? object.rbics_industry.map((e: any) => globalThis.String(e))
+        : [],
+      rbicsSubindustry: globalThis.Array.isArray(object?.rbicsSubindustry)
+        ? object.rbicsSubindustry.map((e: any) => globalThis.String(e))
+        : globalThis.Array.isArray(object?.rbics_subindustry)
+        ? object.rbics_subindustry.map((e: any) => globalThis.String(e))
+        : [],
+    };
+  },
+
+  toJSON(message: SymbolFilter): unknown {
+    const obj: any = {};
+    if (message.assetTypes?.length) {
+      obj.assetTypes = message.assetTypes;
+    }
+    if (message.countries?.length) {
+      obj.countries = message.countries;
+    }
+    if (message.exchanges?.length) {
+      obj.exchanges = message.exchanges;
+    }
+    if (message.rbicsEconomy?.length) {
+      obj.rbicsEconomy = message.rbicsEconomy;
+    }
+    if (message.rbicsSector?.length) {
+      obj.rbicsSector = message.rbicsSector;
+    }
+    if (message.rbicsSubsector?.length) {
+      obj.rbicsSubsector = message.rbicsSubsector;
+    }
+    if (message.rbicsIndustryGroup?.length) {
+      obj.rbicsIndustryGroup = message.rbicsIndustryGroup;
+    }
+    if (message.rbicsIndustry?.length) {
+      obj.rbicsIndustry = message.rbicsIndustry;
+    }
+    if (message.rbicsSubindustry?.length) {
+      obj.rbicsSubindustry = message.rbicsSubindustry;
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<SymbolFilter>, I>>(base?: I): SymbolFilter {
+    return SymbolFilter.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<SymbolFilter>, I>>(object: I): SymbolFilter {
+    const message = createBaseSymbolFilter();
+    message.assetTypes = object.assetTypes?.map((e) => e) || [];
+    message.countries = object.countries?.map((e) => e) || [];
+    message.exchanges = object.exchanges?.map((e) => e) || [];
+    message.rbicsEconomy = object.rbicsEconomy?.map((e) => e) || [];
+    message.rbicsSector = object.rbicsSector?.map((e) => e) || [];
+    message.rbicsSubsector = object.rbicsSubsector?.map((e) => e) || [];
+    message.rbicsIndustryGroup = object.rbicsIndustryGroup?.map((e) => e) || [];
+    message.rbicsIndustry = object.rbicsIndustry?.map((e) => e) || [];
+    message.rbicsSubindustry = object.rbicsSubindustry?.map((e) => e) || [];
+    return message;
+  },
+};
+
+function createBaseRunScanRequest(): RunScanRequest {
+  return { timeframe: 0, conditions: [], combinationLogic: "", tickers: [], symbolFilter: undefined, maxTickers: 0 };
+}
+
+export const RunScanRequest: MessageFns<RunScanRequest> = {
+  encode(message: RunScanRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.timeframe !== 0) {
+      writer.uint32(8).int32(message.timeframe);
+    }
+    for (const v of message.conditions) {
+      writer.uint32(18).string(v!);
+    }
+    if (message.combinationLogic !== "") {
+      writer.uint32(26).string(message.combinationLogic);
+    }
+    for (const v of message.tickers) {
+      writer.uint32(34).string(v!);
+    }
+    if (message.symbolFilter !== undefined) {
+      SymbolFilter.encode(message.symbolFilter, writer.uint32(42).fork()).join();
+    }
+    if (message.maxTickers !== 0) {
+      writer.uint32(48).int32(message.maxTickers);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): RunScanRequest {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseRunScanRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 8) {
+            break;
+          }
+
+          message.timeframe = reader.int32() as any;
+          continue;
+        }
+        case 2: {
+          if (tag !== 18) {
+            break;
+          }
+
+          message.conditions.push(reader.string());
+          continue;
+        }
+        case 3: {
+          if (tag !== 26) {
+            break;
+          }
+
+          message.combinationLogic = reader.string();
+          continue;
+        }
+        case 4: {
+          if (tag !== 34) {
+            break;
+          }
+
+          message.tickers.push(reader.string());
+          continue;
+        }
+        case 5: {
+          if (tag !== 42) {
+            break;
+          }
+
+          message.symbolFilter = SymbolFilter.decode(reader, reader.uint32());
+          continue;
+        }
+        case 6: {
+          if (tag !== 48) {
+            break;
+          }
+
+          message.maxTickers = reader.int32();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): RunScanRequest {
+    return {
+      timeframe: isSet(object.timeframe) ? timeframeFromJSON(object.timeframe) : 0,
+      conditions: globalThis.Array.isArray(object?.conditions)
+        ? object.conditions.map((e: any) => globalThis.String(e))
+        : [],
+      combinationLogic: isSet(object.combinationLogic)
+        ? globalThis.String(object.combinationLogic)
+        : isSet(object.combination_logic)
+        ? globalThis.String(object.combination_logic)
+        : "",
+      tickers: globalThis.Array.isArray(object?.tickers) ? object.tickers.map((e: any) => globalThis.String(e)) : [],
+      symbolFilter: isSet(object.symbolFilter)
+        ? SymbolFilter.fromJSON(object.symbolFilter)
+        : isSet(object.symbol_filter)
+        ? SymbolFilter.fromJSON(object.symbol_filter)
+        : undefined,
+      maxTickers: isSet(object.maxTickers)
+        ? globalThis.Number(object.maxTickers)
+        : isSet(object.max_tickers)
+        ? globalThis.Number(object.max_tickers)
+        : 0,
+    };
+  },
+
+  toJSON(message: RunScanRequest): unknown {
+    const obj: any = {};
+    if (message.timeframe !== 0) {
+      obj.timeframe = timeframeToJSON(message.timeframe);
+    }
+    if (message.conditions?.length) {
+      obj.conditions = message.conditions;
+    }
+    if (message.combinationLogic !== "") {
+      obj.combinationLogic = message.combinationLogic;
+    }
+    if (message.tickers?.length) {
+      obj.tickers = message.tickers;
+    }
+    if (message.symbolFilter !== undefined) {
+      obj.symbolFilter = SymbolFilter.toJSON(message.symbolFilter);
+    }
+    if (message.maxTickers !== 0) {
+      obj.maxTickers = Math.round(message.maxTickers);
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<RunScanRequest>, I>>(base?: I): RunScanRequest {
+    return RunScanRequest.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<RunScanRequest>, I>>(object: I): RunScanRequest {
+    const message = createBaseRunScanRequest();
+    message.timeframe = object.timeframe ?? 0;
+    message.conditions = object.conditions?.map((e) => e) || [];
+    message.combinationLogic = object.combinationLogic ?? "";
+    message.tickers = object.tickers?.map((e) => e) || [];
+    message.symbolFilter = (object.symbolFilter !== undefined && object.symbolFilter !== null)
+      ? SymbolFilter.fromPartial(object.symbolFilter)
+      : undefined;
+    message.maxTickers = object.maxTickers ?? 0;
+    return message;
+  },
+};
+
+function createBaseScanMatch(): ScanMatch {
+  return {
+    ticker: "",
+    name: "",
+    exchange: "",
+    country: "",
+    assetType: "",
+    price: 0,
+    rbicsEconomy: "",
+    rbicsSector: "",
+    rbicsSubsector: "",
+    rbicsIndustryGroup: "",
+    rbicsIndustry: "",
+    rbicsSubindustry: "",
+    conditionValues: "",
+  };
+}
+
+export const ScanMatch: MessageFns<ScanMatch> = {
+  encode(message: ScanMatch, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.ticker !== "") {
+      writer.uint32(10).string(message.ticker);
+    }
+    if (message.name !== "") {
+      writer.uint32(18).string(message.name);
+    }
+    if (message.exchange !== "") {
+      writer.uint32(26).string(message.exchange);
+    }
+    if (message.country !== "") {
+      writer.uint32(34).string(message.country);
+    }
+    if (message.assetType !== "") {
+      writer.uint32(42).string(message.assetType);
+    }
+    if (message.price !== 0) {
+      writer.uint32(49).double(message.price);
+    }
+    if (message.rbicsEconomy !== "") {
+      writer.uint32(58).string(message.rbicsEconomy);
+    }
+    if (message.rbicsSector !== "") {
+      writer.uint32(66).string(message.rbicsSector);
+    }
+    if (message.rbicsSubsector !== "") {
+      writer.uint32(74).string(message.rbicsSubsector);
+    }
+    if (message.rbicsIndustryGroup !== "") {
+      writer.uint32(82).string(message.rbicsIndustryGroup);
+    }
+    if (message.rbicsIndustry !== "") {
+      writer.uint32(90).string(message.rbicsIndustry);
+    }
+    if (message.rbicsSubindustry !== "") {
+      writer.uint32(98).string(message.rbicsSubindustry);
+    }
+    if (message.conditionValues !== "") {
+      writer.uint32(106).string(message.conditionValues);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): ScanMatch {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseScanMatch();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.ticker = reader.string();
+          continue;
+        }
+        case 2: {
+          if (tag !== 18) {
+            break;
+          }
+
+          message.name = reader.string();
+          continue;
+        }
+        case 3: {
+          if (tag !== 26) {
+            break;
+          }
+
+          message.exchange = reader.string();
+          continue;
+        }
+        case 4: {
+          if (tag !== 34) {
+            break;
+          }
+
+          message.country = reader.string();
+          continue;
+        }
+        case 5: {
+          if (tag !== 42) {
+            break;
+          }
+
+          message.assetType = reader.string();
+          continue;
+        }
+        case 6: {
+          if (tag !== 49) {
+            break;
+          }
+
+          message.price = reader.double();
+          continue;
+        }
+        case 7: {
+          if (tag !== 58) {
+            break;
+          }
+
+          message.rbicsEconomy = reader.string();
+          continue;
+        }
+        case 8: {
+          if (tag !== 66) {
+            break;
+          }
+
+          message.rbicsSector = reader.string();
+          continue;
+        }
+        case 9: {
+          if (tag !== 74) {
+            break;
+          }
+
+          message.rbicsSubsector = reader.string();
+          continue;
+        }
+        case 10: {
+          if (tag !== 82) {
+            break;
+          }
+
+          message.rbicsIndustryGroup = reader.string();
+          continue;
+        }
+        case 11: {
+          if (tag !== 90) {
+            break;
+          }
+
+          message.rbicsIndustry = reader.string();
+          continue;
+        }
+        case 12: {
+          if (tag !== 98) {
+            break;
+          }
+
+          message.rbicsSubindustry = reader.string();
+          continue;
+        }
+        case 13: {
+          if (tag !== 106) {
+            break;
+          }
+
+          message.conditionValues = reader.string();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): ScanMatch {
+    return {
+      ticker: isSet(object.ticker) ? globalThis.String(object.ticker) : "",
+      name: isSet(object.name) ? globalThis.String(object.name) : "",
+      exchange: isSet(object.exchange) ? globalThis.String(object.exchange) : "",
+      country: isSet(object.country) ? globalThis.String(object.country) : "",
+      assetType: isSet(object.assetType)
+        ? globalThis.String(object.assetType)
+        : isSet(object.asset_type)
+        ? globalThis.String(object.asset_type)
+        : "",
+      price: isSet(object.price) ? globalThis.Number(object.price) : 0,
+      rbicsEconomy: isSet(object.rbicsEconomy)
+        ? globalThis.String(object.rbicsEconomy)
+        : isSet(object.rbics_economy)
+        ? globalThis.String(object.rbics_economy)
+        : "",
+      rbicsSector: isSet(object.rbicsSector)
+        ? globalThis.String(object.rbicsSector)
+        : isSet(object.rbics_sector)
+        ? globalThis.String(object.rbics_sector)
+        : "",
+      rbicsSubsector: isSet(object.rbicsSubsector)
+        ? globalThis.String(object.rbicsSubsector)
+        : isSet(object.rbics_subsector)
+        ? globalThis.String(object.rbics_subsector)
+        : "",
+      rbicsIndustryGroup: isSet(object.rbicsIndustryGroup)
+        ? globalThis.String(object.rbicsIndustryGroup)
+        : isSet(object.rbics_industry_group)
+        ? globalThis.String(object.rbics_industry_group)
+        : "",
+      rbicsIndustry: isSet(object.rbicsIndustry)
+        ? globalThis.String(object.rbicsIndustry)
+        : isSet(object.rbics_industry)
+        ? globalThis.String(object.rbics_industry)
+        : "",
+      rbicsSubindustry: isSet(object.rbicsSubindustry)
+        ? globalThis.String(object.rbicsSubindustry)
+        : isSet(object.rbics_subindustry)
+        ? globalThis.String(object.rbics_subindustry)
+        : "",
+      conditionValues: isSet(object.conditionValues)
+        ? globalThis.String(object.conditionValues)
+        : isSet(object.condition_values)
+        ? globalThis.String(object.condition_values)
+        : "",
+    };
+  },
+
+  toJSON(message: ScanMatch): unknown {
+    const obj: any = {};
+    if (message.ticker !== "") {
+      obj.ticker = message.ticker;
+    }
+    if (message.name !== "") {
+      obj.name = message.name;
+    }
+    if (message.exchange !== "") {
+      obj.exchange = message.exchange;
+    }
+    if (message.country !== "") {
+      obj.country = message.country;
+    }
+    if (message.assetType !== "") {
+      obj.assetType = message.assetType;
+    }
+    if (message.price !== 0) {
+      obj.price = message.price;
+    }
+    if (message.rbicsEconomy !== "") {
+      obj.rbicsEconomy = message.rbicsEconomy;
+    }
+    if (message.rbicsSector !== "") {
+      obj.rbicsSector = message.rbicsSector;
+    }
+    if (message.rbicsSubsector !== "") {
+      obj.rbicsSubsector = message.rbicsSubsector;
+    }
+    if (message.rbicsIndustryGroup !== "") {
+      obj.rbicsIndustryGroup = message.rbicsIndustryGroup;
+    }
+    if (message.rbicsIndustry !== "") {
+      obj.rbicsIndustry = message.rbicsIndustry;
+    }
+    if (message.rbicsSubindustry !== "") {
+      obj.rbicsSubindustry = message.rbicsSubindustry;
+    }
+    if (message.conditionValues !== "") {
+      obj.conditionValues = message.conditionValues;
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<ScanMatch>, I>>(base?: I): ScanMatch {
+    return ScanMatch.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<ScanMatch>, I>>(object: I): ScanMatch {
+    const message = createBaseScanMatch();
+    message.ticker = object.ticker ?? "";
+    message.name = object.name ?? "";
+    message.exchange = object.exchange ?? "";
+    message.country = object.country ?? "";
+    message.assetType = object.assetType ?? "";
+    message.price = object.price ?? 0;
+    message.rbicsEconomy = object.rbicsEconomy ?? "";
+    message.rbicsSector = object.rbicsSector ?? "";
+    message.rbicsSubsector = object.rbicsSubsector ?? "";
+    message.rbicsIndustryGroup = object.rbicsIndustryGroup ?? "";
+    message.rbicsIndustry = object.rbicsIndustry ?? "";
+    message.rbicsSubindustry = object.rbicsSubindustry ?? "";
+    message.conditionValues = object.conditionValues ?? "";
+    return message;
+  },
+};
+
+function createBaseRunScanResponse(): RunScanResponse {
+  return { matches: [], errorMessage: "" };
+}
+
+export const RunScanResponse: MessageFns<RunScanResponse> = {
+  encode(message: RunScanResponse, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    for (const v of message.matches) {
+      ScanMatch.encode(v!, writer.uint32(10).fork()).join();
+    }
+    if (message.errorMessage !== "") {
+      writer.uint32(18).string(message.errorMessage);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): RunScanResponse {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseRunScanResponse();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.matches.push(ScanMatch.decode(reader, reader.uint32()));
+          continue;
+        }
+        case 2: {
+          if (tag !== 18) {
+            break;
+          }
+
+          message.errorMessage = reader.string();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): RunScanResponse {
+    return {
+      matches: globalThis.Array.isArray(object?.matches) ? object.matches.map((e: any) => ScanMatch.fromJSON(e)) : [],
+      errorMessage: isSet(object.errorMessage)
+        ? globalThis.String(object.errorMessage)
+        : isSet(object.error_message)
+        ? globalThis.String(object.error_message)
+        : "",
+    };
+  },
+
+  toJSON(message: RunScanResponse): unknown {
+    const obj: any = {};
+    if (message.matches?.length) {
+      obj.matches = message.matches.map((e) => ScanMatch.toJSON(e));
+    }
+    if (message.errorMessage !== "") {
+      obj.errorMessage = message.errorMessage;
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<RunScanResponse>, I>>(base?: I): RunScanResponse {
+    return RunScanResponse.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<RunScanResponse>, I>>(object: I): RunScanResponse {
+    const message = createBaseRunScanResponse();
+    message.matches = object.matches?.map((e) => ScanMatch.fromPartial(e)) || [];
+    message.errorMessage = object.errorMessage ?? "";
+    return message;
+  },
+};
+
 /** PriceService provides read-only access to the price database. */
 export type PriceServiceDefinition = typeof PriceServiceDefinition;
 export const PriceServiceDefinition = {
@@ -2815,6 +3632,14 @@ export const PriceServiceDefinition = {
       responseStream: false,
       options: {},
     },
+    runScan: {
+      name: "RunScan",
+      requestType: RunScanRequest,
+      requestStream: false,
+      responseType: RunScanResponse,
+      responseStream: false,
+      options: {},
+    },
   },
 } as const;
 
@@ -2851,6 +3676,7 @@ export interface PriceServiceImplementation<CallContextExt = {}> {
     request: GetHourlyDataQualityRequest,
     context: CallContext & CallContextExt,
   ): Promise<DeepPartial<GetHourlyDataQualityResponse>>;
+  runScan(request: RunScanRequest, context: CallContext & CallContextExt): Promise<DeepPartial<RunScanResponse>>;
 }
 
 export interface PriceServiceClient<CallOptionsExt = {}> {
@@ -2886,6 +3712,7 @@ export interface PriceServiceClient<CallOptionsExt = {}> {
     request: DeepPartial<GetHourlyDataQualityRequest>,
     options?: CallOptions & CallOptionsExt,
   ): Promise<GetHourlyDataQualityResponse>;
+  runScan(request: DeepPartial<RunScanRequest>, options?: CallOptions & CallOptionsExt): Promise<RunScanResponse>;
 }
 
 type Builtin = Date | Function | Uint8Array | string | number | boolean | undefined;

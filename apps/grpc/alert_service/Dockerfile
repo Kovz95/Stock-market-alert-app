@@ -5,11 +5,14 @@ RUN apk add --no-cache git
 WORKDIR /build
 
 # Copy go.work and all module files first for caching
-COPY go.work go.work
 COPY gen/go ./gen/go
 COPY database ./database
 COPY apps/grpc/ ./apps/grpc/
-COPY core ./core
+COPY calendar ./calendar
+COPY discord ./discord
+COPY expr ./expr
+COPY indicator ./indicator
+COPY apps/scheduler apps/scheduler
 
 # Download dependencies
 WORKDIR /build/apps/grpc/alert_service

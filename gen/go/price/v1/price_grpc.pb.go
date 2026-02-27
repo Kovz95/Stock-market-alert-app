@@ -27,6 +27,7 @@ const (
 	PriceService_ScanStaleWeekly_FullMethodName      = "/stockalert.price.v1.PriceService/ScanStaleWeekly"
 	PriceService_ScanStaleHourly_FullMethodName      = "/stockalert.price.v1.PriceService/ScanStaleHourly"
 	PriceService_GetHourlyDataQuality_FullMethodName = "/stockalert.price.v1.PriceService/GetHourlyDataQuality"
+	PriceService_RunScan_FullMethodName              = "/stockalert.price.v1.PriceService/RunScan"
 )
 
 // PriceServiceClient is the client API for PriceService service.
@@ -43,6 +44,7 @@ type PriceServiceClient interface {
 	ScanStaleWeekly(ctx context.Context, in *ScanStaleWeeklyRequest, opts ...grpc.CallOption) (*ScanStaleWeeklyResponse, error)
 	ScanStaleHourly(ctx context.Context, in *ScanStaleHourlyRequest, opts ...grpc.CallOption) (*ScanStaleHourlyResponse, error)
 	GetHourlyDataQuality(ctx context.Context, in *GetHourlyDataQualityRequest, opts ...grpc.CallOption) (*GetHourlyDataQualityResponse, error)
+	RunScan(ctx context.Context, in *RunScanRequest, opts ...grpc.CallOption) (*RunScanResponse, error)
 }
 
 type priceServiceClient struct {
@@ -133,6 +135,16 @@ func (c *priceServiceClient) GetHourlyDataQuality(ctx context.Context, in *GetHo
 	return out, nil
 }
 
+func (c *priceServiceClient) RunScan(ctx context.Context, in *RunScanRequest, opts ...grpc.CallOption) (*RunScanResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RunScanResponse)
+	err := c.cc.Invoke(ctx, PriceService_RunScan_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // PriceServiceServer is the server API for PriceService service.
 // All implementations must embed UnimplementedPriceServiceServer
 // for forward compatibility.
@@ -147,6 +159,7 @@ type PriceServiceServer interface {
 	ScanStaleWeekly(context.Context, *ScanStaleWeeklyRequest) (*ScanStaleWeeklyResponse, error)
 	ScanStaleHourly(context.Context, *ScanStaleHourlyRequest) (*ScanStaleHourlyResponse, error)
 	GetHourlyDataQuality(context.Context, *GetHourlyDataQualityRequest) (*GetHourlyDataQualityResponse, error)
+	RunScan(context.Context, *RunScanRequest) (*RunScanResponse, error)
 	mustEmbedUnimplementedPriceServiceServer()
 }
 
@@ -180,6 +193,9 @@ func (UnimplementedPriceServiceServer) ScanStaleHourly(context.Context, *ScanSta
 }
 func (UnimplementedPriceServiceServer) GetHourlyDataQuality(context.Context, *GetHourlyDataQualityRequest) (*GetHourlyDataQualityResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetHourlyDataQuality not implemented")
+}
+func (UnimplementedPriceServiceServer) RunScan(context.Context, *RunScanRequest) (*RunScanResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method RunScan not implemented")
 }
 func (UnimplementedPriceServiceServer) mustEmbedUnimplementedPriceServiceServer() {}
 func (UnimplementedPriceServiceServer) testEmbeddedByValue()                      {}
@@ -346,6 +362,24 @@ func _PriceService_GetHourlyDataQuality_Handler(srv interface{}, ctx context.Con
 	return interceptor(ctx, in, info, handler)
 }
 
+func _PriceService_RunScan_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RunScanRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PriceServiceServer).RunScan(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PriceService_RunScan_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PriceServiceServer).RunScan(ctx, req.(*RunScanRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // PriceService_ServiceDesc is the grpc.ServiceDesc for PriceService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -384,6 +418,10 @@ var PriceService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetHourlyDataQuality",
 			Handler:    _PriceService_GetHourlyDataQuality_Handler,
+		},
+		{
+			MethodName: "RunScan",
+			Handler:    _PriceService_RunScan_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

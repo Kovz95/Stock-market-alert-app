@@ -499,14 +499,16 @@ class StockAlertChecker:
         alerts: List[Dict[str, Any]],
         timeframe_filter: Optional[str] = None,
         max_workers: Optional[int] = None,
+        on_triggered: Optional[Any] = None,
     ) -> Dict[str, Any]:
         """
         Check multiple alerts and return statistics (optionally in parallel).
 
         Args:
             alerts: List of alert dictionaries
-            timeframe_filter: Optional filter for timeframe ("daily", "weekly")
+            timeframe_filter: Optional filter for timeframe ("daily", "weekly", "hourly")
             max_workers: Number of parallel workers (default from env or 5). Use 1 for sequential.
+            on_triggered: Optional callback (alert, result) when an alert triggers. Used for shadow mode.
 
         Returns:
             Statistics dictionary with check results
@@ -680,6 +682,8 @@ class StockAlertChecker:
                     try:
                         result = self.check_alert(alert, accumulator=accumulator)
                         _aggregate_result(result)
+                        if on_triggered and result.get("triggered"):
+                            on_triggered(alert, result)
                     except Exception as e:
                         logger.error(f"Unexpected error checking alert: {e}")
                         stats["errors"] += 1
@@ -690,9 +694,12 @@ class StockAlertChecker:
                         for alert in filtered_alerts
                     }
                     for future in as_completed(future_to_alert):
+                        alert = future_to_alert[future]
                         try:
                             result = future.result()
                             _aggregate_result(result)
+                            if on_triggered and result.get("triggered"):
+                                on_triggered(alert, result)
                         except Exception as e:
                             logger.exception("Unexpected error checking alert: %s", e)
                             stats["errors"] += 1

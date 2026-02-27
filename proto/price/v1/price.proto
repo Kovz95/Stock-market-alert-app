@@ -178,6 +178,53 @@ message GetHourlyDataQualityResponse {
   double worst_calendar_gap_hours = 6;
 }
 
+// --- Scanner: run scan with conditions ---
+
+// SymbolFilter filters the universe for RunScan when tickers is not set.
+message SymbolFilter {
+  repeated string asset_types = 1;   // e.g. "Stock", "ETF"
+  repeated string countries = 2;
+  repeated string exchanges = 3;
+  repeated string rbics_economy = 4;
+  repeated string rbics_sector = 5;
+  repeated string rbics_subsector = 6;
+  repeated string rbics_industry_group = 7;
+  repeated string rbics_industry = 8;
+  repeated string rbics_subindustry = 9;
+}
+
+// RunScanRequest runs a single-symbol scan. Either tickers or symbol_filter is used.
+message RunScanRequest {
+  Timeframe timeframe = 1;
+  repeated string conditions = 2;
+  string combination_logic = 3;     // e.g. "AND", "OR", "1 AND (2 OR 3)"
+  repeated string tickers = 4;       // if non-empty, scan only these; else use symbol_filter
+  SymbolFilter symbol_filter = 5;
+  int32 max_tickers = 6;            // cap on symbols to scan (e.g. 20000), 0 = no limit
+}
+
+// ScanMatch is one symbol that matched the scan conditions.
+message ScanMatch {
+  string ticker = 1;
+  string name = 2;
+  string exchange = 3;
+  string country = 4;
+  string asset_type = 5;
+  double price = 6;
+  string rbics_economy = 7;
+  string rbics_sector = 8;
+  string rbics_subsector = 9;
+  string rbics_industry_group = 10;
+  string rbics_industry = 11;
+  string rbics_subindustry = 12;
+  string condition_values = 13;     // optional display string for condition values
+}
+
+message RunScanResponse {
+  repeated ScanMatch matches = 1;
+  string error_message = 2;        // set if scan failed
+}
+
 // PriceService provides read-only access to the price database.
 service PriceService {
   rpc GetStockMetadataMap(GetStockMetadataMapRequest) returns (GetStockMetadataMapResponse);
@@ -188,4 +235,5 @@ service PriceService {
   rpc ScanStaleWeekly(ScanStaleWeeklyRequest) returns (ScanStaleWeeklyResponse);
   rpc ScanStaleHourly(ScanStaleHourlyRequest) returns (ScanStaleHourlyResponse);
   rpc GetHourlyDataQuality(GetHourlyDataQualityRequest) returns (GetHourlyDataQualityResponse);
+  rpc RunScan(RunScanRequest) returns (RunScanResponse);
 }

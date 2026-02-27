@@ -11,6 +11,90 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type CopyDailyPricesParams struct {
+	Ticker string
+	Date   pgtype.Date
+	Open   pgtype.Float8
+	High   pgtype.Float8
+	Low    pgtype.Float8
+	Close  float64
+	Volume pgtype.Int8
+}
+
+type CopyHourlyPricesParams struct {
+	Ticker   string
+	Datetime pgtype.Timestamptz
+	Open     pgtype.Float8
+	High     pgtype.Float8
+	Low      pgtype.Float8
+	Close    float64
+	Volume   pgtype.Int8
+}
+
+type CopyWeeklyPricesParams struct {
+	Ticker     string
+	WeekEnding pgtype.Date
+	Open       pgtype.Float8
+	High       pgtype.Float8
+	Low        pgtype.Float8
+	Close      float64
+	Volume     pgtype.Int8
+}
+
+const getDailyPricesBatch = `-- name: GetDailyPricesBatch :many
+
+SELECT ticker, date, open, high, low, close, volume
+FROM daily_prices
+WHERE ticker = ANY($1::text[])
+  AND date >= $2::date
+ORDER BY ticker, date ASC
+`
+
+type GetDailyPricesBatchParams struct {
+	Tickers   []string
+	SinceDate pgtype.Date
+}
+
+type GetDailyPricesBatchRow struct {
+	Ticker string
+	Date   pgtype.Date
+	Open   pgtype.Float8
+	High   pgtype.Float8
+	Low    pgtype.Float8
+	Close  float64
+	Volume pgtype.Int8
+}
+
+// Scheduler batch price loading: loads recent prices for multiple tickers.
+// Go code handles per-ticker truncation to the desired lookback window.
+func (q *Queries) GetDailyPricesBatch(ctx context.Context, arg GetDailyPricesBatchParams) ([]GetDailyPricesBatchRow, error) {
+	rows, err := q.db.Query(ctx, getDailyPricesBatch, arg.Tickers, arg.SinceDate)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetDailyPricesBatchRow
+	for rows.Next() {
+		var i GetDailyPricesBatchRow
+		if err := rows.Scan(
+			&i.Ticker,
+			&i.Date,
+			&i.Open,
+			&i.High,
+			&i.Low,
+			&i.Close,
+			&i.Volume,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getDailyStats = `-- name: GetDailyStats :one
 
 SELECT
@@ -41,6 +125,57 @@ func (q *Queries) GetDailyStats(ctx context.Context) (GetDailyStatsRow, error) {
 	return i, err
 }
 
+const getHourlyPricesBatch = `-- name: GetHourlyPricesBatch :many
+SELECT ticker, datetime, open, high, low, close, volume
+FROM hourly_prices
+WHERE ticker = ANY($1::text[])
+  AND datetime >= $2::timestamptz
+ORDER BY ticker, datetime ASC
+`
+
+type GetHourlyPricesBatchParams struct {
+	Tickers []string
+	SinceTs pgtype.Timestamptz
+}
+
+type GetHourlyPricesBatchRow struct {
+	Ticker   string
+	Datetime pgtype.Timestamptz
+	Open     pgtype.Float8
+	High     pgtype.Float8
+	Low      pgtype.Float8
+	Close    float64
+	Volume   pgtype.Int8
+}
+
+func (q *Queries) GetHourlyPricesBatch(ctx context.Context, arg GetHourlyPricesBatchParams) ([]GetHourlyPricesBatchRow, error) {
+	rows, err := q.db.Query(ctx, getHourlyPricesBatch, arg.Tickers, arg.SinceTs)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetHourlyPricesBatchRow
+	for rows.Next() {
+		var i GetHourlyPricesBatchRow
+		if err := rows.Scan(
+			&i.Ticker,
+			&i.Datetime,
+			&i.Open,
+			&i.High,
+			&i.Low,
+			&i.Close,
+			&i.Volume,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getHourlyStats = `-- name: GetHourlyStats :one
 SELECT
     COUNT(*)::bigint AS record_count,
@@ -67,6 +202,57 @@ func (q *Queries) GetHourlyStats(ctx context.Context) (GetHourlyStatsRow, error)
 		&i.MaxDatetime,
 	)
 	return i, err
+}
+
+const getWeeklyPricesBatch = `-- name: GetWeeklyPricesBatch :many
+SELECT ticker, week_ending, open, high, low, close, volume
+FROM weekly_prices
+WHERE ticker = ANY($1::text[])
+  AND week_ending >= $2::date
+ORDER BY ticker, week_ending ASC
+`
+
+type GetWeeklyPricesBatchParams struct {
+	Tickers   []string
+	SinceDate pgtype.Date
+}
+
+type GetWeeklyPricesBatchRow struct {
+	Ticker     string
+	WeekEnding pgtype.Date
+	Open       pgtype.Float8
+	High       pgtype.Float8
+	Low        pgtype.Float8
+	Close      float64
+	Volume     pgtype.Int8
+}
+
+func (q *Queries) GetWeeklyPricesBatch(ctx context.Context, arg GetWeeklyPricesBatchParams) ([]GetWeeklyPricesBatchRow, error) {
+	rows, err := q.db.Query(ctx, getWeeklyPricesBatch, arg.Tickers, arg.SinceDate)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetWeeklyPricesBatchRow
+	for rows.Next() {
+		var i GetWeeklyPricesBatchRow
+		if err := rows.Scan(
+			&i.Ticker,
+			&i.WeekEnding,
+			&i.Open,
+			&i.High,
+			&i.Low,
+			&i.Close,
+			&i.Volume,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const getWeeklyStats = `-- name: GetWeeklyStats :one
@@ -635,4 +821,111 @@ func (q *Queries) StaleWeeklyTickers(ctx context.Context, arg StaleWeeklyTickers
 		return nil, err
 	}
 	return items, nil
+}
+
+const upsertDailyPrice = `-- name: UpsertDailyPrice :exec
+
+INSERT INTO daily_prices (ticker, date, open, high, low, close, volume, updated_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
+ON CONFLICT (ticker, date) DO UPDATE SET
+    open = EXCLUDED.open,
+    high = EXCLUDED.high,
+    low = EXCLUDED.low,
+    close = EXCLUDED.close,
+    volume = EXCLUDED.volume,
+    updated_at = NOW()
+`
+
+type UpsertDailyPriceParams struct {
+	Ticker string
+	Date   pgtype.Date
+	Open   pgtype.Float8
+	High   pgtype.Float8
+	Low    pgtype.Float8
+	Close  float64
+	Volume pgtype.Int8
+}
+
+// Scheduler price upserts: insert or update a single price row.
+func (q *Queries) UpsertDailyPrice(ctx context.Context, arg UpsertDailyPriceParams) error {
+	_, err := q.db.Exec(ctx, upsertDailyPrice,
+		arg.Ticker,
+		arg.Date,
+		arg.Open,
+		arg.High,
+		arg.Low,
+		arg.Close,
+		arg.Volume,
+	)
+	return err
+}
+
+const upsertHourlyPrice = `-- name: UpsertHourlyPrice :exec
+INSERT INTO hourly_prices (ticker, datetime, open, high, low, close, volume, updated_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
+ON CONFLICT (ticker, datetime) DO UPDATE SET
+    open = EXCLUDED.open,
+    high = EXCLUDED.high,
+    low = EXCLUDED.low,
+    close = EXCLUDED.close,
+    volume = EXCLUDED.volume,
+    updated_at = NOW()
+`
+
+type UpsertHourlyPriceParams struct {
+	Ticker   string
+	Datetime pgtype.Timestamptz
+	Open     pgtype.Float8
+	High     pgtype.Float8
+	Low      pgtype.Float8
+	Close    float64
+	Volume   pgtype.Int8
+}
+
+func (q *Queries) UpsertHourlyPrice(ctx context.Context, arg UpsertHourlyPriceParams) error {
+	_, err := q.db.Exec(ctx, upsertHourlyPrice,
+		arg.Ticker,
+		arg.Datetime,
+		arg.Open,
+		arg.High,
+		arg.Low,
+		arg.Close,
+		arg.Volume,
+	)
+	return err
+}
+
+const upsertWeeklyPrice = `-- name: UpsertWeeklyPrice :exec
+INSERT INTO weekly_prices (ticker, week_ending, open, high, low, close, volume, updated_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
+ON CONFLICT (ticker, week_ending) DO UPDATE SET
+    open = EXCLUDED.open,
+    high = EXCLUDED.high,
+    low = EXCLUDED.low,
+    close = EXCLUDED.close,
+    volume = EXCLUDED.volume,
+    updated_at = NOW()
+`
+
+type UpsertWeeklyPriceParams struct {
+	Ticker     string
+	WeekEnding pgtype.Date
+	Open       pgtype.Float8
+	High       pgtype.Float8
+	Low        pgtype.Float8
+	Close      float64
+	Volume     pgtype.Int8
+}
+
+func (q *Queries) UpsertWeeklyPrice(ctx context.Context, arg UpsertWeeklyPriceParams) error {
+	_, err := q.db.Exec(ctx, upsertWeeklyPrice,
+		arg.Ticker,
+		arg.WeekEnding,
+		arg.Open,
+		arg.High,
+		arg.Low,
+		arg.Close,
+		arg.Volume,
+	)
+	return err
 }

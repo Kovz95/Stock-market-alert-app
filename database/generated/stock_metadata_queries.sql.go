@@ -29,3 +29,80 @@ func (q *Queries) GetStockEconomyBySymbol(ctx context.Context, symbol string) (G
 	err := row.Scan(&i.Symbol, &i.RbicsEconomy, &i.AssetType)
 	return i, err
 }
+
+const getStockMetadataBySymbol = `-- name: GetStockMetadataBySymbol :one
+SELECT symbol, name, isin, exchange, country, rbics_economy, asset_type
+FROM stock_metadata
+WHERE symbol = $1
+`
+
+type GetStockMetadataBySymbolRow struct {
+	Symbol       string
+	Name         pgtype.Text
+	Isin         pgtype.Text
+	Exchange     pgtype.Text
+	Country      pgtype.Text
+	RbicsEconomy pgtype.Text
+	AssetType    pgtype.Text
+}
+
+func (q *Queries) GetStockMetadataBySymbol(ctx context.Context, symbol string) (GetStockMetadataBySymbolRow, error) {
+	row := q.db.QueryRow(ctx, getStockMetadataBySymbol, symbol)
+	var i GetStockMetadataBySymbolRow
+	err := row.Scan(
+		&i.Symbol,
+		&i.Name,
+		&i.Isin,
+		&i.Exchange,
+		&i.Country,
+		&i.RbicsEconomy,
+		&i.AssetType,
+	)
+	return i, err
+}
+
+const listStockMetadataForAlerts = `-- name: ListStockMetadataForAlerts :many
+
+SELECT symbol, name, isin, exchange, country, rbics_economy, asset_type
+FROM stock_metadata
+ORDER BY symbol
+`
+
+type ListStockMetadataForAlertsRow struct {
+	Symbol       string
+	Name         pgtype.Text
+	Isin         pgtype.Text
+	Exchange     pgtype.Text
+	Country      pgtype.Text
+	RbicsEconomy pgtype.Text
+	AssetType    pgtype.Text
+}
+
+// Scheduler: load metadata for all tickers needed by alert formatting and Discord routing.
+func (q *Queries) ListStockMetadataForAlerts(ctx context.Context) ([]ListStockMetadataForAlertsRow, error) {
+	rows, err := q.db.Query(ctx, listStockMetadataForAlerts)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListStockMetadataForAlertsRow
+	for rows.Next() {
+		var i ListStockMetadataForAlertsRow
+		if err := rows.Scan(
+			&i.Symbol,
+			&i.Name,
+			&i.Isin,
+			&i.Exchange,
+			&i.Country,
+			&i.RbicsEconomy,
+			&i.AssetType,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}

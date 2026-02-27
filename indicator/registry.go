@@ -1,0 +1,192 @@
+package indicator
+
+import (
+	"fmt"
+	"strings"
+)
+
+// IndicatorFunc computes an indicator from OHLCV data and returns a float64
+// series. The params map holds parsed keyword arguments from the alert
+// expression (e.g. {"timeperiod": 14, "input": "Close"}).
+//
+// The returned slice must have the same length as the OHLCV input. Leading
+// values that cannot be computed should be math.NaN().
+type IndicatorFunc func(data *OHLCV, params map[string]interface{}) ([]float64, error)
+
+// Registry maps lowercase indicator names to their compute functions.
+type Registry struct {
+	funcs map[string]IndicatorFunc
+}
+
+// NewRegistry creates an empty Registry.
+func NewRegistry() *Registry {
+	return &Registry{funcs: make(map[string]IndicatorFunc)}
+}
+
+// Register adds an indicator function under the given name (stored lowercase).
+func (r *Registry) Register(name string, fn IndicatorFunc) {
+	r.funcs[strings.ToLower(name)] = fn
+}
+
+// Get looks up an indicator by name (case-insensitive).
+func (r *Registry) Get(name string) (IndicatorFunc, bool) {
+	fn, ok := r.funcs[strings.ToLower(name)]
+	return fn, ok
+}
+
+// MustGet looks up an indicator by name and panics if not found.
+func (r *Registry) MustGet(name string) IndicatorFunc {
+	fn, ok := r.Get(name)
+	if !ok {
+		panic(fmt.Sprintf("indicator %q not registered", name))
+	}
+	return fn
+}
+
+// Names returns all registered indicator names (lowercase, sorted).
+func (r *Registry) Names() []string {
+	names := make([]string, 0, len(r.funcs))
+	for k := range r.funcs {
+		names = append(names, k)
+	}
+	return names
+}
+
+// NewDefaultRegistry creates a Registry pre-populated with all available indicators.
+func NewDefaultRegistry() *Registry {
+	r := NewRegistry()
+
+	// Basic indicators (go-talib wrappers)
+	r.Register("sma", SMA)
+	r.Register("ema", EMA)
+	r.Register("rsi", RSI)
+	r.Register("volume_ratio", VolumeRatio)
+	r.Register("roc", ROC)
+	r.Register("atr", ATR)
+	r.Register("cci", CCI)
+	r.Register("willr", WILLR)
+
+	// Multi-output indicators
+	r.Register("macd", MACD)
+	r.Register("bbands", BBANDS)
+	r.Register("sar", SAR)
+
+	// Advanced indicators
+	r.Register("hma", HMA)
+	r.Register("frama", FRAMA)
+	r.Register("kama", KAMA)
+	r.Register("ewo", EWO)
+	r.Register("ma_spread_zscore", MASpreadZscore)
+	r.Register("harsi_flip", HARSIFlip)
+
+	// Slope indicators
+	r.Register("slope_sma", SlopeSMA)
+	r.Register("slope_ema", SlopeEMA)
+	r.Register("slope_hma", SlopeHMA)
+
+	// Supertrend
+	r.Register("supertrend", Supertrend)
+	r.Register("supertrend_upper", SupertrendUpper)
+	r.Register("supertrend_lower", SupertrendLower)
+
+	// Ichimoku
+	r.Register("ichimoku_conversion", IchimokuConversion)
+	r.Register("ichimoku_base", IchimokuBase)
+	r.Register("ichimoku_span_a", IchimokuSpanA)
+	r.Register("ichimoku_span_b", IchimokuSpanB)
+	r.Register("ichimoku_lagging", IchimokuLagging)
+	r.Register("ichimoku_cloud_top", IchimokuCloudTop)
+	r.Register("ichimoku_cloud_bottom", IchimokuCloudBottom)
+	r.Register("ichimoku_cloud_signal", IchimokuCloudSignal)
+
+	// Donchian
+	r.Register("donchian_upper", DonchianUpper)
+	r.Register("donchian_lower", DonchianLower)
+	r.Register("donchian_basis", DonchianBasis)
+	r.Register("donchian_width", DonchianWidth)
+	r.Register("donchian_position", DonchianPosition)
+
+	// Trend Magic
+	r.Register("trend_magic", TrendMagic)
+	r.Register("trend_magic_signal", TrendMagicSignal)
+
+	// Kalman
+	r.Register("kalman_roc_stoch", KalmanROCStoch)
+	r.Register("kalman_roc_stoch_signal", KalmanROCStochSignal)
+	r.Register("kalman_roc_stoch_crossover", KalmanROCStochCrossover)
+
+	// OBV MACD
+	r.Register("obv_macd", OBVMACD)
+	r.Register("obv_macd_signal", OBVMACDSignal)
+
+	// Pivot S/R
+	r.Register("pivot_sr", PivotSR)
+	r.Register("pivot_sr_crossover", PivotSRCrossover)
+	r.Register("pivot_sr_proximity", PivotSRProximity)
+
+	return r
+}
+
+// --- Parameter helpers ---
+
+// paramInt extracts an int parameter with a default value.
+func paramInt(params map[string]interface{}, key string, def int) int {
+	if v, ok := params[key]; ok {
+		switch val := v.(type) {
+		case int:
+			return val
+		case float64:
+			return int(val)
+		case int64:
+			return int(val)
+		}
+	}
+	return def
+}
+
+// paramFloat extracts a float64 parameter with a default value.
+func paramFloat(params map[string]interface{}, key string, def float64) float64 {
+	if v, ok := params[key]; ok {
+		switch val := v.(type) {
+		case float64:
+			return val
+		case int:
+			return float64(val)
+		case int64:
+			return float64(val)
+		}
+	}
+	return def
+}
+
+// paramString extracts a string parameter with a default value.
+func paramString(params map[string]interface{}, key string, def string) string {
+	if v, ok := params[key]; ok {
+		if s, ok := v.(string); ok {
+			return s
+		}
+	}
+	return def
+}
+
+// paramBool extracts a bool parameter with a default value.
+func paramBool(params map[string]interface{}, key string, def bool) bool {
+	if v, ok := params[key]; ok {
+		if b, ok := v.(bool); ok {
+			return b
+		}
+	}
+	return def
+}
+
+// resolveInput returns the price series to use based on the "input" parameter.
+// If "input" is a column name (Close, Open, High, Low, Volume), returns that column.
+// Otherwise returns Close by default.
+func resolveInput(data *OHLCV, params map[string]interface{}) []float64 {
+	input := paramString(params, "input", "Close")
+	col, err := data.Column(input)
+	if err != nil {
+		return data.Close
+	}
+	return col
+}

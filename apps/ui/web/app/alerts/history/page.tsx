@@ -25,9 +25,11 @@ import { formatAuditDateTime } from "@/app/alerts/audit/_components/formatAuditD
 import { formatCondition } from "./_components/formatCondition";
 import { getAlertConditionStrings } from "./_components/alertConditionStrings";
 import type { AlertData } from "@/actions/alert-actions";
-import type { AuditHistoryRow } from "@/actions/alert-history-actions";
-import type { StockSearchResult } from "@/actions/alert-history-actions";
-import type { Portfolio } from "@/actions/alert-history-actions";
+import type {
+  AuditHistoryRow,
+  StockSearchResult,
+  Portfolio,
+} from "../../../../../../gen/ts/alert/v1/alert";
 import { SearchIcon, FolderIcon, ChevronDownIcon } from "lucide-react";
 
 const POPULAR_TICKERS = ["AAPL", "MSFT", "GOOGL", "AMZN", "TSLA"];

@@ -91,6 +91,104 @@ services:
       timeout: 5s
       retries: 5
 
+  # Scheduler: cron that enqueues "enqueue" task every 15 min to Redis (no DB needed)
+  scheduler:
+    build:
+      context: .
+      dockerfile: apps/scheduler/Dockerfile
+    container_name: stockalert-scheduler
+    restart: unless-stopped
+    entrypoint: ["/scheduler"]
+    environment:
+      - REDIS_ADDR=redis:6379
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  # Worker that only processes enqueue tasks (enqueues daily/weekly/hourly for due exchanges)
+  worker_enqueue:
+    build:
+      context: .
+      dockerfile: apps/scheduler/Dockerfile
+    container_name: stockalert-worker-enqueue
+    restart: unless-stopped
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-stockalertapp}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-stockalertapp}
+      - REDIS_ADDR=redis:6379
+      - FMP_API_KEY=${FMP_API_KEY:-}
+      - WORKER_TASK_TYPES=enqueue
+      - DISCORD_WEBHOOK_DAILY=${DISCORD_WEBHOOK_DAILY:-}
+      - DISCORD_WEBHOOK_WEEKLY=${DISCORD_WEBHOOK_WEEKLY:-}
+      - DISCORD_WEBHOOK_HOURLY=${DISCORD_WEBHOOK_HOURLY:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # Worker that only processes daily jobs
+  worker_daily:
+    build:
+      context: .
+      dockerfile: apps/scheduler/Dockerfile
+    container_name: stockalert-worker-daily
+    restart: unless-stopped
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-stockalertapp}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-stockalertapp}
+      - REDIS_ADDR=redis:6379
+      - FMP_API_KEY=${FMP_API_KEY:-}
+      - WORKER_TASK_TYPES=daily
+      - DISCORD_WEBHOOK_DAILY=${DISCORD_WEBHOOK_DAILY:-}
+      - DISCORD_WEBHOOK_WEEKLY=${DISCORD_WEBHOOK_WEEKLY:-}
+      - DISCORD_WEBHOOK_HOURLY=${DISCORD_WEBHOOK_HOURLY:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # Worker that only processes weekly jobs
+  worker_weekly:
+    build:
+      context: .
+      dockerfile: apps/scheduler/Dockerfile
+    container_name: stockalert-worker-weekly
+    restart: unless-stopped
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-stockalertapp}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-stockalertapp}
+      - REDIS_ADDR=redis:6379
+      - FMP_API_KEY=${FMP_API_KEY:-}
+      - WORKER_TASK_TYPES=weekly
+      - DISCORD_WEBHOOK_DAILY=${DISCORD_WEBHOOK_DAILY:-}
+      - DISCORD_WEBHOOK_WEEKLY=${DISCORD_WEBHOOK_WEEKLY:-}
+      - DISCORD_WEBHOOK_HOURLY=${DISCORD_WEBHOOK_HOURLY:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # Worker that only processes hourly jobs
+  worker_hourly:
+    build:
+      context: .
+      dockerfile: apps/scheduler/Dockerfile
+    container_name: stockalert-worker-hourly
+    restart: unless-stopped
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-stockalertapp}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-stockalertapp}
+      - REDIS_ADDR=redis:6379
+      - FMP_API_KEY=${FMP_API_KEY:-}
+      - WORKER_TASK_TYPES=hourly
+      - DISCORD_WEBHOOK_DAILY=${DISCORD_WEBHOOK_DAILY:-}
+      - DISCORD_WEBHOOK_WEEKLY=${DISCORD_WEBHOOK_WEEKLY:-}
+      - DISCORD_WEBHOOK_HOURLY=${DISCORD_WEBHOOK_HOURLY:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
   envoy:
     image: envoyproxy/envoy:v1.31-latest
     container_name: stockalert-envoy
@@ -103,6 +201,8 @@ services:
       alert_service:
         condition: service_healthy
       discord_service:
+        condition: service_healthy
+      price_service:
         condition: service_healthy
 
   autoheal:

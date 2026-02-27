@@ -1572,6 +1572,393 @@ func (x *GetHourlyDataQualityResponse) GetWorstCalendarGapHours() float64 {
 	return 0
 }
 
+// SymbolFilter filters the universe for RunScan when tickers is not set.
+type SymbolFilter struct {
+	state              protoimpl.MessageState `protogen:"open.v1"`
+	AssetTypes         []string               `protobuf:"bytes,1,rep,name=asset_types,json=assetTypes,proto3" json:"asset_types,omitempty"` // e.g. "Stock", "ETF"
+	Countries          []string               `protobuf:"bytes,2,rep,name=countries,proto3" json:"countries,omitempty"`
+	Exchanges          []string               `protobuf:"bytes,3,rep,name=exchanges,proto3" json:"exchanges,omitempty"`
+	RbicsEconomy       []string               `protobuf:"bytes,4,rep,name=rbics_economy,json=rbicsEconomy,proto3" json:"rbics_economy,omitempty"`
+	RbicsSector        []string               `protobuf:"bytes,5,rep,name=rbics_sector,json=rbicsSector,proto3" json:"rbics_sector,omitempty"`
+	RbicsSubsector     []string               `protobuf:"bytes,6,rep,name=rbics_subsector,json=rbicsSubsector,proto3" json:"rbics_subsector,omitempty"`
+	RbicsIndustryGroup []string               `protobuf:"bytes,7,rep,name=rbics_industry_group,json=rbicsIndustryGroup,proto3" json:"rbics_industry_group,omitempty"`
+	RbicsIndustry      []string               `protobuf:"bytes,8,rep,name=rbics_industry,json=rbicsIndustry,proto3" json:"rbics_industry,omitempty"`
+	RbicsSubindustry   []string               `protobuf:"bytes,9,rep,name=rbics_subindustry,json=rbicsSubindustry,proto3" json:"rbics_subindustry,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
+}
+
+func (x *SymbolFilter) Reset() {
+	*x = SymbolFilter{}
+	mi := &file_price_v1_price_proto_msgTypes[22]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SymbolFilter) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SymbolFilter) ProtoMessage() {}
+
+func (x *SymbolFilter) ProtoReflect() protoreflect.Message {
+	mi := &file_price_v1_price_proto_msgTypes[22]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SymbolFilter.ProtoReflect.Descriptor instead.
+func (*SymbolFilter) Descriptor() ([]byte, []int) {
+	return file_price_v1_price_proto_rawDescGZIP(), []int{22}
+}
+
+func (x *SymbolFilter) GetAssetTypes() []string {
+	if x != nil {
+		return x.AssetTypes
+	}
+	return nil
+}
+
+func (x *SymbolFilter) GetCountries() []string {
+	if x != nil {
+		return x.Countries
+	}
+	return nil
+}
+
+func (x *SymbolFilter) GetExchanges() []string {
+	if x != nil {
+		return x.Exchanges
+	}
+	return nil
+}
+
+func (x *SymbolFilter) GetRbicsEconomy() []string {
+	if x != nil {
+		return x.RbicsEconomy
+	}
+	return nil
+}
+
+func (x *SymbolFilter) GetRbicsSector() []string {
+	if x != nil {
+		return x.RbicsSector
+	}
+	return nil
+}
+
+func (x *SymbolFilter) GetRbicsSubsector() []string {
+	if x != nil {
+		return x.RbicsSubsector
+	}
+	return nil
+}
+
+func (x *SymbolFilter) GetRbicsIndustryGroup() []string {
+	if x != nil {
+		return x.RbicsIndustryGroup
+	}
+	return nil
+}
+
+func (x *SymbolFilter) GetRbicsIndustry() []string {
+	if x != nil {
+		return x.RbicsIndustry
+	}
+	return nil
+}
+
+func (x *SymbolFilter) GetRbicsSubindustry() []string {
+	if x != nil {
+		return x.RbicsSubindustry
+	}
+	return nil
+}
+
+// RunScanRequest runs a single-symbol scan. Either tickers or symbol_filter is used.
+type RunScanRequest struct {
+	state            protoimpl.MessageState `protogen:"open.v1"`
+	Timeframe        Timeframe              `protobuf:"varint,1,opt,name=timeframe,proto3,enum=stockalert.price.v1.Timeframe" json:"timeframe,omitempty"`
+	Conditions       []string               `protobuf:"bytes,2,rep,name=conditions,proto3" json:"conditions,omitempty"`
+	CombinationLogic string                 `protobuf:"bytes,3,opt,name=combination_logic,json=combinationLogic,proto3" json:"combination_logic,omitempty"` // e.g. "AND", "OR", "1 AND (2 OR 3)"
+	Tickers          []string               `protobuf:"bytes,4,rep,name=tickers,proto3" json:"tickers,omitempty"`                                           // if non-empty, scan only these; else use symbol_filter
+	SymbolFilter     *SymbolFilter          `protobuf:"bytes,5,opt,name=symbol_filter,json=symbolFilter,proto3" json:"symbol_filter,omitempty"`
+	MaxTickers       int32                  `protobuf:"varint,6,opt,name=max_tickers,json=maxTickers,proto3" json:"max_tickers,omitempty"` // cap on symbols to scan (e.g. 20000), 0 = no limit
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *RunScanRequest) Reset() {
+	*x = RunScanRequest{}
+	mi := &file_price_v1_price_proto_msgTypes[23]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RunScanRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RunScanRequest) ProtoMessage() {}
+
+func (x *RunScanRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_price_v1_price_proto_msgTypes[23]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RunScanRequest.ProtoReflect.Descriptor instead.
+func (*RunScanRequest) Descriptor() ([]byte, []int) {
+	return file_price_v1_price_proto_rawDescGZIP(), []int{23}
+}
+
+func (x *RunScanRequest) GetTimeframe() Timeframe {
+	if x != nil {
+		return x.Timeframe
+	}
+	return Timeframe_TIMEFRAME_UNSPECIFIED
+}
+
+func (x *RunScanRequest) GetConditions() []string {
+	if x != nil {
+		return x.Conditions
+	}
+	return nil
+}
+
+func (x *RunScanRequest) GetCombinationLogic() string {
+	if x != nil {
+		return x.CombinationLogic
+	}
+	return ""
+}
+
+func (x *RunScanRequest) GetTickers() []string {
+	if x != nil {
+		return x.Tickers
+	}
+	return nil
+}
+
+func (x *RunScanRequest) GetSymbolFilter() *SymbolFilter {
+	if x != nil {
+		return x.SymbolFilter
+	}
+	return nil
+}
+
+func (x *RunScanRequest) GetMaxTickers() int32 {
+	if x != nil {
+		return x.MaxTickers
+	}
+	return 0
+}
+
+// ScanMatch is one symbol that matched the scan conditions.
+type ScanMatch struct {
+	state              protoimpl.MessageState `protogen:"open.v1"`
+	Ticker             string                 `protobuf:"bytes,1,opt,name=ticker,proto3" json:"ticker,omitempty"`
+	Name               string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	Exchange           string                 `protobuf:"bytes,3,opt,name=exchange,proto3" json:"exchange,omitempty"`
+	Country            string                 `protobuf:"bytes,4,opt,name=country,proto3" json:"country,omitempty"`
+	AssetType          string                 `protobuf:"bytes,5,opt,name=asset_type,json=assetType,proto3" json:"asset_type,omitempty"`
+	Price              float64                `protobuf:"fixed64,6,opt,name=price,proto3" json:"price,omitempty"`
+	RbicsEconomy       string                 `protobuf:"bytes,7,opt,name=rbics_economy,json=rbicsEconomy,proto3" json:"rbics_economy,omitempty"`
+	RbicsSector        string                 `protobuf:"bytes,8,opt,name=rbics_sector,json=rbicsSector,proto3" json:"rbics_sector,omitempty"`
+	RbicsSubsector     string                 `protobuf:"bytes,9,opt,name=rbics_subsector,json=rbicsSubsector,proto3" json:"rbics_subsector,omitempty"`
+	RbicsIndustryGroup string                 `protobuf:"bytes,10,opt,name=rbics_industry_group,json=rbicsIndustryGroup,proto3" json:"rbics_industry_group,omitempty"`
+	RbicsIndustry      string                 `protobuf:"bytes,11,opt,name=rbics_industry,json=rbicsIndustry,proto3" json:"rbics_industry,omitempty"`
+	RbicsSubindustry   string                 `protobuf:"bytes,12,opt,name=rbics_subindustry,json=rbicsSubindustry,proto3" json:"rbics_subindustry,omitempty"`
+	ConditionValues    string                 `protobuf:"bytes,13,opt,name=condition_values,json=conditionValues,proto3" json:"condition_values,omitempty"` // optional display string for condition values
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
+}
+
+func (x *ScanMatch) Reset() {
+	*x = ScanMatch{}
+	mi := &file_price_v1_price_proto_msgTypes[24]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ScanMatch) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ScanMatch) ProtoMessage() {}
+
+func (x *ScanMatch) ProtoReflect() protoreflect.Message {
+	mi := &file_price_v1_price_proto_msgTypes[24]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ScanMatch.ProtoReflect.Descriptor instead.
+func (*ScanMatch) Descriptor() ([]byte, []int) {
+	return file_price_v1_price_proto_rawDescGZIP(), []int{24}
+}
+
+func (x *ScanMatch) GetTicker() string {
+	if x != nil {
+		return x.Ticker
+	}
+	return ""
+}
+
+func (x *ScanMatch) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *ScanMatch) GetExchange() string {
+	if x != nil {
+		return x.Exchange
+	}
+	return ""
+}
+
+func (x *ScanMatch) GetCountry() string {
+	if x != nil {
+		return x.Country
+	}
+	return ""
+}
+
+func (x *ScanMatch) GetAssetType() string {
+	if x != nil {
+		return x.AssetType
+	}
+	return ""
+}
+
+func (x *ScanMatch) GetPrice() float64 {
+	if x != nil {
+		return x.Price
+	}
+	return 0
+}
+
+func (x *ScanMatch) GetRbicsEconomy() string {
+	if x != nil {
+		return x.RbicsEconomy
+	}
+	return ""
+}
+
+func (x *ScanMatch) GetRbicsSector() string {
+	if x != nil {
+		return x.RbicsSector
+	}
+	return ""
+}
+
+func (x *ScanMatch) GetRbicsSubsector() string {
+	if x != nil {
+		return x.RbicsSubsector
+	}
+	return ""
+}
+
+func (x *ScanMatch) GetRbicsIndustryGroup() string {
+	if x != nil {
+		return x.RbicsIndustryGroup
+	}
+	return ""
+}
+
+func (x *ScanMatch) GetRbicsIndustry() string {
+	if x != nil {
+		return x.RbicsIndustry
+	}
+	return ""
+}
+
+func (x *ScanMatch) GetRbicsSubindustry() string {
+	if x != nil {
+		return x.RbicsSubindustry
+	}
+	return ""
+}
+
+func (x *ScanMatch) GetConditionValues() string {
+	if x != nil {
+		return x.ConditionValues
+	}
+	return ""
+}
+
+type RunScanResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Matches       []*ScanMatch           `protobuf:"bytes,1,rep,name=matches,proto3" json:"matches,omitempty"`
+	ErrorMessage  string                 `protobuf:"bytes,2,opt,name=error_message,json=errorMessage,proto3" json:"error_message,omitempty"` // set if scan failed
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RunScanResponse) Reset() {
+	*x = RunScanResponse{}
+	mi := &file_price_v1_price_proto_msgTypes[25]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RunScanResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RunScanResponse) ProtoMessage() {}
+
+func (x *RunScanResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_price_v1_price_proto_msgTypes[25]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RunScanResponse.ProtoReflect.Descriptor instead.
+func (*RunScanResponse) Descriptor() ([]byte, []int) {
+	return file_price_v1_price_proto_rawDescGZIP(), []int{25}
+}
+
+func (x *RunScanResponse) GetMatches() []*ScanMatch {
+	if x != nil {
+		return x.Matches
+	}
+	return nil
+}
+
+func (x *RunScanResponse) GetErrorMessage() string {
+	if x != nil {
+		return x.ErrorMessage
+	}
+	return ""
+}
+
 var File_price_v1_price_proto protoreflect.FileDescriptor
 
 const file_price_v1_price_proto_rawDesc = "" +
@@ -1698,7 +2085,47 @@ const file_price_v1_price_proto_rawDesc = "" +
 	"\vgap_tickers\x18\x04 \x01(\x05R\n" +
 	"gapTickers\x12&\n" +
 	"\x0fworst_gap_hours\x18\x05 \x01(\x01R\rworstGapHours\x127\n" +
-	"\x18worst_calendar_gap_hours\x18\x06 \x01(\x01R\x15worstCalendarGapHours*g\n" +
+	"\x18worst_calendar_gap_hours\x18\x06 \x01(\x01R\x15worstCalendarGapHours\"\xe2\x02\n" +
+	"\fSymbolFilter\x12\x1f\n" +
+	"\vasset_types\x18\x01 \x03(\tR\n" +
+	"assetTypes\x12\x1c\n" +
+	"\tcountries\x18\x02 \x03(\tR\tcountries\x12\x1c\n" +
+	"\texchanges\x18\x03 \x03(\tR\texchanges\x12#\n" +
+	"\rrbics_economy\x18\x04 \x03(\tR\frbicsEconomy\x12!\n" +
+	"\frbics_sector\x18\x05 \x03(\tR\vrbicsSector\x12'\n" +
+	"\x0frbics_subsector\x18\x06 \x03(\tR\x0erbicsSubsector\x120\n" +
+	"\x14rbics_industry_group\x18\a \x03(\tR\x12rbicsIndustryGroup\x12%\n" +
+	"\x0erbics_industry\x18\b \x03(\tR\rrbicsIndustry\x12+\n" +
+	"\x11rbics_subindustry\x18\t \x03(\tR\x10rbicsSubindustry\"\x9e\x02\n" +
+	"\x0eRunScanRequest\x12<\n" +
+	"\ttimeframe\x18\x01 \x01(\x0e2\x1e.stockalert.price.v1.TimeframeR\ttimeframe\x12\x1e\n" +
+	"\n" +
+	"conditions\x18\x02 \x03(\tR\n" +
+	"conditions\x12+\n" +
+	"\x11combination_logic\x18\x03 \x01(\tR\x10combinationLogic\x12\x18\n" +
+	"\atickers\x18\x04 \x03(\tR\atickers\x12F\n" +
+	"\rsymbol_filter\x18\x05 \x01(\v2!.stockalert.price.v1.SymbolFilterR\fsymbolFilter\x12\x1f\n" +
+	"\vmax_tickers\x18\x06 \x01(\x05R\n" +
+	"maxTickers\"\xc4\x03\n" +
+	"\tScanMatch\x12\x16\n" +
+	"\x06ticker\x18\x01 \x01(\tR\x06ticker\x12\x12\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\x12\x1a\n" +
+	"\bexchange\x18\x03 \x01(\tR\bexchange\x12\x18\n" +
+	"\acountry\x18\x04 \x01(\tR\acountry\x12\x1d\n" +
+	"\n" +
+	"asset_type\x18\x05 \x01(\tR\tassetType\x12\x14\n" +
+	"\x05price\x18\x06 \x01(\x01R\x05price\x12#\n" +
+	"\rrbics_economy\x18\a \x01(\tR\frbicsEconomy\x12!\n" +
+	"\frbics_sector\x18\b \x01(\tR\vrbicsSector\x12'\n" +
+	"\x0frbics_subsector\x18\t \x01(\tR\x0erbicsSubsector\x120\n" +
+	"\x14rbics_industry_group\x18\n" +
+	" \x01(\tR\x12rbicsIndustryGroup\x12%\n" +
+	"\x0erbics_industry\x18\v \x01(\tR\rrbicsIndustry\x12+\n" +
+	"\x11rbics_subindustry\x18\f \x01(\tR\x10rbicsSubindustry\x12)\n" +
+	"\x10condition_values\x18\r \x01(\tR\x0fconditionValues\"p\n" +
+	"\x0fRunScanResponse\x128\n" +
+	"\amatches\x18\x01 \x03(\v2\x1e.stockalert.price.v1.ScanMatchR\amatches\x12#\n" +
+	"\rerror_message\x18\x02 \x01(\tR\ferrorMessage*g\n" +
 	"\tTimeframe\x12\x19\n" +
 	"\x15TIMEFRAME_UNSPECIFIED\x10\x00\x12\x14\n" +
 	"\x10TIMEFRAME_HOURLY\x10\x01\x12\x13\n" +
@@ -1708,7 +2135,7 @@ const file_price_v1_price_proto_rawDesc = "" +
 	"\x16DAY_FILTER_UNSPECIFIED\x10\x00\x12\x12\n" +
 	"\x0eDAY_FILTER_ALL\x10\x01\x12\x17\n" +
 	"\x13DAY_FILTER_WEEKDAYS\x10\x02\x12\x17\n" +
-	"\x13DAY_FILTER_WEEKENDS\x10\x032\xa2\a\n" +
+	"\x13DAY_FILTER_WEEKENDS\x10\x032\xf8\a\n" +
 	"\fPriceService\x12x\n" +
 	"\x13GetStockMetadataMap\x12/.stockalert.price.v1.GetStockMetadataMapRequest\x1a0.stockalert.price.v1.GetStockMetadataMapResponse\x12{\n" +
 	"\x14GetFullStockMetadata\x120.stockalert.price.v1.GetFullStockMetadataRequest\x1a1.stockalert.price.v1.GetFullStockMetadataResponse\x12o\n" +
@@ -1717,7 +2144,8 @@ const file_price_v1_price_proto_rawDesc = "" +
 	"\x0eScanStaleDaily\x12*.stockalert.price.v1.ScanStaleDailyRequest\x1a+.stockalert.price.v1.ScanStaleDailyResponse\x12l\n" +
 	"\x0fScanStaleWeekly\x12+.stockalert.price.v1.ScanStaleWeeklyRequest\x1a,.stockalert.price.v1.ScanStaleWeeklyResponse\x12l\n" +
 	"\x0fScanStaleHourly\x12+.stockalert.price.v1.ScanStaleHourlyRequest\x1a,.stockalert.price.v1.ScanStaleHourlyResponse\x12{\n" +
-	"\x14GetHourlyDataQuality\x120.stockalert.price.v1.GetHourlyDataQualityRequest\x1a1.stockalert.price.v1.GetHourlyDataQualityResponseB\xb7\x01\n" +
+	"\x14GetHourlyDataQuality\x120.stockalert.price.v1.GetHourlyDataQualityRequest\x1a1.stockalert.price.v1.GetHourlyDataQualityResponse\x12T\n" +
+	"\aRunScan\x12#.stockalert.price.v1.RunScanRequest\x1a$.stockalert.price.v1.RunScanResponseB\xb7\x01\n" +
 	"\x17com.stockalert.price.v1B\n" +
 	"PriceProtoP\x01Z\"stockalert/gen/go/price/v1;pricev1\xa2\x02\x03SPX\xaa\x02\x13Stockalert.Price.V1\xca\x02\x13Stockalert\\Price\\V1\xe2\x02\x1fStockalert\\Price\\V1\\GPBMetadata\xea\x02\x15Stockalert::Price::V1b\x06proto3"
 
@@ -1734,7 +2162,7 @@ func file_price_v1_price_proto_rawDescGZIP() []byte {
 }
 
 var file_price_v1_price_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_price_v1_price_proto_msgTypes = make([]protoimpl.MessageInfo, 22)
+var file_price_v1_price_proto_msgTypes = make([]protoimpl.MessageInfo, 26)
 var file_price_v1_price_proto_goTypes = []any{
 	(Timeframe)(0),                       // 0: stockalert.price.v1.Timeframe
 	(DayFilter)(0),                       // 1: stockalert.price.v1.DayFilter
@@ -1760,53 +2188,62 @@ var file_price_v1_price_proto_goTypes = []any{
 	(*ScanStaleHourlyResponse)(nil),      // 21: stockalert.price.v1.ScanStaleHourlyResponse
 	(*GetHourlyDataQualityRequest)(nil),  // 22: stockalert.price.v1.GetHourlyDataQualityRequest
 	(*GetHourlyDataQualityResponse)(nil), // 23: stockalert.price.v1.GetHourlyDataQualityResponse
-	(*timestamppb.Timestamp)(nil),        // 24: google.protobuf.Timestamp
+	(*SymbolFilter)(nil),                 // 24: stockalert.price.v1.SymbolFilter
+	(*RunScanRequest)(nil),               // 25: stockalert.price.v1.RunScanRequest
+	(*ScanMatch)(nil),                    // 26: stockalert.price.v1.ScanMatch
+	(*RunScanResponse)(nil),              // 27: stockalert.price.v1.RunScanResponse
+	(*timestamppb.Timestamp)(nil),        // 28: google.protobuf.Timestamp
 }
 var file_price_v1_price_proto_depIdxs = []int32{
 	2,  // 0: stockalert.price.v1.GetStockMetadataMapResponse.items:type_name -> stockalert.price.v1.StockMetadata
-	24, // 1: stockalert.price.v1.FullStockMetadata.last_updated:type_name -> google.protobuf.Timestamp
+	28, // 1: stockalert.price.v1.FullStockMetadata.last_updated:type_name -> google.protobuf.Timestamp
 	5,  // 2: stockalert.price.v1.GetFullStockMetadataResponse.items:type_name -> stockalert.price.v1.FullStockMetadata
-	24, // 3: stockalert.price.v1.DatabaseStats.hourly_min:type_name -> google.protobuf.Timestamp
-	24, // 4: stockalert.price.v1.DatabaseStats.hourly_max:type_name -> google.protobuf.Timestamp
-	24, // 5: stockalert.price.v1.DatabaseStats.daily_min:type_name -> google.protobuf.Timestamp
-	24, // 6: stockalert.price.v1.DatabaseStats.daily_max:type_name -> google.protobuf.Timestamp
-	24, // 7: stockalert.price.v1.DatabaseStats.weekly_min:type_name -> google.protobuf.Timestamp
-	24, // 8: stockalert.price.v1.DatabaseStats.weekly_max:type_name -> google.protobuf.Timestamp
+	28, // 3: stockalert.price.v1.DatabaseStats.hourly_min:type_name -> google.protobuf.Timestamp
+	28, // 4: stockalert.price.v1.DatabaseStats.hourly_max:type_name -> google.protobuf.Timestamp
+	28, // 5: stockalert.price.v1.DatabaseStats.daily_min:type_name -> google.protobuf.Timestamp
+	28, // 6: stockalert.price.v1.DatabaseStats.daily_max:type_name -> google.protobuf.Timestamp
+	28, // 7: stockalert.price.v1.DatabaseStats.weekly_min:type_name -> google.protobuf.Timestamp
+	28, // 8: stockalert.price.v1.DatabaseStats.weekly_max:type_name -> google.protobuf.Timestamp
 	8,  // 9: stockalert.price.v1.GetDatabaseStatsResponse.stats:type_name -> stockalert.price.v1.DatabaseStats
-	24, // 10: stockalert.price.v1.PriceRow.time:type_name -> google.protobuf.Timestamp
+	28, // 10: stockalert.price.v1.PriceRow.time:type_name -> google.protobuf.Timestamp
 	0,  // 11: stockalert.price.v1.LoadPriceDataRequest.timeframe:type_name -> stockalert.price.v1.Timeframe
-	24, // 12: stockalert.price.v1.LoadPriceDataRequest.start_date:type_name -> google.protobuf.Timestamp
-	24, // 13: stockalert.price.v1.LoadPriceDataRequest.end_date:type_name -> google.protobuf.Timestamp
+	28, // 12: stockalert.price.v1.LoadPriceDataRequest.start_date:type_name -> google.protobuf.Timestamp
+	28, // 13: stockalert.price.v1.LoadPriceDataRequest.end_date:type_name -> google.protobuf.Timestamp
 	1,  // 14: stockalert.price.v1.LoadPriceDataRequest.day_filter:type_name -> stockalert.price.v1.DayFilter
 	11, // 15: stockalert.price.v1.LoadPriceDataResponse.rows:type_name -> stockalert.price.v1.PriceRow
-	24, // 16: stockalert.price.v1.StaleTickerRow.last_update:type_name -> google.protobuf.Timestamp
+	28, // 16: stockalert.price.v1.StaleTickerRow.last_update:type_name -> google.protobuf.Timestamp
 	14, // 17: stockalert.price.v1.ScanStaleDailyResponse.rows:type_name -> stockalert.price.v1.StaleTickerRow
 	14, // 18: stockalert.price.v1.ScanStaleWeeklyResponse.rows:type_name -> stockalert.price.v1.StaleTickerRow
-	24, // 19: stockalert.price.v1.StaleHourlyRow.last_hour:type_name -> google.protobuf.Timestamp
+	28, // 19: stockalert.price.v1.StaleHourlyRow.last_hour:type_name -> google.protobuf.Timestamp
 	19, // 20: stockalert.price.v1.ScanStaleHourlyResponse.rows:type_name -> stockalert.price.v1.StaleHourlyRow
-	24, // 21: stockalert.price.v1.ScanStaleHourlyResponse.latest_hour:type_name -> google.protobuf.Timestamp
-	24, // 22: stockalert.price.v1.GetHourlyDataQualityResponse.oldest_stale:type_name -> google.protobuf.Timestamp
-	3,  // 23: stockalert.price.v1.PriceService.GetStockMetadataMap:input_type -> stockalert.price.v1.GetStockMetadataMapRequest
-	6,  // 24: stockalert.price.v1.PriceService.GetFullStockMetadata:input_type -> stockalert.price.v1.GetFullStockMetadataRequest
-	9,  // 25: stockalert.price.v1.PriceService.GetDatabaseStats:input_type -> stockalert.price.v1.GetDatabaseStatsRequest
-	12, // 26: stockalert.price.v1.PriceService.LoadPriceData:input_type -> stockalert.price.v1.LoadPriceDataRequest
-	15, // 27: stockalert.price.v1.PriceService.ScanStaleDaily:input_type -> stockalert.price.v1.ScanStaleDailyRequest
-	17, // 28: stockalert.price.v1.PriceService.ScanStaleWeekly:input_type -> stockalert.price.v1.ScanStaleWeeklyRequest
-	20, // 29: stockalert.price.v1.PriceService.ScanStaleHourly:input_type -> stockalert.price.v1.ScanStaleHourlyRequest
-	22, // 30: stockalert.price.v1.PriceService.GetHourlyDataQuality:input_type -> stockalert.price.v1.GetHourlyDataQualityRequest
-	4,  // 31: stockalert.price.v1.PriceService.GetStockMetadataMap:output_type -> stockalert.price.v1.GetStockMetadataMapResponse
-	7,  // 32: stockalert.price.v1.PriceService.GetFullStockMetadata:output_type -> stockalert.price.v1.GetFullStockMetadataResponse
-	10, // 33: stockalert.price.v1.PriceService.GetDatabaseStats:output_type -> stockalert.price.v1.GetDatabaseStatsResponse
-	13, // 34: stockalert.price.v1.PriceService.LoadPriceData:output_type -> stockalert.price.v1.LoadPriceDataResponse
-	16, // 35: stockalert.price.v1.PriceService.ScanStaleDaily:output_type -> stockalert.price.v1.ScanStaleDailyResponse
-	18, // 36: stockalert.price.v1.PriceService.ScanStaleWeekly:output_type -> stockalert.price.v1.ScanStaleWeeklyResponse
-	21, // 37: stockalert.price.v1.PriceService.ScanStaleHourly:output_type -> stockalert.price.v1.ScanStaleHourlyResponse
-	23, // 38: stockalert.price.v1.PriceService.GetHourlyDataQuality:output_type -> stockalert.price.v1.GetHourlyDataQualityResponse
-	31, // [31:39] is the sub-list for method output_type
-	23, // [23:31] is the sub-list for method input_type
-	23, // [23:23] is the sub-list for extension type_name
-	23, // [23:23] is the sub-list for extension extendee
-	0,  // [0:23] is the sub-list for field type_name
+	28, // 21: stockalert.price.v1.ScanStaleHourlyResponse.latest_hour:type_name -> google.protobuf.Timestamp
+	28, // 22: stockalert.price.v1.GetHourlyDataQualityResponse.oldest_stale:type_name -> google.protobuf.Timestamp
+	0,  // 23: stockalert.price.v1.RunScanRequest.timeframe:type_name -> stockalert.price.v1.Timeframe
+	24, // 24: stockalert.price.v1.RunScanRequest.symbol_filter:type_name -> stockalert.price.v1.SymbolFilter
+	26, // 25: stockalert.price.v1.RunScanResponse.matches:type_name -> stockalert.price.v1.ScanMatch
+	3,  // 26: stockalert.price.v1.PriceService.GetStockMetadataMap:input_type -> stockalert.price.v1.GetStockMetadataMapRequest
+	6,  // 27: stockalert.price.v1.PriceService.GetFullStockMetadata:input_type -> stockalert.price.v1.GetFullStockMetadataRequest
+	9,  // 28: stockalert.price.v1.PriceService.GetDatabaseStats:input_type -> stockalert.price.v1.GetDatabaseStatsRequest
+	12, // 29: stockalert.price.v1.PriceService.LoadPriceData:input_type -> stockalert.price.v1.LoadPriceDataRequest
+	15, // 30: stockalert.price.v1.PriceService.ScanStaleDaily:input_type -> stockalert.price.v1.ScanStaleDailyRequest
+	17, // 31: stockalert.price.v1.PriceService.ScanStaleWeekly:input_type -> stockalert.price.v1.ScanStaleWeeklyRequest
+	20, // 32: stockalert.price.v1.PriceService.ScanStaleHourly:input_type -> stockalert.price.v1.ScanStaleHourlyRequest
+	22, // 33: stockalert.price.v1.PriceService.GetHourlyDataQuality:input_type -> stockalert.price.v1.GetHourlyDataQualityRequest
+	25, // 34: stockalert.price.v1.PriceService.RunScan:input_type -> stockalert.price.v1.RunScanRequest
+	4,  // 35: stockalert.price.v1.PriceService.GetStockMetadataMap:output_type -> stockalert.price.v1.GetStockMetadataMapResponse
+	7,  // 36: stockalert.price.v1.PriceService.GetFullStockMetadata:output_type -> stockalert.price.v1.GetFullStockMetadataResponse
+	10, // 37: stockalert.price.v1.PriceService.GetDatabaseStats:output_type -> stockalert.price.v1.GetDatabaseStatsResponse
+	13, // 38: stockalert.price.v1.PriceService.LoadPriceData:output_type -> stockalert.price.v1.LoadPriceDataResponse
+	16, // 39: stockalert.price.v1.PriceService.ScanStaleDaily:output_type -> stockalert.price.v1.ScanStaleDailyResponse
+	18, // 40: stockalert.price.v1.PriceService.ScanStaleWeekly:output_type -> stockalert.price.v1.ScanStaleWeeklyResponse
+	21, // 41: stockalert.price.v1.PriceService.ScanStaleHourly:output_type -> stockalert.price.v1.ScanStaleHourlyResponse
+	23, // 42: stockalert.price.v1.PriceService.GetHourlyDataQuality:output_type -> stockalert.price.v1.GetHourlyDataQualityResponse
+	27, // 43: stockalert.price.v1.PriceService.RunScan:output_type -> stockalert.price.v1.RunScanResponse
+	35, // [35:44] is the sub-list for method output_type
+	26, // [26:35] is the sub-list for method input_type
+	26, // [26:26] is the sub-list for extension type_name
+	26, // [26:26] is the sub-list for extension extendee
+	0,  // [0:26] is the sub-list for field type_name
 }
 
 func init() { file_price_v1_price_proto_init() }
@@ -1821,7 +2258,7 @@ func file_price_v1_price_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_price_v1_price_proto_rawDesc), len(file_price_v1_price_proto_rawDesc)),
 			NumEnums:      2,
-			NumMessages:   22,
+			NumMessages:   26,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

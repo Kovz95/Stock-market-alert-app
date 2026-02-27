@@ -28,6 +28,26 @@ func (q *Queries) BulkUpdateLastTriggered(ctx context.Context, arg BulkUpdateLas
 	return err
 }
 
+type CopyAlertAuditsParams struct {
+	Timestamp           pgtype.Timestamptz
+	AlertID             string
+	Ticker              string
+	StockName           pgtype.Text
+	Exchange            pgtype.Text
+	Timeframe           pgtype.Text
+	Action              pgtype.Text
+	EvaluationType      string
+	PriceDataPulled     pgtype.Bool
+	PriceDataSource     pgtype.Text
+	ConditionsEvaluated pgtype.Bool
+	AlertTriggered      pgtype.Bool
+	TriggerReason       pgtype.Text
+	ExecutionTimeMs     pgtype.Int4
+	CacheHit            pgtype.Bool
+	ErrorMessage        pgtype.Text
+	AdditionalData      []byte
+}
+
 const countAlerts = `-- name: CountAlerts :one
 SELECT COUNT(*) FROM alerts
 `
@@ -180,6 +200,65 @@ func (q *Queries) GetAlert(ctx context.Context, alertID pgtype.UUID) (Alert, err
 	return i, err
 }
 
+const insertAlertAudit = `-- name: InsertAlertAudit :exec
+
+INSERT INTO alert_audits (
+    timestamp, alert_id, ticker, stock_name, exchange, timeframe, action,
+    evaluation_type, price_data_pulled, price_data_source, conditions_evaluated,
+    alert_triggered, trigger_reason, execution_time_ms, cache_hit,
+    error_message, additional_data
+) VALUES (
+    $1, $2, $3, $4, $5, $6, $7,
+    $8, $9, $10, $11,
+    $12, $13, $14, $15,
+    $16, $17
+)
+`
+
+type InsertAlertAuditParams struct {
+	Timestamp           pgtype.Timestamptz
+	AlertID             string
+	Ticker              string
+	StockName           pgtype.Text
+	Exchange            pgtype.Text
+	Timeframe           pgtype.Text
+	Action              pgtype.Text
+	EvaluationType      string
+	PriceDataPulled     pgtype.Bool
+	PriceDataSource     pgtype.Text
+	ConditionsEvaluated pgtype.Bool
+	AlertTriggered      pgtype.Bool
+	TriggerReason       pgtype.Text
+	ExecutionTimeMs     pgtype.Int4
+	CacheHit            pgtype.Bool
+	ErrorMessage        pgtype.Text
+	AdditionalData      []byte
+}
+
+// Audit trail: single insert for deferred audit records.
+func (q *Queries) InsertAlertAudit(ctx context.Context, arg InsertAlertAuditParams) error {
+	_, err := q.db.Exec(ctx, insertAlertAudit,
+		arg.Timestamp,
+		arg.AlertID,
+		arg.Ticker,
+		arg.StockName,
+		arg.Exchange,
+		arg.Timeframe,
+		arg.Action,
+		arg.EvaluationType,
+		arg.PriceDataPulled,
+		arg.PriceDataSource,
+		arg.ConditionsEvaluated,
+		arg.AlertTriggered,
+		arg.TriggerReason,
+		arg.ExecutionTimeMs,
+		arg.CacheHit,
+		arg.ErrorMessage,
+		arg.AdditionalData,
+	)
+	return err
+}
+
 const listAlerts = `-- name: ListAlerts :many
 SELECT
     alert_id, name, stock_name, ticker, ticker1, ticker2,
@@ -193,6 +272,124 @@ ORDER BY updated_at DESC, name ASC
 
 func (q *Queries) ListAlerts(ctx context.Context) ([]Alert, error) {
 	rows, err := q.db.Query(ctx, listAlerts)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Alert
+	for rows.Next() {
+		var i Alert
+		if err := rows.Scan(
+			&i.AlertID,
+			&i.Name,
+			&i.StockName,
+			&i.Ticker,
+			&i.Ticker1,
+			&i.Ticker2,
+			&i.Conditions,
+			&i.CombinationLogic,
+			&i.LastTriggered,
+			&i.Action,
+			&i.Timeframe,
+			&i.Exchange,
+			&i.Country,
+			&i.Ratio,
+			&i.IsRatio,
+			&i.AdjustmentMethod,
+			&i.DtpParams,
+			&i.MultiTimeframeParams,
+			&i.MixedTimeframeParams,
+			&i.RawPayload,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listAlertsByExchange = `-- name: ListAlertsByExchange :many
+
+SELECT
+    alert_id, name, stock_name, ticker, ticker1, ticker2,
+    conditions, combination_logic, last_triggered, action,
+    timeframe, exchange, country, ratio, is_ratio,
+    adjustment_method, dtp_params, multi_timeframe_params,
+    mixed_timeframe_params, raw_payload, created_at, updated_at
+FROM alerts
+WHERE exchange = ANY($1::text[])
+ORDER BY updated_at DESC, name ASC
+`
+
+// Scheduler queries: filter alerts by exchange(s) for a specific job run.
+func (q *Queries) ListAlertsByExchange(ctx context.Context, exchanges []string) ([]Alert, error) {
+	rows, err := q.db.Query(ctx, listAlertsByExchange, exchanges)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Alert
+	for rows.Next() {
+		var i Alert
+		if err := rows.Scan(
+			&i.AlertID,
+			&i.Name,
+			&i.StockName,
+			&i.Ticker,
+			&i.Ticker1,
+			&i.Ticker2,
+			&i.Conditions,
+			&i.CombinationLogic,
+			&i.LastTriggered,
+			&i.Action,
+			&i.Timeframe,
+			&i.Exchange,
+			&i.Country,
+			&i.Ratio,
+			&i.IsRatio,
+			&i.AdjustmentMethod,
+			&i.DtpParams,
+			&i.MultiTimeframeParams,
+			&i.MixedTimeframeParams,
+			&i.RawPayload,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listAlertsByExchangeAndTimeframe = `-- name: ListAlertsByExchangeAndTimeframe :many
+SELECT
+    alert_id, name, stock_name, ticker, ticker1, ticker2,
+    conditions, combination_logic, last_triggered, action,
+    timeframe, exchange, country, ratio, is_ratio,
+    adjustment_method, dtp_params, multi_timeframe_params,
+    mixed_timeframe_params, raw_payload, created_at, updated_at
+FROM alerts
+WHERE exchange = ANY($1::text[])
+  AND timeframe = $2
+ORDER BY updated_at DESC, name ASC
+`
+
+type ListAlertsByExchangeAndTimeframeParams struct {
+	Exchanges []string
+	Timeframe pgtype.Text
+}
+
+func (q *Queries) ListAlertsByExchangeAndTimeframe(ctx context.Context, arg ListAlertsByExchangeAndTimeframeParams) ([]Alert, error) {
+	rows, err := q.db.Query(ctx, listAlertsByExchangeAndTimeframe, arg.Exchanges, arg.Timeframe)
 	if err != nil {
 		return nil, err
 	}

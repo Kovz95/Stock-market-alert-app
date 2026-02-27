@@ -7,8 +7,6 @@ import type {
   Portfolio,
 } from "../../../../gen/ts/alert/v1/alert";
 
-export type { StockSearchResult, Portfolio, AuditHistoryRow };
-
 export type TriggerHistoryOptions = {
   includeAllEvaluations?: boolean;
   limit?: number;

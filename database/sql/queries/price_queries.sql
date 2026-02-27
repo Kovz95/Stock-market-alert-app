@@ -146,6 +146,76 @@ SELECT
     MIN(last_dt) FILTER (WHERE last_dt < NOW() - INTERVAL '48 hours') AS oldest_stale
 FROM last_points;
 
+-- Scheduler batch price loading: loads recent prices for multiple tickers.
+-- Go code handles per-ticker truncation to the desired lookback window.
+
+-- name: GetDailyPricesBatch :many
+SELECT ticker, date, open, high, low, close, volume
+FROM daily_prices
+WHERE ticker = ANY(sqlc.arg(tickers)::text[])
+  AND date >= sqlc.arg(since_date)::date
+ORDER BY ticker, date ASC;
+
+-- name: GetHourlyPricesBatch :many
+SELECT ticker, datetime, open, high, low, close, volume
+FROM hourly_prices
+WHERE ticker = ANY(sqlc.arg(tickers)::text[])
+  AND datetime >= sqlc.arg(since_ts)::timestamptz
+ORDER BY ticker, datetime ASC;
+
+-- name: GetWeeklyPricesBatch :many
+SELECT ticker, week_ending, open, high, low, close, volume
+FROM weekly_prices
+WHERE ticker = ANY(sqlc.arg(tickers)::text[])
+  AND week_ending >= sqlc.arg(since_date)::date
+ORDER BY ticker, week_ending ASC;
+
+-- Scheduler price upserts: insert or update a single price row.
+
+-- name: UpsertDailyPrice :exec
+INSERT INTO daily_prices (ticker, date, open, high, low, close, volume, updated_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
+ON CONFLICT (ticker, date) DO UPDATE SET
+    open = EXCLUDED.open,
+    high = EXCLUDED.high,
+    low = EXCLUDED.low,
+    close = EXCLUDED.close,
+    volume = EXCLUDED.volume,
+    updated_at = NOW();
+
+-- name: UpsertHourlyPrice :exec
+INSERT INTO hourly_prices (ticker, datetime, open, high, low, close, volume, updated_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
+ON CONFLICT (ticker, datetime) DO UPDATE SET
+    open = EXCLUDED.open,
+    high = EXCLUDED.high,
+    low = EXCLUDED.low,
+    close = EXCLUDED.close,
+    volume = EXCLUDED.volume,
+    updated_at = NOW();
+
+-- name: UpsertWeeklyPrice :exec
+INSERT INTO weekly_prices (ticker, week_ending, open, high, low, close, volume, updated_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
+ON CONFLICT (ticker, week_ending) DO UPDATE SET
+    open = EXCLUDED.open,
+    high = EXCLUDED.high,
+    low = EXCLUDED.low,
+    close = EXCLUDED.close,
+    volume = EXCLUDED.volume,
+    updated_at = NOW();
+
+-- Bulk price upserts via COPY protocol (used by scheduler price updater).
+
+-- name: CopyDailyPrices :copyfrom
+INSERT INTO daily_prices (ticker, date, open, high, low, close, volume) VALUES ($1, $2, $3, $4, $5, $6, $7);
+
+-- name: CopyHourlyPrices :copyfrom
+INSERT INTO hourly_prices (ticker, datetime, open, high, low, close, volume) VALUES ($1, $2, $3, $4, $5, $6, $7);
+
+-- name: CopyWeeklyPrices :copyfrom
+INSERT INTO weekly_prices (ticker, week_ending, open, high, low, close, volume) VALUES ($1, $2, $3, $4, $5, $6, $7);
+
 -- Hourly data quality: gap metrics (trading-hour gaps in last 60 days).
 -- name: HourlyQualityGaps :one
 WITH recent AS (

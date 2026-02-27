@@ -15,12 +15,20 @@ import {
 } from "./_components";
 import { Skeleton } from "@/components/ui/skeleton";
 
+const SEARCH_DEBOUNCE_MS = 280;
+
 export default function StockDatabasePage() {
   const { data: metadata, isLoading, error } = useFullStockMetadata();
   const [filters, setFilters] = React.useState<StockDatabaseFiltersState>(
     () => defaultStockDatabaseFilters
   );
+  const [searchInput, setSearchInput] = React.useState("");
   const [searchTerm, setSearchTerm] = React.useState("");
+
+  React.useEffect(() => {
+    const t = setTimeout(() => setSearchTerm(searchInput), SEARCH_DEBOUNCE_MS);
+    return () => clearTimeout(t);
+  }, [searchInput]);
 
   const filtered = React.useMemo(() => {
     if (!metadata) return [];
@@ -112,8 +120,8 @@ export default function StockDatabasePage() {
               <StockDatabaseTable
                 data={filtered}
                 assetTypeFilter={filters.assetType}
-                searchTerm={searchTerm}
-                onSearchChange={setSearchTerm}
+                searchTerm={searchInput}
+                onSearchChange={setSearchInput}
               />
             ) : isLoading ? (
               <Skeleton className="h-96 w-full rounded-lg" />
