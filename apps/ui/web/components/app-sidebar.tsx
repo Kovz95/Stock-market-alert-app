@@ -15,7 +15,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
-import { LayoutDashboardIcon, ListIcon, ChartBarIcon, FolderIcon, UsersIcon, CameraIcon, FileTextIcon, Settings2Icon, CircleHelpIcon, SearchIcon, DatabaseIcon, FileChartColumnIcon, FileIcon, CommandIcon, BellIcon, CurrencyIcon, StarIcon, ScanSearch } from "lucide-react"
+import { LayoutDashboardIcon, ListIcon, ChartBarIcon, FolderIcon, UsersIcon, CameraIcon, FileTextIcon, Settings2Icon, CircleHelpIcon, SearchIcon, DatabaseIcon, FileChartColumnIcon, FileIcon, CommandIcon, BellIcon, CurrencyIcon, StarIcon, ScanSearch, ClockIcon } from "lucide-react"
 import { NavAlerts } from "./nav-alerts"
 import Link from "next/link"
 
@@ -159,6 +159,14 @@ const data = {
       url: "/database/stock",
       icon: (
         <StarIcon
+        />
+      ),
+    },
+    {
+      title: "Scheduler Status",
+      url: "/scheduler",
+      icon: (
+        <ClockIcon
         />
       ),
     },

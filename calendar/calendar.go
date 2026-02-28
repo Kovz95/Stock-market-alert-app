@@ -250,16 +250,27 @@ func GetNextDailyRunTime(exchange string, ref time.Time) time.Time {
 		return ref.Add(24 * time.Hour)
 	}
 	refET := ref.In(eastern)
-	hour, minute := GetExchangeCloseTime(exchange, refET)
-	closeET := time.Date(refET.Year(), refET.Month(), refET.Day(), hour, minute, 0, 0, eastern)
-	if refET.After(closeET) || refET.Equal(closeET) {
-		nextDay := refET.AddDate(0, 0, 1)
+
+	// Start from today, skipping weekend days (no market on Sat/Sun).
+	candidate := refET
+	for candidate.Weekday() == time.Saturday || candidate.Weekday() == time.Sunday {
+		candidate = candidate.AddDate(0, 0, 1)
+	}
+
+	hour, minute := GetExchangeCloseTime(exchange, candidate)
+	closeET := time.Date(candidate.Year(), candidate.Month(), candidate.Day(), hour, minute, 0, 0, eastern)
+	runET := closeET.Add(40 * time.Minute)
+
+	// Advance to the next business day only after the run time (close+40min) has passed.
+	if !refET.Before(runET) {
+		nextDay := candidate.AddDate(0, 0, 1)
 		for nextDay.Weekday() == time.Saturday || nextDay.Weekday() == time.Sunday {
 			nextDay = nextDay.AddDate(0, 0, 1)
 		}
 		hour, minute = GetExchangeCloseTime(exchange, nextDay)
 		closeET = time.Date(nextDay.Year(), nextDay.Month(), nextDay.Day(), hour, minute, 0, 0, eastern)
+		runET = closeET.Add(40 * time.Minute)
 	}
-	runET := closeET.Add(40 * time.Minute)
+
 	return runET.UTC()
 }

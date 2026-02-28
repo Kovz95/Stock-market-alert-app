@@ -5,6 +5,7 @@ use (
 	./apps/grpc/alert_service
 	./apps/grpc/discord_service
 	./apps/grpc/price_service
+	./apps/grpc/scheduler_service
 	./apps/scheduler
 	./calendar
 	./database

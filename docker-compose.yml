@@ -189,6 +189,26 @@ services:
       redis:
         condition: service_healthy
 
+  scheduler_service:
+    build:
+      context: .
+      dockerfile: apps/grpc/scheduler_service/Dockerfile
+    container_name: stockalert-scheduler-service
+    restart: unless-stopped
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-stockalertapp}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-stockalertapp}
+      - REDIS_ADDR=redis:6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "/bin/grpc_health_probe", "-addr=:50051"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   envoy:
     image: envoyproxy/envoy:v1.31-latest
     container_name: stockalert-envoy
@@ -203,6 +223,8 @@ services:
       discord_service:
         condition: service_healthy
       price_service:
+        condition: service_healthy
+      scheduler_service:
         condition: service_healthy
 
   autoheal:

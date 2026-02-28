@@ -11,6 +11,10 @@ import {
   PriceServiceDefinition,
   type PriceServiceClient,
 } from "../../../../../gen/ts/price/v1/price";
+import {
+  SchedulerServiceDefinition,
+  type SchedulerServiceClient,
+} from "../../../../../gen/ts/scheduler/v1/scheduler";
 
 const GRPC_ENDPOINT = process.env.GRPC_ENDPOINT || "localhost:8080";
 
@@ -30,5 +34,10 @@ export const discordClient: DiscordConfigServiceClient = clientFactory.create(
 
 export const priceClient: PriceServiceClient = clientFactory.create(
   PriceServiceDefinition,
+  channel
+);
+
+export const schedulerClient: SchedulerServiceClient = clientFactory.create(
+  SchedulerServiceDefinition,
   channel
 );

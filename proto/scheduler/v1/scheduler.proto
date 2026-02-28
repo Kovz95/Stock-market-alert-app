@@ -1,0 +1,113 @@
+syntax = "proto3";
+
+package stockalert.scheduler.v1;
+
+option go_package = "stockalert/gen/go/scheduler/v1;schedulerv1";
+
+import "google/protobuf/timestamp.proto";
+
+// ---------------------------------------------------------------------------
+// GetSchedulerStatus
+// ---------------------------------------------------------------------------
+
+message GetSchedulerStatusRequest {}
+
+message CurrentJob {
+  string exchange = 1;
+  string timeframe = 2;
+  google.protobuf.Timestamp started = 3;
+}
+
+message LastRun {
+  string exchange = 1;
+  string timeframe = 2;
+  google.protobuf.Timestamp completed_at = 3;
+}
+
+message LastError {
+  string exchange = 1;
+  string timeframe = 2;
+  string message = 3;
+  google.protobuf.Timestamp time = 4;
+}
+
+message GetSchedulerStatusResponse {
+  string status = 1;
+  google.protobuf.Timestamp heartbeat = 2;
+  CurrentJob current_job = 3;
+  LastRun last_run = 4;
+  LastError last_error = 5;
+  int32 queue_size = 6;
+  // active_workers: number of tasks currently being processed across all workers
+  int32 active_workers = 7;
+  // worker_processes: number of live asynq worker processes connected to Redis
+  int32 worker_processes = 8;
+}
+
+// ---------------------------------------------------------------------------
+// GetExchangeSchedule
+// ---------------------------------------------------------------------------
+
+message GetExchangeScheduleRequest {
+  // "daily", "weekly", or "hourly" — defaults to "daily" if empty
+  string timeframe = 1;
+}
+
+message ExchangeScheduleRow {
+  string exchange = 1;
+  string symbol = 2;
+  string region = 3;
+  string run_time_et = 4;
+  string run_time_utc = 5;
+  string local_close = 6;
+  string local_tz = 7;
+  int64 time_remaining_seconds = 8;
+  string last_run_date = 9;
+  string last_run_start = 10;
+  string last_run_end = 11;
+}
+
+message GetExchangeScheduleResponse {
+  repeated ExchangeScheduleRow rows = 1;
+}
+
+// ---------------------------------------------------------------------------
+// StartScheduler / StopScheduler (Asynq queue pause/unpause)
+// ---------------------------------------------------------------------------
+
+message StartSchedulerRequest {}
+
+message StartSchedulerResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message StopSchedulerRequest {}
+
+message StopSchedulerResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+// ---------------------------------------------------------------------------
+// RunExchangeJob
+// ---------------------------------------------------------------------------
+
+message RunExchangeJobRequest {
+  string exchange = 1;
+  string timeframe = 2; // "daily", "weekly", "hourly"
+}
+
+message RunExchangeJobResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+// SchedulerService provides scheduler monitoring and control.
+service SchedulerService {
+  rpc GetSchedulerStatus(GetSchedulerStatusRequest) returns (GetSchedulerStatusResponse);
+  rpc GetExchangeSchedule(GetExchangeScheduleRequest) returns (GetExchangeScheduleResponse);
+  rpc StartScheduler(StartSchedulerRequest) returns (StartSchedulerResponse);
+  rpc StopScheduler(StopSchedulerRequest) returns (StopSchedulerResponse);
+  rpc RunExchangeJob(RunExchangeJobRequest) returns (RunExchangeJobResponse);
+}
