@@ -197,7 +197,8 @@ func (s *Server) ListPortfolios(ctx context.Context, req *alertv1.ListPortfolios
 	defer conn.Release()
 
 	rows, err := conn.Query(ctx, `
-		SELECT p.id, p.name
+		SELECT p.id, p.name, COALESCE(p.discord_webhook,''), COALESCE(p.enabled, true),
+		       COALESCE(p.created_date::text,''), COALESCE(p.last_updated::text,'')
 		FROM portfolios p
 		ORDER BY p.name
 	`)
@@ -208,14 +209,19 @@ func (s *Server) ListPortfolios(ctx context.Context, req *alertv1.ListPortfolios
 
 	var portfolios []*alertv1.Portfolio
 	for rows.Next() {
-		var id, name string
-		if err := rows.Scan(&id, &name); err != nil {
+		var id, name, webhook, createdDate, lastUpdated string
+		var enabled bool
+		if err := rows.Scan(&id, &name, &webhook, &enabled, &createdDate, &lastUpdated); err != nil {
 			return nil, status.Errorf(codes.Internal, "scan portfolio row: %v", err)
 		}
 		portfolios = append(portfolios, &alertv1.Portfolio{
-			PortfolioId: id,
-			Name:        name,
-			Tickers:     nil, // filled below
+			PortfolioId:    id,
+			Name:           name,
+			DiscordWebhook: webhook,
+			Enabled:        enabled,
+			CreatedDate:    createdDate,
+			LastUpdated:    lastUpdated,
+			Tickers:        nil, // filled below
 		})
 	}
 	if err := rows.Err(); err != nil {

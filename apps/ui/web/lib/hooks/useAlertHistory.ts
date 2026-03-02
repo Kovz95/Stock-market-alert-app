@@ -4,8 +4,8 @@ import { useQuery } from "@tanstack/react-query";
 import {
   searchStocks,
   getTriggerHistoryByTicker,
-  listPortfolios,
 } from "@/actions/alert-history-actions";
+import { listPortfolios } from "@/actions/portfolio-actions";
 import { listAllAlertsForHistory } from "@/actions/alert-actions";
 import type { TriggerHistoryOptions } from "@/actions/alert-history-actions";
 

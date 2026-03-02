@@ -4,7 +4,6 @@ import { alertClient } from "@/lib/grpc/channel";
 import type {
   StockSearchResult,
   AuditHistoryRow,
-  Portfolio,
 } from "../../../../gen/ts/alert/v1/alert";
 
 export type TriggerHistoryOptions = {
@@ -46,7 +45,3 @@ export async function getTriggerHistoryByTicker(
   return response.rows ?? [];
 }
 
-export async function listPortfolios(): Promise<Portfolio[]> {
-  const response = await alertClient.listPortfolios({});
-  return response.portfolios ?? [];
-}

@@ -296,10 +296,73 @@ export interface Portfolio {
   portfolioId: string;
   name: string;
   tickers: string[];
+  discordWebhook: string;
+  enabled: boolean;
+  createdDate: string;
+  lastUpdated: string;
 }
 
 export interface ListPortfoliosResponse {
   portfolios: Portfolio[];
+}
+
+/** GetPortfolio */
+export interface GetPortfolioRequest {
+  portfolioId: string;
+}
+
+export interface GetPortfolioResponse {
+  portfolio?: Portfolio | undefined;
+}
+
+/** CreatePortfolio */
+export interface CreatePortfolioRequest {
+  name: string;
+  discordWebhook: string;
+}
+
+export interface CreatePortfolioResponse {
+  portfolio?: Portfolio | undefined;
+}
+
+/** UpdatePortfolio */
+export interface UpdatePortfolioRequest {
+  portfolioId: string;
+  name: string;
+  discordWebhook: string;
+  enabled: boolean;
+}
+
+export interface UpdatePortfolioResponse {
+  portfolio?: Portfolio | undefined;
+}
+
+/** DeletePortfolio */
+export interface DeletePortfolioRequest {
+  portfolioId: string;
+}
+
+export interface DeletePortfolioResponse {
+}
+
+/** AddStocksToPortfolio */
+export interface AddStocksToPortfolioRequest {
+  portfolioId: string;
+  tickers: string[];
+}
+
+export interface AddStocksToPortfolioResponse {
+  portfolio?: Portfolio | undefined;
+}
+
+/** RemoveStocksFromPortfolio */
+export interface RemoveStocksFromPortfolioRequest {
+  portfolioId: string;
+  tickers: string[];
+}
+
+export interface RemoveStocksFromPortfolioResponse {
+  portfolio?: Portfolio | undefined;
 }
 
 export interface EvaluateExchangeRequest {
@@ -4844,7 +4907,15 @@ export const ListPortfoliosRequest: MessageFns<ListPortfoliosRequest> = {
 };
 
 function createBasePortfolio(): Portfolio {
-  return { portfolioId: "", name: "", tickers: [] };
+  return {
+    portfolioId: "",
+    name: "",
+    tickers: [],
+    discordWebhook: "",
+    enabled: false,
+    createdDate: "",
+    lastUpdated: "",
+  };
 }
 
 export const Portfolio: MessageFns<Portfolio> = {
@@ -4857,6 +4928,18 @@ export const Portfolio: MessageFns<Portfolio> = {
     }
     for (const v of message.tickers) {
       writer.uint32(26).string(v!);
+    }
+    if (message.discordWebhook !== "") {
+      writer.uint32(34).string(message.discordWebhook);
+    }
+    if (message.enabled !== false) {
+      writer.uint32(40).bool(message.enabled);
+    }
+    if (message.createdDate !== "") {
+      writer.uint32(50).string(message.createdDate);
+    }
+    if (message.lastUpdated !== "") {
+      writer.uint32(58).string(message.lastUpdated);
     }
     return writer;
   },
@@ -4892,6 +4975,38 @@ export const Portfolio: MessageFns<Portfolio> = {
           message.tickers.push(reader.string());
           continue;
         }
+        case 4: {
+          if (tag !== 34) {
+            break;
+          }
+
+          message.discordWebhook = reader.string();
+          continue;
+        }
+        case 5: {
+          if (tag !== 40) {
+            break;
+          }
+
+          message.enabled = reader.bool();
+          continue;
+        }
+        case 6: {
+          if (tag !== 50) {
+            break;
+          }
+
+          message.createdDate = reader.string();
+          continue;
+        }
+        case 7: {
+          if (tag !== 58) {
+            break;
+          }
+
+          message.lastUpdated = reader.string();
+          continue;
+        }
       }
       if ((tag & 7) === 4 || tag === 0) {
         break;
@@ -4910,6 +5025,22 @@ export const Portfolio: MessageFns<Portfolio> = {
         : "",
       name: isSet(object.name) ? globalThis.String(object.name) : "",
       tickers: globalThis.Array.isArray(object?.tickers) ? object.tickers.map((e: any) => globalThis.String(e)) : [],
+      discordWebhook: isSet(object.discordWebhook)
+        ? globalThis.String(object.discordWebhook)
+        : isSet(object.discord_webhook)
+        ? globalThis.String(object.discord_webhook)
+        : "",
+      enabled: isSet(object.enabled) ? globalThis.Boolean(object.enabled) : false,
+      createdDate: isSet(object.createdDate)
+        ? globalThis.String(object.createdDate)
+        : isSet(object.created_date)
+        ? globalThis.String(object.created_date)
+        : "",
+      lastUpdated: isSet(object.lastUpdated)
+        ? globalThis.String(object.lastUpdated)
+        : isSet(object.last_updated)
+        ? globalThis.String(object.last_updated)
+        : "",
     };
   },
 
@@ -4924,6 +5055,18 @@ export const Portfolio: MessageFns<Portfolio> = {
     if (message.tickers?.length) {
       obj.tickers = message.tickers;
     }
+    if (message.discordWebhook !== "") {
+      obj.discordWebhook = message.discordWebhook;
+    }
+    if (message.enabled !== false) {
+      obj.enabled = message.enabled;
+    }
+    if (message.createdDate !== "") {
+      obj.createdDate = message.createdDate;
+    }
+    if (message.lastUpdated !== "") {
+      obj.lastUpdated = message.lastUpdated;
+    }
     return obj;
   },
 
@@ -4935,6 +5078,10 @@ export const Portfolio: MessageFns<Portfolio> = {
     message.portfolioId = object.portfolioId ?? "";
     message.name = object.name ?? "";
     message.tickers = object.tickers?.map((e) => e) || [];
+    message.discordWebhook = object.discordWebhook ?? "";
+    message.enabled = object.enabled ?? false;
+    message.createdDate = object.createdDate ?? "";
+    message.lastUpdated = object.lastUpdated ?? "";
     return message;
   },
 };
@@ -4997,6 +5144,841 @@ export const ListPortfoliosResponse: MessageFns<ListPortfoliosResponse> = {
   fromPartial<I extends Exact<DeepPartial<ListPortfoliosResponse>, I>>(object: I): ListPortfoliosResponse {
     const message = createBaseListPortfoliosResponse();
     message.portfolios = object.portfolios?.map((e) => Portfolio.fromPartial(e)) || [];
+    return message;
+  },
+};
+
+function createBaseGetPortfolioRequest(): GetPortfolioRequest {
+  return { portfolioId: "" };
+}
+
+export const GetPortfolioRequest: MessageFns<GetPortfolioRequest> = {
+  encode(message: GetPortfolioRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.portfolioId !== "") {
+      writer.uint32(10).string(message.portfolioId);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): GetPortfolioRequest {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseGetPortfolioRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.portfolioId = reader.string();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): GetPortfolioRequest {
+    return {
+      portfolioId: isSet(object.portfolioId)
+        ? globalThis.String(object.portfolioId)
+        : isSet(object.portfolio_id)
+        ? globalThis.String(object.portfolio_id)
+        : "",
+    };
+  },
+
+  toJSON(message: GetPortfolioRequest): unknown {
+    const obj: any = {};
+    if (message.portfolioId !== "") {
+      obj.portfolioId = message.portfolioId;
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<GetPortfolioRequest>, I>>(base?: I): GetPortfolioRequest {
+    return GetPortfolioRequest.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<GetPortfolioRequest>, I>>(object: I): GetPortfolioRequest {
+    const message = createBaseGetPortfolioRequest();
+    message.portfolioId = object.portfolioId ?? "";
+    return message;
+  },
+};
+
+function createBaseGetPortfolioResponse(): GetPortfolioResponse {
+  return { portfolio: undefined };
+}
+
+export const GetPortfolioResponse: MessageFns<GetPortfolioResponse> = {
+  encode(message: GetPortfolioResponse, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.portfolio !== undefined) {
+      Portfolio.encode(message.portfolio, writer.uint32(10).fork()).join();
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): GetPortfolioResponse {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseGetPortfolioResponse();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.portfolio = Portfolio.decode(reader, reader.uint32());
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): GetPortfolioResponse {
+    return { portfolio: isSet(object.portfolio) ? Portfolio.fromJSON(object.portfolio) : undefined };
+  },
+
+  toJSON(message: GetPortfolioResponse): unknown {
+    const obj: any = {};
+    if (message.portfolio !== undefined) {
+      obj.portfolio = Portfolio.toJSON(message.portfolio);
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<GetPortfolioResponse>, I>>(base?: I): GetPortfolioResponse {
+    return GetPortfolioResponse.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<GetPortfolioResponse>, I>>(object: I): GetPortfolioResponse {
+    const message = createBaseGetPortfolioResponse();
+    message.portfolio = (object.portfolio !== undefined && object.portfolio !== null)
+      ? Portfolio.fromPartial(object.portfolio)
+      : undefined;
+    return message;
+  },
+};
+
+function createBaseCreatePortfolioRequest(): CreatePortfolioRequest {
+  return { name: "", discordWebhook: "" };
+}
+
+export const CreatePortfolioRequest: MessageFns<CreatePortfolioRequest> = {
+  encode(message: CreatePortfolioRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.name !== "") {
+      writer.uint32(10).string(message.name);
+    }
+    if (message.discordWebhook !== "") {
+      writer.uint32(18).string(message.discordWebhook);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): CreatePortfolioRequest {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseCreatePortfolioRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.name = reader.string();
+          continue;
+        }
+        case 2: {
+          if (tag !== 18) {
+            break;
+          }
+
+          message.discordWebhook = reader.string();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): CreatePortfolioRequest {
+    return {
+      name: isSet(object.name) ? globalThis.String(object.name) : "",
+      discordWebhook: isSet(object.discordWebhook)
+        ? globalThis.String(object.discordWebhook)
+        : isSet(object.discord_webhook)
+        ? globalThis.String(object.discord_webhook)
+        : "",
+    };
+  },
+
+  toJSON(message: CreatePortfolioRequest): unknown {
+    const obj: any = {};
+    if (message.name !== "") {
+      obj.name = message.name;
+    }
+    if (message.discordWebhook !== "") {
+      obj.discordWebhook = message.discordWebhook;
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<CreatePortfolioRequest>, I>>(base?: I): CreatePortfolioRequest {
+    return CreatePortfolioRequest.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<CreatePortfolioRequest>, I>>(object: I): CreatePortfolioRequest {
+    const message = createBaseCreatePortfolioRequest();
+    message.name = object.name ?? "";
+    message.discordWebhook = object.discordWebhook ?? "";
+    return message;
+  },
+};
+
+function createBaseCreatePortfolioResponse(): CreatePortfolioResponse {
+  return { portfolio: undefined };
+}
+
+export const CreatePortfolioResponse: MessageFns<CreatePortfolioResponse> = {
+  encode(message: CreatePortfolioResponse, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.portfolio !== undefined) {
+      Portfolio.encode(message.portfolio, writer.uint32(10).fork()).join();
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): CreatePortfolioResponse {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseCreatePortfolioResponse();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.portfolio = Portfolio.decode(reader, reader.uint32());
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): CreatePortfolioResponse {
+    return { portfolio: isSet(object.portfolio) ? Portfolio.fromJSON(object.portfolio) : undefined };
+  },
+
+  toJSON(message: CreatePortfolioResponse): unknown {
+    const obj: any = {};
+    if (message.portfolio !== undefined) {
+      obj.portfolio = Portfolio.toJSON(message.portfolio);
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<CreatePortfolioResponse>, I>>(base?: I): CreatePortfolioResponse {
+    return CreatePortfolioResponse.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<CreatePortfolioResponse>, I>>(object: I): CreatePortfolioResponse {
+    const message = createBaseCreatePortfolioResponse();
+    message.portfolio = (object.portfolio !== undefined && object.portfolio !== null)
+      ? Portfolio.fromPartial(object.portfolio)
+      : undefined;
+    return message;
+  },
+};
+
+function createBaseUpdatePortfolioRequest(): UpdatePortfolioRequest {
+  return { portfolioId: "", name: "", discordWebhook: "", enabled: false };
+}
+
+export const UpdatePortfolioRequest: MessageFns<UpdatePortfolioRequest> = {
+  encode(message: UpdatePortfolioRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.portfolioId !== "") {
+      writer.uint32(10).string(message.portfolioId);
+    }
+    if (message.name !== "") {
+      writer.uint32(18).string(message.name);
+    }
+    if (message.discordWebhook !== "") {
+      writer.uint32(26).string(message.discordWebhook);
+    }
+    if (message.enabled !== false) {
+      writer.uint32(32).bool(message.enabled);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): UpdatePortfolioRequest {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseUpdatePortfolioRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.portfolioId = reader.string();
+          continue;
+        }
+        case 2: {
+          if (tag !== 18) {
+            break;
+          }
+
+          message.name = reader.string();
+          continue;
+        }
+        case 3: {
+          if (tag !== 26) {
+            break;
+          }
+
+          message.discordWebhook = reader.string();
+          continue;
+        }
+        case 4: {
+          if (tag !== 32) {
+            break;
+          }
+
+          message.enabled = reader.bool();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): UpdatePortfolioRequest {
+    return {
+      portfolioId: isSet(object.portfolioId)
+        ? globalThis.String(object.portfolioId)
+        : isSet(object.portfolio_id)
+        ? globalThis.String(object.portfolio_id)
+        : "",
+      name: isSet(object.name) ? globalThis.String(object.name) : "",
+      discordWebhook: isSet(object.discordWebhook)
+        ? globalThis.String(object.discordWebhook)
+        : isSet(object.discord_webhook)
+        ? globalThis.String(object.discord_webhook)
+        : "",
+      enabled: isSet(object.enabled) ? globalThis.Boolean(object.enabled) : false,
+    };
+  },
+
+  toJSON(message: UpdatePortfolioRequest): unknown {
+    const obj: any = {};
+    if (message.portfolioId !== "") {
+      obj.portfolioId = message.portfolioId;
+    }
+    if (message.name !== "") {
+      obj.name = message.name;
+    }
+    if (message.discordWebhook !== "") {
+      obj.discordWebhook = message.discordWebhook;
+    }
+    if (message.enabled !== false) {
+      obj.enabled = message.enabled;
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<UpdatePortfolioRequest>, I>>(base?: I): UpdatePortfolioRequest {
+    return UpdatePortfolioRequest.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<UpdatePortfolioRequest>, I>>(object: I): UpdatePortfolioRequest {
+    const message = createBaseUpdatePortfolioRequest();
+    message.portfolioId = object.portfolioId ?? "";
+    message.name = object.name ?? "";
+    message.discordWebhook = object.discordWebhook ?? "";
+    message.enabled = object.enabled ?? false;
+    return message;
+  },
+};
+
+function createBaseUpdatePortfolioResponse(): UpdatePortfolioResponse {
+  return { portfolio: undefined };
+}
+
+export const UpdatePortfolioResponse: MessageFns<UpdatePortfolioResponse> = {
+  encode(message: UpdatePortfolioResponse, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.portfolio !== undefined) {
+      Portfolio.encode(message.portfolio, writer.uint32(10).fork()).join();
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): UpdatePortfolioResponse {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseUpdatePortfolioResponse();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.portfolio = Portfolio.decode(reader, reader.uint32());
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): UpdatePortfolioResponse {
+    return { portfolio: isSet(object.portfolio) ? Portfolio.fromJSON(object.portfolio) : undefined };
+  },
+
+  toJSON(message: UpdatePortfolioResponse): unknown {
+    const obj: any = {};
+    if (message.portfolio !== undefined) {
+      obj.portfolio = Portfolio.toJSON(message.portfolio);
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<UpdatePortfolioResponse>, I>>(base?: I): UpdatePortfolioResponse {
+    return UpdatePortfolioResponse.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<UpdatePortfolioResponse>, I>>(object: I): UpdatePortfolioResponse {
+    const message = createBaseUpdatePortfolioResponse();
+    message.portfolio = (object.portfolio !== undefined && object.portfolio !== null)
+      ? Portfolio.fromPartial(object.portfolio)
+      : undefined;
+    return message;
+  },
+};
+
+function createBaseDeletePortfolioRequest(): DeletePortfolioRequest {
+  return { portfolioId: "" };
+}
+
+export const DeletePortfolioRequest: MessageFns<DeletePortfolioRequest> = {
+  encode(message: DeletePortfolioRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.portfolioId !== "") {
+      writer.uint32(10).string(message.portfolioId);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): DeletePortfolioRequest {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseDeletePortfolioRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.portfolioId = reader.string();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): DeletePortfolioRequest {
+    return {
+      portfolioId: isSet(object.portfolioId)
+        ? globalThis.String(object.portfolioId)
+        : isSet(object.portfolio_id)
+        ? globalThis.String(object.portfolio_id)
+        : "",
+    };
+  },
+
+  toJSON(message: DeletePortfolioRequest): unknown {
+    const obj: any = {};
+    if (message.portfolioId !== "") {
+      obj.portfolioId = message.portfolioId;
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<DeletePortfolioRequest>, I>>(base?: I): DeletePortfolioRequest {
+    return DeletePortfolioRequest.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<DeletePortfolioRequest>, I>>(object: I): DeletePortfolioRequest {
+    const message = createBaseDeletePortfolioRequest();
+    message.portfolioId = object.portfolioId ?? "";
+    return message;
+  },
+};
+
+function createBaseDeletePortfolioResponse(): DeletePortfolioResponse {
+  return {};
+}
+
+export const DeletePortfolioResponse: MessageFns<DeletePortfolioResponse> = {
+  encode(_: DeletePortfolioResponse, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): DeletePortfolioResponse {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseDeletePortfolioResponse();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(_: any): DeletePortfolioResponse {
+    return {};
+  },
+
+  toJSON(_: DeletePortfolioResponse): unknown {
+    const obj: any = {};
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<DeletePortfolioResponse>, I>>(base?: I): DeletePortfolioResponse {
+    return DeletePortfolioResponse.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<DeletePortfolioResponse>, I>>(_: I): DeletePortfolioResponse {
+    const message = createBaseDeletePortfolioResponse();
+    return message;
+  },
+};
+
+function createBaseAddStocksToPortfolioRequest(): AddStocksToPortfolioRequest {
+  return { portfolioId: "", tickers: [] };
+}
+
+export const AddStocksToPortfolioRequest: MessageFns<AddStocksToPortfolioRequest> = {
+  encode(message: AddStocksToPortfolioRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.portfolioId !== "") {
+      writer.uint32(10).string(message.portfolioId);
+    }
+    for (const v of message.tickers) {
+      writer.uint32(18).string(v!);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): AddStocksToPortfolioRequest {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseAddStocksToPortfolioRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.portfolioId = reader.string();
+          continue;
+        }
+        case 2: {
+          if (tag !== 18) {
+            break;
+          }
+
+          message.tickers.push(reader.string());
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): AddStocksToPortfolioRequest {
+    return {
+      portfolioId: isSet(object.portfolioId)
+        ? globalThis.String(object.portfolioId)
+        : isSet(object.portfolio_id)
+        ? globalThis.String(object.portfolio_id)
+        : "",
+      tickers: globalThis.Array.isArray(object?.tickers) ? object.tickers.map((e: any) => globalThis.String(e)) : [],
+    };
+  },
+
+  toJSON(message: AddStocksToPortfolioRequest): unknown {
+    const obj: any = {};
+    if (message.portfolioId !== "") {
+      obj.portfolioId = message.portfolioId;
+    }
+    if (message.tickers?.length) {
+      obj.tickers = message.tickers;
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<AddStocksToPortfolioRequest>, I>>(base?: I): AddStocksToPortfolioRequest {
+    return AddStocksToPortfolioRequest.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<AddStocksToPortfolioRequest>, I>>(object: I): AddStocksToPortfolioRequest {
+    const message = createBaseAddStocksToPortfolioRequest();
+    message.portfolioId = object.portfolioId ?? "";
+    message.tickers = object.tickers?.map((e) => e) || [];
+    return message;
+  },
+};
+
+function createBaseAddStocksToPortfolioResponse(): AddStocksToPortfolioResponse {
+  return { portfolio: undefined };
+}
+
+export const AddStocksToPortfolioResponse: MessageFns<AddStocksToPortfolioResponse> = {
+  encode(message: AddStocksToPortfolioResponse, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.portfolio !== undefined) {
+      Portfolio.encode(message.portfolio, writer.uint32(10).fork()).join();
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): AddStocksToPortfolioResponse {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseAddStocksToPortfolioResponse();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.portfolio = Portfolio.decode(reader, reader.uint32());
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): AddStocksToPortfolioResponse {
+    return { portfolio: isSet(object.portfolio) ? Portfolio.fromJSON(object.portfolio) : undefined };
+  },
+
+  toJSON(message: AddStocksToPortfolioResponse): unknown {
+    const obj: any = {};
+    if (message.portfolio !== undefined) {
+      obj.portfolio = Portfolio.toJSON(message.portfolio);
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<AddStocksToPortfolioResponse>, I>>(base?: I): AddStocksToPortfolioResponse {
+    return AddStocksToPortfolioResponse.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<AddStocksToPortfolioResponse>, I>>(object: I): AddStocksToPortfolioResponse {
+    const message = createBaseAddStocksToPortfolioResponse();
+    message.portfolio = (object.portfolio !== undefined && object.portfolio !== null)
+      ? Portfolio.fromPartial(object.portfolio)
+      : undefined;
+    return message;
+  },
+};
+
+function createBaseRemoveStocksFromPortfolioRequest(): RemoveStocksFromPortfolioRequest {
+  return { portfolioId: "", tickers: [] };
+}
+
+export const RemoveStocksFromPortfolioRequest: MessageFns<RemoveStocksFromPortfolioRequest> = {
+  encode(message: RemoveStocksFromPortfolioRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.portfolioId !== "") {
+      writer.uint32(10).string(message.portfolioId);
+    }
+    for (const v of message.tickers) {
+      writer.uint32(18).string(v!);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): RemoveStocksFromPortfolioRequest {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseRemoveStocksFromPortfolioRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.portfolioId = reader.string();
+          continue;
+        }
+        case 2: {
+          if (tag !== 18) {
+            break;
+          }
+
+          message.tickers.push(reader.string());
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): RemoveStocksFromPortfolioRequest {
+    return {
+      portfolioId: isSet(object.portfolioId)
+        ? globalThis.String(object.portfolioId)
+        : isSet(object.portfolio_id)
+        ? globalThis.String(object.portfolio_id)
+        : "",
+      tickers: globalThis.Array.isArray(object?.tickers) ? object.tickers.map((e: any) => globalThis.String(e)) : [],
+    };
+  },
+
+  toJSON(message: RemoveStocksFromPortfolioRequest): unknown {
+    const obj: any = {};
+    if (message.portfolioId !== "") {
+      obj.portfolioId = message.portfolioId;
+    }
+    if (message.tickers?.length) {
+      obj.tickers = message.tickers;
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<RemoveStocksFromPortfolioRequest>, I>>(
+    base?: I,
+  ): RemoveStocksFromPortfolioRequest {
+    return RemoveStocksFromPortfolioRequest.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<RemoveStocksFromPortfolioRequest>, I>>(
+    object: I,
+  ): RemoveStocksFromPortfolioRequest {
+    const message = createBaseRemoveStocksFromPortfolioRequest();
+    message.portfolioId = object.portfolioId ?? "";
+    message.tickers = object.tickers?.map((e) => e) || [];
+    return message;
+  },
+};
+
+function createBaseRemoveStocksFromPortfolioResponse(): RemoveStocksFromPortfolioResponse {
+  return { portfolio: undefined };
+}
+
+export const RemoveStocksFromPortfolioResponse: MessageFns<RemoveStocksFromPortfolioResponse> = {
+  encode(message: RemoveStocksFromPortfolioResponse, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.portfolio !== undefined) {
+      Portfolio.encode(message.portfolio, writer.uint32(10).fork()).join();
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): RemoveStocksFromPortfolioResponse {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseRemoveStocksFromPortfolioResponse();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.portfolio = Portfolio.decode(reader, reader.uint32());
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): RemoveStocksFromPortfolioResponse {
+    return { portfolio: isSet(object.portfolio) ? Portfolio.fromJSON(object.portfolio) : undefined };
+  },
+
+  toJSON(message: RemoveStocksFromPortfolioResponse): unknown {
+    const obj: any = {};
+    if (message.portfolio !== undefined) {
+      obj.portfolio = Portfolio.toJSON(message.portfolio);
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<RemoveStocksFromPortfolioResponse>, I>>(
+    base?: I,
+  ): RemoveStocksFromPortfolioResponse {
+    return RemoveStocksFromPortfolioResponse.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<RemoveStocksFromPortfolioResponse>, I>>(
+    object: I,
+  ): RemoveStocksFromPortfolioResponse {
+    const message = createBaseRemoveStocksFromPortfolioResponse();
+    message.portfolio = (object.portfolio !== undefined && object.portfolio !== null)
+      ? Portfolio.fromPartial(object.portfolio)
+      : undefined;
     return message;
   },
 };
@@ -5353,6 +6335,55 @@ export const AlertServiceDefinition = {
       responseStream: false,
       options: {},
     },
+    /** Portfolio CRUD */
+    getPortfolio: {
+      name: "GetPortfolio",
+      requestType: GetPortfolioRequest,
+      requestStream: false,
+      responseType: GetPortfolioResponse,
+      responseStream: false,
+      options: {},
+    },
+    createPortfolio: {
+      name: "CreatePortfolio",
+      requestType: CreatePortfolioRequest,
+      requestStream: false,
+      responseType: CreatePortfolioResponse,
+      responseStream: false,
+      options: {},
+    },
+    updatePortfolio: {
+      name: "UpdatePortfolio",
+      requestType: UpdatePortfolioRequest,
+      requestStream: false,
+      responseType: UpdatePortfolioResponse,
+      responseStream: false,
+      options: {},
+    },
+    deletePortfolio: {
+      name: "DeletePortfolio",
+      requestType: DeletePortfolioRequest,
+      requestStream: false,
+      responseType: DeletePortfolioResponse,
+      responseStream: false,
+      options: {},
+    },
+    addStocksToPortfolio: {
+      name: "AddStocksToPortfolio",
+      requestType: AddStocksToPortfolioRequest,
+      requestStream: false,
+      responseType: AddStocksToPortfolioResponse,
+      responseStream: false,
+      options: {},
+    },
+    removeStocksFromPortfolio: {
+      name: "RemoveStocksFromPortfolio",
+      requestType: RemoveStocksFromPortfolioRequest,
+      requestStream: false,
+      responseType: RemoveStocksFromPortfolioResponse,
+      responseStream: false,
+      options: {},
+    },
     /** Synchronous evaluation: update prices, evaluate alerts, send Discord notifications */
     evaluateExchange: {
       name: "EvaluateExchange",
@@ -5421,6 +6452,31 @@ export interface AlertServiceImplementation<CallContextExt = {}> {
     request: ListPortfoliosRequest,
     context: CallContext & CallContextExt,
   ): Promise<DeepPartial<ListPortfoliosResponse>>;
+  /** Portfolio CRUD */
+  getPortfolio(
+    request: GetPortfolioRequest,
+    context: CallContext & CallContextExt,
+  ): Promise<DeepPartial<GetPortfolioResponse>>;
+  createPortfolio(
+    request: CreatePortfolioRequest,
+    context: CallContext & CallContextExt,
+  ): Promise<DeepPartial<CreatePortfolioResponse>>;
+  updatePortfolio(
+    request: UpdatePortfolioRequest,
+    context: CallContext & CallContextExt,
+  ): Promise<DeepPartial<UpdatePortfolioResponse>>;
+  deletePortfolio(
+    request: DeletePortfolioRequest,
+    context: CallContext & CallContextExt,
+  ): Promise<DeepPartial<DeletePortfolioResponse>>;
+  addStocksToPortfolio(
+    request: AddStocksToPortfolioRequest,
+    context: CallContext & CallContextExt,
+  ): Promise<DeepPartial<AddStocksToPortfolioResponse>>;
+  removeStocksFromPortfolio(
+    request: RemoveStocksFromPortfolioRequest,
+    context: CallContext & CallContextExt,
+  ): Promise<DeepPartial<RemoveStocksFromPortfolioResponse>>;
   /** Synchronous evaluation: update prices, evaluate alerts, send Discord notifications */
   evaluateExchange(
     request: EvaluateExchangeRequest,
@@ -5484,6 +6540,31 @@ export interface AlertServiceClient<CallOptionsExt = {}> {
     request: DeepPartial<ListPortfoliosRequest>,
     options?: CallOptions & CallOptionsExt,
   ): Promise<ListPortfoliosResponse>;
+  /** Portfolio CRUD */
+  getPortfolio(
+    request: DeepPartial<GetPortfolioRequest>,
+    options?: CallOptions & CallOptionsExt,
+  ): Promise<GetPortfolioResponse>;
+  createPortfolio(
+    request: DeepPartial<CreatePortfolioRequest>,
+    options?: CallOptions & CallOptionsExt,
+  ): Promise<CreatePortfolioResponse>;
+  updatePortfolio(
+    request: DeepPartial<UpdatePortfolioRequest>,
+    options?: CallOptions & CallOptionsExt,
+  ): Promise<UpdatePortfolioResponse>;
+  deletePortfolio(
+    request: DeepPartial<DeletePortfolioRequest>,
+    options?: CallOptions & CallOptionsExt,
+  ): Promise<DeletePortfolioResponse>;
+  addStocksToPortfolio(
+    request: DeepPartial<AddStocksToPortfolioRequest>,
+    options?: CallOptions & CallOptionsExt,
+  ): Promise<AddStocksToPortfolioResponse>;
+  removeStocksFromPortfolio(
+    request: DeepPartial<RemoveStocksFromPortfolioRequest>,
+    options?: CallOptions & CallOptionsExt,
+  ): Promise<RemoveStocksFromPortfolioResponse>;
   /** Synchronous evaluation: update prices, evaluate alerts, send Discord notifications */
   evaluateExchange(
     request: DeepPartial<EvaluateExchangeRequest>,

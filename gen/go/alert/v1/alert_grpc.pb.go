@@ -33,6 +33,12 @@ const (
 	AlertService_GetTriggerHistoryByTicker_FullMethodName = "/stockalert.alert.v1.AlertService/GetTriggerHistoryByTicker"
 	AlertService_SearchStocks_FullMethodName              = "/stockalert.alert.v1.AlertService/SearchStocks"
 	AlertService_ListPortfolios_FullMethodName            = "/stockalert.alert.v1.AlertService/ListPortfolios"
+	AlertService_GetPortfolio_FullMethodName              = "/stockalert.alert.v1.AlertService/GetPortfolio"
+	AlertService_CreatePortfolio_FullMethodName           = "/stockalert.alert.v1.AlertService/CreatePortfolio"
+	AlertService_UpdatePortfolio_FullMethodName           = "/stockalert.alert.v1.AlertService/UpdatePortfolio"
+	AlertService_DeletePortfolio_FullMethodName           = "/stockalert.alert.v1.AlertService/DeletePortfolio"
+	AlertService_AddStocksToPortfolio_FullMethodName      = "/stockalert.alert.v1.AlertService/AddStocksToPortfolio"
+	AlertService_RemoveStocksFromPortfolio_FullMethodName = "/stockalert.alert.v1.AlertService/RemoveStocksFromPortfolio"
 	AlertService_EvaluateExchange_FullMethodName          = "/stockalert.alert.v1.AlertService/EvaluateExchange"
 )
 
@@ -58,6 +64,13 @@ type AlertServiceClient interface {
 	GetTriggerHistoryByTicker(ctx context.Context, in *GetTriggerHistoryByTickerRequest, opts ...grpc.CallOption) (*GetTriggerHistoryByTickerResponse, error)
 	SearchStocks(ctx context.Context, in *SearchStocksRequest, opts ...grpc.CallOption) (*SearchStocksResponse, error)
 	ListPortfolios(ctx context.Context, in *ListPortfoliosRequest, opts ...grpc.CallOption) (*ListPortfoliosResponse, error)
+	// Portfolio CRUD
+	GetPortfolio(ctx context.Context, in *GetPortfolioRequest, opts ...grpc.CallOption) (*GetPortfolioResponse, error)
+	CreatePortfolio(ctx context.Context, in *CreatePortfolioRequest, opts ...grpc.CallOption) (*CreatePortfolioResponse, error)
+	UpdatePortfolio(ctx context.Context, in *UpdatePortfolioRequest, opts ...grpc.CallOption) (*UpdatePortfolioResponse, error)
+	DeletePortfolio(ctx context.Context, in *DeletePortfolioRequest, opts ...grpc.CallOption) (*DeletePortfolioResponse, error)
+	AddStocksToPortfolio(ctx context.Context, in *AddStocksToPortfolioRequest, opts ...grpc.CallOption) (*AddStocksToPortfolioResponse, error)
+	RemoveStocksFromPortfolio(ctx context.Context, in *RemoveStocksFromPortfolioRequest, opts ...grpc.CallOption) (*RemoveStocksFromPortfolioResponse, error)
 	// Synchronous evaluation: update prices, evaluate alerts, send Discord notifications
 	EvaluateExchange(ctx context.Context, in *EvaluateExchangeRequest, opts ...grpc.CallOption) (*EvaluateExchangeResponse, error)
 }
@@ -210,6 +223,66 @@ func (c *alertServiceClient) ListPortfolios(ctx context.Context, in *ListPortfol
 	return out, nil
 }
 
+func (c *alertServiceClient) GetPortfolio(ctx context.Context, in *GetPortfolioRequest, opts ...grpc.CallOption) (*GetPortfolioResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetPortfolioResponse)
+	err := c.cc.Invoke(ctx, AlertService_GetPortfolio_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *alertServiceClient) CreatePortfolio(ctx context.Context, in *CreatePortfolioRequest, opts ...grpc.CallOption) (*CreatePortfolioResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CreatePortfolioResponse)
+	err := c.cc.Invoke(ctx, AlertService_CreatePortfolio_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *alertServiceClient) UpdatePortfolio(ctx context.Context, in *UpdatePortfolioRequest, opts ...grpc.CallOption) (*UpdatePortfolioResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(UpdatePortfolioResponse)
+	err := c.cc.Invoke(ctx, AlertService_UpdatePortfolio_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *alertServiceClient) DeletePortfolio(ctx context.Context, in *DeletePortfolioRequest, opts ...grpc.CallOption) (*DeletePortfolioResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(DeletePortfolioResponse)
+	err := c.cc.Invoke(ctx, AlertService_DeletePortfolio_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *alertServiceClient) AddStocksToPortfolio(ctx context.Context, in *AddStocksToPortfolioRequest, opts ...grpc.CallOption) (*AddStocksToPortfolioResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(AddStocksToPortfolioResponse)
+	err := c.cc.Invoke(ctx, AlertService_AddStocksToPortfolio_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *alertServiceClient) RemoveStocksFromPortfolio(ctx context.Context, in *RemoveStocksFromPortfolioRequest, opts ...grpc.CallOption) (*RemoveStocksFromPortfolioResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RemoveStocksFromPortfolioResponse)
+	err := c.cc.Invoke(ctx, AlertService_RemoveStocksFromPortfolio_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *alertServiceClient) EvaluateExchange(ctx context.Context, in *EvaluateExchangeRequest, opts ...grpc.CallOption) (*EvaluateExchangeResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(EvaluateExchangeResponse)
@@ -242,6 +315,13 @@ type AlertServiceServer interface {
 	GetTriggerHistoryByTicker(context.Context, *GetTriggerHistoryByTickerRequest) (*GetTriggerHistoryByTickerResponse, error)
 	SearchStocks(context.Context, *SearchStocksRequest) (*SearchStocksResponse, error)
 	ListPortfolios(context.Context, *ListPortfoliosRequest) (*ListPortfoliosResponse, error)
+	// Portfolio CRUD
+	GetPortfolio(context.Context, *GetPortfolioRequest) (*GetPortfolioResponse, error)
+	CreatePortfolio(context.Context, *CreatePortfolioRequest) (*CreatePortfolioResponse, error)
+	UpdatePortfolio(context.Context, *UpdatePortfolioRequest) (*UpdatePortfolioResponse, error)
+	DeletePortfolio(context.Context, *DeletePortfolioRequest) (*DeletePortfolioResponse, error)
+	AddStocksToPortfolio(context.Context, *AddStocksToPortfolioRequest) (*AddStocksToPortfolioResponse, error)
+	RemoveStocksFromPortfolio(context.Context, *RemoveStocksFromPortfolioRequest) (*RemoveStocksFromPortfolioResponse, error)
 	// Synchronous evaluation: update prices, evaluate alerts, send Discord notifications
 	EvaluateExchange(context.Context, *EvaluateExchangeRequest) (*EvaluateExchangeResponse, error)
 	mustEmbedUnimplementedAlertServiceServer()
@@ -295,6 +375,24 @@ func (UnimplementedAlertServiceServer) SearchStocks(context.Context, *SearchStoc
 }
 func (UnimplementedAlertServiceServer) ListPortfolios(context.Context, *ListPortfoliosRequest) (*ListPortfoliosResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListPortfolios not implemented")
+}
+func (UnimplementedAlertServiceServer) GetPortfolio(context.Context, *GetPortfolioRequest) (*GetPortfolioResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetPortfolio not implemented")
+}
+func (UnimplementedAlertServiceServer) CreatePortfolio(context.Context, *CreatePortfolioRequest) (*CreatePortfolioResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method CreatePortfolio not implemented")
+}
+func (UnimplementedAlertServiceServer) UpdatePortfolio(context.Context, *UpdatePortfolioRequest) (*UpdatePortfolioResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method UpdatePortfolio not implemented")
+}
+func (UnimplementedAlertServiceServer) DeletePortfolio(context.Context, *DeletePortfolioRequest) (*DeletePortfolioResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method DeletePortfolio not implemented")
+}
+func (UnimplementedAlertServiceServer) AddStocksToPortfolio(context.Context, *AddStocksToPortfolioRequest) (*AddStocksToPortfolioResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method AddStocksToPortfolio not implemented")
+}
+func (UnimplementedAlertServiceServer) RemoveStocksFromPortfolio(context.Context, *RemoveStocksFromPortfolioRequest) (*RemoveStocksFromPortfolioResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method RemoveStocksFromPortfolio not implemented")
 }
 func (UnimplementedAlertServiceServer) EvaluateExchange(context.Context, *EvaluateExchangeRequest) (*EvaluateExchangeResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method EvaluateExchange not implemented")
@@ -572,6 +670,114 @@ func _AlertService_ListPortfolios_Handler(srv interface{}, ctx context.Context, 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _AlertService_GetPortfolio_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetPortfolioRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AlertServiceServer).GetPortfolio(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AlertService_GetPortfolio_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AlertServiceServer).GetPortfolio(ctx, req.(*GetPortfolioRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AlertService_CreatePortfolio_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreatePortfolioRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AlertServiceServer).CreatePortfolio(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AlertService_CreatePortfolio_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AlertServiceServer).CreatePortfolio(ctx, req.(*CreatePortfolioRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AlertService_UpdatePortfolio_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdatePortfolioRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AlertServiceServer).UpdatePortfolio(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AlertService_UpdatePortfolio_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AlertServiceServer).UpdatePortfolio(ctx, req.(*UpdatePortfolioRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AlertService_DeletePortfolio_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeletePortfolioRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AlertServiceServer).DeletePortfolio(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AlertService_DeletePortfolio_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AlertServiceServer).DeletePortfolio(ctx, req.(*DeletePortfolioRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AlertService_AddStocksToPortfolio_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AddStocksToPortfolioRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AlertServiceServer).AddStocksToPortfolio(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AlertService_AddStocksToPortfolio_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AlertServiceServer).AddStocksToPortfolio(ctx, req.(*AddStocksToPortfolioRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AlertService_RemoveStocksFromPortfolio_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RemoveStocksFromPortfolioRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AlertServiceServer).RemoveStocksFromPortfolio(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AlertService_RemoveStocksFromPortfolio_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AlertServiceServer).RemoveStocksFromPortfolio(ctx, req.(*RemoveStocksFromPortfolioRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _AlertService_EvaluateExchange_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(EvaluateExchangeRequest)
 	if err := dec(in); err != nil {
@@ -652,6 +858,30 @@ var AlertService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListPortfolios",
 			Handler:    _AlertService_ListPortfolios_Handler,
+		},
+		{
+			MethodName: "GetPortfolio",
+			Handler:    _AlertService_GetPortfolio_Handler,
+		},
+		{
+			MethodName: "CreatePortfolio",
+			Handler:    _AlertService_CreatePortfolio_Handler,
+		},
+		{
+			MethodName: "UpdatePortfolio",
+			Handler:    _AlertService_UpdatePortfolio_Handler,
+		},
+		{
+			MethodName: "DeletePortfolio",
+			Handler:    _AlertService_DeletePortfolio_Handler,
+		},
+		{
+			MethodName: "AddStocksToPortfolio",
+			Handler:    _AlertService_AddStocksToPortfolio_Handler,
+		},
+		{
+			MethodName: "RemoveStocksFromPortfolio",
+			Handler:    _AlertService_RemoveStocksFromPortfolio_Handler,
 		},
 		{
 			MethodName: "EvaluateExchange",

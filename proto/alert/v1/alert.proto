@@ -283,10 +283,72 @@ message Portfolio {
   string portfolio_id = 1;
   string name = 2;
   repeated string tickers = 3;
+  string discord_webhook = 4;
+  bool enabled = 5;
+  string created_date = 6;
+  string last_updated = 7;
 }
 
 message ListPortfoliosResponse {
   repeated Portfolio portfolios = 1;
+}
+
+// GetPortfolio
+message GetPortfolioRequest {
+  string portfolio_id = 1;
+}
+
+message GetPortfolioResponse {
+  Portfolio portfolio = 1;
+}
+
+// CreatePortfolio
+message CreatePortfolioRequest {
+  string name = 1;
+  string discord_webhook = 2;
+}
+
+message CreatePortfolioResponse {
+  Portfolio portfolio = 1;
+}
+
+// UpdatePortfolio
+message UpdatePortfolioRequest {
+  string portfolio_id = 1;
+  string name = 2;
+  string discord_webhook = 3;
+  bool enabled = 4;
+}
+
+message UpdatePortfolioResponse {
+  Portfolio portfolio = 1;
+}
+
+// DeletePortfolio
+message DeletePortfolioRequest {
+  string portfolio_id = 1;
+}
+
+message DeletePortfolioResponse {}
+
+// AddStocksToPortfolio
+message AddStocksToPortfolioRequest {
+  string portfolio_id = 1;
+  repeated string tickers = 2;
+}
+
+message AddStocksToPortfolioResponse {
+  Portfolio portfolio = 1;
+}
+
+// RemoveStocksFromPortfolio
+message RemoveStocksFromPortfolioRequest {
+  string portfolio_id = 1;
+  repeated string tickers = 2;
+}
+
+message RemoveStocksFromPortfolioResponse {
+  Portfolio portfolio = 1;
 }
 
 // ---------------------------------------------------------------------------
@@ -329,6 +391,14 @@ service AlertService {
   rpc GetTriggerHistoryByTicker(GetTriggerHistoryByTickerRequest) returns (GetTriggerHistoryByTickerResponse);
   rpc SearchStocks(SearchStocksRequest) returns (SearchStocksResponse);
   rpc ListPortfolios(ListPortfoliosRequest) returns (ListPortfoliosResponse);
+
+  // Portfolio CRUD
+  rpc GetPortfolio(GetPortfolioRequest) returns (GetPortfolioResponse);
+  rpc CreatePortfolio(CreatePortfolioRequest) returns (CreatePortfolioResponse);
+  rpc UpdatePortfolio(UpdatePortfolioRequest) returns (UpdatePortfolioResponse);
+  rpc DeletePortfolio(DeletePortfolioRequest) returns (DeletePortfolioResponse);
+  rpc AddStocksToPortfolio(AddStocksToPortfolioRequest) returns (AddStocksToPortfolioResponse);
+  rpc RemoveStocksFromPortfolio(RemoveStocksFromPortfolioRequest) returns (RemoveStocksFromPortfolioResponse);
 
   // Synchronous evaluation: update prices, evaluate alerts, send Discord notifications
   rpc EvaluateExchange(EvaluateExchangeRequest) returns (EvaluateExchangeResponse);
