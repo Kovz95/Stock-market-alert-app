@@ -6,6 +6,7 @@ import { SiteHeader } from "@/components/site-header";
 import { Providers } from "@/lib/providers";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import "./globals.css";
+import { Toaster } from "@/components/ui/sonner";
 
 const roboto = Roboto({ subsets: ["latin"], variable: "--font-sans" });
 
@@ -30,7 +31,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={roboto.variable}>
+    <html lang="en" className={roboto.variable} suppressHydrationWarning>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
@@ -49,6 +50,7 @@ export default function RootLayout({
               <div className="flex flex-1 flex-col">{children}</div>
             </SidebarInset>
           </SidebarProvider>
+          <Toaster />
         </Providers>
       </body>
     </html>

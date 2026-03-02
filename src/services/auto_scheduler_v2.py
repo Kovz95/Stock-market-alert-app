@@ -630,8 +630,29 @@ def start_auto_scheduler(foreground: bool = False) -> bool:
             current_job=None,
         )
 
-        logger.info("Auto scheduler v2 started successfully")
-        send_scheduler_notification("✅ Scheduler started", "success")
+        logger.info("Auto scheduler v2 started successfully (mode=%s)", _scheduler_mode or "all")
+
+        if _scheduler_mode in ("daily", "weekly", "hourly") and configured_runs:
+            try:
+                from src.services.scheduler_discord import create_scheduler_discord
+                _discord_notifier = create_scheduler_discord(_scheduler_mode)
+                if "hourly_et" in configured_runs[0]:
+                    _schedule_info = f"{len(configured_runs)} exchanges | every hour at :05 UTC"
+                else:
+                    _time_groups: Dict[str, List[str]] = {}
+                    for _entry in configured_runs:
+                        _time_key = f"{_entry['hour']:02d}:{_entry['minute']:02d}"
+                        _time_groups.setdefault(_time_key, []).append(_entry["exchange"])
+                    _parts = [
+                        f"{_t} ET ({len(_excs)} exchange{'s' if len(_excs) != 1 else ''})"
+                        for _t, _excs in sorted(_time_groups.items())
+                    ]
+                    _schedule_info = " | ".join(_parts)
+                _discord_notifier.notify_scheduler_start(_schedule_info)
+            except Exception as exc:
+                logger.warning("Failed to send Discord startup notification: %s", exc)
+        else:
+            send_scheduler_notification("✅ Scheduler started", "success")
 
         return True
 

@@ -107,7 +107,7 @@ export default function HourlyDiscordPage() {
                 key={ch.name}
                 channel={ch}
                 prefixIcon="🌍"
-                onSave={async (name, url) => updateWebhook.mutateAsync({ channelName: name, webhookUrl: url })}
+                onSave={(name, url) => updateWebhook.mutateAsync({ channelName: name, webhookUrl: url })}
                 isPending={updateWebhook.isPending}
               />
             ))
@@ -122,7 +122,7 @@ export default function HourlyDiscordPage() {
                 key={ch.name}
                 channel={ch}
                 prefixIcon="⭐"
-                onSave={async (name, url) => updateWebhook.mutateAsync({ channelName: name, webhookUrl: url })}
+                onSave={(name, url) => updateWebhook.mutateAsync({ channelName: name, webhookUrl: url })}
                 isPending={updateWebhook.isPending}
               />
             ))

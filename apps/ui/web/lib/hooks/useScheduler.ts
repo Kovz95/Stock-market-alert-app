@@ -7,6 +7,7 @@ import {
   startScheduler,
   stopScheduler,
   runExchangeJob,
+  evaluateExchange,
   type SchedulerStatusData,
   type ExchangeScheduleRow,
 } from "@/actions/scheduler-actions";
@@ -57,6 +58,18 @@ export function useRunExchangeJob() {
   return useMutation({
     mutationFn: ({ exchange, timeframe }: { exchange: string; timeframe: string }) =>
       runExchangeJob(exchange, timeframe),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [...SCHEDULER_STATUS_KEY] });
+      queryClient.invalidateQueries({ queryKey: [...SCHEDULER_SCHEDULE_KEY] });
+    },
+  });
+}
+
+export function useEvaluateExchange() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ exchange, timeframe }: { exchange: string; timeframe: string }) =>
+      evaluateExchange(exchange, timeframe),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [...SCHEDULER_STATUS_KEY] });
       queryClient.invalidateQueries({ queryKey: [...SCHEDULER_SCHEDULE_KEY] });

@@ -1,6 +1,6 @@
 "use server";
 
-import { schedulerClient } from "@/lib/grpc/channel";
+import { alertClient, schedulerClient } from "@/lib/grpc/channel";
 
 export type SchedulerStatusData = {
   status: string;
@@ -125,5 +125,29 @@ export async function runExchangeJob(
   return {
     success: res.success,
     message: res.message,
+  };
+}
+
+export type EvaluateExchangeResult = {
+  success: boolean;
+  message: string;
+  alertsTotal: number;
+  alertsTriggered: number;
+  pricesUpdated: number;
+  durationSeconds: number;
+};
+
+export async function evaluateExchange(
+  exchange: string,
+  timeframe: string
+): Promise<EvaluateExchangeResult> {
+  const res = await alertClient.evaluateExchange({ exchange, timeframe });
+  return {
+    success: res.success,
+    message: res.message,
+    alertsTotal: res.alertsTotal,
+    alertsTriggered: res.alertsTriggered,
+    pricesUpdated: res.pricesUpdated,
+    durationSeconds: res.durationSeconds,
   };
 }

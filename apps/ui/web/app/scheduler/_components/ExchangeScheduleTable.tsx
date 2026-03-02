@@ -22,7 +22,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
   useExchangeSchedule,
-  useRunExchangeJob,
+  useEvaluateExchange,
   type ExchangeScheduleRow,
 } from "@/lib/hooks/useScheduler";
 import { toast } from "sonner";
@@ -45,9 +45,10 @@ const REGIONS = ["All", "Asia-Pacific", "Europe", "Americas"] as const;
 
 export function ExchangeScheduleTable({ timeframe }: { timeframe: Timeframe }) {
   const { data: schedule, isLoading, error } = useExchangeSchedule(timeframe);
-  const runJob = useRunExchangeJob();
+  const evaluate = useEvaluateExchange();
   const [regionFilter, setRegionFilter] = useState<string>("All");
   const [search, setSearch] = useState("");
+  const [runningExchange, setRunningExchange] = useState<string | null>(null);
 
   const filtered = useMemo(() => {
     if (!schedule) return [];
@@ -86,14 +87,22 @@ export function ExchangeScheduleTable({ timeframe }: { timeframe: Timeframe }) {
   }, [schedule, regionFilter, search]);
 
   async function handleRunNow(exchange: string) {
-    const result = await runJob.mutateAsync({
-      exchange,
-      timeframe,
-    });
-    if (result.success) {
-      toast.success(result.message);
-    } else {
-      toast.error(result.message);
+    setRunningExchange(exchange);
+    const toastId = toast.loading(`Evaluating ${exchange} (${timeframe})…`);
+    try {
+      const result = await evaluate.mutateAsync({ exchange, timeframe });
+      if (result.success) {
+        toast.success(
+          `${exchange} complete — ${result.alertsTriggered}/${result.alertsTotal} triggered · ${result.pricesUpdated} prices updated · ${result.durationSeconds.toFixed(1)}s`,
+          { id: toastId }
+        );
+      } else {
+        toast.error(result.message, { id: toastId });
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Evaluation failed", { id: toastId });
+    } finally {
+      setRunningExchange(null);
     }
   }
 
@@ -227,10 +236,10 @@ export function ExchangeScheduleTable({ timeframe }: { timeframe: Timeframe }) {
                       <Button
                         size="sm"
                         variant="secondary"
-                        disabled={runJob.isPending}
+                        disabled={runningExchange !== null}
                         onClick={() => handleRunNow(row.symbol)}
                       >
-                        Run now
+                        {runningExchange === row.symbol ? "Running…" : "Run now"}
                       </Button>
                     </TableCell>
                   </TableRow>

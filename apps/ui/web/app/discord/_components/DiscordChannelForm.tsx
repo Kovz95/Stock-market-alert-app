@@ -28,12 +28,16 @@ export function DiscordChannelForm({
       toast.warning("Please enter a webhook URL before saving.");
       return;
     }
-    const result = await onSave(channel.name, webhookUrl.trim());
-    if (result.success) {
-      toast.success(`Updated webhook for ${channel.name}`);
-      setWebhookUrl("");
-    } else {
-      toast.error(result.errorMessage ?? `Failed to update ${channel.name}`);
+    try {
+      const result = await onSave(channel.name, webhookUrl.trim());
+      if (result.success) {
+        toast.success(`Updated webhook for ${channel.name}`);
+        setWebhookUrl("");
+      } else {
+        toast.error(result.errorMessage ?? `Failed to update ${channel.name}`);
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : `Failed to update ${channel.name}`);
     }
   }
 

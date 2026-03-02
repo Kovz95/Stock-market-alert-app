@@ -302,6 +302,22 @@ export interface ListPortfoliosResponse {
   portfolios: Portfolio[];
 }
 
+export interface EvaluateExchangeRequest {
+  /** Exchange symbol, e.g. "NASDAQ", "NYSE", "LSE" */
+  exchange: string;
+  /** "daily", "weekly", or "hourly" — defaults to "daily" if empty */
+  timeframe: string;
+}
+
+export interface EvaluateExchangeResponse {
+  success: boolean;
+  message: string;
+  alertsTotal: number;
+  alertsTriggered: number;
+  pricesUpdated: number;
+  durationSeconds: number;
+}
+
 function createBaseAlert(): Alert {
   return {
     alertId: "",
@@ -4985,6 +5001,238 @@ export const ListPortfoliosResponse: MessageFns<ListPortfoliosResponse> = {
   },
 };
 
+function createBaseEvaluateExchangeRequest(): EvaluateExchangeRequest {
+  return { exchange: "", timeframe: "" };
+}
+
+export const EvaluateExchangeRequest: MessageFns<EvaluateExchangeRequest> = {
+  encode(message: EvaluateExchangeRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.exchange !== "") {
+      writer.uint32(10).string(message.exchange);
+    }
+    if (message.timeframe !== "") {
+      writer.uint32(18).string(message.timeframe);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): EvaluateExchangeRequest {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseEvaluateExchangeRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.exchange = reader.string();
+          continue;
+        }
+        case 2: {
+          if (tag !== 18) {
+            break;
+          }
+
+          message.timeframe = reader.string();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): EvaluateExchangeRequest {
+    return {
+      exchange: isSet(object.exchange) ? globalThis.String(object.exchange) : "",
+      timeframe: isSet(object.timeframe) ? globalThis.String(object.timeframe) : "",
+    };
+  },
+
+  toJSON(message: EvaluateExchangeRequest): unknown {
+    const obj: any = {};
+    if (message.exchange !== "") {
+      obj.exchange = message.exchange;
+    }
+    if (message.timeframe !== "") {
+      obj.timeframe = message.timeframe;
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<EvaluateExchangeRequest>, I>>(base?: I): EvaluateExchangeRequest {
+    return EvaluateExchangeRequest.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<EvaluateExchangeRequest>, I>>(object: I): EvaluateExchangeRequest {
+    const message = createBaseEvaluateExchangeRequest();
+    message.exchange = object.exchange ?? "";
+    message.timeframe = object.timeframe ?? "";
+    return message;
+  },
+};
+
+function createBaseEvaluateExchangeResponse(): EvaluateExchangeResponse {
+  return { success: false, message: "", alertsTotal: 0, alertsTriggered: 0, pricesUpdated: 0, durationSeconds: 0 };
+}
+
+export const EvaluateExchangeResponse: MessageFns<EvaluateExchangeResponse> = {
+  encode(message: EvaluateExchangeResponse, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.success !== false) {
+      writer.uint32(8).bool(message.success);
+    }
+    if (message.message !== "") {
+      writer.uint32(18).string(message.message);
+    }
+    if (message.alertsTotal !== 0) {
+      writer.uint32(24).int32(message.alertsTotal);
+    }
+    if (message.alertsTriggered !== 0) {
+      writer.uint32(32).int32(message.alertsTriggered);
+    }
+    if (message.pricesUpdated !== 0) {
+      writer.uint32(40).int32(message.pricesUpdated);
+    }
+    if (message.durationSeconds !== 0) {
+      writer.uint32(49).double(message.durationSeconds);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): EvaluateExchangeResponse {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseEvaluateExchangeResponse();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 8) {
+            break;
+          }
+
+          message.success = reader.bool();
+          continue;
+        }
+        case 2: {
+          if (tag !== 18) {
+            break;
+          }
+
+          message.message = reader.string();
+          continue;
+        }
+        case 3: {
+          if (tag !== 24) {
+            break;
+          }
+
+          message.alertsTotal = reader.int32();
+          continue;
+        }
+        case 4: {
+          if (tag !== 32) {
+            break;
+          }
+
+          message.alertsTriggered = reader.int32();
+          continue;
+        }
+        case 5: {
+          if (tag !== 40) {
+            break;
+          }
+
+          message.pricesUpdated = reader.int32();
+          continue;
+        }
+        case 6: {
+          if (tag !== 49) {
+            break;
+          }
+
+          message.durationSeconds = reader.double();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): EvaluateExchangeResponse {
+    return {
+      success: isSet(object.success) ? globalThis.Boolean(object.success) : false,
+      message: isSet(object.message) ? globalThis.String(object.message) : "",
+      alertsTotal: isSet(object.alertsTotal)
+        ? globalThis.Number(object.alertsTotal)
+        : isSet(object.alerts_total)
+        ? globalThis.Number(object.alerts_total)
+        : 0,
+      alertsTriggered: isSet(object.alertsTriggered)
+        ? globalThis.Number(object.alertsTriggered)
+        : isSet(object.alerts_triggered)
+        ? globalThis.Number(object.alerts_triggered)
+        : 0,
+      pricesUpdated: isSet(object.pricesUpdated)
+        ? globalThis.Number(object.pricesUpdated)
+        : isSet(object.prices_updated)
+        ? globalThis.Number(object.prices_updated)
+        : 0,
+      durationSeconds: isSet(object.durationSeconds)
+        ? globalThis.Number(object.durationSeconds)
+        : isSet(object.duration_seconds)
+        ? globalThis.Number(object.duration_seconds)
+        : 0,
+    };
+  },
+
+  toJSON(message: EvaluateExchangeResponse): unknown {
+    const obj: any = {};
+    if (message.success !== false) {
+      obj.success = message.success;
+    }
+    if (message.message !== "") {
+      obj.message = message.message;
+    }
+    if (message.alertsTotal !== 0) {
+      obj.alertsTotal = Math.round(message.alertsTotal);
+    }
+    if (message.alertsTriggered !== 0) {
+      obj.alertsTriggered = Math.round(message.alertsTriggered);
+    }
+    if (message.pricesUpdated !== 0) {
+      obj.pricesUpdated = Math.round(message.pricesUpdated);
+    }
+    if (message.durationSeconds !== 0) {
+      obj.durationSeconds = message.durationSeconds;
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<EvaluateExchangeResponse>, I>>(base?: I): EvaluateExchangeResponse {
+    return EvaluateExchangeResponse.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<EvaluateExchangeResponse>, I>>(object: I): EvaluateExchangeResponse {
+    const message = createBaseEvaluateExchangeResponse();
+    message.success = object.success ?? false;
+    message.message = object.message ?? "";
+    message.alertsTotal = object.alertsTotal ?? 0;
+    message.alertsTriggered = object.alertsTriggered ?? 0;
+    message.pricesUpdated = object.pricesUpdated ?? 0;
+    message.durationSeconds = object.durationSeconds ?? 0;
+    return message;
+  },
+};
+
 /** AlertService provides CRUD operations for stock alerts and audit logs. */
 export type AlertServiceDefinition = typeof AlertServiceDefinition;
 export const AlertServiceDefinition = {
@@ -5105,6 +5353,15 @@ export const AlertServiceDefinition = {
       responseStream: false,
       options: {},
     },
+    /** Synchronous evaluation: update prices, evaluate alerts, send Discord notifications */
+    evaluateExchange: {
+      name: "EvaluateExchange",
+      requestType: EvaluateExchangeRequest,
+      requestStream: false,
+      responseType: EvaluateExchangeResponse,
+      responseStream: false,
+      options: {},
+    },
   },
 } as const;
 
@@ -5164,6 +5421,11 @@ export interface AlertServiceImplementation<CallContextExt = {}> {
     request: ListPortfoliosRequest,
     context: CallContext & CallContextExt,
   ): Promise<DeepPartial<ListPortfoliosResponse>>;
+  /** Synchronous evaluation: update prices, evaluate alerts, send Discord notifications */
+  evaluateExchange(
+    request: EvaluateExchangeRequest,
+    context: CallContext & CallContextExt,
+  ): Promise<DeepPartial<EvaluateExchangeResponse>>;
 }
 
 export interface AlertServiceClient<CallOptionsExt = {}> {
@@ -5222,6 +5484,11 @@ export interface AlertServiceClient<CallOptionsExt = {}> {
     request: DeepPartial<ListPortfoliosRequest>,
     options?: CallOptions & CallOptionsExt,
   ): Promise<ListPortfoliosResponse>;
+  /** Synchronous evaluation: update prices, evaluate alerts, send Discord notifications */
+  evaluateExchange(
+    request: DeepPartial<EvaluateExchangeRequest>,
+    options?: CallOptions & CallOptionsExt,
+  ): Promise<EvaluateExchangeResponse>;
 }
 
 type Builtin = Date | Function | Uint8Array | string | number | boolean | undefined;

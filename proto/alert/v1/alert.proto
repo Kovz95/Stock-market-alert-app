@@ -289,6 +289,26 @@ message ListPortfoliosResponse {
   repeated Portfolio portfolios = 1;
 }
 
+// ---------------------------------------------------------------------------
+// EvaluateExchange — synchronous alert evaluation with price update + Discord
+// ---------------------------------------------------------------------------
+
+message EvaluateExchangeRequest {
+  // Exchange symbol, e.g. "NASDAQ", "NYSE", "LSE"
+  string exchange = 1;
+  // "daily", "weekly", or "hourly" — defaults to "daily" if empty
+  string timeframe = 2;
+}
+
+message EvaluateExchangeResponse {
+  bool success = 1;
+  string message = 2;
+  int32 alerts_total = 3;
+  int32 alerts_triggered = 4;
+  int32 prices_updated = 5;
+  double duration_seconds = 6;
+}
+
 // AlertService provides CRUD operations for stock alerts and audit logs.
 service AlertService {
   rpc ListAlerts(ListAlertsRequest) returns (ListAlertsResponse);
@@ -309,4 +329,7 @@ service AlertService {
   rpc GetTriggerHistoryByTicker(GetTriggerHistoryByTickerRequest) returns (GetTriggerHistoryByTickerResponse);
   rpc SearchStocks(SearchStocksRequest) returns (SearchStocksResponse);
   rpc ListPortfolios(ListPortfoliosRequest) returns (ListPortfoliosResponse);
+
+  // Synchronous evaluation: update prices, evaluate alerts, send Discord notifications
+  rpc EvaluateExchange(EvaluateExchangeRequest) returns (EvaluateExchangeResponse);
 }

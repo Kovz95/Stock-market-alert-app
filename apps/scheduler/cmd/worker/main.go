@@ -113,16 +113,20 @@ func main() {
 
 	mux := asynq.NewServeMux()
 	var handlers int
+	var jobTypes []string
 	if cfg.HandlesTaskType("daily") {
 		mux.Handle(tasks.TypeDaily, handler.NewDailyHandler(common))
+		jobTypes = append(jobTypes, "daily")
 		handlers++
 	}
 	if cfg.HandlesTaskType("weekly") {
 		mux.Handle(tasks.TypeWeekly, handler.NewWeeklyHandler(common))
+		jobTypes = append(jobTypes, "weekly")
 		handlers++
 	}
 	if cfg.HandlesTaskType("hourly") {
 		mux.Handle(tasks.TypeHourly, handler.NewHourlyHandler(common))
+		jobTypes = append(jobTypes, "hourly")
 		handlers++
 	}
 	if cfg.HandlesTaskType("enqueue") {
@@ -139,9 +143,20 @@ func main() {
 		}
 	}()
 
+	for _, jt := range jobTypes {
+		log.Printf("%s worker starting", jt)
+		common.NotifyWorkerLifecycle(jt, "start")
+	}
+
 	sig := make(chan os.Signal, 1)
 	signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)
 	<-sig
+
+	for _, jt := range jobTypes {
+		log.Printf("%s worker stopping", jt)
+		common.NotifyWorkerLifecycle(jt, "stop")
+	}
+
 	log.Println("shutting down worker")
 	srv.Shutdown()
 }

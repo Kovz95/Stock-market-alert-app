@@ -60,6 +60,33 @@ type Common struct {
 	ShadowDir string
 }
 
+// NotifyWorkerLifecycle sends a start or stop Discord message to the channel for the given task type.
+// taskType must be "daily", "weekly", or "hourly"; "enqueue" is intentionally ignored.
+// event must be "start" or "stop".
+func (c *Common) NotifyWorkerLifecycle(taskType, event string) {
+	type mapping struct{ label, tf string }
+	labels := map[string]mapping{
+		"daily":  {"daily", "1d"},
+		"weekly": {"weekly", "1wk"},
+		"hourly": {"hourly", "1h"},
+	}
+	info, ok := labels[taskType]
+	if !ok {
+		return
+	}
+	sn := c.statusNotifierFor(info.label, info.tf)
+	if sn == nil {
+		log.Printf("no Discord webhook configured for %s worker lifecycle events", taskType)
+		return
+	}
+	switch event {
+	case "start":
+		sn.NotifySchedulerStart("Worker online")
+	case "stop":
+		sn.NotifySchedulerStop()
+	}
+}
+
 // statusNotifierFor returns a StatusNotifier for the given job type, or nil if webhook is not set.
 func (c *Common) statusNotifierFor(jobLabel, timeframe string) *discord.StatusNotifier {
 	var url string
@@ -97,6 +124,8 @@ func (c *Common) Execute(ctx context.Context, exchange, timeframe string, status
 		}
 	}
 
+	log.Printf("[%s/%s] === job starting ===", exchange, timeframe)
+
 	if statusNotifier != nil {
 		statusNotifier.NotifyStart(runTime, exchange)
 	}
@@ -112,6 +141,8 @@ func (c *Common) Execute(ctx context.Context, exchange, timeframe string, status
 		c.reportError(ctx, runTime, exchange, timeframe, err, statusNotifier)
 		return nil, nil, err
 	}
+	log.Printf("[%s/%s] prices updated: %d/%d (failed: %d, skipped: %d)",
+		exchange, timeframe, priceStats.Updated, priceStats.Total, priceStats.Failed, priceStats.Skipped)
 
 	// 2. Load alerts for this exchange + timeframe
 	alerts, err := c.Queries.ListAlertsByExchangeAndTimeframe(ctx, db.ListAlertsByExchangeAndTimeframeParams{
@@ -123,9 +154,12 @@ func (c *Common) Execute(ctx context.Context, exchange, timeframe string, status
 		c.reportError(ctx, runTime, exchange, timeframe, err, statusNotifier)
 		return nil, nil, err
 	}
+	log.Printf("[%s/%s] evaluating %d alerts", exchange, timeframe, len(alerts))
 
 	alertStats = &discord.AlertStats{Total: len(alerts)}
 	if len(alerts) == 0 {
+		log.Printf("[%s/%s] === job complete | duration: %.1fs | no alerts to evaluate ===",
+			exchange, timeframe, time.Since(start).Seconds())
 		c.reportSuccess(ctx, runTime, start, exchange, timeframe, priceStats, alertStats, statusNotifier)
 		return priceStats, alertStats, nil
 	}
@@ -175,6 +209,10 @@ func (c *Common) Execute(ctx context.Context, exchange, timeframe string, status
 	alertStats.Skipped = stats.Skipped
 	alertStats.NoData = stats.NoData
 	alertStats.Errors = stats.Errors
+
+	log.Printf("[%s/%s] === job complete | duration: %.1fs | prices updated: %d | alerts: %d total, %d triggered ===",
+		exchange, timeframe, time.Since(start).Seconds(),
+		priceStats.Updated, alertStats.Total, alertStats.Triggered)
 
 	if c.ShadowDir != "" {
 		writeShadowOutput(c.ShadowDir, exchange, timeframe, runTime, shadowTriggered, stats)

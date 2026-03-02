@@ -25,6 +25,7 @@ from abc import ABC, abstractmethod
 from concurrent.futures import ThreadPoolExecutor, TimeoutError
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
+from zoneinfo import ZoneInfo
 
 from src.services.scheduler_services import (
     JOB_TIMEOUT_SECONDS,
@@ -217,9 +218,10 @@ class BaseExchangeJobHandler(ABC):
         from src.services.scheduler_discord import create_scheduler_discord
 
         job_id = self.services.sanitize_job_id(self.job_type, exchange_name)
+        now_et = datetime.now(timezone.utc).astimezone(ZoneInfo("America/New_York")).strftime("%Y-%m-%d %I:%M:%S %p ET")
         logger.info(
-            "=== Starting %s job for %s (job_id=%s) ===",
-            self.job_type.upper(), exchange_name, job_id,
+            "=== Starting %s job for %s (job_id=%s) | %s ===",
+            self.job_type.upper(), exchange_name, job_id, now_et,
         )
         if not self.services.acquire_job_lock(job_id):
             logger.warning("Job %s is already running; skipping duplicate execution.", job_id)
@@ -307,12 +309,17 @@ class BaseExchangeJobHandler(ABC):
                 },
             )
 
+            _total_alerts = alert_stats.get("total", 0) if isinstance(alert_stats, dict) else 0
+            _triggered = alert_stats.get("triggered", 0) if isinstance(alert_stats, dict) else 0
+            _prices_updated = price_stats.get("updated", 0) if isinstance(price_stats, dict) else price_stats
             logger.info(
-                "%s job finished for %s (price updates: %s, alerts: %s)",
+                "=== %s job finished for %s | duration: %ss | prices updated: %s | alerts: %s total, %s triggered ===",
                 self.job_type.upper(),
                 exchange_name,
-                price_stats.get("updated", 0) if isinstance(price_stats, dict) else price_stats,
-                alert_stats.get("total", 0) if isinstance(alert_stats, dict) else alert_stats,
+                round(duration, 1),
+                _prices_updated,
+                _total_alerts,
+                _triggered,
             )
 
             if send_complete:

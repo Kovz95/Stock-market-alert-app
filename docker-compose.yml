@@ -46,8 +46,14 @@ services:
       dockerfile: apps/grpc/alert_service/Dockerfile
     container_name: stockalert-alert-service
     restart: unless-stopped
+    env_file:
+      - .env
     environment:
       - DATABASE_URL=postgresql://${POSTGRES_USER:-stockalertapp}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-stockalertapp}
+      - FMP_API_KEY=${FMP_API_KEY:-}
+      - DISCORD_WEBHOOK_DAILY=${DISCORD_WEBHOOK_DAILY:-}
+      - DISCORD_WEBHOOK_WEEKLY=${DISCORD_WEBHOOK_WEEKLY:-}
+      - DISCORD_WEBHOOK_HOURLY=${DISCORD_WEBHOOK_HOURLY:-}
     depends_on:
       postgres:
         condition: service_healthy
@@ -63,6 +69,8 @@ services:
       dockerfile: apps/grpc/price_service/Dockerfile
     container_name: stockalert-price-service
     restart: unless-stopped
+    env_file:
+      - .env
     environment:
       - DATABASE_URL=postgresql://${POSTGRES_USER:-stockalertapp}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-stockalertapp}
     depends_on:
@@ -80,6 +88,8 @@ services:
       dockerfile: apps/grpc/discord_service/Dockerfile
     container_name: stockalert-discord-service
     restart: unless-stopped
+    env_file:
+      - .env
     environment:
       - DATABASE_URL=postgresql://${POSTGRES_USER:-stockalertapp}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-stockalertapp}
     depends_on:
@@ -99,6 +109,8 @@ services:
     container_name: stockalert-scheduler
     restart: unless-stopped
     entrypoint: ["/scheduler"]
+    env_file:
+      - .env
     environment:
       - REDIS_ADDR=redis:6379
     depends_on:
@@ -112,14 +124,12 @@ services:
       dockerfile: apps/scheduler/Dockerfile
     container_name: stockalert-worker-enqueue
     restart: unless-stopped
+    env_file:
+      - .env
     environment:
       - DATABASE_URL=postgresql://${POSTGRES_USER:-stockalertapp}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-stockalertapp}
       - REDIS_ADDR=redis:6379
-      - FMP_API_KEY=${FMP_API_KEY:-}
       - WORKER_TASK_TYPES=enqueue
-      - DISCORD_WEBHOOK_DAILY=${DISCORD_WEBHOOK_DAILY:-}
-      - DISCORD_WEBHOOK_WEEKLY=${DISCORD_WEBHOOK_WEEKLY:-}
-      - DISCORD_WEBHOOK_HOURLY=${DISCORD_WEBHOOK_HOURLY:-}
     depends_on:
       postgres:
         condition: service_healthy
@@ -133,14 +143,12 @@ services:
       dockerfile: apps/scheduler/Dockerfile
     container_name: stockalert-worker-daily
     restart: unless-stopped
+    env_file:
+      - .env
     environment:
       - DATABASE_URL=postgresql://${POSTGRES_USER:-stockalertapp}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-stockalertapp}
       - REDIS_ADDR=redis:6379
-      - FMP_API_KEY=${FMP_API_KEY:-}
       - WORKER_TASK_TYPES=daily
-      - DISCORD_WEBHOOK_DAILY=${DISCORD_WEBHOOK_DAILY:-}
-      - DISCORD_WEBHOOK_WEEKLY=${DISCORD_WEBHOOK_WEEKLY:-}
-      - DISCORD_WEBHOOK_HOURLY=${DISCORD_WEBHOOK_HOURLY:-}
     depends_on:
       postgres:
         condition: service_healthy
@@ -154,14 +162,12 @@ services:
       dockerfile: apps/scheduler/Dockerfile
     container_name: stockalert-worker-weekly
     restart: unless-stopped
+    env_file:
+      - .env
     environment:
       - DATABASE_URL=postgresql://${POSTGRES_USER:-stockalertapp}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-stockalertapp}
       - REDIS_ADDR=redis:6379
-      - FMP_API_KEY=${FMP_API_KEY:-}
       - WORKER_TASK_TYPES=weekly
-      - DISCORD_WEBHOOK_DAILY=${DISCORD_WEBHOOK_DAILY:-}
-      - DISCORD_WEBHOOK_WEEKLY=${DISCORD_WEBHOOK_WEEKLY:-}
-      - DISCORD_WEBHOOK_HOURLY=${DISCORD_WEBHOOK_HOURLY:-}
     depends_on:
       postgres:
         condition: service_healthy
@@ -175,14 +181,12 @@ services:
       dockerfile: apps/scheduler/Dockerfile
     container_name: stockalert-worker-hourly
     restart: unless-stopped
+    env_file:
+      - .env
     environment:
       - DATABASE_URL=postgresql://${POSTGRES_USER:-stockalertapp}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-stockalertapp}
       - REDIS_ADDR=redis:6379
-      - FMP_API_KEY=${FMP_API_KEY:-}
       - WORKER_TASK_TYPES=hourly
-      - DISCORD_WEBHOOK_DAILY=${DISCORD_WEBHOOK_DAILY:-}
-      - DISCORD_WEBHOOK_WEEKLY=${DISCORD_WEBHOOK_WEEKLY:-}
-      - DISCORD_WEBHOOK_HOURLY=${DISCORD_WEBHOOK_HOURLY:-}
     depends_on:
       postgres:
         condition: service_healthy
@@ -195,6 +199,8 @@ services:
       dockerfile: apps/grpc/scheduler_service/Dockerfile
     container_name: stockalert-scheduler-service
     restart: unless-stopped
+    env_file:
+      - .env
     environment:
       - DATABASE_URL=postgresql://${POSTGRES_USER:-stockalertapp}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-stockalertapp}
       - REDIS_ADDR=redis:6379

@@ -33,6 +33,7 @@ const (
 	AlertService_GetTriggerHistoryByTicker_FullMethodName = "/stockalert.alert.v1.AlertService/GetTriggerHistoryByTicker"
 	AlertService_SearchStocks_FullMethodName              = "/stockalert.alert.v1.AlertService/SearchStocks"
 	AlertService_ListPortfolios_FullMethodName            = "/stockalert.alert.v1.AlertService/ListPortfolios"
+	AlertService_EvaluateExchange_FullMethodName          = "/stockalert.alert.v1.AlertService/EvaluateExchange"
 )
 
 // AlertServiceClient is the client API for AlertService service.
@@ -57,6 +58,8 @@ type AlertServiceClient interface {
 	GetTriggerHistoryByTicker(ctx context.Context, in *GetTriggerHistoryByTickerRequest, opts ...grpc.CallOption) (*GetTriggerHistoryByTickerResponse, error)
 	SearchStocks(ctx context.Context, in *SearchStocksRequest, opts ...grpc.CallOption) (*SearchStocksResponse, error)
 	ListPortfolios(ctx context.Context, in *ListPortfoliosRequest, opts ...grpc.CallOption) (*ListPortfoliosResponse, error)
+	// Synchronous evaluation: update prices, evaluate alerts, send Discord notifications
+	EvaluateExchange(ctx context.Context, in *EvaluateExchangeRequest, opts ...grpc.CallOption) (*EvaluateExchangeResponse, error)
 }
 
 type alertServiceClient struct {
@@ -207,6 +210,16 @@ func (c *alertServiceClient) ListPortfolios(ctx context.Context, in *ListPortfol
 	return out, nil
 }
 
+func (c *alertServiceClient) EvaluateExchange(ctx context.Context, in *EvaluateExchangeRequest, opts ...grpc.CallOption) (*EvaluateExchangeResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(EvaluateExchangeResponse)
+	err := c.cc.Invoke(ctx, AlertService_EvaluateExchange_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // AlertServiceServer is the server API for AlertService service.
 // All implementations must embed UnimplementedAlertServiceServer
 // for forward compatibility.
@@ -229,6 +242,8 @@ type AlertServiceServer interface {
 	GetTriggerHistoryByTicker(context.Context, *GetTriggerHistoryByTickerRequest) (*GetTriggerHistoryByTickerResponse, error)
 	SearchStocks(context.Context, *SearchStocksRequest) (*SearchStocksResponse, error)
 	ListPortfolios(context.Context, *ListPortfoliosRequest) (*ListPortfoliosResponse, error)
+	// Synchronous evaluation: update prices, evaluate alerts, send Discord notifications
+	EvaluateExchange(context.Context, *EvaluateExchangeRequest) (*EvaluateExchangeResponse, error)
 	mustEmbedUnimplementedAlertServiceServer()
 }
 
@@ -280,6 +295,9 @@ func (UnimplementedAlertServiceServer) SearchStocks(context.Context, *SearchStoc
 }
 func (UnimplementedAlertServiceServer) ListPortfolios(context.Context, *ListPortfoliosRequest) (*ListPortfoliosResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListPortfolios not implemented")
+}
+func (UnimplementedAlertServiceServer) EvaluateExchange(context.Context, *EvaluateExchangeRequest) (*EvaluateExchangeResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method EvaluateExchange not implemented")
 }
 func (UnimplementedAlertServiceServer) mustEmbedUnimplementedAlertServiceServer() {}
 func (UnimplementedAlertServiceServer) testEmbeddedByValue()                      {}
@@ -554,6 +572,24 @@ func _AlertService_ListPortfolios_Handler(srv interface{}, ctx context.Context, 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _AlertService_EvaluateExchange_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(EvaluateExchangeRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AlertServiceServer).EvaluateExchange(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AlertService_EvaluateExchange_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AlertServiceServer).EvaluateExchange(ctx, req.(*EvaluateExchangeRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // AlertService_ServiceDesc is the grpc.ServiceDesc for AlertService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -616,6 +652,10 @@ var AlertService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListPortfolios",
 			Handler:    _AlertService_ListPortfolios_Handler,
+		},
+		{
+			MethodName: "EvaluateExchange",
+			Handler:    _AlertService_EvaluateExchange_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

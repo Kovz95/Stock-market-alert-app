@@ -8,11 +8,11 @@ WORKDIR /build
 COPY gen/go ./gen/go
 COPY database ./database
 COPY apps/grpc/ ./apps/grpc/
+COPY alert ./alert
 COPY calendar ./calendar
 COPY discord ./discord
 COPY expr ./expr
 COPY indicator ./indicator
-COPY apps/scheduler apps/scheduler
 
 # Download dependencies
 WORKDIR /build/apps/grpc/alert_service

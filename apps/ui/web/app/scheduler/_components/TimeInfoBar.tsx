@@ -36,14 +36,15 @@ const DAYS = [
 ];
 
 export function TimeInfoBar() {
-  const [now, setNow] = useState(getEasternTime());
+  const [now, setNow] = useState<Date | null>(null);
 
   useEffect(() => {
+    setNow(getEasternTime());
     const interval = setInterval(() => setNow(getEasternTime()), 1000);
     return () => clearInterval(interval);
   }, []);
 
-  const dst = isDST();
+  const dst = now ? isDST() : null;
 
   return (
     <div className="grid gap-4 md:grid-cols-3">
@@ -55,12 +56,14 @@ export function TimeInfoBar() {
         </CardHeader>
         <CardContent>
           <span className="text-xl font-semibold tabular-nums">
-            {now.toLocaleTimeString("en-US", {
-              hour: "2-digit",
-              minute: "2-digit",
-              second: "2-digit",
-              hour12: true,
-            })}
+            {now
+              ? now.toLocaleTimeString("en-US", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                  second: "2-digit",
+                  hour12: true,
+                })
+              : "--:--:-- --"}
           </span>
         </CardContent>
       </Card>
@@ -71,7 +74,9 @@ export function TimeInfoBar() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <span className="text-xl font-semibold">{DAYS[now.getDay()]}</span>
+          <span className="text-xl font-semibold">
+            {now ? DAYS[now.getDay()] : "---"}
+          </span>
         </CardContent>
       </Card>
       <Card>
@@ -82,7 +87,7 @@ export function TimeInfoBar() {
         </CardHeader>
         <CardContent>
           <span className="text-xl font-semibold">
-            {dst ? "EDT (Daylight)" : "EST (Standard)"}
+            {dst === null ? "---" : dst ? "EDT (Daylight)" : "EST (Standard)"}
           </span>
         </CardContent>
       </Card>

@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"log/slog"
 	"strings"
 	"time"
 
@@ -15,29 +16,56 @@ func (s *Server) GetExchangeSchedule(ctx context.Context, req *schedulerv1.GetEx
 	timeframe := req.GetTimeframe()
 	if timeframe == "" {
 		timeframe = "daily"
+		s.logger.Debug("GetExchangeSchedule: timeframe defaulted", "timeframe", timeframe)
+	} else {
+		s.logger.Debug("GetExchangeSchedule: request received", "timeframe", timeframe)
 	}
 
 	now := time.Now()
 	eastern, _ := time.LoadLocation("America/New_York")
 	nowET := now.In(eastern)
+	s.logger.Debug("GetExchangeSchedule: reference time set",
+		"now_utc", now.UTC().Format(time.RFC3339),
+		"now_et", nowET.Format(time.RFC3339),
+	)
 
 	symbols := make([]string, 0, len(calendar.ExchangeSchedules))
 	for sym := range calendar.ExchangeSchedules {
 		symbols = append(symbols, sym)
 	}
+	s.logger.Debug("GetExchangeSchedule: fetching last runs",
+		"exchange_count", len(symbols),
+		"timeframe", timeframe,
+	)
 
+	queryStart := time.Now()
 	lastRuns := fetchLastRuns(ctx, s.pool, symbols, timeframe)
+	s.logger.Info("GetExchangeSchedule: last runs fetched",
+		"timeframe", timeframe,
+		"exchanges_with_data", len(lastRuns),
+		"total_exchanges", len(symbols),
+		"query_duration_ms", time.Since(queryStart).Milliseconds(),
+	)
 
 	rows := make([]*schedulerv1.ExchangeScheduleRow, 0, len(calendar.ExchangeSchedules))
 
+	buildStart := time.Now()
 	switch timeframe {
 	case "hourly":
+		s.logger.Debug("GetExchangeSchedule: building hourly rows")
 		rows = buildHourlyRows(nowET, now, eastern, lastRuns)
 	case "weekly":
+		s.logger.Debug("GetExchangeSchedule: building weekly rows")
 		rows = buildWeeklyRows(nowET, now, eastern, lastRuns)
 	default:
+		s.logger.Debug("GetExchangeSchedule: building daily rows")
 		rows = buildDailyRows(nowET, now, eastern, lastRuns)
 	}
+	s.logger.Info("GetExchangeSchedule: rows built",
+		"timeframe", timeframe,
+		"row_count", len(rows),
+		"build_duration_ms", time.Since(buildStart).Milliseconds(),
+	)
 
 	return &schedulerv1.GetExchangeScheduleResponse{Rows: rows}, nil
 }
@@ -245,6 +273,12 @@ type lastRunInfo struct {
 
 func fetchLastRuns(ctx context.Context, pool *pgxpool.Pool, exchanges []string, timeframe string) map[string]lastRunInfo {
 	results := make(map[string]lastRunInfo)
+	logger := slog.Default()
+
+	logger.Debug("fetchLastRuns: querying alert_audits",
+		"exchange_count", len(exchanges),
+		"timeframe", timeframe,
+	)
 
 	query := `
 		WITH per_day AS (
@@ -270,15 +304,22 @@ func fetchLastRuns(ctx context.Context, pool *pgxpool.Pool, exchanges []string, 
 
 	rows, err := pool.Query(ctx, query, exchanges, timeframe)
 	if err != nil {
+		logger.Error("fetchLastRuns: query failed",
+			"timeframe", timeframe,
+			"error", err,
+		)
 		return results
 	}
 	defer rows.Close()
 
+	scanErrors := 0
 	for rows.Next() {
 		var exchange string
 		var day time.Time
 		var startTS, endTS time.Time
 		if err := rows.Scan(&exchange, &day, &startTS, &endTS); err != nil {
+			logger.Warn("fetchLastRuns: failed to scan row", "error", err)
+			scanErrors++
 			continue
 		}
 		results[exchange] = lastRunInfo{
@@ -286,6 +327,24 @@ func fetchLastRuns(ctx context.Context, pool *pgxpool.Pool, exchanges []string, 
 			start: startTS.UTC().Format(time.RFC3339),
 			end:   endTS.UTC().Format(time.RFC3339),
 		}
+		logger.Debug("fetchLastRuns: row scanned",
+			"exchange", exchange,
+			"day", day.Format("2006-01-02"),
+			"start", startTS.UTC().Format(time.RFC3339),
+			"end", endTS.UTC().Format(time.RFC3339),
+		)
+	}
+
+	if scanErrors > 0 {
+		logger.Warn("fetchLastRuns: completed with scan errors",
+			"scan_errors", scanErrors,
+			"results_count", len(results),
+		)
+	} else {
+		logger.Debug("fetchLastRuns: completed",
+			"results_count", len(results),
+			"timeframe", timeframe,
+		)
 	}
 
 	return results

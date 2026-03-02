@@ -2590,6 +2590,144 @@ func (x *ListPortfoliosResponse) GetPortfolios() []*Portfolio {
 	return nil
 }
 
+type EvaluateExchangeRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Exchange symbol, e.g. "NASDAQ", "NYSE", "LSE"
+	Exchange string `protobuf:"bytes,1,opt,name=exchange,proto3" json:"exchange,omitempty"`
+	// "daily", "weekly", or "hourly" — defaults to "daily" if empty
+	Timeframe     string `protobuf:"bytes,2,opt,name=timeframe,proto3" json:"timeframe,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *EvaluateExchangeRequest) Reset() {
+	*x = EvaluateExchangeRequest{}
+	mi := &file_alert_v1_alert_proto_msgTypes[36]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *EvaluateExchangeRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*EvaluateExchangeRequest) ProtoMessage() {}
+
+func (x *EvaluateExchangeRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_alert_v1_alert_proto_msgTypes[36]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use EvaluateExchangeRequest.ProtoReflect.Descriptor instead.
+func (*EvaluateExchangeRequest) Descriptor() ([]byte, []int) {
+	return file_alert_v1_alert_proto_rawDescGZIP(), []int{36}
+}
+
+func (x *EvaluateExchangeRequest) GetExchange() string {
+	if x != nil {
+		return x.Exchange
+	}
+	return ""
+}
+
+func (x *EvaluateExchangeRequest) GetTimeframe() string {
+	if x != nil {
+		return x.Timeframe
+	}
+	return ""
+}
+
+type EvaluateExchangeResponse struct {
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	Success         bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
+	Message         string                 `protobuf:"bytes,2,opt,name=message,proto3" json:"message,omitempty"`
+	AlertsTotal     int32                  `protobuf:"varint,3,opt,name=alerts_total,json=alertsTotal,proto3" json:"alerts_total,omitempty"`
+	AlertsTriggered int32                  `protobuf:"varint,4,opt,name=alerts_triggered,json=alertsTriggered,proto3" json:"alerts_triggered,omitempty"`
+	PricesUpdated   int32                  `protobuf:"varint,5,opt,name=prices_updated,json=pricesUpdated,proto3" json:"prices_updated,omitempty"`
+	DurationSeconds float64                `protobuf:"fixed64,6,opt,name=duration_seconds,json=durationSeconds,proto3" json:"duration_seconds,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *EvaluateExchangeResponse) Reset() {
+	*x = EvaluateExchangeResponse{}
+	mi := &file_alert_v1_alert_proto_msgTypes[37]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *EvaluateExchangeResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*EvaluateExchangeResponse) ProtoMessage() {}
+
+func (x *EvaluateExchangeResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_alert_v1_alert_proto_msgTypes[37]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use EvaluateExchangeResponse.ProtoReflect.Descriptor instead.
+func (*EvaluateExchangeResponse) Descriptor() ([]byte, []int) {
+	return file_alert_v1_alert_proto_rawDescGZIP(), []int{37}
+}
+
+func (x *EvaluateExchangeResponse) GetSuccess() bool {
+	if x != nil {
+		return x.Success
+	}
+	return false
+}
+
+func (x *EvaluateExchangeResponse) GetMessage() string {
+	if x != nil {
+		return x.Message
+	}
+	return ""
+}
+
+func (x *EvaluateExchangeResponse) GetAlertsTotal() int32 {
+	if x != nil {
+		return x.AlertsTotal
+	}
+	return 0
+}
+
+func (x *EvaluateExchangeResponse) GetAlertsTriggered() int32 {
+	if x != nil {
+		return x.AlertsTriggered
+	}
+	return 0
+}
+
+func (x *EvaluateExchangeResponse) GetPricesUpdated() int32 {
+	if x != nil {
+		return x.PricesUpdated
+	}
+	return 0
+}
+
+func (x *EvaluateExchangeResponse) GetDurationSeconds() float64 {
+	if x != nil {
+		return x.DurationSeconds
+	}
+	return 0
+}
+
 type BulkUpdateLastTriggeredRequest_AlertTrigger struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	AlertId       string                 `protobuf:"bytes,1,opt,name=alert_id,json=alertId,proto3" json:"alert_id,omitempty"`
@@ -2600,7 +2738,7 @@ type BulkUpdateLastTriggeredRequest_AlertTrigger struct {
 
 func (x *BulkUpdateLastTriggeredRequest_AlertTrigger) Reset() {
 	*x = BulkUpdateLastTriggeredRequest_AlertTrigger{}
-	mi := &file_alert_v1_alert_proto_msgTypes[36]
+	mi := &file_alert_v1_alert_proto_msgTypes[38]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2612,7 +2750,7 @@ func (x *BulkUpdateLastTriggeredRequest_AlertTrigger) String() string {
 func (*BulkUpdateLastTriggeredRequest_AlertTrigger) ProtoMessage() {}
 
 func (x *BulkUpdateLastTriggeredRequest_AlertTrigger) ProtoReflect() protoreflect.Message {
-	mi := &file_alert_v1_alert_proto_msgTypes[36]
+	mi := &file_alert_v1_alert_proto_msgTypes[38]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2878,7 +3016,17 @@ const file_alert_v1_alert_proto_rawDesc = "" +
 	"\x16ListPortfoliosResponse\x12>\n" +
 	"\n" +
 	"portfolios\x18\x01 \x03(\v2\x1e.stockalert.alert.v1.PortfolioR\n" +
-	"portfolios2\x8e\f\n" +
+	"portfolios\"S\n" +
+	"\x17EvaluateExchangeRequest\x12\x1a\n" +
+	"\bexchange\x18\x01 \x01(\tR\bexchange\x12\x1c\n" +
+	"\ttimeframe\x18\x02 \x01(\tR\ttimeframe\"\xee\x01\n" +
+	"\x18EvaluateExchangeResponse\x12\x18\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x18\n" +
+	"\amessage\x18\x02 \x01(\tR\amessage\x12!\n" +
+	"\falerts_total\x18\x03 \x01(\x05R\valertsTotal\x12)\n" +
+	"\x10alerts_triggered\x18\x04 \x01(\x05R\x0falertsTriggered\x12%\n" +
+	"\x0eprices_updated\x18\x05 \x01(\x05R\rpricesUpdated\x12)\n" +
+	"\x10duration_seconds\x18\x06 \x01(\x01R\x0fdurationSeconds2\xff\f\n" +
 	"\fAlertService\x12]\n" +
 	"\n" +
 	"ListAlerts\x12&.stockalert.alert.v1.ListAlertsRequest\x1a'.stockalert.alert.v1.ListAlertsResponse\x12W\n" +
@@ -2894,7 +3042,8 @@ const file_alert_v1_alert_proto_rawDesc = "" +
 	"\x0eClearAuditData\x12*.stockalert.alert.v1.ClearAuditDataRequest\x1a+.stockalert.alert.v1.ClearAuditDataResponse\x12\x8a\x01\n" +
 	"\x19GetTriggerHistoryByTicker\x125.stockalert.alert.v1.GetTriggerHistoryByTickerRequest\x1a6.stockalert.alert.v1.GetTriggerHistoryByTickerResponse\x12c\n" +
 	"\fSearchStocks\x12(.stockalert.alert.v1.SearchStocksRequest\x1a).stockalert.alert.v1.SearchStocksResponse\x12i\n" +
-	"\x0eListPortfolios\x12*.stockalert.alert.v1.ListPortfoliosRequest\x1a+.stockalert.alert.v1.ListPortfoliosResponseB\xb7\x01\n" +
+	"\x0eListPortfolios\x12*.stockalert.alert.v1.ListPortfoliosRequest\x1a+.stockalert.alert.v1.ListPortfoliosResponse\x12o\n" +
+	"\x10EvaluateExchange\x12,.stockalert.alert.v1.EvaluateExchangeRequest\x1a-.stockalert.alert.v1.EvaluateExchangeResponseB\xb7\x01\n" +
 	"\x17com.stockalert.alert.v1B\n" +
 	"AlertProtoP\x01Z\"stockalert/gen/go/alert/v1;alertv1\xa2\x02\x03SAX\xaa\x02\x13Stockalert.Alert.V1\xca\x02\x13Stockalert\\Alert\\V1\xe2\x02\x1fStockalert\\Alert\\V1\\GPBMetadata\xea\x02\x15Stockalert::Alert::V1b\x06proto3"
 
@@ -2910,7 +3059,7 @@ func file_alert_v1_alert_proto_rawDescGZIP() []byte {
 	return file_alert_v1_alert_proto_rawDescData
 }
 
-var file_alert_v1_alert_proto_msgTypes = make([]protoimpl.MessageInfo, 37)
+var file_alert_v1_alert_proto_msgTypes = make([]protoimpl.MessageInfo, 39)
 var file_alert_v1_alert_proto_goTypes = []any{
 	(*Alert)(nil),                                       // 0: stockalert.alert.v1.Alert
 	(*ListAlertsRequest)(nil),                           // 1: stockalert.alert.v1.ListAlertsRequest
@@ -2948,48 +3097,50 @@ var file_alert_v1_alert_proto_goTypes = []any{
 	(*ListPortfoliosRequest)(nil),                       // 33: stockalert.alert.v1.ListPortfoliosRequest
 	(*Portfolio)(nil),                                   // 34: stockalert.alert.v1.Portfolio
 	(*ListPortfoliosResponse)(nil),                      // 35: stockalert.alert.v1.ListPortfoliosResponse
-	(*BulkUpdateLastTriggeredRequest_AlertTrigger)(nil), // 36: stockalert.alert.v1.BulkUpdateLastTriggeredRequest.AlertTrigger
-	(*structpb.Struct)(nil),                             // 37: google.protobuf.Struct
-	(*timestamppb.Timestamp)(nil),                       // 38: google.protobuf.Timestamp
+	(*EvaluateExchangeRequest)(nil),                     // 36: stockalert.alert.v1.EvaluateExchangeRequest
+	(*EvaluateExchangeResponse)(nil),                    // 37: stockalert.alert.v1.EvaluateExchangeResponse
+	(*BulkUpdateLastTriggeredRequest_AlertTrigger)(nil), // 38: stockalert.alert.v1.BulkUpdateLastTriggeredRequest.AlertTrigger
+	(*structpb.Struct)(nil),                             // 39: google.protobuf.Struct
+	(*timestamppb.Timestamp)(nil),                       // 40: google.protobuf.Timestamp
 }
 var file_alert_v1_alert_proto_depIdxs = []int32{
-	37, // 0: stockalert.alert.v1.Alert.conditions:type_name -> google.protobuf.Struct
-	38, // 1: stockalert.alert.v1.Alert.last_triggered:type_name -> google.protobuf.Timestamp
-	37, // 2: stockalert.alert.v1.Alert.dtp_params:type_name -> google.protobuf.Struct
-	37, // 3: stockalert.alert.v1.Alert.multi_timeframe_params:type_name -> google.protobuf.Struct
-	37, // 4: stockalert.alert.v1.Alert.mixed_timeframe_params:type_name -> google.protobuf.Struct
-	37, // 5: stockalert.alert.v1.Alert.raw_payload:type_name -> google.protobuf.Struct
-	38, // 6: stockalert.alert.v1.Alert.created_at:type_name -> google.protobuf.Timestamp
-	38, // 7: stockalert.alert.v1.Alert.updated_at:type_name -> google.protobuf.Timestamp
+	39, // 0: stockalert.alert.v1.Alert.conditions:type_name -> google.protobuf.Struct
+	40, // 1: stockalert.alert.v1.Alert.last_triggered:type_name -> google.protobuf.Timestamp
+	39, // 2: stockalert.alert.v1.Alert.dtp_params:type_name -> google.protobuf.Struct
+	39, // 3: stockalert.alert.v1.Alert.multi_timeframe_params:type_name -> google.protobuf.Struct
+	39, // 4: stockalert.alert.v1.Alert.mixed_timeframe_params:type_name -> google.protobuf.Struct
+	39, // 5: stockalert.alert.v1.Alert.raw_payload:type_name -> google.protobuf.Struct
+	40, // 6: stockalert.alert.v1.Alert.created_at:type_name -> google.protobuf.Timestamp
+	40, // 7: stockalert.alert.v1.Alert.updated_at:type_name -> google.protobuf.Timestamp
 	0,  // 8: stockalert.alert.v1.ListAlertsResponse.alerts:type_name -> stockalert.alert.v1.Alert
 	0,  // 9: stockalert.alert.v1.GetAlertResponse.alert:type_name -> stockalert.alert.v1.Alert
-	37, // 10: stockalert.alert.v1.CreateAlertRequest.conditions:type_name -> google.protobuf.Struct
-	37, // 11: stockalert.alert.v1.CreateAlertRequest.dtp_params:type_name -> google.protobuf.Struct
-	37, // 12: stockalert.alert.v1.CreateAlertRequest.multi_timeframe_params:type_name -> google.protobuf.Struct
-	37, // 13: stockalert.alert.v1.CreateAlertRequest.mixed_timeframe_params:type_name -> google.protobuf.Struct
-	37, // 14: stockalert.alert.v1.CreateAlertRequest.raw_payload:type_name -> google.protobuf.Struct
+	39, // 10: stockalert.alert.v1.CreateAlertRequest.conditions:type_name -> google.protobuf.Struct
+	39, // 11: stockalert.alert.v1.CreateAlertRequest.dtp_params:type_name -> google.protobuf.Struct
+	39, // 12: stockalert.alert.v1.CreateAlertRequest.multi_timeframe_params:type_name -> google.protobuf.Struct
+	39, // 13: stockalert.alert.v1.CreateAlertRequest.mixed_timeframe_params:type_name -> google.protobuf.Struct
+	39, // 14: stockalert.alert.v1.CreateAlertRequest.raw_payload:type_name -> google.protobuf.Struct
 	0,  // 15: stockalert.alert.v1.CreateAlertResponse.alert:type_name -> stockalert.alert.v1.Alert
-	37, // 16: stockalert.alert.v1.UpdateAlertRequest.conditions:type_name -> google.protobuf.Struct
-	37, // 17: stockalert.alert.v1.UpdateAlertRequest.dtp_params:type_name -> google.protobuf.Struct
-	37, // 18: stockalert.alert.v1.UpdateAlertRequest.multi_timeframe_params:type_name -> google.protobuf.Struct
-	37, // 19: stockalert.alert.v1.UpdateAlertRequest.mixed_timeframe_params:type_name -> google.protobuf.Struct
-	37, // 20: stockalert.alert.v1.UpdateAlertRequest.raw_payload:type_name -> google.protobuf.Struct
+	39, // 16: stockalert.alert.v1.UpdateAlertRequest.conditions:type_name -> google.protobuf.Struct
+	39, // 17: stockalert.alert.v1.UpdateAlertRequest.dtp_params:type_name -> google.protobuf.Struct
+	39, // 18: stockalert.alert.v1.UpdateAlertRequest.multi_timeframe_params:type_name -> google.protobuf.Struct
+	39, // 19: stockalert.alert.v1.UpdateAlertRequest.mixed_timeframe_params:type_name -> google.protobuf.Struct
+	39, // 20: stockalert.alert.v1.UpdateAlertRequest.raw_payload:type_name -> google.protobuf.Struct
 	0,  // 21: stockalert.alert.v1.UpdateAlertResponse.alert:type_name -> stockalert.alert.v1.Alert
-	36, // 22: stockalert.alert.v1.BulkUpdateLastTriggeredRequest.triggers:type_name -> stockalert.alert.v1.BulkUpdateLastTriggeredRequest.AlertTrigger
-	38, // 23: stockalert.alert.v1.AuditSummaryRow.last_check:type_name -> google.protobuf.Timestamp
-	38, // 24: stockalert.alert.v1.AuditSummaryRow.first_check:type_name -> google.protobuf.Timestamp
+	38, // 22: stockalert.alert.v1.BulkUpdateLastTriggeredRequest.triggers:type_name -> stockalert.alert.v1.BulkUpdateLastTriggeredRequest.AlertTrigger
+	40, // 23: stockalert.alert.v1.AuditSummaryRow.last_check:type_name -> google.protobuf.Timestamp
+	40, // 24: stockalert.alert.v1.AuditSummaryRow.first_check:type_name -> google.protobuf.Timestamp
 	14, // 25: stockalert.alert.v1.GetAuditSummaryResponse.rows:type_name -> stockalert.alert.v1.AuditSummaryRow
-	38, // 26: stockalert.alert.v1.AuditHistoryRow.timestamp:type_name -> google.protobuf.Timestamp
+	40, // 26: stockalert.alert.v1.AuditHistoryRow.timestamp:type_name -> google.protobuf.Timestamp
 	19, // 27: stockalert.alert.v1.GetAlertHistoryResponse.rows:type_name -> stockalert.alert.v1.AuditHistoryRow
-	38, // 28: stockalert.alert.v1.FailedAlertRow.last_failure:type_name -> google.protobuf.Timestamp
-	38, // 29: stockalert.alert.v1.FailedAlertRow.first_failure:type_name -> google.protobuf.Timestamp
+	40, // 28: stockalert.alert.v1.FailedAlertRow.last_failure:type_name -> google.protobuf.Timestamp
+	40, // 29: stockalert.alert.v1.FailedAlertRow.first_failure:type_name -> google.protobuf.Timestamp
 	22, // 30: stockalert.alert.v1.GetFailedPriceDataResponse.rows:type_name -> stockalert.alert.v1.FailedAlertRow
 	23, // 31: stockalert.alert.v1.GetFailedPriceDataResponse.asset_type_breakdown:type_name -> stockalert.alert.v1.AssetTypeBreakdownRow
 	24, // 32: stockalert.alert.v1.GetFailedPriceDataResponse.exchange_breakdown:type_name -> stockalert.alert.v1.ExchangeBreakdownRow
 	19, // 33: stockalert.alert.v1.GetTriggerHistoryByTickerResponse.rows:type_name -> stockalert.alert.v1.AuditHistoryRow
 	31, // 34: stockalert.alert.v1.SearchStocksResponse.results:type_name -> stockalert.alert.v1.StockSearchResult
 	34, // 35: stockalert.alert.v1.ListPortfoliosResponse.portfolios:type_name -> stockalert.alert.v1.Portfolio
-	38, // 36: stockalert.alert.v1.BulkUpdateLastTriggeredRequest.AlertTrigger.last_triggered:type_name -> google.protobuf.Timestamp
+	40, // 36: stockalert.alert.v1.BulkUpdateLastTriggeredRequest.AlertTrigger.last_triggered:type_name -> google.protobuf.Timestamp
 	1,  // 37: stockalert.alert.v1.AlertService.ListAlerts:input_type -> stockalert.alert.v1.ListAlertsRequest
 	3,  // 38: stockalert.alert.v1.AlertService.GetAlert:input_type -> stockalert.alert.v1.GetAlertRequest
 	5,  // 39: stockalert.alert.v1.AlertService.CreateAlert:input_type -> stockalert.alert.v1.CreateAlertRequest
@@ -3004,22 +3155,24 @@ var file_alert_v1_alert_proto_depIdxs = []int32{
 	28, // 48: stockalert.alert.v1.AlertService.GetTriggerHistoryByTicker:input_type -> stockalert.alert.v1.GetTriggerHistoryByTickerRequest
 	30, // 49: stockalert.alert.v1.AlertService.SearchStocks:input_type -> stockalert.alert.v1.SearchStocksRequest
 	33, // 50: stockalert.alert.v1.AlertService.ListPortfolios:input_type -> stockalert.alert.v1.ListPortfoliosRequest
-	2,  // 51: stockalert.alert.v1.AlertService.ListAlerts:output_type -> stockalert.alert.v1.ListAlertsResponse
-	4,  // 52: stockalert.alert.v1.AlertService.GetAlert:output_type -> stockalert.alert.v1.GetAlertResponse
-	6,  // 53: stockalert.alert.v1.AlertService.CreateAlert:output_type -> stockalert.alert.v1.CreateAlertResponse
-	8,  // 54: stockalert.alert.v1.AlertService.UpdateAlert:output_type -> stockalert.alert.v1.UpdateAlertResponse
-	10, // 55: stockalert.alert.v1.AlertService.DeleteAlert:output_type -> stockalert.alert.v1.DeleteAlertResponse
-	12, // 56: stockalert.alert.v1.AlertService.BulkUpdateLastTriggered:output_type -> stockalert.alert.v1.BulkUpdateLastTriggeredResponse
-	15, // 57: stockalert.alert.v1.AlertService.GetAuditSummary:output_type -> stockalert.alert.v1.GetAuditSummaryResponse
-	17, // 58: stockalert.alert.v1.AlertService.GetPerformanceMetrics:output_type -> stockalert.alert.v1.GetPerformanceMetricsResponse
-	20, // 59: stockalert.alert.v1.AlertService.GetAlertHistory:output_type -> stockalert.alert.v1.GetAlertHistoryResponse
-	25, // 60: stockalert.alert.v1.AlertService.GetFailedPriceData:output_type -> stockalert.alert.v1.GetFailedPriceDataResponse
-	27, // 61: stockalert.alert.v1.AlertService.ClearAuditData:output_type -> stockalert.alert.v1.ClearAuditDataResponse
-	29, // 62: stockalert.alert.v1.AlertService.GetTriggerHistoryByTicker:output_type -> stockalert.alert.v1.GetTriggerHistoryByTickerResponse
-	32, // 63: stockalert.alert.v1.AlertService.SearchStocks:output_type -> stockalert.alert.v1.SearchStocksResponse
-	35, // 64: stockalert.alert.v1.AlertService.ListPortfolios:output_type -> stockalert.alert.v1.ListPortfoliosResponse
-	51, // [51:65] is the sub-list for method output_type
-	37, // [37:51] is the sub-list for method input_type
+	36, // 51: stockalert.alert.v1.AlertService.EvaluateExchange:input_type -> stockalert.alert.v1.EvaluateExchangeRequest
+	2,  // 52: stockalert.alert.v1.AlertService.ListAlerts:output_type -> stockalert.alert.v1.ListAlertsResponse
+	4,  // 53: stockalert.alert.v1.AlertService.GetAlert:output_type -> stockalert.alert.v1.GetAlertResponse
+	6,  // 54: stockalert.alert.v1.AlertService.CreateAlert:output_type -> stockalert.alert.v1.CreateAlertResponse
+	8,  // 55: stockalert.alert.v1.AlertService.UpdateAlert:output_type -> stockalert.alert.v1.UpdateAlertResponse
+	10, // 56: stockalert.alert.v1.AlertService.DeleteAlert:output_type -> stockalert.alert.v1.DeleteAlertResponse
+	12, // 57: stockalert.alert.v1.AlertService.BulkUpdateLastTriggered:output_type -> stockalert.alert.v1.BulkUpdateLastTriggeredResponse
+	15, // 58: stockalert.alert.v1.AlertService.GetAuditSummary:output_type -> stockalert.alert.v1.GetAuditSummaryResponse
+	17, // 59: stockalert.alert.v1.AlertService.GetPerformanceMetrics:output_type -> stockalert.alert.v1.GetPerformanceMetricsResponse
+	20, // 60: stockalert.alert.v1.AlertService.GetAlertHistory:output_type -> stockalert.alert.v1.GetAlertHistoryResponse
+	25, // 61: stockalert.alert.v1.AlertService.GetFailedPriceData:output_type -> stockalert.alert.v1.GetFailedPriceDataResponse
+	27, // 62: stockalert.alert.v1.AlertService.ClearAuditData:output_type -> stockalert.alert.v1.ClearAuditDataResponse
+	29, // 63: stockalert.alert.v1.AlertService.GetTriggerHistoryByTicker:output_type -> stockalert.alert.v1.GetTriggerHistoryByTickerResponse
+	32, // 64: stockalert.alert.v1.AlertService.SearchStocks:output_type -> stockalert.alert.v1.SearchStocksResponse
+	35, // 65: stockalert.alert.v1.AlertService.ListPortfolios:output_type -> stockalert.alert.v1.ListPortfoliosResponse
+	37, // 66: stockalert.alert.v1.AlertService.EvaluateExchange:output_type -> stockalert.alert.v1.EvaluateExchangeResponse
+	52, // [52:67] is the sub-list for method output_type
+	37, // [37:52] is the sub-list for method input_type
 	37, // [37:37] is the sub-list for extension type_name
 	37, // [37:37] is the sub-list for extension extendee
 	0,  // [0:37] is the sub-list for field type_name
@@ -3036,7 +3189,7 @@ func file_alert_v1_alert_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_alert_v1_alert_proto_rawDesc), len(file_alert_v1_alert_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   37,
+			NumMessages:   39,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

@@ -15,7 +15,11 @@ import (
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/reflection"
 
+	"stockalert/alert"
+	db "stockalert/database/generated"
+	"stockalert/discord"
 	alertv1 "stockalert/gen/go/alert/v1"
+	"stockalert/indicator"
 )
 
 func main() {
@@ -27,6 +31,11 @@ func main() {
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "50051"
+	}
+
+	fmpAPIKey := os.Getenv("FMP_API_KEY")
+	if fmpAPIKey == "" {
+		log.Println("warning: FMP_API_KEY not set — EvaluateExchange price updates will fail")
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -43,9 +52,28 @@ func main() {
 	}
 	log.Println("connected to database")
 
-	grpcServer := grpc.NewServer()
+	queries := db.New(pool)
 
-	alertv1.RegisterAlertServiceServer(grpcServer, NewServer(pool))
+	// Alert evaluation dependencies
+	registry := indicator.NewDefaultRegistry()
+	checker := alert.NewChecker(queries, registry)
+
+	router, err := discord.NewRouter(ctx, queries)
+	if err != nil {
+		log.Printf("discord router (using defaults): %v", err)
+	}
+	notifier := discord.NewNotifier()
+	accum := discord.NewAccumulator(notifier)
+
+	// Price updater (nil-safe: EvaluateExchange returns an error if apiKey is missing)
+	var updater *priceUpdater
+	if fmpAPIKey != "" {
+		fmp := newFMPClient(fmpAPIKey)
+		updater = newPriceUpdater(pool, queries, fmp)
+	}
+
+	grpcServer := grpc.NewServer()
+	alertv1.RegisterAlertServiceServer(grpcServer, NewServer(pool, checker, router, accum, updater))
 
 	healthServer := health.NewServer()
 	healthpb.RegisterHealthServer(grpcServer, healthServer)
