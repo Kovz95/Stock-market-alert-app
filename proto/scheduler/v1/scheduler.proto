@@ -103,6 +103,28 @@ message RunExchangeJobResponse {
   string message = 2;
 }
 
+// ---------------------------------------------------------------------------
+// ListQueueTasks
+// ---------------------------------------------------------------------------
+
+message ListQueueTasksRequest {
+  // Queue name; empty means "default".
+  string queue = 1;
+}
+
+message QueueTask {
+  string state = 1;   // "scheduled", "pending", "active"
+  string type = 2;    // task type e.g. "task:daily"
+  string exchange = 3;
+  string timeframe = 4;  // "daily", "weekly", "hourly"
+  google.protobuf.Timestamp next_process_at = 5;
+  string id = 6;
+}
+
+message ListQueueTasksResponse {
+  repeated QueueTask tasks = 1;
+}
+
 // SchedulerService provides scheduler monitoring and control.
 service SchedulerService {
   rpc GetSchedulerStatus(GetSchedulerStatusRequest) returns (GetSchedulerStatusResponse);
@@ -110,4 +132,5 @@ service SchedulerService {
   rpc StartScheduler(StartSchedulerRequest) returns (StartSchedulerResponse);
   rpc StopScheduler(StopSchedulerRequest) returns (StopSchedulerResponse);
   rpc RunExchangeJob(RunExchangeJobRequest) returns (RunExchangeJobResponse);
+  rpc ListQueueTasks(ListQueueTasksRequest) returns (ListQueueTasksResponse);
 }

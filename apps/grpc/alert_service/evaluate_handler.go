@@ -39,7 +39,15 @@ func (s *Server) EvaluateExchange(ctx context.Context, req *alertv1.EvaluateExch
 		}, nil
 	}
 
-	// 1. Load alerts for this exchange + timeframe
+	// 1. Load alerts for this exchange + timeframe.
+	// Exchange: alerts may be stored with calendar symbol (e.g. "ATHENS") or display name (e.g. "Athens Stock Exchange").
+	// Timeframe: alerts may be stored as "1d"/"1wk"/"1h" (Streamlit) or "daily"/"weekly"/"hourly".
+	exchangesToQuery := []string{exchange}
+	if sched, ok := calendar.ExchangeSchedules[exchange]; ok && sched.Name != "" && sched.Name != exchange {
+		exchangesToQuery = append(exchangesToQuery, sched.Name)
+	}
+	timeframesToQuery := alert.TimeframeQueryVariants(timeframe)
+
 	conn, err := s.pool.Acquire(ctx)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "acquire connection: %v", err)
@@ -47,9 +55,9 @@ func (s *Server) EvaluateExchange(ctx context.Context, req *alertv1.EvaluateExch
 	defer conn.Release()
 
 	q := db.New(conn)
-	alerts, err := q.ListAlertsByExchangeAndTimeframe(ctx, db.ListAlertsByExchangeAndTimeframeParams{
-		Exchanges: []string{exchange},
-		Timeframe: pgtype.Text{String: timeframe, Valid: true},
+	alerts, err := q.ListAlertsByExchangeAndTimeframes(ctx, db.ListAlertsByExchangeAndTimeframesParams{
+		Exchanges:  exchangesToQuery,
+		Timeframes: timeframesToQuery,
 	})
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "list alerts: %v", err)

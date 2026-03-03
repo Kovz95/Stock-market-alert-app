@@ -1,13 +1,16 @@
 "use client";
 
+import { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
   useSchedulerStatus,
+  useQueueTasks,
   useStartScheduler,
   useStopScheduler,
 } from "@/lib/hooks/useScheduler";
+import type { Timeframe } from "@/lib/hooks/useScheduler";
 import { toast } from "sonner";
 
 function formatTimeAgo(iso: string | null): string {
@@ -21,10 +24,25 @@ function formatTimeAgo(iso: string | null): string {
   return `${Math.floor(hours / 24)}d ago`;
 }
 
-export function SchedulerStatusCard() {
-  const { data: status, isLoading } = useSchedulerStatus();
+function formatProcessAt(iso: string | null): string {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  return d.toLocaleString(undefined, {
+    dateStyle: "short",
+    timeStyle: "short",
+  });
+}
+
+export function SchedulerStatusCard({ timeframe }: { timeframe: Timeframe }) {
+  const { data: status, isLoading: statusLoading } = useSchedulerStatus();
+  const { data: queueTasks, isLoading: queueLoading } = useQueueTasks();
   const startMutation = useStartScheduler();
   const stopMutation = useStopScheduler();
+
+  const enqueuedForTimeframe = useMemo(() => {
+    if (!queueTasks) return [];
+    return queueTasks.filter((t) => t.timeframe === timeframe);
+  }, [queueTasks, timeframe]);
 
   async function handleStart() {
     const result = await startMutation.mutateAsync();
@@ -44,7 +62,11 @@ export function SchedulerStatusCard() {
     }
   }
 
-  if (isLoading || !status) {
+  const isLoading = statusLoading || !status;
+  const timeframeLabel =
+    timeframe.charAt(0).toUpperCase() + timeframe.slice(1);
+
+  if (isLoading) {
     return (
       <Card>
         <CardHeader>
@@ -96,37 +118,48 @@ export function SchedulerStatusCard() {
           </div>
         </div>
 
-        {status.currentJob && (
-          <div className="rounded-md bg-muted p-3 text-sm">
-            <p className="font-medium">Current Job</p>
+        <div className="rounded-md bg-muted p-3 text-sm">
+          <p className="font-medium mb-2">
+            Enqueued {timeframeLabel} Jobs
+            {!queueLoading && (
+              <span className="text-muted-foreground font-normal ml-2">
+                ({enqueuedForTimeframe.length})
+              </span>
+            )}
+          </p>
+          {queueLoading ? (
+            <p className="text-muted-foreground">Loading queue...</p>
+          ) : enqueuedForTimeframe.length === 0 ? (
             <p className="text-muted-foreground">
-              {status.currentJob.exchange} / {status.currentJob.timeframe}
-              {status.currentJob.started &&
-                ` — started ${formatTimeAgo(status.currentJob.started)}`}
+              {timeframe === "hourly"
+                ? "No hourly jobs in the queue. Hourly tasks are enqueued only when an exchange is open (weekday + market hours in its timezone) and are scheduled for ~30 min from each cycle."
+                : `No ${timeframe} jobs in the queue.`}
             </p>
-          </div>
-        )}
-
-        {status.lastRun && (
-          <div className="rounded-md bg-muted p-3 text-sm">
-            <p className="font-medium">Last Run</p>
-            <p className="text-muted-foreground">
-              {status.lastRun.exchange} / {status.lastRun.timeframe}
-              {status.lastRun.completedAt &&
-                ` — ${formatTimeAgo(status.lastRun.completedAt)}`}
-            </p>
-          </div>
-        )}
-
-        {status.lastError && (
-          <div className="rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm">
-            <p className="font-medium text-destructive">Last Error</p>
-            <p className="text-muted-foreground">
-              {status.lastError.exchange} / {status.lastError.timeframe}:{" "}
-              {status.lastError.message}
-            </p>
-          </div>
-        )}
+          ) : (
+            <ul className="space-y-2 max-h-48 overflow-y-auto">
+              {enqueuedForTimeframe.map((t) => (
+                <li
+                  key={t.id}
+                  className="flex items-center justify-between gap-2 text-muted-foreground"
+                >
+                  <span className="font-medium text-foreground truncate">
+                    {t.exchange}
+                  </span>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Badge variant="outline" className="text-xs">
+                      {t.state}
+                    </Badge>
+                    {t.nextProcessAt && (
+                      <span className="text-xs">
+                        {formatProcessAt(t.nextProcessAt)}
+                      </span>
+                    )}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
 
         <div className="flex gap-2 pt-2">
           <Button

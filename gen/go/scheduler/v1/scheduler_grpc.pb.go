@@ -24,6 +24,7 @@ const (
 	SchedulerService_StartScheduler_FullMethodName      = "/stockalert.scheduler.v1.SchedulerService/StartScheduler"
 	SchedulerService_StopScheduler_FullMethodName       = "/stockalert.scheduler.v1.SchedulerService/StopScheduler"
 	SchedulerService_RunExchangeJob_FullMethodName      = "/stockalert.scheduler.v1.SchedulerService/RunExchangeJob"
+	SchedulerService_ListQueueTasks_FullMethodName      = "/stockalert.scheduler.v1.SchedulerService/ListQueueTasks"
 )
 
 // SchedulerServiceClient is the client API for SchedulerService service.
@@ -37,6 +38,7 @@ type SchedulerServiceClient interface {
 	StartScheduler(ctx context.Context, in *StartSchedulerRequest, opts ...grpc.CallOption) (*StartSchedulerResponse, error)
 	StopScheduler(ctx context.Context, in *StopSchedulerRequest, opts ...grpc.CallOption) (*StopSchedulerResponse, error)
 	RunExchangeJob(ctx context.Context, in *RunExchangeJobRequest, opts ...grpc.CallOption) (*RunExchangeJobResponse, error)
+	ListQueueTasks(ctx context.Context, in *ListQueueTasksRequest, opts ...grpc.CallOption) (*ListQueueTasksResponse, error)
 }
 
 type schedulerServiceClient struct {
@@ -97,6 +99,16 @@ func (c *schedulerServiceClient) RunExchangeJob(ctx context.Context, in *RunExch
 	return out, nil
 }
 
+func (c *schedulerServiceClient) ListQueueTasks(ctx context.Context, in *ListQueueTasksRequest, opts ...grpc.CallOption) (*ListQueueTasksResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListQueueTasksResponse)
+	err := c.cc.Invoke(ctx, SchedulerService_ListQueueTasks_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // SchedulerServiceServer is the server API for SchedulerService service.
 // All implementations must embed UnimplementedSchedulerServiceServer
 // for forward compatibility.
@@ -108,6 +120,7 @@ type SchedulerServiceServer interface {
 	StartScheduler(context.Context, *StartSchedulerRequest) (*StartSchedulerResponse, error)
 	StopScheduler(context.Context, *StopSchedulerRequest) (*StopSchedulerResponse, error)
 	RunExchangeJob(context.Context, *RunExchangeJobRequest) (*RunExchangeJobResponse, error)
+	ListQueueTasks(context.Context, *ListQueueTasksRequest) (*ListQueueTasksResponse, error)
 	mustEmbedUnimplementedSchedulerServiceServer()
 }
 
@@ -132,6 +145,9 @@ func (UnimplementedSchedulerServiceServer) StopScheduler(context.Context, *StopS
 }
 func (UnimplementedSchedulerServiceServer) RunExchangeJob(context.Context, *RunExchangeJobRequest) (*RunExchangeJobResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method RunExchangeJob not implemented")
+}
+func (UnimplementedSchedulerServiceServer) ListQueueTasks(context.Context, *ListQueueTasksRequest) (*ListQueueTasksResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListQueueTasks not implemented")
 }
 func (UnimplementedSchedulerServiceServer) mustEmbedUnimplementedSchedulerServiceServer() {}
 func (UnimplementedSchedulerServiceServer) testEmbeddedByValue()                          {}
@@ -244,6 +260,24 @@ func _SchedulerService_RunExchangeJob_Handler(srv interface{}, ctx context.Conte
 	return interceptor(ctx, in, info, handler)
 }
 
+func _SchedulerService_ListQueueTasks_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListQueueTasksRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SchedulerServiceServer).ListQueueTasks(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: SchedulerService_ListQueueTasks_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SchedulerServiceServer).ListQueueTasks(ctx, req.(*ListQueueTasksRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // SchedulerService_ServiceDesc is the grpc.ServiceDesc for SchedulerService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -270,6 +304,10 @@ var SchedulerService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "RunExchangeJob",
 			Handler:    _SchedulerService_RunExchangeJob_Handler,
+		},
+		{
+			MethodName: "ListQueueTasks",
+			Handler:    _SchedulerService_ListQueueTasks_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

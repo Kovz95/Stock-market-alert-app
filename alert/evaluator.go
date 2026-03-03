@@ -135,6 +135,19 @@ func NormalizeTimeframe(tf string) string {
 	}
 }
 
+// TimeframeQueryVariants returns all DB timeframe values that correspond to the given job timeframe.
+// Alerts may be stored as "1d"/"1h"/"1w" or "1wk" (Streamlit) or "daily"/"weekly"/"hourly", so query all.
+func TimeframeQueryVariants(jobTimeframe string) []string {
+	switch strings.ToLower(strings.TrimSpace(jobTimeframe)) {
+	case "weekly", "1wk", "1w":
+		return []string{"weekly", "1wk", "1w"}
+	case "hourly", "1h", "1hr":
+		return []string{"hourly", "1h", "1hr"}
+	default:
+		return []string{"daily", "1d"}
+	}
+}
+
 func trimBytes(b []byte) []byte {
 	s := strings.TrimSpace(string(b))
 	return []byte(s)

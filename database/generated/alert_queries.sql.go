@@ -431,6 +431,67 @@ func (q *Queries) ListAlertsByExchangeAndTimeframe(ctx context.Context, arg List
 	return items, nil
 }
 
+const listAlertsByExchangeAndTimeframes = `-- name: ListAlertsByExchangeAndTimeframes :many
+SELECT
+    alert_id, name, stock_name, ticker, ticker1, ticker2,
+    conditions, combination_logic, last_triggered, action,
+    timeframe, exchange, country, ratio, is_ratio,
+    adjustment_method, dtp_params, multi_timeframe_params,
+    mixed_timeframe_params, raw_payload, created_at, updated_at
+FROM alerts
+WHERE exchange = ANY($1::text[])
+  AND timeframe = ANY($2::text[])
+ORDER BY updated_at DESC, name ASC
+`
+
+type ListAlertsByExchangeAndTimeframesParams struct {
+	Exchanges  []string
+	Timeframes []string
+}
+
+func (q *Queries) ListAlertsByExchangeAndTimeframes(ctx context.Context, arg ListAlertsByExchangeAndTimeframesParams) ([]Alert, error) {
+	rows, err := q.db.Query(ctx, listAlertsByExchangeAndTimeframes, arg.Exchanges, arg.Timeframes)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Alert
+	for rows.Next() {
+		var i Alert
+		if err := rows.Scan(
+			&i.AlertID,
+			&i.Name,
+			&i.StockName,
+			&i.Ticker,
+			&i.Ticker1,
+			&i.Ticker2,
+			&i.Conditions,
+			&i.CombinationLogic,
+			&i.LastTriggered,
+			&i.Action,
+			&i.Timeframe,
+			&i.Exchange,
+			&i.Country,
+			&i.Ratio,
+			&i.IsRatio,
+			&i.AdjustmentMethod,
+			&i.DtpParams,
+			&i.MultiTimeframeParams,
+			&i.MixedTimeframeParams,
+			&i.RawPayload,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listAlertsPaginated = `-- name: ListAlertsPaginated :many
 SELECT
     alert_id, name, stock_name, ticker, ticker1, ticker2,

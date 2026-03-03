@@ -4,7 +4,10 @@
 package calendar
 
 import (
+	"log"
 	"time"
+
+	_ "time/tzdata" // embed IANA database so LoadLocation works in minimal containers
 )
 
 // Eastern timezone (America/New_York). Loaded at init.
@@ -14,7 +17,10 @@ func init() {
 	var err error
 	eastern, err = time.LoadLocation("America/New_York")
 	if err != nil {
-		eastern = time.UTC
+		// Never fall back to UTC: that would make "4:40 PM ET" be stored as 16:40 UTC,
+		// which displays as 12:20 PM ET (EST) and mis-schedules daily runs by ~5 hours.
+		log.Printf("calendar: LoadLocation America/New_York failed: %v; using EST fixed offset", err)
+		eastern = time.FixedZone("EST", -5*3600) // EST fallback so ET times are not treated as UTC
 	}
 }
 

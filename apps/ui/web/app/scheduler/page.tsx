@@ -36,7 +36,7 @@ export default function SchedulerPage() {
       <TimeInfoBar />
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <SchedulerStatusCard />
+        <SchedulerStatusCard timeframe={timeframe} />
         <UpcomingChecks timeframe={timeframe} />
       </div>
 

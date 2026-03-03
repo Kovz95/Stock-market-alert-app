@@ -152,11 +152,18 @@ func (c *Common) Execute(ctx context.Context, exchange, timeframe string, status
 		"duration_ms", time.Since(priceStart).Milliseconds(),
 	)
 
-	// 2. Load alerts for this exchange + timeframe
+	// 2. Load alerts for this exchange + timeframe.
+	// Exchange: alerts may be stored with calendar symbol or display name.
+	// Timeframe: alerts may be stored as "1d"/"1wk"/"1h" (Streamlit) or "daily"/"weekly"/"hourly".
+	exchangesToQuery := []string{exchange}
+	if sched, ok := calendar.ExchangeSchedules[exchange]; ok && sched.Name != "" && sched.Name != exchange {
+		exchangesToQuery = append(exchangesToQuery, sched.Name)
+	}
+	timeframesToQuery := alert.TimeframeQueryVariants(timeframe)
 	alertQueryStart := time.Now()
-	alerts, err := c.Queries.ListAlertsByExchangeAndTimeframe(ctx, db.ListAlertsByExchangeAndTimeframeParams{
-		Exchanges: []string{exchange},
-		Timeframe: pgtype.Text{String: timeframe, Valid: true},
+	alerts, err := c.Queries.ListAlertsByExchangeAndTimeframes(ctx, db.ListAlertsByExchangeAndTimeframesParams{
+		Exchanges:  exchangesToQuery,
+		Timeframes: timeframesToQuery,
 	})
 	if err != nil {
 		logger.Error("failed to list alerts", "error", err)

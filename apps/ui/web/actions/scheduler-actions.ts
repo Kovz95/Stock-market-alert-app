@@ -45,6 +45,27 @@ export type ControlResult = {
   message: string;
 };
 
+export type QueueTaskData = {
+  state: string;
+  type: string;
+  exchange: string;
+  timeframe: string;
+  nextProcessAt: string | null;
+  id: string;
+};
+
+export async function listQueueTasks(queue: string = ""): Promise<QueueTaskData[]> {
+  const res = await schedulerClient.listQueueTasks({ queue });
+  return (res.tasks ?? []).map((t) => ({
+    state: t.state,
+    type: t.type,
+    exchange: t.exchange,
+    timeframe: t.timeframe,
+    nextProcessAt: t.nextProcessAt ? t.nextProcessAt.toISOString() : null,
+    id: t.id,
+  }));
+}
+
 export async function getSchedulerStatus(): Promise<SchedulerStatusData> {
   const res = await schedulerClient.getSchedulerStatus({});
   return {

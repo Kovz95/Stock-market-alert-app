@@ -841,6 +841,179 @@ func (x *RunExchangeJobResponse) GetMessage() string {
 	return ""
 }
 
+type ListQueueTasksRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Queue name; empty means "default".
+	Queue         string `protobuf:"bytes,1,opt,name=queue,proto3" json:"queue,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListQueueTasksRequest) Reset() {
+	*x = ListQueueTasksRequest{}
+	mi := &file_scheduler_v1_scheduler_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListQueueTasksRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListQueueTasksRequest) ProtoMessage() {}
+
+func (x *ListQueueTasksRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_scheduler_v1_scheduler_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListQueueTasksRequest.ProtoReflect.Descriptor instead.
+func (*ListQueueTasksRequest) Descriptor() ([]byte, []int) {
+	return file_scheduler_v1_scheduler_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *ListQueueTasksRequest) GetQueue() string {
+	if x != nil {
+		return x.Queue
+	}
+	return ""
+}
+
+type QueueTask struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	State         string                 `protobuf:"bytes,1,opt,name=state,proto3" json:"state,omitempty"` // "scheduled", "pending", "active"
+	Type          string                 `protobuf:"bytes,2,opt,name=type,proto3" json:"type,omitempty"`   // task type e.g. "task:daily"
+	Exchange      string                 `protobuf:"bytes,3,opt,name=exchange,proto3" json:"exchange,omitempty"`
+	Timeframe     string                 `protobuf:"bytes,4,opt,name=timeframe,proto3" json:"timeframe,omitempty"` // "daily", "weekly", "hourly"
+	NextProcessAt *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=next_process_at,json=nextProcessAt,proto3" json:"next_process_at,omitempty"`
+	Id            string                 `protobuf:"bytes,6,opt,name=id,proto3" json:"id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *QueueTask) Reset() {
+	*x = QueueTask{}
+	mi := &file_scheduler_v1_scheduler_proto_msgTypes[15]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *QueueTask) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*QueueTask) ProtoMessage() {}
+
+func (x *QueueTask) ProtoReflect() protoreflect.Message {
+	mi := &file_scheduler_v1_scheduler_proto_msgTypes[15]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use QueueTask.ProtoReflect.Descriptor instead.
+func (*QueueTask) Descriptor() ([]byte, []int) {
+	return file_scheduler_v1_scheduler_proto_rawDescGZIP(), []int{15}
+}
+
+func (x *QueueTask) GetState() string {
+	if x != nil {
+		return x.State
+	}
+	return ""
+}
+
+func (x *QueueTask) GetType() string {
+	if x != nil {
+		return x.Type
+	}
+	return ""
+}
+
+func (x *QueueTask) GetExchange() string {
+	if x != nil {
+		return x.Exchange
+	}
+	return ""
+}
+
+func (x *QueueTask) GetTimeframe() string {
+	if x != nil {
+		return x.Timeframe
+	}
+	return ""
+}
+
+func (x *QueueTask) GetNextProcessAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.NextProcessAt
+	}
+	return nil
+}
+
+func (x *QueueTask) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+type ListQueueTasksResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Tasks         []*QueueTask           `protobuf:"bytes,1,rep,name=tasks,proto3" json:"tasks,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListQueueTasksResponse) Reset() {
+	*x = ListQueueTasksResponse{}
+	mi := &file_scheduler_v1_scheduler_proto_msgTypes[16]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListQueueTasksResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListQueueTasksResponse) ProtoMessage() {}
+
+func (x *ListQueueTasksResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_scheduler_v1_scheduler_proto_msgTypes[16]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListQueueTasksResponse.ProtoReflect.Descriptor instead.
+func (*ListQueueTasksResponse) Descriptor() ([]byte, []int) {
+	return file_scheduler_v1_scheduler_proto_rawDescGZIP(), []int{16}
+}
+
+func (x *ListQueueTasksResponse) GetTasks() []*QueueTask {
+	if x != nil {
+		return x.Tasks
+	}
+	return nil
+}
+
 var File_scheduler_v1_scheduler_proto protoreflect.FileDescriptor
 
 const file_scheduler_v1_scheduler_proto_rawDesc = "" +
@@ -906,13 +1079,25 @@ const file_scheduler_v1_scheduler_proto_rawDesc = "" +
 	"\ttimeframe\x18\x02 \x01(\tR\ttimeframe\"L\n" +
 	"\x16RunExchangeJobResponse\x12\x18\n" +
 	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x18\n" +
-	"\amessage\x18\x02 \x01(\tR\amessage2\xea\x04\n" +
+	"\amessage\x18\x02 \x01(\tR\amessage\"-\n" +
+	"\x15ListQueueTasksRequest\x12\x14\n" +
+	"\x05queue\x18\x01 \x01(\tR\x05queue\"\xc3\x01\n" +
+	"\tQueueTask\x12\x14\n" +
+	"\x05state\x18\x01 \x01(\tR\x05state\x12\x12\n" +
+	"\x04type\x18\x02 \x01(\tR\x04type\x12\x1a\n" +
+	"\bexchange\x18\x03 \x01(\tR\bexchange\x12\x1c\n" +
+	"\ttimeframe\x18\x04 \x01(\tR\ttimeframe\x12B\n" +
+	"\x0fnext_process_at\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\rnextProcessAt\x12\x0e\n" +
+	"\x02id\x18\x06 \x01(\tR\x02id\"R\n" +
+	"\x16ListQueueTasksResponse\x128\n" +
+	"\x05tasks\x18\x01 \x03(\v2\".stockalert.scheduler.v1.QueueTaskR\x05tasks2\xdd\x05\n" +
 	"\x10SchedulerService\x12}\n" +
 	"\x12GetSchedulerStatus\x122.stockalert.scheduler.v1.GetSchedulerStatusRequest\x1a3.stockalert.scheduler.v1.GetSchedulerStatusResponse\x12\x80\x01\n" +
 	"\x13GetExchangeSchedule\x123.stockalert.scheduler.v1.GetExchangeScheduleRequest\x1a4.stockalert.scheduler.v1.GetExchangeScheduleResponse\x12q\n" +
 	"\x0eStartScheduler\x12..stockalert.scheduler.v1.StartSchedulerRequest\x1a/.stockalert.scheduler.v1.StartSchedulerResponse\x12n\n" +
 	"\rStopScheduler\x12-.stockalert.scheduler.v1.StopSchedulerRequest\x1a..stockalert.scheduler.v1.StopSchedulerResponse\x12q\n" +
-	"\x0eRunExchangeJob\x12..stockalert.scheduler.v1.RunExchangeJobRequest\x1a/.stockalert.scheduler.v1.RunExchangeJobResponseB\xd7\x01\n" +
+	"\x0eRunExchangeJob\x12..stockalert.scheduler.v1.RunExchangeJobRequest\x1a/.stockalert.scheduler.v1.RunExchangeJobResponse\x12q\n" +
+	"\x0eListQueueTasks\x12..stockalert.scheduler.v1.ListQueueTasksRequest\x1a/.stockalert.scheduler.v1.ListQueueTasksResponseB\xd7\x01\n" +
 	"\x1bcom.stockalert.scheduler.v1B\x0eSchedulerProtoP\x01Z*stockalert/gen/go/scheduler/v1;schedulerv1\xa2\x02\x03SSX\xaa\x02\x17Stockalert.Scheduler.V1\xca\x02\x17Stockalert\\Scheduler\\V1\xe2\x02#Stockalert\\Scheduler\\V1\\GPBMetadata\xea\x02\x19Stockalert::Scheduler::V1b\x06proto3"
 
 var (
@@ -927,7 +1112,7 @@ func file_scheduler_v1_scheduler_proto_rawDescGZIP() []byte {
 	return file_scheduler_v1_scheduler_proto_rawDescData
 }
 
-var file_scheduler_v1_scheduler_proto_msgTypes = make([]protoimpl.MessageInfo, 14)
+var file_scheduler_v1_scheduler_proto_msgTypes = make([]protoimpl.MessageInfo, 17)
 var file_scheduler_v1_scheduler_proto_goTypes = []any{
 	(*GetSchedulerStatusRequest)(nil),   // 0: stockalert.scheduler.v1.GetSchedulerStatusRequest
 	(*CurrentJob)(nil),                  // 1: stockalert.scheduler.v1.CurrentJob
@@ -943,32 +1128,39 @@ var file_scheduler_v1_scheduler_proto_goTypes = []any{
 	(*StopSchedulerResponse)(nil),       // 11: stockalert.scheduler.v1.StopSchedulerResponse
 	(*RunExchangeJobRequest)(nil),       // 12: stockalert.scheduler.v1.RunExchangeJobRequest
 	(*RunExchangeJobResponse)(nil),      // 13: stockalert.scheduler.v1.RunExchangeJobResponse
-	(*timestamppb.Timestamp)(nil),       // 14: google.protobuf.Timestamp
+	(*ListQueueTasksRequest)(nil),       // 14: stockalert.scheduler.v1.ListQueueTasksRequest
+	(*QueueTask)(nil),                   // 15: stockalert.scheduler.v1.QueueTask
+	(*ListQueueTasksResponse)(nil),      // 16: stockalert.scheduler.v1.ListQueueTasksResponse
+	(*timestamppb.Timestamp)(nil),       // 17: google.protobuf.Timestamp
 }
 var file_scheduler_v1_scheduler_proto_depIdxs = []int32{
-	14, // 0: stockalert.scheduler.v1.CurrentJob.started:type_name -> google.protobuf.Timestamp
-	14, // 1: stockalert.scheduler.v1.LastRun.completed_at:type_name -> google.protobuf.Timestamp
-	14, // 2: stockalert.scheduler.v1.LastError.time:type_name -> google.protobuf.Timestamp
-	14, // 3: stockalert.scheduler.v1.GetSchedulerStatusResponse.heartbeat:type_name -> google.protobuf.Timestamp
+	17, // 0: stockalert.scheduler.v1.CurrentJob.started:type_name -> google.protobuf.Timestamp
+	17, // 1: stockalert.scheduler.v1.LastRun.completed_at:type_name -> google.protobuf.Timestamp
+	17, // 2: stockalert.scheduler.v1.LastError.time:type_name -> google.protobuf.Timestamp
+	17, // 3: stockalert.scheduler.v1.GetSchedulerStatusResponse.heartbeat:type_name -> google.protobuf.Timestamp
 	1,  // 4: stockalert.scheduler.v1.GetSchedulerStatusResponse.current_job:type_name -> stockalert.scheduler.v1.CurrentJob
 	2,  // 5: stockalert.scheduler.v1.GetSchedulerStatusResponse.last_run:type_name -> stockalert.scheduler.v1.LastRun
 	3,  // 6: stockalert.scheduler.v1.GetSchedulerStatusResponse.last_error:type_name -> stockalert.scheduler.v1.LastError
 	6,  // 7: stockalert.scheduler.v1.GetExchangeScheduleResponse.rows:type_name -> stockalert.scheduler.v1.ExchangeScheduleRow
-	0,  // 8: stockalert.scheduler.v1.SchedulerService.GetSchedulerStatus:input_type -> stockalert.scheduler.v1.GetSchedulerStatusRequest
-	5,  // 9: stockalert.scheduler.v1.SchedulerService.GetExchangeSchedule:input_type -> stockalert.scheduler.v1.GetExchangeScheduleRequest
-	8,  // 10: stockalert.scheduler.v1.SchedulerService.StartScheduler:input_type -> stockalert.scheduler.v1.StartSchedulerRequest
-	10, // 11: stockalert.scheduler.v1.SchedulerService.StopScheduler:input_type -> stockalert.scheduler.v1.StopSchedulerRequest
-	12, // 12: stockalert.scheduler.v1.SchedulerService.RunExchangeJob:input_type -> stockalert.scheduler.v1.RunExchangeJobRequest
-	4,  // 13: stockalert.scheduler.v1.SchedulerService.GetSchedulerStatus:output_type -> stockalert.scheduler.v1.GetSchedulerStatusResponse
-	7,  // 14: stockalert.scheduler.v1.SchedulerService.GetExchangeSchedule:output_type -> stockalert.scheduler.v1.GetExchangeScheduleResponse
-	9,  // 15: stockalert.scheduler.v1.SchedulerService.StartScheduler:output_type -> stockalert.scheduler.v1.StartSchedulerResponse
-	11, // 16: stockalert.scheduler.v1.SchedulerService.StopScheduler:output_type -> stockalert.scheduler.v1.StopSchedulerResponse
-	13, // 17: stockalert.scheduler.v1.SchedulerService.RunExchangeJob:output_type -> stockalert.scheduler.v1.RunExchangeJobResponse
-	13, // [13:18] is the sub-list for method output_type
-	8,  // [8:13] is the sub-list for method input_type
-	8,  // [8:8] is the sub-list for extension type_name
-	8,  // [8:8] is the sub-list for extension extendee
-	0,  // [0:8] is the sub-list for field type_name
+	17, // 8: stockalert.scheduler.v1.QueueTask.next_process_at:type_name -> google.protobuf.Timestamp
+	15, // 9: stockalert.scheduler.v1.ListQueueTasksResponse.tasks:type_name -> stockalert.scheduler.v1.QueueTask
+	0,  // 10: stockalert.scheduler.v1.SchedulerService.GetSchedulerStatus:input_type -> stockalert.scheduler.v1.GetSchedulerStatusRequest
+	5,  // 11: stockalert.scheduler.v1.SchedulerService.GetExchangeSchedule:input_type -> stockalert.scheduler.v1.GetExchangeScheduleRequest
+	8,  // 12: stockalert.scheduler.v1.SchedulerService.StartScheduler:input_type -> stockalert.scheduler.v1.StartSchedulerRequest
+	10, // 13: stockalert.scheduler.v1.SchedulerService.StopScheduler:input_type -> stockalert.scheduler.v1.StopSchedulerRequest
+	12, // 14: stockalert.scheduler.v1.SchedulerService.RunExchangeJob:input_type -> stockalert.scheduler.v1.RunExchangeJobRequest
+	14, // 15: stockalert.scheduler.v1.SchedulerService.ListQueueTasks:input_type -> stockalert.scheduler.v1.ListQueueTasksRequest
+	4,  // 16: stockalert.scheduler.v1.SchedulerService.GetSchedulerStatus:output_type -> stockalert.scheduler.v1.GetSchedulerStatusResponse
+	7,  // 17: stockalert.scheduler.v1.SchedulerService.GetExchangeSchedule:output_type -> stockalert.scheduler.v1.GetExchangeScheduleResponse
+	9,  // 18: stockalert.scheduler.v1.SchedulerService.StartScheduler:output_type -> stockalert.scheduler.v1.StartSchedulerResponse
+	11, // 19: stockalert.scheduler.v1.SchedulerService.StopScheduler:output_type -> stockalert.scheduler.v1.StopSchedulerResponse
+	13, // 20: stockalert.scheduler.v1.SchedulerService.RunExchangeJob:output_type -> stockalert.scheduler.v1.RunExchangeJobResponse
+	16, // 21: stockalert.scheduler.v1.SchedulerService.ListQueueTasks:output_type -> stockalert.scheduler.v1.ListQueueTasksResponse
+	16, // [16:22] is the sub-list for method output_type
+	10, // [10:16] is the sub-list for method input_type
+	10, // [10:10] is the sub-list for extension type_name
+	10, // [10:10] is the sub-list for extension extendee
+	0,  // [0:10] is the sub-list for field type_name
 }
 
 func init() { file_scheduler_v1_scheduler_proto_init() }
@@ -982,7 +1174,7 @@ func file_scheduler_v1_scheduler_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_scheduler_v1_scheduler_proto_rawDesc), len(file_scheduler_v1_scheduler_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   14,
+			NumMessages:   17,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

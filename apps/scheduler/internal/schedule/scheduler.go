@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"log/slog"
+	"strings"
 	"time"
 
 	"github.com/hibiken/asynq"
@@ -72,9 +73,18 @@ func (s *Scheduler) Stop() {
 	<-s.done
 }
 
+// isUniqueConflict returns true if err is asynq's "task already exists" from
+// the Unique option. That is expected when we re-run every 15 min and the
+// same task was already enqueued within the uniqueness window (12h daily, 30m hourly).
+func isUniqueConflict(err error) bool {
+	return err != nil && strings.Contains(err.Error(), "task already exists")
+}
+
 // scheduleAll iterates all exchanges, computes next run times, and enqueues
 // daily (and weekly when Friday) with ProcessAt + Unique(12h), and hourly
-// when exchange is open with Unique(30min).
+// when exchange is open with Unique(30min). Tasks are scheduled for their
+// ProcessAt time (e.g. next market close); they appear in Redis as "scheduled"
+// until that time, then the worker runs them.
 func (s *Scheduler) scheduleAll(ctx context.Context) {
 	now := time.Now().UTC()
 	exchangeCount := len(calendar.ExchangeSchedules)
@@ -91,7 +101,11 @@ func (s *Scheduler) scheduleAll(ctx context.Context) {
 		task := asynq.NewTask(tasks.TypeDaily, payload)
 		_, err := s.client.EnqueueContext(ctx, task, asynq.ProcessAt(nextDaily), asynq.Unique(dailyUnique))
 		if err != nil {
-			s.logger.Warn("schedule daily failed", "exchange", exchange, "error", err)
+			if isUniqueConflict(err) {
+				s.logger.Debug("schedule daily skipped (already enqueued)", "exchange", exchange)
+			} else {
+				s.logger.Warn("schedule daily failed", "exchange", exchange, "error", err)
+			}
 			continue
 		}
 		scheduled++
@@ -105,7 +119,11 @@ func (s *Scheduler) scheduleAll(ctx context.Context) {
 			taskWeekly := asynq.NewTask(tasks.TypeWeekly, payloadWeekly)
 			_, err = s.client.EnqueueContext(ctx, taskWeekly, asynq.ProcessAt(nextDaily), asynq.Unique(dailyUnique))
 			if err != nil {
-				s.logger.Warn("schedule weekly failed", "exchange", exchange, "error", err)
+				if isUniqueConflict(err) {
+					s.logger.Debug("schedule weekly skipped (already enqueued)", "exchange", exchange)
+				} else {
+					s.logger.Warn("schedule weekly failed", "exchange", exchange, "error", err)
+				}
 				continue
 			}
 			scheduled++
@@ -118,13 +136,23 @@ func (s *Scheduler) scheduleAll(ctx context.Context) {
 		if calendar.IsExchangeOpen(exchange, now) {
 			payloadHourly, _ := json.Marshal(tasks.Payload{Exchange: exchange, Timeframe: "hourly"})
 			taskHourly := asynq.NewTask(tasks.TypeHourly, payloadHourly)
-			_, err = s.client.EnqueueContext(ctx, taskHourly, asynq.Unique(hourlyUnique))
+			// Schedule for 30 min from now so the task stays visible in "scheduled" until run time.
+			nextHourly := now.Add(hourlyUnique)
+			_, err = s.client.EnqueueContext(ctx, taskHourly, asynq.ProcessAt(nextHourly), asynq.Unique(hourlyUnique))
 			if err != nil {
-				s.logger.Warn("schedule hourly failed", "exchange", exchange, "error", err)
+				if isUniqueConflict(err) {
+					s.logger.Debug("schedule hourly skipped (already enqueued)", "exchange", exchange)
+				} else {
+					s.logger.Warn("schedule hourly failed", "exchange", exchange, "error", err)
+				}
 				continue
 			}
 			scheduled++
-			s.logger.Debug("task scheduled", "exchange", exchange, "timeframe", "hourly")
+			s.logger.Debug("task scheduled",
+				"exchange", exchange,
+				"timeframe", "hourly",
+				"process_at", nextHourly.Format(time.RFC3339),
+			)
 		}
 	}
 

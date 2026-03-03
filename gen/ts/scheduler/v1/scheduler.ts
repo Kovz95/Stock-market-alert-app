@@ -96,6 +96,27 @@ export interface RunExchangeJobResponse {
   message: string;
 }
 
+export interface ListQueueTasksRequest {
+  /** Queue name; empty means "default". */
+  queue: string;
+}
+
+export interface QueueTask {
+  /** "scheduled", "pending", "active" */
+  state: string;
+  /** task type e.g. "task:daily" */
+  type: string;
+  exchange: string;
+  /** "daily", "weekly", "hourly" */
+  timeframe: string;
+  nextProcessAt?: Date | undefined;
+  id: string;
+}
+
+export interface ListQueueTasksResponse {
+  tasks: QueueTask[];
+}
+
 function createBaseGetSchedulerStatusRequest(): GetSchedulerStatusRequest {
   return {};
 }
@@ -1418,6 +1439,268 @@ export const RunExchangeJobResponse: MessageFns<RunExchangeJobResponse> = {
   },
 };
 
+function createBaseListQueueTasksRequest(): ListQueueTasksRequest {
+  return { queue: "" };
+}
+
+export const ListQueueTasksRequest: MessageFns<ListQueueTasksRequest> = {
+  encode(message: ListQueueTasksRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.queue !== "") {
+      writer.uint32(10).string(message.queue);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): ListQueueTasksRequest {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseListQueueTasksRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.queue = reader.string();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): ListQueueTasksRequest {
+    return { queue: isSet(object.queue) ? globalThis.String(object.queue) : "" };
+  },
+
+  toJSON(message: ListQueueTasksRequest): unknown {
+    const obj: any = {};
+    if (message.queue !== "") {
+      obj.queue = message.queue;
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<ListQueueTasksRequest>, I>>(base?: I): ListQueueTasksRequest {
+    return ListQueueTasksRequest.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<ListQueueTasksRequest>, I>>(object: I): ListQueueTasksRequest {
+    const message = createBaseListQueueTasksRequest();
+    message.queue = object.queue ?? "";
+    return message;
+  },
+};
+
+function createBaseQueueTask(): QueueTask {
+  return { state: "", type: "", exchange: "", timeframe: "", nextProcessAt: undefined, id: "" };
+}
+
+export const QueueTask: MessageFns<QueueTask> = {
+  encode(message: QueueTask, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.state !== "") {
+      writer.uint32(10).string(message.state);
+    }
+    if (message.type !== "") {
+      writer.uint32(18).string(message.type);
+    }
+    if (message.exchange !== "") {
+      writer.uint32(26).string(message.exchange);
+    }
+    if (message.timeframe !== "") {
+      writer.uint32(34).string(message.timeframe);
+    }
+    if (message.nextProcessAt !== undefined) {
+      Timestamp.encode(toTimestamp(message.nextProcessAt), writer.uint32(42).fork()).join();
+    }
+    if (message.id !== "") {
+      writer.uint32(50).string(message.id);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): QueueTask {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseQueueTask();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.state = reader.string();
+          continue;
+        }
+        case 2: {
+          if (tag !== 18) {
+            break;
+          }
+
+          message.type = reader.string();
+          continue;
+        }
+        case 3: {
+          if (tag !== 26) {
+            break;
+          }
+
+          message.exchange = reader.string();
+          continue;
+        }
+        case 4: {
+          if (tag !== 34) {
+            break;
+          }
+
+          message.timeframe = reader.string();
+          continue;
+        }
+        case 5: {
+          if (tag !== 42) {
+            break;
+          }
+
+          message.nextProcessAt = fromTimestamp(Timestamp.decode(reader, reader.uint32()));
+          continue;
+        }
+        case 6: {
+          if (tag !== 50) {
+            break;
+          }
+
+          message.id = reader.string();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): QueueTask {
+    return {
+      state: isSet(object.state) ? globalThis.String(object.state) : "",
+      type: isSet(object.type) ? globalThis.String(object.type) : "",
+      exchange: isSet(object.exchange) ? globalThis.String(object.exchange) : "",
+      timeframe: isSet(object.timeframe) ? globalThis.String(object.timeframe) : "",
+      nextProcessAt: isSet(object.nextProcessAt)
+        ? fromJsonTimestamp(object.nextProcessAt)
+        : isSet(object.next_process_at)
+        ? fromJsonTimestamp(object.next_process_at)
+        : undefined,
+      id: isSet(object.id) ? globalThis.String(object.id) : "",
+    };
+  },
+
+  toJSON(message: QueueTask): unknown {
+    const obj: any = {};
+    if (message.state !== "") {
+      obj.state = message.state;
+    }
+    if (message.type !== "") {
+      obj.type = message.type;
+    }
+    if (message.exchange !== "") {
+      obj.exchange = message.exchange;
+    }
+    if (message.timeframe !== "") {
+      obj.timeframe = message.timeframe;
+    }
+    if (message.nextProcessAt !== undefined) {
+      obj.nextProcessAt = message.nextProcessAt.toISOString();
+    }
+    if (message.id !== "") {
+      obj.id = message.id;
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<QueueTask>, I>>(base?: I): QueueTask {
+    return QueueTask.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<QueueTask>, I>>(object: I): QueueTask {
+    const message = createBaseQueueTask();
+    message.state = object.state ?? "";
+    message.type = object.type ?? "";
+    message.exchange = object.exchange ?? "";
+    message.timeframe = object.timeframe ?? "";
+    message.nextProcessAt = object.nextProcessAt ?? undefined;
+    message.id = object.id ?? "";
+    return message;
+  },
+};
+
+function createBaseListQueueTasksResponse(): ListQueueTasksResponse {
+  return { tasks: [] };
+}
+
+export const ListQueueTasksResponse: MessageFns<ListQueueTasksResponse> = {
+  encode(message: ListQueueTasksResponse, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    for (const v of message.tasks) {
+      QueueTask.encode(v!, writer.uint32(10).fork()).join();
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): ListQueueTasksResponse {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseListQueueTasksResponse();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.tasks.push(QueueTask.decode(reader, reader.uint32()));
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): ListQueueTasksResponse {
+    return {
+      tasks: globalThis.Array.isArray(object?.tasks) ? object.tasks.map((e: any) => QueueTask.fromJSON(e)) : [],
+    };
+  },
+
+  toJSON(message: ListQueueTasksResponse): unknown {
+    const obj: any = {};
+    if (message.tasks?.length) {
+      obj.tasks = message.tasks.map((e) => QueueTask.toJSON(e));
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<ListQueueTasksResponse>, I>>(base?: I): ListQueueTasksResponse {
+    return ListQueueTasksResponse.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<ListQueueTasksResponse>, I>>(object: I): ListQueueTasksResponse {
+    const message = createBaseListQueueTasksResponse();
+    message.tasks = object.tasks?.map((e) => QueueTask.fromPartial(e)) || [];
+    return message;
+  },
+};
+
 /** SchedulerService provides scheduler monitoring and control. */
 export type SchedulerServiceDefinition = typeof SchedulerServiceDefinition;
 export const SchedulerServiceDefinition = {
@@ -1464,6 +1747,14 @@ export const SchedulerServiceDefinition = {
       responseStream: false,
       options: {},
     },
+    listQueueTasks: {
+      name: "ListQueueTasks",
+      requestType: ListQueueTasksRequest,
+      requestStream: false,
+      responseType: ListQueueTasksResponse,
+      responseStream: false,
+      options: {},
+    },
   },
 } as const;
 
@@ -1488,6 +1779,10 @@ export interface SchedulerServiceImplementation<CallContextExt = {}> {
     request: RunExchangeJobRequest,
     context: CallContext & CallContextExt,
   ): Promise<DeepPartial<RunExchangeJobResponse>>;
+  listQueueTasks(
+    request: ListQueueTasksRequest,
+    context: CallContext & CallContextExt,
+  ): Promise<DeepPartial<ListQueueTasksResponse>>;
 }
 
 export interface SchedulerServiceClient<CallOptionsExt = {}> {
@@ -1511,6 +1806,10 @@ export interface SchedulerServiceClient<CallOptionsExt = {}> {
     request: DeepPartial<RunExchangeJobRequest>,
     options?: CallOptions & CallOptionsExt,
   ): Promise<RunExchangeJobResponse>;
+  listQueueTasks(
+    request: DeepPartial<ListQueueTasksRequest>,
+    options?: CallOptions & CallOptionsExt,
+  ): Promise<ListQueueTasksResponse>;
 }
 
 type Builtin = Date | Function | Uint8Array | string | number | boolean | undefined;

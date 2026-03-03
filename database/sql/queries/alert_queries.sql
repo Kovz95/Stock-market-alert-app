@@ -106,6 +106,18 @@ WHERE exchange = ANY(sqlc.arg(exchanges)::text[])
   AND timeframe = sqlc.arg(timeframe)
 ORDER BY updated_at DESC, name ASC;
 
+-- name: ListAlertsByExchangeAndTimeframes :many
+SELECT
+    alert_id, name, stock_name, ticker, ticker1, ticker2,
+    conditions, combination_logic, last_triggered, action,
+    timeframe, exchange, country, ratio, is_ratio,
+    adjustment_method, dtp_params, multi_timeframe_params,
+    mixed_timeframe_params, raw_payload, created_at, updated_at
+FROM alerts
+WHERE exchange = ANY(sqlc.arg(exchanges)::text[])
+  AND timeframe = ANY(sqlc.arg(timeframes)::text[])
+ORDER BY updated_at DESC, name ASC;
+
 -- Audit trail: single insert for deferred audit records.
 
 -- name: InsertAlertAudit :exec
