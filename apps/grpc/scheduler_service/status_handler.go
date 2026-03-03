@@ -151,6 +151,7 @@ func (s *Server) GetSchedulerStatus(ctx context.Context, _ *schedulerv1.GetSched
 		if info, err := s.inspector.GetQueueInfo("default"); err == nil {
 			resp.QueueSize = int32(info.Size)
 			resp.ActiveWorkers = int32(info.Active)
+			resp.QueuePaused = info.Paused
 			resp.QueueBreakdown = &schedulerv1.QueueBreakdown{
 				Pending:   int32(info.Pending),
 				Scheduled: int32(info.Scheduled),

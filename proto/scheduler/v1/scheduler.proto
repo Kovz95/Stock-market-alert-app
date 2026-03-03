@@ -54,6 +54,8 @@ message GetSchedulerStatusResponse {
   int32 worker_processes = 8;
   // Breakdown by state so UI can show e.g. "124 (80 scheduled, 44 pending)"
   QueueBreakdown queue_breakdown = 9;
+  // queue_paused: when true, the queue is paused (Stop was clicked); workers will not process tasks
+  bool queue_paused = 10;
 }
 
 // ---------------------------------------------------------------------------

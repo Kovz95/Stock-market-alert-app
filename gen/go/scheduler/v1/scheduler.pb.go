@@ -338,8 +338,10 @@ type GetSchedulerStatusResponse struct {
 	WorkerProcesses int32 `protobuf:"varint,8,opt,name=worker_processes,json=workerProcesses,proto3" json:"worker_processes,omitempty"`
 	// Breakdown by state so UI can show e.g. "124 (80 scheduled, 44 pending)"
 	QueueBreakdown *QueueBreakdown `protobuf:"bytes,9,opt,name=queue_breakdown,json=queueBreakdown,proto3" json:"queue_breakdown,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// queue_paused: when true, the queue is paused (Stop was clicked); workers will not process tasks
+	QueuePaused   bool `protobuf:"varint,10,opt,name=queue_paused,json=queuePaused,proto3" json:"queue_paused,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *GetSchedulerStatusResponse) Reset() {
@@ -433,6 +435,13 @@ func (x *GetSchedulerStatusResponse) GetQueueBreakdown() *QueueBreakdown {
 		return x.QueueBreakdown
 	}
 	return nil
+}
+
+func (x *GetSchedulerStatusResponse) GetQueuePaused() bool {
+	if x != nil {
+		return x.QueuePaused
+	}
+	return false
 }
 
 type GetExchangeScheduleRequest struct {
@@ -1126,7 +1135,7 @@ const file_scheduler_v1_scheduler_proto_rawDesc = "" +
 	"\tscheduled\x18\x02 \x01(\x05R\tscheduled\x12\x16\n" +
 	"\x06active\x18\x03 \x01(\x05R\x06active\x12\x14\n" +
 	"\x05retry\x18\x04 \x01(\x05R\x05retry\x12\x1a\n" +
-	"\barchived\x18\x05 \x01(\x05R\barchived\"\xf7\x03\n" +
+	"\barchived\x18\x05 \x01(\x05R\barchived\"\x9a\x04\n" +
 	"\x1aGetSchedulerStatusResponse\x12\x16\n" +
 	"\x06status\x18\x01 \x01(\tR\x06status\x128\n" +
 	"\theartbeat\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\theartbeat\x12D\n" +
@@ -1139,7 +1148,9 @@ const file_scheduler_v1_scheduler_proto_rawDesc = "" +
 	"queue_size\x18\x06 \x01(\x05R\tqueueSize\x12%\n" +
 	"\x0eactive_workers\x18\a \x01(\x05R\ractiveWorkers\x12)\n" +
 	"\x10worker_processes\x18\b \x01(\x05R\x0fworkerProcesses\x12P\n" +
-	"\x0fqueue_breakdown\x18\t \x01(\v2'.stockalert.scheduler.v1.QueueBreakdownR\x0equeueBreakdown\":\n" +
+	"\x0fqueue_breakdown\x18\t \x01(\v2'.stockalert.scheduler.v1.QueueBreakdownR\x0equeueBreakdown\x12!\n" +
+	"\fqueue_paused\x18\n" +
+	" \x01(\bR\vqueuePaused\":\n" +
 	"\x1aGetExchangeScheduleRequest\x12\x1c\n" +
 	"\ttimeframe\x18\x01 \x01(\tR\ttimeframe\"\x81\x03\n" +
 	"\x13ExchangeScheduleRow\x12\x1a\n" +

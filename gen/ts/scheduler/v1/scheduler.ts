@@ -62,7 +62,11 @@ export interface GetSchedulerStatusResponse {
   /** worker_processes: number of live asynq worker processes connected to Redis */
   workerProcesses: number;
   /** Breakdown by state so UI can show e.g. "124 (80 scheduled, 44 pending)" */
-  queueBreakdown?: QueueBreakdown | undefined;
+  queueBreakdown?:
+    | QueueBreakdown
+    | undefined;
+  /** queue_paused: when true, the queue is paused (Stop was clicked); workers will not process tasks */
+  queuePaused: boolean;
 }
 
 export interface GetExchangeScheduleRequest {
@@ -610,6 +614,7 @@ function createBaseGetSchedulerStatusResponse(): GetSchedulerStatusResponse {
     activeWorkers: 0,
     workerProcesses: 0,
     queueBreakdown: undefined,
+    queuePaused: false,
   };
 }
 
@@ -641,6 +646,9 @@ export const GetSchedulerStatusResponse: MessageFns<GetSchedulerStatusResponse> 
     }
     if (message.queueBreakdown !== undefined) {
       QueueBreakdown.encode(message.queueBreakdown, writer.uint32(74).fork()).join();
+    }
+    if (message.queuePaused !== false) {
+      writer.uint32(80).bool(message.queuePaused);
     }
     return writer;
   },
@@ -724,6 +732,14 @@ export const GetSchedulerStatusResponse: MessageFns<GetSchedulerStatusResponse> 
           message.queueBreakdown = QueueBreakdown.decode(reader, reader.uint32());
           continue;
         }
+        case 10: {
+          if (tag !== 80) {
+            break;
+          }
+
+          message.queuePaused = reader.bool();
+          continue;
+        }
       }
       if ((tag & 7) === 4 || tag === 0) {
         break;
@@ -772,6 +788,11 @@ export const GetSchedulerStatusResponse: MessageFns<GetSchedulerStatusResponse> 
         : isSet(object.queue_breakdown)
         ? QueueBreakdown.fromJSON(object.queue_breakdown)
         : undefined,
+      queuePaused: isSet(object.queuePaused)
+        ? globalThis.Boolean(object.queuePaused)
+        : isSet(object.queue_paused)
+        ? globalThis.Boolean(object.queue_paused)
+        : false,
     };
   },
 
@@ -804,6 +825,9 @@ export const GetSchedulerStatusResponse: MessageFns<GetSchedulerStatusResponse> 
     if (message.queueBreakdown !== undefined) {
       obj.queueBreakdown = QueueBreakdown.toJSON(message.queueBreakdown);
     }
+    if (message.queuePaused !== false) {
+      obj.queuePaused = message.queuePaused;
+    }
     return obj;
   },
 
@@ -829,6 +853,7 @@ export const GetSchedulerStatusResponse: MessageFns<GetSchedulerStatusResponse> 
     message.queueBreakdown = (object.queueBreakdown !== undefined && object.queueBreakdown !== null)
       ? QueueBreakdown.fromPartial(object.queueBreakdown)
       : undefined;
+    message.queuePaused = object.queuePaused ?? false;
     return message;
   },
 };

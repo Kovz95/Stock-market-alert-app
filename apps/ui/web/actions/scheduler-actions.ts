@@ -34,6 +34,8 @@ export type SchedulerStatusData = {
   workerProcesses: number;
   /** Breakdown: pending, scheduled, active, retry, archived (from Asynq) */
   queueBreakdown: QueueBreakdown | null;
+  /** When true, queue is paused (Stop clicked); workers will not process tasks */
+  queuePaused: boolean;
 };
 
 export type ExchangeScheduleRow = {
@@ -121,6 +123,7 @@ export async function getSchedulerStatus(): Promise<SchedulerStatusData> {
           archived: res.queueBreakdown.archived ?? 0,
         }
       : null,
+    queuePaused: res.queuePaused ?? false,
   };
 }
 

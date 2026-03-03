@@ -127,6 +127,12 @@ export function SchedulerStatusCard({ timeframe }: { timeframe: Timeframe }) {
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="grid gap-3 text-sm">
+          <div className="flex justify-between items-center">
+            <span className="text-muted-foreground">Queue</span>
+            <Badge variant={status.queuePaused ? "secondary" : "default"}>
+              {status.queuePaused ? "Stopped" : "Started"}
+            </Badge>
+          </div>
           <div className="flex justify-between">
             <span className="text-muted-foreground">Heartbeat</span>
             <span>{formatTimeAgo(status.heartbeat)}</span>
