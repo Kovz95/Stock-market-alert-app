@@ -87,20 +87,16 @@ func buildDailyRows(nowET, now time.Time, eastern *time.Location, lastRuns map[s
 		nextRunET := nextRun.In(eastern)
 		nextCloseET := nextRunET.Add(-40 * time.Minute)
 
-		localClose := ""
-		if tz != "" {
-			if loc, err := time.LoadLocation(tz); err == nil {
-				localClose = nextCloseET.In(loc).Format("15:04")
-			}
-		}
+		// Close (ET): exchange close time in Eastern
+		closeEt := nextCloseET.Format("3:04 PM")
 
 		row := &schedulerv1.ExchangeScheduleRow{
 			Exchange:             sched.Name,
 			Symbol:               sym,
 			Region:               region,
-			RunTimeEt:            nextRunET.Format("15:04"),
-			RunTimeUtc:           nextRun.UTC().Format("15:04"),
-			LocalClose:           localClose,
+			RunTimeEt:            nextRunET.Format("3:04 PM"),
+			RunTimeUtc:           nextRun.UTC().Format("3:04 PM"),
+			LocalClose:           closeEt,
 			LocalTz:              tz,
 			TimeRemainingSeconds: remaining,
 		}
@@ -126,12 +122,8 @@ func buildWeeklyRows(nowET, now time.Time, eastern *time.Location, lastRuns map[
 		runET := closeET.Add(40 * time.Minute)
 		runUTC := runET.UTC()
 
-		localClose := ""
-		if tz != "" {
-			if loc, err := time.LoadLocation(tz); err == nil {
-				localClose = closeET.In(loc).Format("15:04")
-			}
-		}
+		// Close (ET): exchange close time in Eastern
+		closeEt := closeET.Format("3:04 PM")
 
 		// For weekly, find the next Friday at the daily run time.
 		nextFriday := nextWeeklyRunTime(sym, now, eastern)
@@ -144,9 +136,9 @@ func buildWeeklyRows(nowET, now time.Time, eastern *time.Location, lastRuns map[
 			Exchange:             sched.Name,
 			Symbol:               sym,
 			Region:               region,
-			RunTimeEt:            runET.Format("15:04"),
-			RunTimeUtc:           runUTC.Format("15:04"),
-			LocalClose:           localClose,
+			RunTimeEt:            runET.Format("3:04 PM"),
+			RunTimeUtc:           runUTC.Format("3:04 PM"),
+			LocalClose:           closeEt,
 			LocalTz:              tz,
 			TimeRemainingSeconds: remaining,
 		}
@@ -178,7 +170,7 @@ func nextWeeklyRunTime(exchange string, now time.Time, eastern *time.Location) t
 }
 
 // buildHourlyRows computes the hourly schedule: next aligned candle time while exchange is open.
-// LocalClose shows the hourly alignment ("hour", "quarter", or "half").
+// LocalClose shows Close (ET): exchange session close time in Eastern.
 // RunTimeEt shows the next candle time; TimeRemaining counts down to it.
 // Exchanges that are currently closed show TimeRemaining = 0.
 func buildHourlyRows(nowET, now time.Time, eastern *time.Location, lastRuns map[string]lastRunInfo) []*schedulerv1.ExchangeScheduleRow {
@@ -186,11 +178,11 @@ func buildHourlyRows(nowET, now time.Time, eastern *time.Location, lastRuns map[
 	for sym, sched := range calendar.ExchangeSchedules {
 		tz := calendar.GetCalendarTimezone(sym)
 		region := regionFromTZ(tz)
-		alignment := calendar.GetHourlyAlignment(sym)
 
 		isOpen := calendar.IsExchangeOpen(sym, now)
 		var nextCandleET time.Time
 		var remaining int64
+		alignment := calendar.GetHourlyAlignment(sym)
 
 		if isOpen {
 			nextCandleET = nextHourlyCandle(now, eastern, alignment)
@@ -203,9 +195,14 @@ func buildHourlyRows(nowET, now time.Time, eastern *time.Location, lastRuns map[
 		runTimeEt := ""
 		runTimeUtc := ""
 		if isOpen {
-			runTimeEt = nextCandleET.In(eastern).Format("15:04")
-			runTimeUtc = nextCandleET.UTC().Format("15:04")
+			runTimeEt = nextCandleET.In(eastern).Format("3:04 PM")
+			runTimeUtc = nextCandleET.UTC().Format("3:04 PM")
 		}
+
+		// Close (ET): exchange session close time in Eastern
+		closeHour, closeMin := calendar.GetExchangeCloseTime(sym, nowET)
+		closeET := time.Date(nowET.Year(), nowET.Month(), nowET.Day(), closeHour, closeMin, 0, 0, eastern)
+		closeEt := closeET.Format("3:04 PM")
 
 		row := &schedulerv1.ExchangeScheduleRow{
 			Exchange:             sched.Name,
@@ -213,7 +210,7 @@ func buildHourlyRows(nowET, now time.Time, eastern *time.Location, lastRuns map[
 			Region:               region,
 			RunTimeEt:            runTimeEt,
 			RunTimeUtc:           runTimeUtc,
-			LocalClose:           alignment, // repurposed: shows candle alignment
+			LocalClose:           closeEt,
 			LocalTz:              tz,
 			TimeRemainingSeconds: remaining,
 		}

@@ -246,6 +246,83 @@ func (x *LastError) GetTime() *timestamppb.Timestamp {
 	return nil
 }
 
+// QueueBreakdown is the per-state task count from Asynq (default queue).
+type QueueBreakdown struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Pending       int32                  `protobuf:"varint,1,opt,name=pending,proto3" json:"pending,omitempty"`     // waiting to be processed
+	Scheduled     int32                  `protobuf:"varint,2,opt,name=scheduled,proto3" json:"scheduled,omitempty"` // scheduled for a future time (e.g. daily at market close)
+	Active        int32                  `protobuf:"varint,3,opt,name=active,proto3" json:"active,omitempty"`       // currently being processed
+	Retry         int32                  `protobuf:"varint,4,opt,name=retry,proto3" json:"retry,omitempty"`         // failed, waiting to retry
+	Archived      int32                  `protobuf:"varint,5,opt,name=archived,proto3" json:"archived,omitempty"`   // archived after max retries
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *QueueBreakdown) Reset() {
+	*x = QueueBreakdown{}
+	mi := &file_scheduler_v1_scheduler_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *QueueBreakdown) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*QueueBreakdown) ProtoMessage() {}
+
+func (x *QueueBreakdown) ProtoReflect() protoreflect.Message {
+	mi := &file_scheduler_v1_scheduler_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use QueueBreakdown.ProtoReflect.Descriptor instead.
+func (*QueueBreakdown) Descriptor() ([]byte, []int) {
+	return file_scheduler_v1_scheduler_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *QueueBreakdown) GetPending() int32 {
+	if x != nil {
+		return x.Pending
+	}
+	return 0
+}
+
+func (x *QueueBreakdown) GetScheduled() int32 {
+	if x != nil {
+		return x.Scheduled
+	}
+	return 0
+}
+
+func (x *QueueBreakdown) GetActive() int32 {
+	if x != nil {
+		return x.Active
+	}
+	return 0
+}
+
+func (x *QueueBreakdown) GetRetry() int32 {
+	if x != nil {
+		return x.Retry
+	}
+	return 0
+}
+
+func (x *QueueBreakdown) GetArchived() int32 {
+	if x != nil {
+		return x.Archived
+	}
+	return 0
+}
+
 type GetSchedulerStatusResponse struct {
 	state      protoimpl.MessageState `protogen:"open.v1"`
 	Status     string                 `protobuf:"bytes,1,opt,name=status,proto3" json:"status,omitempty"`
@@ -253,18 +330,21 @@ type GetSchedulerStatusResponse struct {
 	CurrentJob *CurrentJob            `protobuf:"bytes,3,opt,name=current_job,json=currentJob,proto3" json:"current_job,omitempty"`
 	LastRun    *LastRun               `protobuf:"bytes,4,opt,name=last_run,json=lastRun,proto3" json:"last_run,omitempty"`
 	LastError  *LastError             `protobuf:"bytes,5,opt,name=last_error,json=lastError,proto3" json:"last_error,omitempty"`
-	QueueSize  int32                  `protobuf:"varint,6,opt,name=queue_size,json=queueSize,proto3" json:"queue_size,omitempty"`
+	// queue_size: total tasks in queue (pending + scheduled + active + retry + archived)
+	QueueSize int32 `protobuf:"varint,6,opt,name=queue_size,json=queueSize,proto3" json:"queue_size,omitempty"`
 	// active_workers: number of tasks currently being processed across all workers
 	ActiveWorkers int32 `protobuf:"varint,7,opt,name=active_workers,json=activeWorkers,proto3" json:"active_workers,omitempty"`
 	// worker_processes: number of live asynq worker processes connected to Redis
 	WorkerProcesses int32 `protobuf:"varint,8,opt,name=worker_processes,json=workerProcesses,proto3" json:"worker_processes,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// Breakdown by state so UI can show e.g. "124 (80 scheduled, 44 pending)"
+	QueueBreakdown *QueueBreakdown `protobuf:"bytes,9,opt,name=queue_breakdown,json=queueBreakdown,proto3" json:"queue_breakdown,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *GetSchedulerStatusResponse) Reset() {
 	*x = GetSchedulerStatusResponse{}
-	mi := &file_scheduler_v1_scheduler_proto_msgTypes[4]
+	mi := &file_scheduler_v1_scheduler_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -276,7 +356,7 @@ func (x *GetSchedulerStatusResponse) String() string {
 func (*GetSchedulerStatusResponse) ProtoMessage() {}
 
 func (x *GetSchedulerStatusResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_scheduler_v1_scheduler_proto_msgTypes[4]
+	mi := &file_scheduler_v1_scheduler_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -289,7 +369,7 @@ func (x *GetSchedulerStatusResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetSchedulerStatusResponse.ProtoReflect.Descriptor instead.
 func (*GetSchedulerStatusResponse) Descriptor() ([]byte, []int) {
-	return file_scheduler_v1_scheduler_proto_rawDescGZIP(), []int{4}
+	return file_scheduler_v1_scheduler_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *GetSchedulerStatusResponse) GetStatus() string {
@@ -348,6 +428,13 @@ func (x *GetSchedulerStatusResponse) GetWorkerProcesses() int32 {
 	return 0
 }
 
+func (x *GetSchedulerStatusResponse) GetQueueBreakdown() *QueueBreakdown {
+	if x != nil {
+		return x.QueueBreakdown
+	}
+	return nil
+}
+
 type GetExchangeScheduleRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// "daily", "weekly", or "hourly" — defaults to "daily" if empty
@@ -358,7 +445,7 @@ type GetExchangeScheduleRequest struct {
 
 func (x *GetExchangeScheduleRequest) Reset() {
 	*x = GetExchangeScheduleRequest{}
-	mi := &file_scheduler_v1_scheduler_proto_msgTypes[5]
+	mi := &file_scheduler_v1_scheduler_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -370,7 +457,7 @@ func (x *GetExchangeScheduleRequest) String() string {
 func (*GetExchangeScheduleRequest) ProtoMessage() {}
 
 func (x *GetExchangeScheduleRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_scheduler_v1_scheduler_proto_msgTypes[5]
+	mi := &file_scheduler_v1_scheduler_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -383,7 +470,7 @@ func (x *GetExchangeScheduleRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetExchangeScheduleRequest.ProtoReflect.Descriptor instead.
 func (*GetExchangeScheduleRequest) Descriptor() ([]byte, []int) {
-	return file_scheduler_v1_scheduler_proto_rawDescGZIP(), []int{5}
+	return file_scheduler_v1_scheduler_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *GetExchangeScheduleRequest) GetTimeframe() string {
@@ -412,7 +499,7 @@ type ExchangeScheduleRow struct {
 
 func (x *ExchangeScheduleRow) Reset() {
 	*x = ExchangeScheduleRow{}
-	mi := &file_scheduler_v1_scheduler_proto_msgTypes[6]
+	mi := &file_scheduler_v1_scheduler_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -424,7 +511,7 @@ func (x *ExchangeScheduleRow) String() string {
 func (*ExchangeScheduleRow) ProtoMessage() {}
 
 func (x *ExchangeScheduleRow) ProtoReflect() protoreflect.Message {
-	mi := &file_scheduler_v1_scheduler_proto_msgTypes[6]
+	mi := &file_scheduler_v1_scheduler_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -437,7 +524,7 @@ func (x *ExchangeScheduleRow) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ExchangeScheduleRow.ProtoReflect.Descriptor instead.
 func (*ExchangeScheduleRow) Descriptor() ([]byte, []int) {
-	return file_scheduler_v1_scheduler_proto_rawDescGZIP(), []int{6}
+	return file_scheduler_v1_scheduler_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *ExchangeScheduleRow) GetExchange() string {
@@ -526,7 +613,7 @@ type GetExchangeScheduleResponse struct {
 
 func (x *GetExchangeScheduleResponse) Reset() {
 	*x = GetExchangeScheduleResponse{}
-	mi := &file_scheduler_v1_scheduler_proto_msgTypes[7]
+	mi := &file_scheduler_v1_scheduler_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -538,7 +625,7 @@ func (x *GetExchangeScheduleResponse) String() string {
 func (*GetExchangeScheduleResponse) ProtoMessage() {}
 
 func (x *GetExchangeScheduleResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_scheduler_v1_scheduler_proto_msgTypes[7]
+	mi := &file_scheduler_v1_scheduler_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -551,7 +638,7 @@ func (x *GetExchangeScheduleResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetExchangeScheduleResponse.ProtoReflect.Descriptor instead.
 func (*GetExchangeScheduleResponse) Descriptor() ([]byte, []int) {
-	return file_scheduler_v1_scheduler_proto_rawDescGZIP(), []int{7}
+	return file_scheduler_v1_scheduler_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *GetExchangeScheduleResponse) GetRows() []*ExchangeScheduleRow {
@@ -569,7 +656,7 @@ type StartSchedulerRequest struct {
 
 func (x *StartSchedulerRequest) Reset() {
 	*x = StartSchedulerRequest{}
-	mi := &file_scheduler_v1_scheduler_proto_msgTypes[8]
+	mi := &file_scheduler_v1_scheduler_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -581,7 +668,7 @@ func (x *StartSchedulerRequest) String() string {
 func (*StartSchedulerRequest) ProtoMessage() {}
 
 func (x *StartSchedulerRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_scheduler_v1_scheduler_proto_msgTypes[8]
+	mi := &file_scheduler_v1_scheduler_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -594,7 +681,7 @@ func (x *StartSchedulerRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StartSchedulerRequest.ProtoReflect.Descriptor instead.
 func (*StartSchedulerRequest) Descriptor() ([]byte, []int) {
-	return file_scheduler_v1_scheduler_proto_rawDescGZIP(), []int{8}
+	return file_scheduler_v1_scheduler_proto_rawDescGZIP(), []int{9}
 }
 
 type StartSchedulerResponse struct {
@@ -607,7 +694,7 @@ type StartSchedulerResponse struct {
 
 func (x *StartSchedulerResponse) Reset() {
 	*x = StartSchedulerResponse{}
-	mi := &file_scheduler_v1_scheduler_proto_msgTypes[9]
+	mi := &file_scheduler_v1_scheduler_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -619,7 +706,7 @@ func (x *StartSchedulerResponse) String() string {
 func (*StartSchedulerResponse) ProtoMessage() {}
 
 func (x *StartSchedulerResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_scheduler_v1_scheduler_proto_msgTypes[9]
+	mi := &file_scheduler_v1_scheduler_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -632,7 +719,7 @@ func (x *StartSchedulerResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StartSchedulerResponse.ProtoReflect.Descriptor instead.
 func (*StartSchedulerResponse) Descriptor() ([]byte, []int) {
-	return file_scheduler_v1_scheduler_proto_rawDescGZIP(), []int{9}
+	return file_scheduler_v1_scheduler_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *StartSchedulerResponse) GetSuccess() bool {
@@ -657,7 +744,7 @@ type StopSchedulerRequest struct {
 
 func (x *StopSchedulerRequest) Reset() {
 	*x = StopSchedulerRequest{}
-	mi := &file_scheduler_v1_scheduler_proto_msgTypes[10]
+	mi := &file_scheduler_v1_scheduler_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -669,7 +756,7 @@ func (x *StopSchedulerRequest) String() string {
 func (*StopSchedulerRequest) ProtoMessage() {}
 
 func (x *StopSchedulerRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_scheduler_v1_scheduler_proto_msgTypes[10]
+	mi := &file_scheduler_v1_scheduler_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -682,7 +769,7 @@ func (x *StopSchedulerRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StopSchedulerRequest.ProtoReflect.Descriptor instead.
 func (*StopSchedulerRequest) Descriptor() ([]byte, []int) {
-	return file_scheduler_v1_scheduler_proto_rawDescGZIP(), []int{10}
+	return file_scheduler_v1_scheduler_proto_rawDescGZIP(), []int{11}
 }
 
 type StopSchedulerResponse struct {
@@ -695,7 +782,7 @@ type StopSchedulerResponse struct {
 
 func (x *StopSchedulerResponse) Reset() {
 	*x = StopSchedulerResponse{}
-	mi := &file_scheduler_v1_scheduler_proto_msgTypes[11]
+	mi := &file_scheduler_v1_scheduler_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -707,7 +794,7 @@ func (x *StopSchedulerResponse) String() string {
 func (*StopSchedulerResponse) ProtoMessage() {}
 
 func (x *StopSchedulerResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_scheduler_v1_scheduler_proto_msgTypes[11]
+	mi := &file_scheduler_v1_scheduler_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -720,7 +807,7 @@ func (x *StopSchedulerResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StopSchedulerResponse.ProtoReflect.Descriptor instead.
 func (*StopSchedulerResponse) Descriptor() ([]byte, []int) {
-	return file_scheduler_v1_scheduler_proto_rawDescGZIP(), []int{11}
+	return file_scheduler_v1_scheduler_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *StopSchedulerResponse) GetSuccess() bool {
@@ -747,7 +834,7 @@ type RunExchangeJobRequest struct {
 
 func (x *RunExchangeJobRequest) Reset() {
 	*x = RunExchangeJobRequest{}
-	mi := &file_scheduler_v1_scheduler_proto_msgTypes[12]
+	mi := &file_scheduler_v1_scheduler_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -759,7 +846,7 @@ func (x *RunExchangeJobRequest) String() string {
 func (*RunExchangeJobRequest) ProtoMessage() {}
 
 func (x *RunExchangeJobRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_scheduler_v1_scheduler_proto_msgTypes[12]
+	mi := &file_scheduler_v1_scheduler_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -772,7 +859,7 @@ func (x *RunExchangeJobRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RunExchangeJobRequest.ProtoReflect.Descriptor instead.
 func (*RunExchangeJobRequest) Descriptor() ([]byte, []int) {
-	return file_scheduler_v1_scheduler_proto_rawDescGZIP(), []int{12}
+	return file_scheduler_v1_scheduler_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *RunExchangeJobRequest) GetExchange() string {
@@ -799,7 +886,7 @@ type RunExchangeJobResponse struct {
 
 func (x *RunExchangeJobResponse) Reset() {
 	*x = RunExchangeJobResponse{}
-	mi := &file_scheduler_v1_scheduler_proto_msgTypes[13]
+	mi := &file_scheduler_v1_scheduler_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -811,7 +898,7 @@ func (x *RunExchangeJobResponse) String() string {
 func (*RunExchangeJobResponse) ProtoMessage() {}
 
 func (x *RunExchangeJobResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_scheduler_v1_scheduler_proto_msgTypes[13]
+	mi := &file_scheduler_v1_scheduler_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -824,7 +911,7 @@ func (x *RunExchangeJobResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RunExchangeJobResponse.ProtoReflect.Descriptor instead.
 func (*RunExchangeJobResponse) Descriptor() ([]byte, []int) {
-	return file_scheduler_v1_scheduler_proto_rawDescGZIP(), []int{13}
+	return file_scheduler_v1_scheduler_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *RunExchangeJobResponse) GetSuccess() bool {
@@ -851,7 +938,7 @@ type ListQueueTasksRequest struct {
 
 func (x *ListQueueTasksRequest) Reset() {
 	*x = ListQueueTasksRequest{}
-	mi := &file_scheduler_v1_scheduler_proto_msgTypes[14]
+	mi := &file_scheduler_v1_scheduler_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -863,7 +950,7 @@ func (x *ListQueueTasksRequest) String() string {
 func (*ListQueueTasksRequest) ProtoMessage() {}
 
 func (x *ListQueueTasksRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_scheduler_v1_scheduler_proto_msgTypes[14]
+	mi := &file_scheduler_v1_scheduler_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -876,7 +963,7 @@ func (x *ListQueueTasksRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListQueueTasksRequest.ProtoReflect.Descriptor instead.
 func (*ListQueueTasksRequest) Descriptor() ([]byte, []int) {
-	return file_scheduler_v1_scheduler_proto_rawDescGZIP(), []int{14}
+	return file_scheduler_v1_scheduler_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *ListQueueTasksRequest) GetQueue() string {
@@ -900,7 +987,7 @@ type QueueTask struct {
 
 func (x *QueueTask) Reset() {
 	*x = QueueTask{}
-	mi := &file_scheduler_v1_scheduler_proto_msgTypes[15]
+	mi := &file_scheduler_v1_scheduler_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -912,7 +999,7 @@ func (x *QueueTask) String() string {
 func (*QueueTask) ProtoMessage() {}
 
 func (x *QueueTask) ProtoReflect() protoreflect.Message {
-	mi := &file_scheduler_v1_scheduler_proto_msgTypes[15]
+	mi := &file_scheduler_v1_scheduler_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -925,7 +1012,7 @@ func (x *QueueTask) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use QueueTask.ProtoReflect.Descriptor instead.
 func (*QueueTask) Descriptor() ([]byte, []int) {
-	return file_scheduler_v1_scheduler_proto_rawDescGZIP(), []int{15}
+	return file_scheduler_v1_scheduler_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *QueueTask) GetState() string {
@@ -979,7 +1066,7 @@ type ListQueueTasksResponse struct {
 
 func (x *ListQueueTasksResponse) Reset() {
 	*x = ListQueueTasksResponse{}
-	mi := &file_scheduler_v1_scheduler_proto_msgTypes[16]
+	mi := &file_scheduler_v1_scheduler_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -991,7 +1078,7 @@ func (x *ListQueueTasksResponse) String() string {
 func (*ListQueueTasksResponse) ProtoMessage() {}
 
 func (x *ListQueueTasksResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_scheduler_v1_scheduler_proto_msgTypes[16]
+	mi := &file_scheduler_v1_scheduler_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1004,7 +1091,7 @@ func (x *ListQueueTasksResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListQueueTasksResponse.ProtoReflect.Descriptor instead.
 func (*ListQueueTasksResponse) Descriptor() ([]byte, []int) {
-	return file_scheduler_v1_scheduler_proto_rawDescGZIP(), []int{16}
+	return file_scheduler_v1_scheduler_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *ListQueueTasksResponse) GetTasks() []*QueueTask {
@@ -1033,7 +1120,13 @@ const file_scheduler_v1_scheduler_proto_rawDesc = "" +
 	"\bexchange\x18\x01 \x01(\tR\bexchange\x12\x1c\n" +
 	"\ttimeframe\x18\x02 \x01(\tR\ttimeframe\x12\x18\n" +
 	"\amessage\x18\x03 \x01(\tR\amessage\x12.\n" +
-	"\x04time\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\x04time\"\xa5\x03\n" +
+	"\x04time\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\x04time\"\x92\x01\n" +
+	"\x0eQueueBreakdown\x12\x18\n" +
+	"\apending\x18\x01 \x01(\x05R\apending\x12\x1c\n" +
+	"\tscheduled\x18\x02 \x01(\x05R\tscheduled\x12\x16\n" +
+	"\x06active\x18\x03 \x01(\x05R\x06active\x12\x14\n" +
+	"\x05retry\x18\x04 \x01(\x05R\x05retry\x12\x1a\n" +
+	"\barchived\x18\x05 \x01(\x05R\barchived\"\xf7\x03\n" +
 	"\x1aGetSchedulerStatusResponse\x12\x16\n" +
 	"\x06status\x18\x01 \x01(\tR\x06status\x128\n" +
 	"\theartbeat\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\theartbeat\x12D\n" +
@@ -1045,7 +1138,8 @@ const file_scheduler_v1_scheduler_proto_rawDesc = "" +
 	"\n" +
 	"queue_size\x18\x06 \x01(\x05R\tqueueSize\x12%\n" +
 	"\x0eactive_workers\x18\a \x01(\x05R\ractiveWorkers\x12)\n" +
-	"\x10worker_processes\x18\b \x01(\x05R\x0fworkerProcesses\":\n" +
+	"\x10worker_processes\x18\b \x01(\x05R\x0fworkerProcesses\x12P\n" +
+	"\x0fqueue_breakdown\x18\t \x01(\v2'.stockalert.scheduler.v1.QueueBreakdownR\x0equeueBreakdown\":\n" +
 	"\x1aGetExchangeScheduleRequest\x12\x1c\n" +
 	"\ttimeframe\x18\x01 \x01(\tR\ttimeframe\"\x81\x03\n" +
 	"\x13ExchangeScheduleRow\x12\x1a\n" +
@@ -1112,55 +1206,57 @@ func file_scheduler_v1_scheduler_proto_rawDescGZIP() []byte {
 	return file_scheduler_v1_scheduler_proto_rawDescData
 }
 
-var file_scheduler_v1_scheduler_proto_msgTypes = make([]protoimpl.MessageInfo, 17)
+var file_scheduler_v1_scheduler_proto_msgTypes = make([]protoimpl.MessageInfo, 18)
 var file_scheduler_v1_scheduler_proto_goTypes = []any{
 	(*GetSchedulerStatusRequest)(nil),   // 0: stockalert.scheduler.v1.GetSchedulerStatusRequest
 	(*CurrentJob)(nil),                  // 1: stockalert.scheduler.v1.CurrentJob
 	(*LastRun)(nil),                     // 2: stockalert.scheduler.v1.LastRun
 	(*LastError)(nil),                   // 3: stockalert.scheduler.v1.LastError
-	(*GetSchedulerStatusResponse)(nil),  // 4: stockalert.scheduler.v1.GetSchedulerStatusResponse
-	(*GetExchangeScheduleRequest)(nil),  // 5: stockalert.scheduler.v1.GetExchangeScheduleRequest
-	(*ExchangeScheduleRow)(nil),         // 6: stockalert.scheduler.v1.ExchangeScheduleRow
-	(*GetExchangeScheduleResponse)(nil), // 7: stockalert.scheduler.v1.GetExchangeScheduleResponse
-	(*StartSchedulerRequest)(nil),       // 8: stockalert.scheduler.v1.StartSchedulerRequest
-	(*StartSchedulerResponse)(nil),      // 9: stockalert.scheduler.v1.StartSchedulerResponse
-	(*StopSchedulerRequest)(nil),        // 10: stockalert.scheduler.v1.StopSchedulerRequest
-	(*StopSchedulerResponse)(nil),       // 11: stockalert.scheduler.v1.StopSchedulerResponse
-	(*RunExchangeJobRequest)(nil),       // 12: stockalert.scheduler.v1.RunExchangeJobRequest
-	(*RunExchangeJobResponse)(nil),      // 13: stockalert.scheduler.v1.RunExchangeJobResponse
-	(*ListQueueTasksRequest)(nil),       // 14: stockalert.scheduler.v1.ListQueueTasksRequest
-	(*QueueTask)(nil),                   // 15: stockalert.scheduler.v1.QueueTask
-	(*ListQueueTasksResponse)(nil),      // 16: stockalert.scheduler.v1.ListQueueTasksResponse
-	(*timestamppb.Timestamp)(nil),       // 17: google.protobuf.Timestamp
+	(*QueueBreakdown)(nil),              // 4: stockalert.scheduler.v1.QueueBreakdown
+	(*GetSchedulerStatusResponse)(nil),  // 5: stockalert.scheduler.v1.GetSchedulerStatusResponse
+	(*GetExchangeScheduleRequest)(nil),  // 6: stockalert.scheduler.v1.GetExchangeScheduleRequest
+	(*ExchangeScheduleRow)(nil),         // 7: stockalert.scheduler.v1.ExchangeScheduleRow
+	(*GetExchangeScheduleResponse)(nil), // 8: stockalert.scheduler.v1.GetExchangeScheduleResponse
+	(*StartSchedulerRequest)(nil),       // 9: stockalert.scheduler.v1.StartSchedulerRequest
+	(*StartSchedulerResponse)(nil),      // 10: stockalert.scheduler.v1.StartSchedulerResponse
+	(*StopSchedulerRequest)(nil),        // 11: stockalert.scheduler.v1.StopSchedulerRequest
+	(*StopSchedulerResponse)(nil),       // 12: stockalert.scheduler.v1.StopSchedulerResponse
+	(*RunExchangeJobRequest)(nil),       // 13: stockalert.scheduler.v1.RunExchangeJobRequest
+	(*RunExchangeJobResponse)(nil),      // 14: stockalert.scheduler.v1.RunExchangeJobResponse
+	(*ListQueueTasksRequest)(nil),       // 15: stockalert.scheduler.v1.ListQueueTasksRequest
+	(*QueueTask)(nil),                   // 16: stockalert.scheduler.v1.QueueTask
+	(*ListQueueTasksResponse)(nil),      // 17: stockalert.scheduler.v1.ListQueueTasksResponse
+	(*timestamppb.Timestamp)(nil),       // 18: google.protobuf.Timestamp
 }
 var file_scheduler_v1_scheduler_proto_depIdxs = []int32{
-	17, // 0: stockalert.scheduler.v1.CurrentJob.started:type_name -> google.protobuf.Timestamp
-	17, // 1: stockalert.scheduler.v1.LastRun.completed_at:type_name -> google.protobuf.Timestamp
-	17, // 2: stockalert.scheduler.v1.LastError.time:type_name -> google.protobuf.Timestamp
-	17, // 3: stockalert.scheduler.v1.GetSchedulerStatusResponse.heartbeat:type_name -> google.protobuf.Timestamp
+	18, // 0: stockalert.scheduler.v1.CurrentJob.started:type_name -> google.protobuf.Timestamp
+	18, // 1: stockalert.scheduler.v1.LastRun.completed_at:type_name -> google.protobuf.Timestamp
+	18, // 2: stockalert.scheduler.v1.LastError.time:type_name -> google.protobuf.Timestamp
+	18, // 3: stockalert.scheduler.v1.GetSchedulerStatusResponse.heartbeat:type_name -> google.protobuf.Timestamp
 	1,  // 4: stockalert.scheduler.v1.GetSchedulerStatusResponse.current_job:type_name -> stockalert.scheduler.v1.CurrentJob
 	2,  // 5: stockalert.scheduler.v1.GetSchedulerStatusResponse.last_run:type_name -> stockalert.scheduler.v1.LastRun
 	3,  // 6: stockalert.scheduler.v1.GetSchedulerStatusResponse.last_error:type_name -> stockalert.scheduler.v1.LastError
-	6,  // 7: stockalert.scheduler.v1.GetExchangeScheduleResponse.rows:type_name -> stockalert.scheduler.v1.ExchangeScheduleRow
-	17, // 8: stockalert.scheduler.v1.QueueTask.next_process_at:type_name -> google.protobuf.Timestamp
-	15, // 9: stockalert.scheduler.v1.ListQueueTasksResponse.tasks:type_name -> stockalert.scheduler.v1.QueueTask
-	0,  // 10: stockalert.scheduler.v1.SchedulerService.GetSchedulerStatus:input_type -> stockalert.scheduler.v1.GetSchedulerStatusRequest
-	5,  // 11: stockalert.scheduler.v1.SchedulerService.GetExchangeSchedule:input_type -> stockalert.scheduler.v1.GetExchangeScheduleRequest
-	8,  // 12: stockalert.scheduler.v1.SchedulerService.StartScheduler:input_type -> stockalert.scheduler.v1.StartSchedulerRequest
-	10, // 13: stockalert.scheduler.v1.SchedulerService.StopScheduler:input_type -> stockalert.scheduler.v1.StopSchedulerRequest
-	12, // 14: stockalert.scheduler.v1.SchedulerService.RunExchangeJob:input_type -> stockalert.scheduler.v1.RunExchangeJobRequest
-	14, // 15: stockalert.scheduler.v1.SchedulerService.ListQueueTasks:input_type -> stockalert.scheduler.v1.ListQueueTasksRequest
-	4,  // 16: stockalert.scheduler.v1.SchedulerService.GetSchedulerStatus:output_type -> stockalert.scheduler.v1.GetSchedulerStatusResponse
-	7,  // 17: stockalert.scheduler.v1.SchedulerService.GetExchangeSchedule:output_type -> stockalert.scheduler.v1.GetExchangeScheduleResponse
-	9,  // 18: stockalert.scheduler.v1.SchedulerService.StartScheduler:output_type -> stockalert.scheduler.v1.StartSchedulerResponse
-	11, // 19: stockalert.scheduler.v1.SchedulerService.StopScheduler:output_type -> stockalert.scheduler.v1.StopSchedulerResponse
-	13, // 20: stockalert.scheduler.v1.SchedulerService.RunExchangeJob:output_type -> stockalert.scheduler.v1.RunExchangeJobResponse
-	16, // 21: stockalert.scheduler.v1.SchedulerService.ListQueueTasks:output_type -> stockalert.scheduler.v1.ListQueueTasksResponse
-	16, // [16:22] is the sub-list for method output_type
-	10, // [10:16] is the sub-list for method input_type
-	10, // [10:10] is the sub-list for extension type_name
-	10, // [10:10] is the sub-list for extension extendee
-	0,  // [0:10] is the sub-list for field type_name
+	4,  // 7: stockalert.scheduler.v1.GetSchedulerStatusResponse.queue_breakdown:type_name -> stockalert.scheduler.v1.QueueBreakdown
+	7,  // 8: stockalert.scheduler.v1.GetExchangeScheduleResponse.rows:type_name -> stockalert.scheduler.v1.ExchangeScheduleRow
+	18, // 9: stockalert.scheduler.v1.QueueTask.next_process_at:type_name -> google.protobuf.Timestamp
+	16, // 10: stockalert.scheduler.v1.ListQueueTasksResponse.tasks:type_name -> stockalert.scheduler.v1.QueueTask
+	0,  // 11: stockalert.scheduler.v1.SchedulerService.GetSchedulerStatus:input_type -> stockalert.scheduler.v1.GetSchedulerStatusRequest
+	6,  // 12: stockalert.scheduler.v1.SchedulerService.GetExchangeSchedule:input_type -> stockalert.scheduler.v1.GetExchangeScheduleRequest
+	9,  // 13: stockalert.scheduler.v1.SchedulerService.StartScheduler:input_type -> stockalert.scheduler.v1.StartSchedulerRequest
+	11, // 14: stockalert.scheduler.v1.SchedulerService.StopScheduler:input_type -> stockalert.scheduler.v1.StopSchedulerRequest
+	13, // 15: stockalert.scheduler.v1.SchedulerService.RunExchangeJob:input_type -> stockalert.scheduler.v1.RunExchangeJobRequest
+	15, // 16: stockalert.scheduler.v1.SchedulerService.ListQueueTasks:input_type -> stockalert.scheduler.v1.ListQueueTasksRequest
+	5,  // 17: stockalert.scheduler.v1.SchedulerService.GetSchedulerStatus:output_type -> stockalert.scheduler.v1.GetSchedulerStatusResponse
+	8,  // 18: stockalert.scheduler.v1.SchedulerService.GetExchangeSchedule:output_type -> stockalert.scheduler.v1.GetExchangeScheduleResponse
+	10, // 19: stockalert.scheduler.v1.SchedulerService.StartScheduler:output_type -> stockalert.scheduler.v1.StartSchedulerResponse
+	12, // 20: stockalert.scheduler.v1.SchedulerService.StopScheduler:output_type -> stockalert.scheduler.v1.StopSchedulerResponse
+	14, // 21: stockalert.scheduler.v1.SchedulerService.RunExchangeJob:output_type -> stockalert.scheduler.v1.RunExchangeJobResponse
+	17, // 22: stockalert.scheduler.v1.SchedulerService.ListQueueTasks:output_type -> stockalert.scheduler.v1.ListQueueTasksResponse
+	17, // [17:23] is the sub-list for method output_type
+	11, // [11:17] is the sub-list for method input_type
+	11, // [11:11] is the sub-list for extension type_name
+	11, // [11:11] is the sub-list for extension extendee
+	0,  // [0:11] is the sub-list for field type_name
 }
 
 func init() { file_scheduler_v1_scheduler_proto_init() }
@@ -1174,7 +1270,7 @@ func file_scheduler_v1_scheduler_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_scheduler_v1_scheduler_proto_rawDesc), len(file_scheduler_v1_scheduler_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   17,
+			NumMessages:   18,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

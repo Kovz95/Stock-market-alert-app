@@ -93,7 +93,7 @@ func (s *Scheduler) scheduleAll(ctx context.Context) {
 		"at", now.Format(time.RFC3339),
 	)
 	start := time.Now()
-	scheduled := 0
+	var scheduledDaily, scheduledWeekly, scheduledHourly int
 
 	for exchange := range calendar.ExchangeSchedules {
 		nextDaily := calendar.GetNextDailyRunTime(exchange, now)
@@ -108,7 +108,7 @@ func (s *Scheduler) scheduleAll(ctx context.Context) {
 			}
 			continue
 		}
-		scheduled++
+		scheduledDaily++
 		s.logger.Debug("task scheduled",
 			"exchange", exchange,
 			"timeframe", "daily",
@@ -126,7 +126,7 @@ func (s *Scheduler) scheduleAll(ctx context.Context) {
 				}
 				continue
 			}
-			scheduled++
+			scheduledWeekly++
 			s.logger.Debug("task scheduled",
 				"exchange", exchange,
 				"timeframe", "weekly",
@@ -147,7 +147,7 @@ func (s *Scheduler) scheduleAll(ctx context.Context) {
 				}
 				continue
 			}
-			scheduled++
+			scheduledHourly++
 			s.logger.Debug("task scheduled",
 				"exchange", exchange,
 				"timeframe", "hourly",
@@ -157,7 +157,9 @@ func (s *Scheduler) scheduleAll(ctx context.Context) {
 	}
 
 	s.logger.Info("schedule cycle complete",
-		"scheduled", scheduled,
+		"scheduled_daily", scheduledDaily,
+		"scheduled_weekly", scheduledWeekly,
+		"scheduled_hourly", scheduledHourly,
 		"duration_ms", time.Since(start).Milliseconds(),
 	)
 }

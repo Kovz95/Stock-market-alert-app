@@ -11,6 +11,7 @@ import {
   useStopScheduler,
 } from "@/lib/hooks/useScheduler";
 import type { Timeframe } from "@/lib/hooks/useScheduler";
+import type { SchedulerStatusData } from "@/actions/scheduler-actions";
 import { toast } from "sonner";
 
 function formatTimeAgo(iso: string | null): string {
@@ -27,10 +28,28 @@ function formatTimeAgo(iso: string | null): string {
 function formatProcessAt(iso: string | null): string {
   if (!iso) return "—";
   const d = new Date(iso);
-  return d.toLocaleString(undefined, {
+  return d.toLocaleString("en-US", {
+    timeZone: "America/New_York",
     dateStyle: "short",
     timeStyle: "short",
   });
+}
+
+/** e.g. "124 (80 scheduled, 44 pending)" or just "124" if no breakdown */
+function formatQueueSize(
+  total: number,
+  breakdown: SchedulerStatusData["queueBreakdown"]
+): string {
+  if (total === 0) return "0";
+  if (!breakdown) return String(total);
+  const parts: string[] = [];
+  if (breakdown.scheduled > 0) parts.push(`${breakdown.scheduled} scheduled`);
+  if (breakdown.pending > 0) parts.push(`${breakdown.pending} pending`);
+  if (breakdown.active > 0) parts.push(`${breakdown.active} active`);
+  if (breakdown.retry > 0) parts.push(`${breakdown.retry} retry`);
+  if (breakdown.archived > 0) parts.push(`${breakdown.archived} archived`);
+  if (parts.length === 0) return String(total);
+  return `${total} (${parts.join(", ")})`;
 }
 
 export function SchedulerStatusCard({ timeframe }: { timeframe: Timeframe }) {
@@ -43,6 +62,14 @@ export function SchedulerStatusCard({ timeframe }: { timeframe: Timeframe }) {
     if (!queueTasks) return [];
     return queueTasks.filter((t) => t.timeframe === timeframe);
   }, [queueTasks, timeframe]);
+
+  // Per-timeframe queue breakdown (scheduled / pending / active) from the task list
+  const queueBreakdownByTimeframe = useMemo(() => {
+    const scheduled = enqueuedForTimeframe.filter((t) => t.state === "scheduled").length;
+    const pending = enqueuedForTimeframe.filter((t) => t.state === "pending").length;
+    const active = enqueuedForTimeframe.filter((t) => t.state === "active").length;
+    return { scheduled, pending, active };
+  }, [enqueuedForTimeframe]);
 
   async function handleStart() {
     const result = await startMutation.mutateAsync();
@@ -105,15 +132,25 @@ export function SchedulerStatusCard({ timeframe }: { timeframe: Timeframe }) {
             <span>{formatTimeAgo(status.heartbeat)}</span>
           </div>
           <div className="flex justify-between">
-            <span className="text-muted-foreground">Queue Size</span>
-            <span>{status.queueSize}</span>
+            <span className="text-muted-foreground" title={`${timeframeLabel} tasks in queue`}>
+              Queue size ({timeframeLabel})
+            </span>
+            <span title={`${timeframeLabel}: scheduled, pending, active`}>
+              {formatQueueSize(enqueuedForTimeframe.length, {
+                ...queueBreakdownByTimeframe,
+                retry: 0,
+                archived: 0,
+              })}
+            </span>
           </div>
           <div className="flex justify-between">
-            <span className="text-muted-foreground">Tasks In Progress</span>
-            <span>{status.activeWorkers}</span>
+            <span className="text-muted-foreground">Tasks in progress ({timeframeLabel})</span>
+            <span>{queueBreakdownByTimeframe.active}</span>
           </div>
           <div className="flex justify-between">
-            <span className="text-muted-foreground">Worker Processes</span>
+            <span className="text-muted-foreground" title="Asynq worker processes connected to Redis">
+              Worker processes
+            </span>
             <span>{status.workerProcesses}</span>
           </div>
         </div>

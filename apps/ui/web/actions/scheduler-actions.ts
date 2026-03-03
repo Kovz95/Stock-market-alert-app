@@ -2,6 +2,14 @@
 
 import { alertClient, schedulerClient } from "@/lib/grpc/channel";
 
+export type QueueBreakdown = {
+  pending: number;
+  scheduled: number;
+  active: number;
+  retry: number;
+  archived: number;
+};
+
 export type SchedulerStatusData = {
   status: string;
   heartbeat: string | null;
@@ -24,6 +32,8 @@ export type SchedulerStatusData = {
   queueSize: number;
   activeWorkers: number;
   workerProcesses: number;
+  /** Breakdown: pending, scheduled, active, retry, archived (from Asynq) */
+  queueBreakdown: QueueBreakdown | null;
 };
 
 export type ExchangeScheduleRow = {
@@ -102,6 +112,15 @@ export async function getSchedulerStatus(): Promise<SchedulerStatusData> {
     queueSize: res.queueSize,
     activeWorkers: res.activeWorkers,
     workerProcesses: res.workerProcesses,
+    queueBreakdown: res.queueBreakdown
+      ? {
+          pending: res.queueBreakdown.pending ?? 0,
+          scheduled: res.queueBreakdown.scheduled ?? 0,
+          active: res.queueBreakdown.active ?? 0,
+          retry: res.queueBreakdown.retry ?? 0,
+          archived: res.queueBreakdown.archived ?? 0,
+        }
+      : null,
   };
 }
 

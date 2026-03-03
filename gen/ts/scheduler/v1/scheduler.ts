@@ -33,17 +33,36 @@ export interface LastError {
   time?: Date | undefined;
 }
 
+/** QueueBreakdown is the per-state task count from Asynq (default queue). */
+export interface QueueBreakdown {
+  /** waiting to be processed */
+  pending: number;
+  /** scheduled for a future time (e.g. daily at market close) */
+  scheduled: number;
+  /** currently being processed */
+  active: number;
+  /** failed, waiting to retry */
+  retry: number;
+  /** archived after max retries */
+  archived: number;
+}
+
 export interface GetSchedulerStatusResponse {
   status: string;
   heartbeat?: Date | undefined;
   currentJob?: CurrentJob | undefined;
   lastRun?: LastRun | undefined;
-  lastError?: LastError | undefined;
+  lastError?:
+    | LastError
+    | undefined;
+  /** queue_size: total tasks in queue (pending + scheduled + active + retry + archived) */
   queueSize: number;
   /** active_workers: number of tasks currently being processed across all workers */
   activeWorkers: number;
   /** worker_processes: number of live asynq worker processes connected to Redis */
   workerProcesses: number;
+  /** Breakdown by state so UI can show e.g. "124 (80 scheduled, 44 pending)" */
+  queueBreakdown?: QueueBreakdown | undefined;
 }
 
 export interface GetExchangeScheduleRequest {
@@ -456,6 +475,130 @@ export const LastError: MessageFns<LastError> = {
   },
 };
 
+function createBaseQueueBreakdown(): QueueBreakdown {
+  return { pending: 0, scheduled: 0, active: 0, retry: 0, archived: 0 };
+}
+
+export const QueueBreakdown: MessageFns<QueueBreakdown> = {
+  encode(message: QueueBreakdown, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.pending !== 0) {
+      writer.uint32(8).int32(message.pending);
+    }
+    if (message.scheduled !== 0) {
+      writer.uint32(16).int32(message.scheduled);
+    }
+    if (message.active !== 0) {
+      writer.uint32(24).int32(message.active);
+    }
+    if (message.retry !== 0) {
+      writer.uint32(32).int32(message.retry);
+    }
+    if (message.archived !== 0) {
+      writer.uint32(40).int32(message.archived);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): QueueBreakdown {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseQueueBreakdown();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 8) {
+            break;
+          }
+
+          message.pending = reader.int32();
+          continue;
+        }
+        case 2: {
+          if (tag !== 16) {
+            break;
+          }
+
+          message.scheduled = reader.int32();
+          continue;
+        }
+        case 3: {
+          if (tag !== 24) {
+            break;
+          }
+
+          message.active = reader.int32();
+          continue;
+        }
+        case 4: {
+          if (tag !== 32) {
+            break;
+          }
+
+          message.retry = reader.int32();
+          continue;
+        }
+        case 5: {
+          if (tag !== 40) {
+            break;
+          }
+
+          message.archived = reader.int32();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): QueueBreakdown {
+    return {
+      pending: isSet(object.pending) ? globalThis.Number(object.pending) : 0,
+      scheduled: isSet(object.scheduled) ? globalThis.Number(object.scheduled) : 0,
+      active: isSet(object.active) ? globalThis.Number(object.active) : 0,
+      retry: isSet(object.retry) ? globalThis.Number(object.retry) : 0,
+      archived: isSet(object.archived) ? globalThis.Number(object.archived) : 0,
+    };
+  },
+
+  toJSON(message: QueueBreakdown): unknown {
+    const obj: any = {};
+    if (message.pending !== 0) {
+      obj.pending = Math.round(message.pending);
+    }
+    if (message.scheduled !== 0) {
+      obj.scheduled = Math.round(message.scheduled);
+    }
+    if (message.active !== 0) {
+      obj.active = Math.round(message.active);
+    }
+    if (message.retry !== 0) {
+      obj.retry = Math.round(message.retry);
+    }
+    if (message.archived !== 0) {
+      obj.archived = Math.round(message.archived);
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<QueueBreakdown>, I>>(base?: I): QueueBreakdown {
+    return QueueBreakdown.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<QueueBreakdown>, I>>(object: I): QueueBreakdown {
+    const message = createBaseQueueBreakdown();
+    message.pending = object.pending ?? 0;
+    message.scheduled = object.scheduled ?? 0;
+    message.active = object.active ?? 0;
+    message.retry = object.retry ?? 0;
+    message.archived = object.archived ?? 0;
+    return message;
+  },
+};
+
 function createBaseGetSchedulerStatusResponse(): GetSchedulerStatusResponse {
   return {
     status: "",
@@ -466,6 +609,7 @@ function createBaseGetSchedulerStatusResponse(): GetSchedulerStatusResponse {
     queueSize: 0,
     activeWorkers: 0,
     workerProcesses: 0,
+    queueBreakdown: undefined,
   };
 }
 
@@ -494,6 +638,9 @@ export const GetSchedulerStatusResponse: MessageFns<GetSchedulerStatusResponse> 
     }
     if (message.workerProcesses !== 0) {
       writer.uint32(64).int32(message.workerProcesses);
+    }
+    if (message.queueBreakdown !== undefined) {
+      QueueBreakdown.encode(message.queueBreakdown, writer.uint32(74).fork()).join();
     }
     return writer;
   },
@@ -569,6 +716,14 @@ export const GetSchedulerStatusResponse: MessageFns<GetSchedulerStatusResponse> 
           message.workerProcesses = reader.int32();
           continue;
         }
+        case 9: {
+          if (tag !== 74) {
+            break;
+          }
+
+          message.queueBreakdown = QueueBreakdown.decode(reader, reader.uint32());
+          continue;
+        }
       }
       if ((tag & 7) === 4 || tag === 0) {
         break;
@@ -612,6 +767,11 @@ export const GetSchedulerStatusResponse: MessageFns<GetSchedulerStatusResponse> 
         : isSet(object.worker_processes)
         ? globalThis.Number(object.worker_processes)
         : 0,
+      queueBreakdown: isSet(object.queueBreakdown)
+        ? QueueBreakdown.fromJSON(object.queueBreakdown)
+        : isSet(object.queue_breakdown)
+        ? QueueBreakdown.fromJSON(object.queue_breakdown)
+        : undefined,
     };
   },
 
@@ -641,6 +801,9 @@ export const GetSchedulerStatusResponse: MessageFns<GetSchedulerStatusResponse> 
     if (message.workerProcesses !== 0) {
       obj.workerProcesses = Math.round(message.workerProcesses);
     }
+    if (message.queueBreakdown !== undefined) {
+      obj.queueBreakdown = QueueBreakdown.toJSON(message.queueBreakdown);
+    }
     return obj;
   },
 
@@ -663,6 +826,9 @@ export const GetSchedulerStatusResponse: MessageFns<GetSchedulerStatusResponse> 
     message.queueSize = object.queueSize ?? 0;
     message.activeWorkers = object.activeWorkers ?? 0;
     message.workerProcesses = object.workerProcesses ?? 0;
+    message.queueBreakdown = (object.queueBreakdown !== undefined && object.queueBreakdown !== null)
+      ? QueueBreakdown.fromPartial(object.queueBreakdown)
+      : undefined;
     return message;
   },
 };

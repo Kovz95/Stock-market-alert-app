@@ -31,17 +31,29 @@ message LastError {
   google.protobuf.Timestamp time = 4;
 }
 
+// QueueBreakdown is the per-state task count from Asynq (default queue).
+message QueueBreakdown {
+  int32 pending = 1;   // waiting to be processed
+  int32 scheduled = 2; // scheduled for a future time (e.g. daily at market close)
+  int32 active = 3;   // currently being processed
+  int32 retry = 4;    // failed, waiting to retry
+  int32 archived = 5; // archived after max retries
+}
+
 message GetSchedulerStatusResponse {
   string status = 1;
   google.protobuf.Timestamp heartbeat = 2;
   CurrentJob current_job = 3;
   LastRun last_run = 4;
   LastError last_error = 5;
+  // queue_size: total tasks in queue (pending + scheduled + active + retry + archived)
   int32 queue_size = 6;
   // active_workers: number of tasks currently being processed across all workers
   int32 active_workers = 7;
   // worker_processes: number of live asynq worker processes connected to Redis
   int32 worker_processes = 8;
+  // Breakdown by state so UI can show e.g. "124 (80 scheduled, 44 pending)"
+  QueueBreakdown queue_breakdown = 9;
 }
 
 // ---------------------------------------------------------------------------

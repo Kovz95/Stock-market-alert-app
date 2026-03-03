@@ -183,7 +183,7 @@ export function ExchangeScheduleTable({ timeframe }: { timeframe: Timeframe }) {
                   <>
                     <TableHead>Run (ET)</TableHead>
                     <TableHead>Run (UTC)</TableHead>
-                    <TableHead>Local Close</TableHead>
+                    <TableHead>Close (ET)</TableHead>
                   </>
                 )}
                 <TableHead>Local TZ</TableHead>
@@ -216,7 +216,7 @@ export function ExchangeScheduleTable({ timeframe }: { timeframe: Timeframe }) {
                         </TableCell>
                         <TableCell className="tabular-nums">{row.runTimeEt || "—"}</TableCell>
                         <TableCell className="tabular-nums">{row.runTimeUtc || "—"}</TableCell>
-                        <TableCell className="text-xs capitalize">{row.localClose || "—"}</TableCell>
+                        <TableCell className="tabular-nums">{row.localClose || "—"}</TableCell>
                       </>
                     ) : (
                       <>
