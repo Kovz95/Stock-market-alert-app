@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"log"
 	"sync"
 	"time"
 
@@ -17,10 +16,12 @@ import (
 )
 
 const (
-	scanLookbackDays   = 250
-	scanMinBars        = 50
-	scanMaxConcurrency = 20
-	scanMaxTickersCap  = 20000
+	scanLookbackDays    = 250
+	scanMinBars         = 50
+	scanMaxConcurrency  = 20
+	scanMaxTickersCap   = 20000
+	scanMaxLookback     = 100
+	scanMaxTotalMatches = 50000
 )
 
 // metaRow is a convenience view of ListFullStockMetadataRow for filtering and building ScanMatch.
@@ -99,8 +100,17 @@ func (s *Server) RunScan(ctx context.Context, req *pricev1.RunScanRequest) (resp
 		combinationLogic = "AND"
 	}
 
+	lookbackDays := int(req.LookbackDays)
+	if lookbackDays < 0 {
+		lookbackDays = 0
+	}
+	if lookbackDays > scanMaxLookback {
+		lookbackDays = scanMaxLookback
+	}
+
 	var mu sync.Mutex
 	var matches []*pricev1.ScanMatch
+	truncated := false
 	sem := make(chan struct{}, scanMaxConcurrency)
 	var wg sync.WaitGroup
 
@@ -110,16 +120,28 @@ func (s *Server) RunScan(ctx context.Context, req *pricev1.RunScanRequest) (resp
 		sem <- struct{}{}
 		go func() {
 			defer func() { <-sem; wg.Done() }()
+			// Check if we've already hit the cap.
+			mu.Lock()
+			if len(matches) >= scanMaxTotalMatches {
+				truncated = true
+				mu.Unlock()
+				return
+			}
+			mu.Unlock()
+
 			workerConn, err := s.pool.Acquire(ctx)
 			if err != nil {
 				return
 			}
 			defer workerConn.Release()
 			q := db.New(workerConn)
-			m := s.scanOneTicker(ctx, q, eval, ticker, metaBySymbol[ticker], req.Timeframe, req.Conditions, combinationLogic)
-			if m != nil {
+			tickerMatches := s.scanOneTicker(ctx, q, eval, ticker, metaBySymbol[ticker], req.Timeframe, req.Conditions, combinationLogic, lookbackDays)
+			if len(tickerMatches) > 0 {
 				mu.Lock()
-				matches = append(matches, m)
+				matches = append(matches, tickerMatches...)
+				if len(matches) >= scanMaxTotalMatches {
+					truncated = true
+				}
 				mu.Unlock()
 			}
 		}()
@@ -127,7 +149,11 @@ func (s *Server) RunScan(ctx context.Context, req *pricev1.RunScanRequest) (resp
 
 	wg.Wait()
 
-	return &pricev1.RunScanResponse{Matches: matches}, nil
+	resp = &pricev1.RunScanResponse{Matches: matches}
+	if truncated {
+		resp.ErrorMessage = "Results truncated: exceeded 50,000 match limit."
+	}
+	return resp, nil
 }
 
 func resolveTickersFromFilter(rows []db.ListFullStockMetadataRow, filter *pricev1.SymbolFilter) []string {
@@ -199,7 +225,8 @@ func (s *Server) scanOneTicker(
 	timeframe pricev1.Timeframe,
 	conditions []string,
 	combinationLogic string,
-) *pricev1.ScanMatch {
+	lookbackDays int,
+) []*pricev1.ScanMatch {
 	var ohlcv *indicator.OHLCV
 	switch timeframe {
 	case pricev1.Timeframe_TIMEFRAME_HOURLY:
@@ -213,29 +240,58 @@ func (s *Server) scanOneTicker(
 		return nil
 	}
 
-	log.Printf("[scanOneTicker] ticker=%s timeframe=%v conditions=%v combinationLogic=%s", ticker, timeframe, conditions, combinationLogic)
+	totalBars := ohlcv.Len()
 
+	// Determine the range of bars to evaluate.
+	// startBar is the earliest bar index (inclusive) to use as "last bar" of a sub-slice.
+	// endBar is the latest bar index (inclusive) — always totalBars-1.
+	startBar := totalBars - 1
+	if lookbackDays > 0 {
+		startBar = totalBars - lookbackDays
+		if startBar < scanMinBars {
+			startBar = scanMinBars
+		}
+	}
+
+	var matches []*pricev1.ScanMatch
 	ctxMap := map[string]interface{}{"ticker": ticker}
-	ok, err := eval.EvalConditionList(ohlcv, conditions, combinationLogic, ctxMap)
-	if err != nil || !ok {
-		return nil
-	}
 
-	lastClose := ohlcv.Close[ohlcv.Len()-1]
-	return &pricev1.ScanMatch{
-		Ticker:             ticker,
-		Name:               meta.name,
-		Exchange:           meta.exchange,
-		Country:            meta.country,
-		AssetType:          meta.assetType,
-		Price:              lastClose,
-		RbicsEconomy:       meta.rbicsEconomy,
-		RbicsSector:        meta.rbicsSector,
-		RbicsSubsector:     meta.rbicsSubsector,
-		RbicsIndustryGroup: meta.rbicsIndustryGroup,
-		RbicsIndustry:      meta.rbicsIndustry,
-		RbicsSubindustry:   meta.rbicsSubindustry,
+	for barIdx := startBar; barIdx < totalBars; barIdx++ {
+		var evalOHLCV *indicator.OHLCV
+		if barIdx == totalBars-1 {
+			evalOHLCV = ohlcv // no slicing needed for the last bar
+		} else {
+			evalOHLCV = ohlcv.Slice(barIdx + 1)
+		}
+
+		ok, err := eval.EvalConditionList(evalOHLCV, conditions, combinationLogic, ctxMap)
+		if err != nil || !ok {
+			continue
+		}
+
+		lastClose := evalOHLCV.Close[evalOHLCV.Len()-1]
+		matchDate := ""
+		if lookbackDays > 0 && len(ohlcv.Dates) > barIdx {
+			matchDate = ohlcv.Dates[barIdx]
+		}
+
+		matches = append(matches, &pricev1.ScanMatch{
+			Ticker:             ticker,
+			Name:               meta.name,
+			Exchange:           meta.exchange,
+			Country:            meta.country,
+			AssetType:          meta.assetType,
+			Price:              lastClose,
+			RbicsEconomy:       meta.rbicsEconomy,
+			RbicsSector:        meta.rbicsSector,
+			RbicsSubsector:     meta.rbicsSubsector,
+			RbicsIndustryGroup: meta.rbicsIndustryGroup,
+			RbicsIndustry:      meta.rbicsIndustry,
+			RbicsSubindustry:   meta.rbicsSubindustry,
+			MatchDate:          matchDate,
+		})
 	}
+	return matches
 }
 
 func (s *Server) loadDailyOHLCV(ctx context.Context, q *db.Queries, ticker string) *indicator.OHLCV {
@@ -282,6 +338,7 @@ func rowsToOHLCVDaily(rows []db.GetDailyPricesBatchRow) *indicator.OHLCV {
 		Low:    make([]float64, n),
 		Close:  make([]float64, n),
 		Volume: make([]float64, n),
+		Dates:  make([]string, n),
 	}
 	for i, r := range rows {
 		ohlcv.Open[i] = r.Open.Float64
@@ -289,6 +346,9 @@ func rowsToOHLCVDaily(rows []db.GetDailyPricesBatchRow) *indicator.OHLCV {
 		ohlcv.Low[i] = r.Low.Float64
 		ohlcv.Close[i] = r.Close
 		ohlcv.Volume[i] = float64(r.Volume.Int64)
+		if r.Date.Valid {
+			ohlcv.Dates[i] = r.Date.Time.Format("2006-01-02")
+		}
 	}
 	return ohlcv
 }
@@ -301,6 +361,7 @@ func rowsToOHLCVHourly(rows []db.GetHourlyPricesBatchRow) *indicator.OHLCV {
 		Low:    make([]float64, n),
 		Close:  make([]float64, n),
 		Volume: make([]float64, n),
+		Dates:  make([]string, n),
 	}
 	for i, r := range rows {
 		ohlcv.Open[i] = r.Open.Float64
@@ -308,6 +369,9 @@ func rowsToOHLCVHourly(rows []db.GetHourlyPricesBatchRow) *indicator.OHLCV {
 		ohlcv.Low[i] = r.Low.Float64
 		ohlcv.Close[i] = r.Close
 		ohlcv.Volume[i] = float64(r.Volume.Int64)
+		if r.Datetime.Valid {
+			ohlcv.Dates[i] = r.Datetime.Time.Format(time.RFC3339)
+		}
 	}
 	return ohlcv
 }
@@ -320,6 +384,7 @@ func rowsToOHLCVWeekly(rows []db.GetWeeklyPricesBatchRow) *indicator.OHLCV {
 		Low:    make([]float64, n),
 		Close:  make([]float64, n),
 		Volume: make([]float64, n),
+		Dates:  make([]string, n),
 	}
 	for i, r := range rows {
 		ohlcv.Open[i] = r.Open.Float64
@@ -327,6 +392,9 @@ func rowsToOHLCVWeekly(rows []db.GetWeeklyPricesBatchRow) *indicator.OHLCV {
 		ohlcv.Low[i] = r.Low.Float64
 		ohlcv.Close[i] = r.Close
 		ohlcv.Volume[i] = float64(r.Volume.Int64)
+		if r.WeekEnding.Valid {
+			ohlcv.Dates[i] = r.WeekEnding.Time.Format("2006-01-02")
+		}
 	}
 	return ohlcv
 }

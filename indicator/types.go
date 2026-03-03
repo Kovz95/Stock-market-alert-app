@@ -13,6 +13,25 @@ type OHLCV struct {
 	Low    []float64
 	Close  []float64
 	Volume []float64
+	Dates  []string // optional; populated when lookback scanning is used
+}
+
+// Slice returns a sub-slice of the OHLCV ending at index end (exclusive).
+// The returned OHLCV shares backing arrays with the original — zero allocation cost.
+func (o *OHLCV) Slice(end int) *OHLCV {
+	s := &OHLCV{
+		Open:  o.Open[:end],
+		High:  o.High[:end],
+		Low:   o.Low[:end],
+		Close: o.Close[:end],
+	}
+	if len(o.Volume) >= end {
+		s.Volume = o.Volume[:end]
+	}
+	if len(o.Dates) >= end {
+		s.Dates = o.Dates[:end]
+	}
+	return s
 }
 
 // Len returns the number of bars in the OHLCV data.

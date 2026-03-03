@@ -24,6 +24,7 @@ export async function runScan(request: {
   tickers: string[];
   symbolFilter?: SymbolFilter;
   maxTickers?: number;
+  lookbackDays?: number;
 }): Promise<RunScanResult> {
   try {
     const req: RunScanRequest = {
@@ -33,6 +34,7 @@ export async function runScan(request: {
       tickers: request.tickers ?? [],
       symbolFilter: request.symbolFilter,
       maxTickers: request.maxTickers ?? 20000,
+      lookbackDays: request.lookbackDays ?? 0,
     };
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), RUN_SCAN_TIMEOUT_MS);

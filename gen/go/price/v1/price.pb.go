@@ -1689,7 +1689,8 @@ type RunScanRequest struct {
 	CombinationLogic string                 `protobuf:"bytes,3,opt,name=combination_logic,json=combinationLogic,proto3" json:"combination_logic,omitempty"` // e.g. "AND", "OR", "1 AND (2 OR 3)"
 	Tickers          []string               `protobuf:"bytes,4,rep,name=tickers,proto3" json:"tickers,omitempty"`                                           // if non-empty, scan only these; else use symbol_filter
 	SymbolFilter     *SymbolFilter          `protobuf:"bytes,5,opt,name=symbol_filter,json=symbolFilter,proto3" json:"symbol_filter,omitempty"`
-	MaxTickers       int32                  `protobuf:"varint,6,opt,name=max_tickers,json=maxTickers,proto3" json:"max_tickers,omitempty"` // cap on symbols to scan (e.g. 20000), 0 = no limit
+	MaxTickers       int32                  `protobuf:"varint,6,opt,name=max_tickers,json=maxTickers,proto3" json:"max_tickers,omitempty"`       // cap on symbols to scan (e.g. 20000), 0 = no limit
+	LookbackDays     int32                  `protobuf:"varint,7,opt,name=lookback_days,json=lookbackDays,proto3" json:"lookback_days,omitempty"` // 0 = today only, 1–100 = scan last X trading days
 	unknownFields    protoimpl.UnknownFields
 	sizeCache        protoimpl.SizeCache
 }
@@ -1766,6 +1767,13 @@ func (x *RunScanRequest) GetMaxTickers() int32 {
 	return 0
 }
 
+func (x *RunScanRequest) GetLookbackDays() int32 {
+	if x != nil {
+		return x.LookbackDays
+	}
+	return 0
+}
+
 // ScanMatch is one symbol that matched the scan conditions.
 type ScanMatch struct {
 	state              protoimpl.MessageState `protogen:"open.v1"`
@@ -1782,6 +1790,7 @@ type ScanMatch struct {
 	RbicsIndustry      string                 `protobuf:"bytes,11,opt,name=rbics_industry,json=rbicsIndustry,proto3" json:"rbics_industry,omitempty"`
 	RbicsSubindustry   string                 `protobuf:"bytes,12,opt,name=rbics_subindustry,json=rbicsSubindustry,proto3" json:"rbics_subindustry,omitempty"`
 	ConditionValues    string                 `protobuf:"bytes,13,opt,name=condition_values,json=conditionValues,proto3" json:"condition_values,omitempty"` // optional display string for condition values
+	MatchDate          string                 `protobuf:"bytes,14,opt,name=match_date,json=matchDate,proto3" json:"match_date,omitempty"`                   // YYYY-MM-DD (or RFC3339 for hourly) when lookback_days > 0
 	unknownFields      protoimpl.UnknownFields
 	sizeCache          protoimpl.SizeCache
 }
@@ -1903,6 +1912,13 @@ func (x *ScanMatch) GetRbicsSubindustry() string {
 func (x *ScanMatch) GetConditionValues() string {
 	if x != nil {
 		return x.ConditionValues
+	}
+	return ""
+}
+
+func (x *ScanMatch) GetMatchDate() string {
+	if x != nil {
+		return x.MatchDate
 	}
 	return ""
 }
@@ -2250,7 +2266,7 @@ const file_price_v1_price_proto_rawDesc = "" +
 	"\x0frbics_subsector\x18\x06 \x03(\tR\x0erbicsSubsector\x120\n" +
 	"\x14rbics_industry_group\x18\a \x03(\tR\x12rbicsIndustryGroup\x12%\n" +
 	"\x0erbics_industry\x18\b \x03(\tR\rrbicsIndustry\x12+\n" +
-	"\x11rbics_subindustry\x18\t \x03(\tR\x10rbicsSubindustry\"\x9e\x02\n" +
+	"\x11rbics_subindustry\x18\t \x03(\tR\x10rbicsSubindustry\"\xc3\x02\n" +
 	"\x0eRunScanRequest\x12<\n" +
 	"\ttimeframe\x18\x01 \x01(\x0e2\x1e.stockalert.price.v1.TimeframeR\ttimeframe\x12\x1e\n" +
 	"\n" +
@@ -2260,7 +2276,8 @@ const file_price_v1_price_proto_rawDesc = "" +
 	"\atickers\x18\x04 \x03(\tR\atickers\x12F\n" +
 	"\rsymbol_filter\x18\x05 \x01(\v2!.stockalert.price.v1.SymbolFilterR\fsymbolFilter\x12\x1f\n" +
 	"\vmax_tickers\x18\x06 \x01(\x05R\n" +
-	"maxTickers\"\xc4\x03\n" +
+	"maxTickers\x12#\n" +
+	"\rlookback_days\x18\a \x01(\x05R\flookbackDays\"\xe3\x03\n" +
 	"\tScanMatch\x12\x16\n" +
 	"\x06ticker\x18\x01 \x01(\tR\x06ticker\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x1a\n" +
@@ -2276,7 +2293,9 @@ const file_price_v1_price_proto_rawDesc = "" +
 	" \x01(\tR\x12rbicsIndustryGroup\x12%\n" +
 	"\x0erbics_industry\x18\v \x01(\tR\rrbicsIndustry\x12+\n" +
 	"\x11rbics_subindustry\x18\f \x01(\tR\x10rbicsSubindustry\x12)\n" +
-	"\x10condition_values\x18\r \x01(\tR\x0fconditionValues\"p\n" +
+	"\x10condition_values\x18\r \x01(\tR\x0fconditionValues\x12\x1d\n" +
+	"\n" +
+	"match_date\x18\x0e \x01(\tR\tmatchDate\"p\n" +
 	"\x0fRunScanResponse\x128\n" +
 	"\amatches\x18\x01 \x03(\v2\x1e.stockalert.price.v1.ScanMatchR\amatches\x12#\n" +
 	"\rerror_message\x18\x02 \x01(\tR\ferrorMessage\"\x8b\x01\n" +

@@ -303,6 +303,8 @@ export interface RunScanRequest {
     | undefined;
   /** cap on symbols to scan (e.g. 20000), 0 = no limit */
   maxTickers: number;
+  /** 0 = today only, 1–100 = scan last X trading days */
+  lookbackDays: number;
 }
 
 /** ScanMatch is one symbol that matched the scan conditions. */
@@ -321,6 +323,8 @@ export interface ScanMatch {
   rbicsSubindustry: string;
   /** optional display string for condition values */
   conditionValues: string;
+  /** YYYY-MM-DD (or RFC3339 for hourly) when lookback_days > 0 */
+  matchDate: string;
 }
 
 export interface RunScanResponse {
@@ -3053,7 +3057,15 @@ export const SymbolFilter: MessageFns<SymbolFilter> = {
 };
 
 function createBaseRunScanRequest(): RunScanRequest {
-  return { timeframe: 0, conditions: [], combinationLogic: "", tickers: [], symbolFilter: undefined, maxTickers: 0 };
+  return {
+    timeframe: 0,
+    conditions: [],
+    combinationLogic: "",
+    tickers: [],
+    symbolFilter: undefined,
+    maxTickers: 0,
+    lookbackDays: 0,
+  };
 }
 
 export const RunScanRequest: MessageFns<RunScanRequest> = {
@@ -3075,6 +3087,9 @@ export const RunScanRequest: MessageFns<RunScanRequest> = {
     }
     if (message.maxTickers !== 0) {
       writer.uint32(48).int32(message.maxTickers);
+    }
+    if (message.lookbackDays !== 0) {
+      writer.uint32(56).int32(message.lookbackDays);
     }
     return writer;
   },
@@ -3134,6 +3149,14 @@ export const RunScanRequest: MessageFns<RunScanRequest> = {
           message.maxTickers = reader.int32();
           continue;
         }
+        case 7: {
+          if (tag !== 56) {
+            break;
+          }
+
+          message.lookbackDays = reader.int32();
+          continue;
+        }
       }
       if ((tag & 7) === 4 || tag === 0) {
         break;
@@ -3165,6 +3188,11 @@ export const RunScanRequest: MessageFns<RunScanRequest> = {
         : isSet(object.max_tickers)
         ? globalThis.Number(object.max_tickers)
         : 0,
+      lookbackDays: isSet(object.lookbackDays)
+        ? globalThis.Number(object.lookbackDays)
+        : isSet(object.lookback_days)
+        ? globalThis.Number(object.lookback_days)
+        : 0,
     };
   },
 
@@ -3188,6 +3216,9 @@ export const RunScanRequest: MessageFns<RunScanRequest> = {
     if (message.maxTickers !== 0) {
       obj.maxTickers = Math.round(message.maxTickers);
     }
+    if (message.lookbackDays !== 0) {
+      obj.lookbackDays = Math.round(message.lookbackDays);
+    }
     return obj;
   },
 
@@ -3204,6 +3235,7 @@ export const RunScanRequest: MessageFns<RunScanRequest> = {
       ? SymbolFilter.fromPartial(object.symbolFilter)
       : undefined;
     message.maxTickers = object.maxTickers ?? 0;
+    message.lookbackDays = object.lookbackDays ?? 0;
     return message;
   },
 };
@@ -3223,6 +3255,7 @@ function createBaseScanMatch(): ScanMatch {
     rbicsIndustry: "",
     rbicsSubindustry: "",
     conditionValues: "",
+    matchDate: "",
   };
 }
 
@@ -3266,6 +3299,9 @@ export const ScanMatch: MessageFns<ScanMatch> = {
     }
     if (message.conditionValues !== "") {
       writer.uint32(106).string(message.conditionValues);
+    }
+    if (message.matchDate !== "") {
+      writer.uint32(114).string(message.matchDate);
     }
     return writer;
   },
@@ -3381,6 +3417,14 @@ export const ScanMatch: MessageFns<ScanMatch> = {
           message.conditionValues = reader.string();
           continue;
         }
+        case 14: {
+          if (tag !== 114) {
+            break;
+          }
+
+          message.matchDate = reader.string();
+          continue;
+        }
       }
       if ((tag & 7) === 4 || tag === 0) {
         break;
@@ -3437,6 +3481,11 @@ export const ScanMatch: MessageFns<ScanMatch> = {
         : isSet(object.condition_values)
         ? globalThis.String(object.condition_values)
         : "",
+      matchDate: isSet(object.matchDate)
+        ? globalThis.String(object.matchDate)
+        : isSet(object.match_date)
+        ? globalThis.String(object.match_date)
+        : "",
     };
   },
 
@@ -3481,6 +3530,9 @@ export const ScanMatch: MessageFns<ScanMatch> = {
     if (message.conditionValues !== "") {
       obj.conditionValues = message.conditionValues;
     }
+    if (message.matchDate !== "") {
+      obj.matchDate = message.matchDate;
+    }
     return obj;
   },
 
@@ -3502,6 +3554,7 @@ export const ScanMatch: MessageFns<ScanMatch> = {
     message.rbicsIndustry = object.rbicsIndustry ?? "";
     message.rbicsSubindustry = object.rbicsSubindustry ?? "";
     message.conditionValues = object.conditionValues ?? "";
+    message.matchDate = object.matchDate ?? "";
     return message;
   },
 };

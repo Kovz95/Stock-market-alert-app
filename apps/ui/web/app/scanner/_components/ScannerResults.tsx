@@ -23,14 +23,28 @@ type ScannerResultsProps = {
 export function ScannerResults({ matches, onDownloadCsv, scanning, scanProgress }: ScannerResultsProps) {
   const [search, setSearch] = React.useState("");
 
+  const hasMatchDates = React.useMemo(() => matches.some((m) => m.matchDate), [matches]);
+
+  const sorted = React.useMemo(() => {
+    if (!hasMatchDates) return matches;
+    return [...matches].sort((a, b) => {
+      // Sort by date descending, then ticker ascending
+      if (a.matchDate && b.matchDate) {
+        const cmp = b.matchDate.localeCompare(a.matchDate);
+        if (cmp !== 0) return cmp;
+      }
+      return a.ticker.localeCompare(b.ticker);
+    });
+  }, [matches, hasMatchDates]);
+
   const filtered = React.useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return matches;
-    return matches.filter((m) => {
-      const s = [m.ticker, m.name, m.exchange, m.country, m.assetType].filter(Boolean).join(" ").toLowerCase();
+    if (!q) return sorted;
+    return sorted.filter((m) => {
+      const s = [m.ticker, m.name, m.exchange, m.country, m.assetType, m.matchDate].filter(Boolean).join(" ").toLowerCase();
       return s.includes(q);
     });
-  }, [matches, search]);
+  }, [sorted, search]);
 
   const statusLine =
     scanning && scanProgress
@@ -73,6 +87,7 @@ export function ScannerResults({ matches, onDownloadCsv, scanning, scanProgress 
             <TableRow>
               <TableHead>Ticker</TableHead>
               <TableHead>Name</TableHead>
+              {hasMatchDates && <TableHead>Match Date</TableHead>}
               <TableHead>Exchange</TableHead>
               <TableHead>Country</TableHead>
               <TableHead>Type</TableHead>
@@ -82,10 +97,11 @@ export function ScannerResults({ matches, onDownloadCsv, scanning, scanProgress 
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filtered.slice(0, 500).map((m) => (
-              <TableRow key={m.ticker}>
+            {filtered.slice(0, 500).map((m, i) => (
+              <TableRow key={m.matchDate ? `${m.ticker}-${m.matchDate}` : `${m.ticker}-${i}`}>
                 <TableCell className="font-medium">{m.ticker}</TableCell>
                 <TableCell>{m.name}</TableCell>
+                {hasMatchDates && <TableCell>{m.matchDate}</TableCell>}
                 <TableCell>{m.exchange}</TableCell>
                 <TableCell>{m.country}</TableCell>
                 <TableCell>{m.assetType}</TableCell>
@@ -107,9 +123,11 @@ export function ScannerResults({ matches, onDownloadCsv, scanning, scanProgress 
 }
 
 export function scanMatchesToCsv(matches: ScanMatch[]): string {
+  const hasMatchDates = matches.some((m) => m.matchDate);
   const headers = [
     "ticker",
     "name",
+    ...(hasMatchDates ? ["matchDate"] : []),
     "exchange",
     "country",
     "assetType",

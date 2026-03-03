@@ -41,6 +41,7 @@ type SavedPreset = {
   timeframe: string;
   filters: StockDatabaseFiltersState;
   portfolioId: string;
+  lookbackDays: number;
   savedAt: string;
 };
 
@@ -79,6 +80,7 @@ export default function ScannerPage() {
   const [conditions, setConditions] = React.useState<string[]>([]);
   const [combinationLogic, setCombinationLogic] = React.useState("AND");
   const [timeframe, setTimeframe] = React.useState<"1h" | "1d" | "1wk">("1d");
+  const [lookbackDays, setLookbackDays] = React.useState(0);
   const [results, setResults] = React.useState<ScanMatch[] | null>(null);
   const [scanning, setScanning] = React.useState(false);
   const [scanError, setScanError] = React.useState<string | null>(null);
@@ -144,6 +146,7 @@ export default function ScannerPage() {
         combinationLogic: combinationLogic || "AND",
         tickers: batches[i],
         maxTickers: SCAN_BATCH_SIZE,
+        lookbackDays,
       });
       if ("error" in res) {
         setScanError(res.error);
@@ -181,6 +184,7 @@ export default function ScannerPage() {
       timeframe,
       filters: { ...filters },
       portfolioId,
+      lookbackDays,
       savedAt: new Date().toISOString(),
     });
     setPresets(loadPresets());
@@ -195,6 +199,7 @@ export default function ScannerPage() {
     setTimeframe(p.timeframe as "1h" | "1d" | "1wk");
     setFilters(p.filters);
     setPortfolioId(p.portfolioId);
+    setLookbackDays(p.lookbackDays ?? 0);
     setSelectedPreset("");
   };
 
@@ -236,18 +241,31 @@ export default function ScannerPage() {
         </aside>
 
         <main className="space-y-6">
-          <div className="space-y-2">
-            <Label className="text-xs">Timeframe</Label>
-            <Select value={timeframe} onValueChange={(v) => setTimeframe(v as "1h" | "1d" | "1wk")}>
-              <SelectTrigger className="h-8 w-32">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="1h">Hourly</SelectItem>
-                <SelectItem value="1d">Daily</SelectItem>
-                <SelectItem value="1wk">Weekly</SelectItem>
-              </SelectContent>
-            </Select>
+          <div className="flex flex-wrap items-end gap-4">
+            <div className="space-y-2">
+              <Label className="text-xs">Timeframe</Label>
+              <Select value={timeframe} onValueChange={(v) => setTimeframe(v as "1h" | "1d" | "1wk")}>
+                <SelectTrigger className="h-8 w-32">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="1h">Hourly</SelectItem>
+                  <SelectItem value="1d">Daily</SelectItem>
+                  <SelectItem value="1wk">Weekly</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs">Lookback days</Label>
+              <Input
+                type="number"
+                min={0}
+                max={100}
+                className="h-7 w-24"
+                value={lookbackDays}
+                onChange={(e) => setLookbackDays(Math.max(0, Math.min(100, Number(e.target.value) || 0)))}
+              />
+            </div>
           </div>
 
           <ScannerConditionSection
@@ -297,7 +315,7 @@ export default function ScannerPage() {
               <div className="space-y-1">
                 <Label className="text-xs">Preset name</Label>
                 <Input
-                  className="h-8 w-48"
+                  className="h-8 w-48 text-sm"
                   placeholder="Name"
                   value={presetName}
                   onChange={(e) => setPresetName(e.target.value)}

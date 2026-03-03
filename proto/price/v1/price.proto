@@ -201,6 +201,7 @@ message RunScanRequest {
   repeated string tickers = 4;       // if non-empty, scan only these; else use symbol_filter
   SymbolFilter symbol_filter = 5;
   int32 max_tickers = 6;            // cap on symbols to scan (e.g. 20000), 0 = no limit
+  int32 lookback_days = 7;          // 0 = today only, 1–100 = scan last X trading days
 }
 
 // ScanMatch is one symbol that matched the scan conditions.
@@ -218,6 +219,7 @@ message ScanMatch {
   string rbics_industry = 11;
   string rbics_subindustry = 12;
   string condition_values = 13;     // optional display string for condition values
+  string match_date = 14;           // YYYY-MM-DD (or RFC3339 for hourly) when lookback_days > 0
 }
 
 message RunScanResponse {
