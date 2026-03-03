@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"log/slog"
 	"net"
 	"os"
 	"os/signal"
@@ -19,6 +20,8 @@ import (
 )
 
 func main() {
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}))
+
 	dbURL := os.Getenv("DATABASE_URL")
 	if dbURL == "" {
 		log.Fatal("DATABASE_URL is required")
@@ -41,11 +44,18 @@ func main() {
 	if err := pool.Ping(ctx); err != nil {
 		log.Fatalf("failed to ping database: %v", err)
 	}
-	log.Println("connected to database")
+	logger.Info("database connected", "max_conns", pool.Stat().MaxConns())
+
+	fmpAPIKey := os.Getenv("FMP_API_KEY")
+	fmpSet := fmpAPIKey != ""
+	logger.Info("FMP client configured", "fmp_api_key_set", fmpSet)
+	fmp := newFMPClient(fmpAPIKey)
+	updater := newPriceUpdater(fmp, pool, logger)
+	logger.Info("price updater initialized")
 
 	grpcServer := grpc.NewServer()
 
-	pricev1.RegisterPriceServiceServer(grpcServer, NewServer(pool))
+	pricev1.RegisterPriceServiceServer(grpcServer, NewServer(pool, updater, logger))
 
 	healthServer := health.NewServer()
 	healthpb.RegisterHealthServer(grpcServer, healthServer)
@@ -63,12 +73,12 @@ func main() {
 
 	go func() {
 		sig := <-sigCh
-		log.Printf("received signal %v, shutting down", sig)
+		logger.Info("shutting down", "signal", sig.String())
 		healthServer.SetServingStatus("", healthpb.HealthCheckResponse_NOT_SERVING)
 		grpcServer.GracefulStop()
 	}()
 
-	log.Printf("price_service listening on :%s", port)
+	logger.Info("price_service listening", "port", port)
 	if err := grpcServer.Serve(lis); err != nil {
 		log.Fatalf("failed to serve: %v", err)
 	}

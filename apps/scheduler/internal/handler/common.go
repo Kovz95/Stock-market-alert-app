@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"time"
@@ -49,6 +49,7 @@ type Common struct {
 	Notifier   *discord.Notifier
 	Updater    *price.Updater
 	Status     *status.Manager
+	Logger     *slog.Logger
 	JobTimeout time.Duration
 
 	// Discord webhooks for status (start/complete/error). Empty = no status notifications.
@@ -76,7 +77,7 @@ func (c *Common) NotifyWorkerLifecycle(taskType, event string) {
 	}
 	sn := c.statusNotifierFor(info.label, info.tf)
 	if sn == nil {
-		log.Printf("no Discord webhook configured for %s worker lifecycle events", taskType)
+		c.Logger.Warn("no Discord webhook configured for worker lifecycle events", "task_type", taskType)
 		return
 	}
 	switch event {
@@ -107,16 +108,17 @@ func (c *Common) statusNotifierFor(jobLabel, timeframe string) *discord.StatusNo
 }
 
 // Execute runs the full job lifecycle for a single exchange/timeframe:
-// check should-run (hourly → calendar.IsExchangeOpen), notify start, update prices,
+// check should-run (hourly -> calendar.IsExchangeOpen), notify start, update prices,
 // check alerts and accumulate Discord embeds, flush embeds, notify complete/error.
 func (c *Common) Execute(ctx context.Context, exchange, timeframe string, statusNotifier *discord.StatusNotifier) (priceStats *discord.PriceStats, alertStats *discord.AlertStats, err error) {
 	runTime := time.Now().UTC()
 	start := runTime
+	logger := c.Logger.With("exchange", exchange, "timeframe", timeframe)
 
 	// Hourly: skip if exchange is closed
 	if timeframe == "hourly" {
 		if !calendar.IsExchangeOpen(exchange, runTime) {
-			log.Printf("[%s/%s] exchange closed, skipping", exchange, timeframe)
+			logger.Info("exchange closed, skipping hourly job")
 			if statusNotifier != nil {
 				statusNotifier.NotifySkipped(runTime, exchange+" is closed")
 			}
@@ -124,51 +126,64 @@ func (c *Common) Execute(ctx context.Context, exchange, timeframe string, status
 		}
 	}
 
-	log.Printf("[%s/%s] === job starting ===", exchange, timeframe)
+	logger.Info("job starting")
 
 	if statusNotifier != nil {
 		statusNotifier.NotifyStart(runTime, exchange)
 	}
 
 	if err := c.Status.UpdateRunning(ctx, exchange, timeframe); err != nil {
-		log.Printf("status update running: %v", err)
+		logger.Warn("failed to update status to running", "error", err)
 	}
 
 	// 1. Update prices
+	priceStart := time.Now()
 	priceStats, err = c.Updater.UpdateForExchange(ctx, exchange, timeframe)
 	if err != nil {
-		log.Printf("[%s/%s] price update error: %v", exchange, timeframe, err)
+		logger.Error("price update failed", "error", err)
 		c.reportError(ctx, runTime, exchange, timeframe, err, statusNotifier)
 		return nil, nil, err
 	}
-	log.Printf("[%s/%s] prices updated: %d/%d (failed: %d, skipped: %d)",
-		exchange, timeframe, priceStats.Updated, priceStats.Total, priceStats.Failed, priceStats.Skipped)
+	logger.Info("prices updated",
+		"updated", priceStats.Updated,
+		"failed", priceStats.Failed,
+		"skipped", priceStats.Skipped,
+		"total", priceStats.Total,
+		"duration_ms", time.Since(priceStart).Milliseconds(),
+	)
 
 	// 2. Load alerts for this exchange + timeframe
+	alertQueryStart := time.Now()
 	alerts, err := c.Queries.ListAlertsByExchangeAndTimeframe(ctx, db.ListAlertsByExchangeAndTimeframeParams{
 		Exchanges: []string{exchange},
 		Timeframe: pgtype.Text{String: timeframe, Valid: true},
 	})
 	if err != nil {
-		log.Printf("[%s/%s] list alerts: %v", exchange, timeframe, err)
+		logger.Error("failed to list alerts", "error", err)
 		c.reportError(ctx, runTime, exchange, timeframe, err, statusNotifier)
 		return nil, nil, err
 	}
-	log.Printf("[%s/%s] evaluating %d alerts", exchange, timeframe, len(alerts))
+	logger.Info("alerts loaded",
+		"count", len(alerts),
+		"query_duration_ms", time.Since(alertQueryStart).Milliseconds(),
+	)
 
 	alertStats = &discord.AlertStats{Total: len(alerts)}
 	if len(alerts) == 0 {
-		log.Printf("[%s/%s] === job complete | duration: %.1fs | no alerts to evaluate ===",
-			exchange, timeframe, time.Since(start).Seconds())
+		logger.Info("job complete, no alerts to evaluate",
+			"duration_s", fmt.Sprintf("%.1f", time.Since(start).Seconds()),
+		)
 		c.reportSuccess(ctx, runTime, start, exchange, timeframe, priceStats, alertStats, statusNotifier)
 		return priceStats, alertStats, nil
 	}
 
 	// Pre-warm cache and evaluate
 	since := sinceDateForTimeframe(timeframe)
+	logger.Debug("pre-warming price cache", "since", since.Format("2006-01-02"))
 	if err := c.Checker.PreWarmCache(ctx, alerts, timeframe, since); err != nil {
-		log.Printf("[%s/%s] prewarm cache: %v", exchange, timeframe, err)
+		logger.Warn("pre-warm cache error", "error", err)
 	}
+	logger.Debug("price cache pre-warm complete")
 
 	var shadowTriggered []ShadowRecord
 	onTriggered := func(a db.Alert, result alert.CheckResult) {
@@ -198,9 +213,15 @@ func (c *Common) Execute(ctx context.Context, exchange, timeframe string, status
 			Conditions: conditions,
 		})
 		c.Accum.Add(webhookURL, embed)
+		logger.Debug("alert triggered",
+			"alert_id", result.AlertID,
+			"ticker", ticker,
+			"webhook_url", webhookURL,
+		)
 	}
 	stats, err := c.Checker.CheckAlerts(ctx, alerts, timeframe, onTriggered)
 	if err != nil {
+		logger.Error("check alerts failed", "error", err)
 		c.reportError(ctx, runTime, exchange, timeframe, err, statusNotifier)
 		return nil, nil, err
 	}
@@ -210,14 +231,22 @@ func (c *Common) Execute(ctx context.Context, exchange, timeframe string, status
 	alertStats.NoData = stats.NoData
 	alertStats.Errors = stats.Errors
 
-	log.Printf("[%s/%s] === job complete | duration: %.1fs | prices updated: %d | alerts: %d total, %d triggered ===",
-		exchange, timeframe, time.Since(start).Seconds(),
-		priceStats.Updated, alertStats.Total, alertStats.Triggered)
+	logger.Info("job complete",
+		"duration_s", fmt.Sprintf("%.1f", time.Since(start).Seconds()),
+		"prices_updated", priceStats.Updated,
+		"alerts_total", alertStats.Total,
+		"alerts_triggered", alertStats.Triggered,
+		"alerts_not_triggered", alertStats.NotTriggered,
+		"alerts_errors", alertStats.Errors,
+		"alerts_skipped", alertStats.Skipped,
+		"alerts_no_data", alertStats.NoData,
+	)
 
 	if c.ShadowDir != "" {
-		writeShadowOutput(c.ShadowDir, exchange, timeframe, runTime, shadowTriggered, stats)
+		writeShadowOutput(c.Logger, c.ShadowDir, exchange, timeframe, runTime, shadowTriggered, stats)
 	}
 
+	logger.Debug("flushing accumulated Discord embeds")
 	c.Accum.FlushAll()
 	c.reportSuccess(ctx, runTime, start, exchange, timeframe, priceStats, alertStats, statusNotifier)
 	return priceStats, alertStats, nil
@@ -270,7 +299,7 @@ func textStr(t pgtype.Text) string {
 	return ""
 }
 
-func writeShadowOutput(dir, exchange, timeframe string, runTime time.Time, triggered []ShadowRecord, stats alert.CheckStats) {
+func writeShadowOutput(logger *slog.Logger, dir, exchange, timeframe string, runTime time.Time, triggered []ShadowRecord, stats alert.CheckStats) {
 	_ = os.MkdirAll(dir, 0755)
 	ts := runTime.UTC().Format("20060102_150405")
 	name := fmt.Sprintf("go_%s_%s_%s.json", exchange, timeframe, ts)
@@ -288,12 +317,12 @@ func writeShadowOutput(dir, exchange, timeframe string, runTime time.Time, trigg
 	}
 	b, err := json.MarshalIndent(out, "", "  ")
 	if err != nil {
-		log.Printf("shadow write marshal: %v", err)
+		logger.Error("shadow write marshal error", "error", err)
 		return
 	}
 	if err := os.WriteFile(path, b, 0644); err != nil {
-		log.Printf("shadow write %s: %v", path, err)
+		logger.Error("shadow write file error", "path", path, "error", err)
 		return
 	}
-	log.Printf("shadow wrote %s (%d triggered)", path, len(triggered))
+	logger.Info("shadow output written", "path", path, "triggered_count", len(triggered))
 }

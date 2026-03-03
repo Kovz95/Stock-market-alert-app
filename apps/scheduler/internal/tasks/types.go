@@ -5,9 +5,6 @@ const (
 	TypeDaily  = "task:daily"
 	TypeWeekly = "task:weekly"
 	TypeHourly = "task:hourly"
-
-	// EnqueueTaskType is the cron-driven task that enqueues exchange jobs.
-	EnqueueTaskType = "scheduler:enqueue"
 )
 
 // Payload holds exchange and timeframe for a scheduled job.

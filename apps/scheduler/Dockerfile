@@ -29,9 +29,8 @@ COPY expr/ expr/
 COPY indicator/ indicator/
 COPY apps/scheduler/ apps/scheduler/
 
-# Build both binaries
+# Build worker binary
 WORKDIR /build/apps/scheduler
-RUN CGO_ENABLED=0 GOOS=linux go build -o /scheduler ./cmd/scheduler
 RUN CGO_ENABLED=0 GOOS=linux go build -o /worker ./cmd/worker
 
 # --- Runtime stage ---
@@ -39,8 +38,6 @@ FROM alpine:3.21
 
 RUN apk add --no-cache ca-certificates
 
-COPY --from=builder /scheduler /scheduler
 COPY --from=builder /worker /worker
 
-# Default: run worker (override in compose for scheduler vs worker type)
 ENTRYPOINT ["/worker"]

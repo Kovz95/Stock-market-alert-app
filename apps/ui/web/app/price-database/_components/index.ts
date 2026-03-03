@@ -4,7 +4,11 @@ export {
   getLoadParams,
   type PriceFiltersState,
 } from "./PriceDatabaseFilters";
-export { DatabaseStatsCards } from "./DatabaseStatsCards";
+export {
+  DatabaseStatsCards,
+  type TimeframeKind,
+  type DatabaseStatsCardsProps,
+} from "./DatabaseStatsCards";
 export { PriceDataTable } from "./PriceDataTable";
 export { ExportSection } from "./ExportSection";
 export { PriceChartsSection } from "./PriceChartsSection";

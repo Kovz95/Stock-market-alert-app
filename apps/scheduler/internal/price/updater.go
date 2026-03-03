@@ -2,7 +2,7 @@ package price
 
 import (
 	"context"
-	"log"
+	"log/slog"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
@@ -18,22 +18,35 @@ const dailyLimit = 750
 type Updater struct {
 	queries *db.Queries
 	fmp     FMPFetcher
+	logger  *slog.Logger
 }
 
 // NewUpdater creates an Updater.
-func NewUpdater(queries *db.Queries, fmp FMPFetcher) *Updater {
-	return &Updater{queries: queries, fmp: fmp}
+func NewUpdater(queries *db.Queries, fmp FMPFetcher, logger *slog.Logger) *Updater {
+	if logger == nil {
+		logger = slog.Default()
+	}
+	return &Updater{queries: queries, fmp: fmp, logger: logger.With("component", "price_updater")}
 }
 
 // UpdateForExchange updates prices for all tickers on the given exchange and timeframe.
 // Returns price stats for Discord. For hourly, only runs when exchange is open (caller checks).
 func (u *Updater) UpdateForExchange(ctx context.Context, exchange, timeframe string) (*discord.PriceStats, error) {
+	start := time.Now()
 	tickers, err := u.tickersForExchange(ctx, exchange)
 	if err != nil {
 		return nil, err
 	}
 	stats := &discord.PriceStats{Total: len(tickers)}
+
+	u.logger.Info("starting price update",
+		"exchange", exchange,
+		"timeframe", timeframe,
+		"ticker_count", len(tickers),
+	)
+
 	if len(tickers) == 0 {
+		u.logger.Info("no tickers found, skipping price update", "exchange", exchange)
 		return stats, nil
 	}
 
@@ -42,20 +55,25 @@ func (u *Updater) UpdateForExchange(ctx context.Context, exchange, timeframe str
 		updated, failed := u.updateDaily(ctx, tickers)
 		stats.Updated = updated
 		stats.Failed = failed
-		return stats, nil
 	case "weekly":
 		updated, failed := u.updateWeekly(ctx, tickers)
 		stats.Updated = updated
 		stats.Failed = failed
-		return stats, nil
 	case "hourly":
 		updated, failed := u.updateHourly(ctx, exchange, tickers)
 		stats.Updated = updated
 		stats.Failed = failed
-		return stats, nil
-	default:
-		return stats, nil
 	}
+
+	u.logger.Info("price update complete",
+		"exchange", exchange,
+		"timeframe", timeframe,
+		"updated", stats.Updated,
+		"failed", stats.Failed,
+		"total", stats.Total,
+		"duration_ms", time.Since(start).Milliseconds(),
+	)
+	return stats, nil
 }
 
 func (u *Updater) tickersForExchange(ctx context.Context, exchange string) ([]string, error) {
@@ -80,7 +98,7 @@ func (u *Updater) updateDaily(ctx context.Context, tickers []string) (updated, f
 	for _, ticker := range tickers {
 		rows, err := u.fmp.FetchDaily(ticker, dailyLimit)
 		if err != nil {
-			log.Printf("fmp daily %s: %v", ticker, err)
+			u.logger.Warn("FMP daily fetch error", "ticker", ticker, "error", err)
 			failed++
 			continue
 		}
@@ -106,10 +124,10 @@ func (u *Updater) updateDaily(ctx context.Context, tickers []string) (updated, f
 	}
 	n, err := u.queries.CopyDailyPrices(ctx, allRows)
 	if err != nil {
-		log.Printf("CopyDailyPrices: %v", err)
+		u.logger.Error("CopyDailyPrices failed", "error", err)
 		return 0, len(tickers)
 	}
-	log.Printf("price/daily: copied %d rows for %d tickers", n, updated)
+	u.logger.Debug("daily prices copied", "rows_copied", n, "tickers_processed", updated)
 	return updated, failed
 }
 
@@ -119,7 +137,7 @@ func (u *Updater) updateWeekly(ctx context.Context, tickers []string) (updated, 
 	for _, ticker := range tickers {
 		rows, err := u.fmp.FetchDaily(ticker, dailyLimit)
 		if err != nil {
-			log.Printf("fmp daily (weekly) %s: %v", ticker, err)
+			u.logger.Warn("FMP daily (weekly) fetch error", "ticker", ticker, "error", err)
 			failed++
 			continue
 		}
@@ -142,10 +160,10 @@ func (u *Updater) updateWeekly(ctx context.Context, tickers []string) (updated, 
 	}
 	n, err := u.queries.CopyWeeklyPrices(ctx, allRows)
 	if err != nil {
-		log.Printf("CopyWeeklyPrices: %v", err)
+		u.logger.Error("CopyWeeklyPrices failed", "error", err)
 		return 0, len(tickers)
 	}
-	log.Printf("price/weekly: copied %d rows for %d tickers", n, updated)
+	u.logger.Debug("weekly prices copied", "rows_copied", n, "tickers_processed", updated)
 	return updated, failed
 }
 
@@ -230,7 +248,7 @@ func (u *Updater) updateHourly(ctx context.Context, exchange string, tickers []s
 	for _, ticker := range tickers {
 		rows, err := u.fmp.FetchHourly(ticker)
 		if err != nil {
-			log.Printf("fmp hourly %s: %v", ticker, err)
+			u.logger.Warn("FMP hourly fetch error", "ticker", ticker, "error", err)
 			failed++
 			continue
 		}
@@ -257,9 +275,9 @@ func (u *Updater) updateHourly(ctx context.Context, exchange string, tickers []s
 	}
 	n, err := u.queries.CopyHourlyPrices(ctx, allRows)
 	if err != nil {
-		log.Printf("CopyHourlyPrices: %v", err)
+		u.logger.Error("CopyHourlyPrices failed", "error", err)
 		return 0, len(tickers)
 	}
-	log.Printf("price/hourly: copied %d rows for %d tickers", n, updated)
+	u.logger.Debug("hourly prices copied", "rows_copied", n, "tickers_processed", updated)
 	return updated, failed
 }

@@ -39,29 +39,7 @@ func (s *Server) EvaluateExchange(ctx context.Context, req *alertv1.EvaluateExch
 		}, nil
 	}
 
-	// 1. Update prices
-	if s.updater == nil {
-		return &alertv1.EvaluateExchangeResponse{
-			Success: false,
-			Message: "price updater unavailable: FMP_API_KEY may not be set",
-		}, nil
-	}
-	// Use a background context with a generous timeout so that a gRPC client
-	// disconnect or deadline does not abort a mid-flight price update.
-	priceCtx, priceCancel := context.WithTimeout(context.Background(), 20*time.Minute)
-	defer priceCancel()
-	pStats, err := s.updater.UpdateForExchange(priceCtx, exchange, timeframe)
-	if err != nil {
-		log.Printf("[evaluate] %s/%s price update error: %v", exchange, timeframe, err)
-		return &alertv1.EvaluateExchangeResponse{
-			Success: false,
-			Message: fmt.Sprintf("price update failed: %v", err),
-		}, nil
-	}
-	log.Printf("[evaluate] %s/%s prices updated: %d/%d (failed: %d)",
-		exchange, timeframe, pStats.Updated, pStats.Total, pStats.Failed)
-
-	// 2. Load alerts for this exchange + timeframe
+	// 1. Load alerts for this exchange + timeframe
 	conn, err := s.pool.Acquire(ctx)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "acquire connection: %v", err)
@@ -77,18 +55,6 @@ func (s *Server) EvaluateExchange(ctx context.Context, req *alertv1.EvaluateExch
 		return nil, status.Errorf(codes.Internal, "list alerts: %v", err)
 	}
 	log.Printf("[evaluate] %s/%s evaluating %d alerts", exchange, timeframe, len(alerts))
-
-	if len(alerts) == 0 {
-		dur := time.Since(start).Seconds()
-		return &alertv1.EvaluateExchangeResponse{
-			Success:         true,
-			Message:         fmt.Sprintf("No alerts configured for %s/%s", exchange, timeframe),
-			AlertsTotal:     0,
-			AlertsTriggered: 0,
-			PricesUpdated:   int32(pStats.Updated),
-			DurationSeconds: dur,
-		}, nil
-	}
 
 	// 3. Pre-warm alert checker cache
 	since := sinceDate(timeframe)
@@ -141,7 +107,7 @@ func (s *Server) EvaluateExchange(ctx context.Context, req *alertv1.EvaluateExch
 		Message:         fmt.Sprintf("Evaluated %d alerts for %s/%s: %d triggered", stats.Total, exchange, timeframe, stats.Triggered),
 		AlertsTotal:     int32(stats.Total),
 		AlertsTriggered: int32(stats.Triggered),
-		PricesUpdated:   int32(pStats.Updated),
+		PricesUpdated:   int32(0),
 		DurationSeconds: dur,
 	}, nil
 }

@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -500,4 +501,127 @@ func (s *Server) GetHourlyDataQuality(ctx context.Context, req *pricev1.GetHourl
 	resp.WorstCalendarGapHours = gapsRow.WorstCalendarGapHours
 
 	return resp, nil
+}
+
+// streamWithContext is used to get the request context from the streaming RPC.
+type streamWithContext interface {
+	Send(*pricev1.UpdatePricesProgress) error
+	Context() context.Context
+}
+
+func (s *Server) UpdatePrices(req *pricev1.UpdatePricesRequest, stream grpc.ServerStreamingServer[pricev1.UpdatePricesProgress]) error {
+	ctx := context.Background()
+	if sc, ok := stream.(streamWithContext); ok {
+		ctx = sc.Context()
+	}
+	log := s.logger.With("rpc", "UpdatePrices", "timeframe", timeframeToString(req.Timeframe), "exchanges", req.Exchanges)
+
+	if len(req.Exchanges) == 0 {
+		log.Warn("UpdatePrices rejected: no exchanges")
+		_ = stream.Send(&pricev1.UpdatePricesProgress{
+			Done:         true,
+			ErrorMessage: "at least one exchange is required",
+		})
+		return nil
+	}
+	tf := timeframeToString(req.Timeframe)
+	if tf == "" {
+		log.Warn("UpdatePrices rejected: invalid timeframe", "timeframe", req.Timeframe)
+		_ = stream.Send(&pricev1.UpdatePricesProgress{
+			Done:         true,
+			ErrorMessage: "invalid timeframe: must be HOURLY, DAILY, or WEEKLY",
+		})
+		return nil
+	}
+	tickerFilter := len(req.Tickers) > 0
+	log.Info("UpdatePrices started", "ticker_filter", tickerFilter, "requested_tickers", len(req.Tickers))
+
+	conn, err := s.pool.Acquire(ctx)
+	if err != nil {
+		log.Error("UpdatePrices failed to acquire connection", "error", err)
+		_ = stream.Send(&pricev1.UpdatePricesProgress{Done: true, ErrorMessage: "failed to acquire connection"})
+		return nil
+	}
+	defer conn.Release()
+
+	q := db.New(conn)
+	metaRows, err := q.ListStockMetadataForPriceDb(ctx)
+	if err != nil {
+		log.Error("UpdatePrices failed to list metadata", "error", err)
+		_ = stream.Send(&pricev1.UpdatePricesProgress{Done: true, ErrorMessage: "failed to list metadata"})
+		return nil
+	}
+
+	exchangeToTickers := make(map[string][]string)
+	for _, r := range metaRows {
+		ex := pgTextString(r.Exchange)
+		if ex == "" {
+			continue
+		}
+		exchangeToTickers[ex] = append(exchangeToTickers[ex], r.Symbol)
+	}
+
+	requestTickersSet := make(map[string]struct{})
+	for _, t := range req.Tickers {
+		requestTickersSet[t] = struct{}{}
+	}
+	if len(requestTickersSet) > 0 {
+		for ex := range exchangeToTickers {
+			filtered := exchangeToTickers[ex][:0]
+			for _, t := range exchangeToTickers[ex] {
+				if _, ok := requestTickersSet[t]; ok {
+					filtered = append(filtered, t)
+				}
+			}
+			exchangeToTickers[ex] = filtered
+		}
+	}
+
+	for _, ex := range req.Exchanges {
+		log.Info("UpdatePrices exchange ticker count", "exchange", ex, "tickers", len(exchangeToTickers[ex]))
+	}
+
+	total := int32(len(req.Exchanges))
+	for i, exchange := range req.Exchanges {
+		tickers := exchangeToTickers[exchange]
+		excLog := log.With("exchange", exchange, "exchange_index", i+1, "exchange_total", total, "ticker_count", len(tickers))
+		excLog.Info("UpdatePrices processing exchange")
+		updated, failed, errUpdate := s.updater.updateForTickers(ctx, q, exchange, tf, tickers)
+		if errUpdate != nil {
+			excLog.Error("UpdatePrices exchange failed", "error", errUpdate)
+			_ = stream.Send(&pricev1.UpdatePricesProgress{
+				Exchange:      exchange,
+				ExchangeIndex:  int32(i + 1),
+				ExchangeTotal:  total,
+				Done:          true,
+				ErrorMessage:  errUpdate.Error(),
+			})
+			return nil
+		}
+		excLog.Info("UpdatePrices exchange complete", "tickers_updated", updated, "tickers_failed", failed)
+		if err := stream.Send(&pricev1.UpdatePricesProgress{
+			Exchange:       exchange,
+			ExchangeIndex:  int32(i + 1),
+			ExchangeTotal:  total,
+			TickersUpdated: int32(updated),
+			TickersFailed:  int32(failed),
+		}); err != nil {
+			return err
+		}
+	}
+	log.Info("UpdatePrices completed successfully")
+	return stream.Send(&pricev1.UpdatePricesProgress{Done: true})
+}
+
+func timeframeToString(tf pricev1.Timeframe) string {
+	switch tf {
+	case pricev1.Timeframe_TIMEFRAME_HOURLY:
+		return "hourly"
+	case pricev1.Timeframe_TIMEFRAME_DAILY:
+		return "daily"
+	case pricev1.Timeframe_TIMEFRAME_WEEKLY:
+		return "weekly"
+	default:
+		return ""
+	}
 }

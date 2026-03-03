@@ -1,15 +1,17 @@
 "use client";
 
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   getStockMetadataMap,
   getDatabaseStats,
   loadPriceData,
+  updatePrices,
   scanStaleDaily,
   scanStaleWeekly,
   scanStaleHourly,
   getHourlyDataQuality,
   type LoadPriceDataParams,
+  type UpdatePricesParams,
   type StockMetadataItem,
   type DatabaseStatsData,
   type PriceRowData,
@@ -46,6 +48,16 @@ export function useDatabaseStats() {
 export function useLoadPriceData() {
   return useMutation({
     mutationFn: (params: LoadPriceDataParams) => loadPriceData(params),
+  });
+}
+
+export function useUpdatePrices() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (params: UpdatePricesParams) => updatePrices(params),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: PRICE_STATS_KEY });
+    },
   });
 }
 
@@ -96,6 +108,7 @@ export type {
   DatabaseStatsData,
   PriceRowData,
   LoadPriceDataParams,
+  UpdatePricesParams,
   StaleTickerRowData,
   StaleHourlyRowData,
   ScanStaleHourlyResult,

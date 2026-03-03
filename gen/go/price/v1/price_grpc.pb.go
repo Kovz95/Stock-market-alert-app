@@ -28,13 +28,14 @@ const (
 	PriceService_ScanStaleHourly_FullMethodName      = "/stockalert.price.v1.PriceService/ScanStaleHourly"
 	PriceService_GetHourlyDataQuality_FullMethodName = "/stockalert.price.v1.PriceService/GetHourlyDataQuality"
 	PriceService_RunScan_FullMethodName              = "/stockalert.price.v1.PriceService/RunScan"
+	PriceService_UpdatePrices_FullMethodName         = "/stockalert.price.v1.PriceService/UpdatePrices"
 )
 
 // PriceServiceClient is the client API for PriceService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 //
-// PriceService provides read-only access to the price database.
+// PriceService provides read-only access to the price database and on-demand updates.
 type PriceServiceClient interface {
 	GetStockMetadataMap(ctx context.Context, in *GetStockMetadataMapRequest, opts ...grpc.CallOption) (*GetStockMetadataMapResponse, error)
 	GetFullStockMetadata(ctx context.Context, in *GetFullStockMetadataRequest, opts ...grpc.CallOption) (*GetFullStockMetadataResponse, error)
@@ -45,6 +46,7 @@ type PriceServiceClient interface {
 	ScanStaleHourly(ctx context.Context, in *ScanStaleHourlyRequest, opts ...grpc.CallOption) (*ScanStaleHourlyResponse, error)
 	GetHourlyDataQuality(ctx context.Context, in *GetHourlyDataQualityRequest, opts ...grpc.CallOption) (*GetHourlyDataQualityResponse, error)
 	RunScan(ctx context.Context, in *RunScanRequest, opts ...grpc.CallOption) (*RunScanResponse, error)
+	UpdatePrices(ctx context.Context, in *UpdatePricesRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[UpdatePricesProgress], error)
 }
 
 type priceServiceClient struct {
@@ -145,11 +147,30 @@ func (c *priceServiceClient) RunScan(ctx context.Context, in *RunScanRequest, op
 	return out, nil
 }
 
+func (c *priceServiceClient) UpdatePrices(ctx context.Context, in *UpdatePricesRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[UpdatePricesProgress], error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	stream, err := c.cc.NewStream(ctx, &PriceService_ServiceDesc.Streams[0], PriceService_UpdatePrices_FullMethodName, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &grpc.GenericClientStream[UpdatePricesRequest, UpdatePricesProgress]{ClientStream: stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type PriceService_UpdatePricesClient = grpc.ServerStreamingClient[UpdatePricesProgress]
+
 // PriceServiceServer is the server API for PriceService service.
 // All implementations must embed UnimplementedPriceServiceServer
 // for forward compatibility.
 //
-// PriceService provides read-only access to the price database.
+// PriceService provides read-only access to the price database and on-demand updates.
 type PriceServiceServer interface {
 	GetStockMetadataMap(context.Context, *GetStockMetadataMapRequest) (*GetStockMetadataMapResponse, error)
 	GetFullStockMetadata(context.Context, *GetFullStockMetadataRequest) (*GetFullStockMetadataResponse, error)
@@ -160,6 +181,7 @@ type PriceServiceServer interface {
 	ScanStaleHourly(context.Context, *ScanStaleHourlyRequest) (*ScanStaleHourlyResponse, error)
 	GetHourlyDataQuality(context.Context, *GetHourlyDataQualityRequest) (*GetHourlyDataQualityResponse, error)
 	RunScan(context.Context, *RunScanRequest) (*RunScanResponse, error)
+	UpdatePrices(*UpdatePricesRequest, grpc.ServerStreamingServer[UpdatePricesProgress]) error
 	mustEmbedUnimplementedPriceServiceServer()
 }
 
@@ -196,6 +218,9 @@ func (UnimplementedPriceServiceServer) GetHourlyDataQuality(context.Context, *Ge
 }
 func (UnimplementedPriceServiceServer) RunScan(context.Context, *RunScanRequest) (*RunScanResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method RunScan not implemented")
+}
+func (UnimplementedPriceServiceServer) UpdatePrices(*UpdatePricesRequest, grpc.ServerStreamingServer[UpdatePricesProgress]) error {
+	return status.Error(codes.Unimplemented, "method UpdatePrices not implemented")
 }
 func (UnimplementedPriceServiceServer) mustEmbedUnimplementedPriceServiceServer() {}
 func (UnimplementedPriceServiceServer) testEmbeddedByValue()                      {}
@@ -380,6 +405,17 @@ func _PriceService_RunScan_Handler(srv interface{}, ctx context.Context, dec fun
 	return interceptor(ctx, in, info, handler)
 }
 
+func _PriceService_UpdatePrices_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(UpdatePricesRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(PriceServiceServer).UpdatePrices(m, &grpc.GenericServerStream[UpdatePricesRequest, UpdatePricesProgress]{ServerStream: stream})
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type PriceService_UpdatePricesServer = grpc.ServerStreamingServer[UpdatePricesProgress]
+
 // PriceService_ServiceDesc is the grpc.ServiceDesc for PriceService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -424,6 +460,12 @@ var PriceService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _PriceService_RunScan_Handler,
 		},
 	},
-	Streams:  []grpc.StreamDesc{},
+	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "UpdatePrices",
+			Handler:       _PriceService_UpdatePrices_Handler,
+			ServerStreams: true,
+		},
+	},
 	Metadata: "price/v1/price.proto",
 }

@@ -3,7 +3,6 @@ package handler
 import (
 	"context"
 	"encoding/json"
-	"log"
 
 	"github.com/hibiken/asynq"
 
@@ -19,6 +18,7 @@ type HourlyHandler struct {
 func (h *HourlyHandler) ProcessTask(ctx context.Context, t *asynq.Task) error {
 	var p tasks.Payload
 	if err := json.Unmarshal(t.Payload(), &p); err != nil {
+		h.Logger.Error("hourly task unmarshal error", "error", err, "raw_payload", string(t.Payload()))
 		return err
 	}
 	if p.Exchange == "" {
@@ -27,7 +27,7 @@ func (h *HourlyHandler) ProcessTask(ctx context.Context, t *asynq.Task) error {
 	if p.Timeframe == "" {
 		p.Timeframe = "hourly"
 	}
-	log.Printf("hourly task: exchange=%s", p.Exchange)
+	h.Logger.Info("hourly task received", "exchange", p.Exchange, "timeframe", p.Timeframe)
 	statusNotifier := h.statusNotifierFor("hourly", "1h")
 	_, _, err := h.Execute(ctx, p.Exchange, "hourly", statusNotifier)
 	return err

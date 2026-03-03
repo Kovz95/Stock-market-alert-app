@@ -225,7 +225,27 @@ message RunScanResponse {
   string error_message = 2;        // set if scan failed
 }
 
-// PriceService provides read-only access to the price database.
+// --- On-demand price update (streaming progress) ---
+
+// UpdatePricesRequest requests a price update for the given exchanges and optional tickers.
+message UpdatePricesRequest {
+  repeated string exchanges = 1;   // at least one required
+  repeated string tickers = 2;     // optional; if empty, all tickers for the exchanges
+  Timeframe timeframe = 3;         // HOURLY, DAILY, or WEEKLY
+}
+
+// UpdatePricesProgress is a single progress event (server-streaming).
+message UpdatePricesProgress {
+  string exchange = 1;
+  int32 exchange_index = 2;        // 1-based index of current exchange
+  int32 exchange_total = 3;
+  int32 tickers_updated = 4;
+  int32 tickers_failed = 5;
+  bool done = 6;                  // true when stream is complete
+  string error_message = 7;       // set if an error occurred
+}
+
+// PriceService provides read-only access to the price database and on-demand updates.
 service PriceService {
   rpc GetStockMetadataMap(GetStockMetadataMapRequest) returns (GetStockMetadataMapResponse);
   rpc GetFullStockMetadata(GetFullStockMetadataRequest) returns (GetFullStockMetadataResponse);
@@ -236,4 +256,5 @@ service PriceService {
   rpc ScanStaleHourly(ScanStaleHourlyRequest) returns (ScanStaleHourlyResponse);
   rpc GetHourlyDataQuality(GetHourlyDataQualityRequest) returns (GetHourlyDataQualityResponse);
   rpc RunScan(RunScanRequest) returns (RunScanResponse);
+  rpc UpdatePrices(UpdatePricesRequest) returns (stream UpdatePricesProgress);
 }

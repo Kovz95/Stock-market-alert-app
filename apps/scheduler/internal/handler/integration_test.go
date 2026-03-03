@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+	"log/slog"
 	"os"
 	"testing"
 	"time"
@@ -9,9 +10,9 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"stockalert/alert"
+	db "stockalert/database/generated"
 	"stockalert/discord"
 	"stockalert/indicator"
-	db "stockalert/database/generated"
 
 	"stockalert/apps/scheduler/internal/price"
 	"stockalert/apps/scheduler/internal/status"
@@ -43,9 +44,9 @@ func TestCommon_Execute_Integration(t *testing.T) {
 	checker := alert.NewChecker(queries, registry)
 	notifier := discord.NewNotifier()
 	accum := discord.NewAccumulator(notifier)
-	mockFMP := &price.MockFMP{ Daily: map[string][]price.DailyRow{} }
-	updater := price.NewUpdater(queries, mockFMP)
-	statusMgr := status.NewManager(queries)
+	mockFMP := &price.MockFMP{Daily: map[string][]price.DailyRow{}}
+	updater := price.NewUpdater(queries, mockFMP, nil)
+	statusMgr := status.NewManager(queries, nil)
 
 	common := &Common{
 		Queries:       queries,
@@ -55,6 +56,7 @@ func TestCommon_Execute_Integration(t *testing.T) {
 		Notifier:      notifier,
 		Updater:       updater,
 		Status:        statusMgr,
+		Logger:        slog.Default(),
 		JobTimeout:    5 * time.Minute,
 		WebhookDaily:  "",
 		WebhookWeekly: "",

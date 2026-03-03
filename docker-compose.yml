@@ -101,92 +101,22 @@ services:
       timeout: 5s
       retries: 5
 
-  # Scheduler: cron that enqueues "enqueue" task every 15 min to Redis (no DB needed)
-  scheduler:
+  # Single worker: schedules and runs daily/weekly/hourly exchange jobs
+  worker:
     build:
       context: .
       dockerfile: apps/scheduler/Dockerfile
-    container_name: stockalert-scheduler
-    restart: unless-stopped
-    entrypoint: ["/scheduler"]
-    env_file:
-      - .env
-    environment:
-      - REDIS_ADDR=redis:6379
-    depends_on:
-      redis:
-        condition: service_healthy
-
-  # Worker that only processes enqueue tasks (enqueues daily/weekly/hourly for due exchanges)
-  worker_enqueue:
-    build:
-      context: .
-      dockerfile: apps/scheduler/Dockerfile
-    container_name: stockalert-worker-enqueue
+    container_name: stockalert-worker
     restart: unless-stopped
     env_file:
       - .env
     environment:
       - DATABASE_URL=postgresql://${POSTGRES_USER:-stockalertapp}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-stockalertapp}
       - REDIS_ADDR=redis:6379
-      - WORKER_TASK_TYPES=enqueue
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-
-  # Worker that only processes daily jobs
-  worker_daily:
-    build:
-      context: .
-      dockerfile: apps/scheduler/Dockerfile
-    container_name: stockalert-worker-daily
-    restart: unless-stopped
-    env_file:
-      - .env
-    environment:
-      - DATABASE_URL=postgresql://${POSTGRES_USER:-stockalertapp}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-stockalertapp}
-      - REDIS_ADDR=redis:6379
-      - WORKER_TASK_TYPES=daily
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-
-  # Worker that only processes weekly jobs
-  worker_weekly:
-    build:
-      context: .
-      dockerfile: apps/scheduler/Dockerfile
-    container_name: stockalert-worker-weekly
-    restart: unless-stopped
-    env_file:
-      - .env
-    environment:
-      - DATABASE_URL=postgresql://${POSTGRES_USER:-stockalertapp}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-stockalertapp}
-      - REDIS_ADDR=redis:6379
-      - WORKER_TASK_TYPES=weekly
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-
-  # Worker that only processes hourly jobs
-  worker_hourly:
-    build:
-      context: .
-      dockerfile: apps/scheduler/Dockerfile
-    container_name: stockalert-worker-hourly
-    restart: unless-stopped
-    env_file:
-      - .env
-    environment:
-      - DATABASE_URL=postgresql://${POSTGRES_USER:-stockalertapp}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-stockalertapp}
-      - REDIS_ADDR=redis:6379
-      - WORKER_TASK_TYPES=hourly
+      - FMP_API_KEY=${FMP_API_KEY:-}
+      - DISCORD_WEBHOOK_DAILY=${DISCORD_WEBHOOK_DAILY:-}
+      - DISCORD_WEBHOOK_WEEKLY=${DISCORD_WEBHOOK_WEEKLY:-}
+      - DISCORD_WEBHOOK_HOURLY=${DISCORD_WEBHOOK_HOURLY:-}
     depends_on:
       postgres:
         condition: service_healthy

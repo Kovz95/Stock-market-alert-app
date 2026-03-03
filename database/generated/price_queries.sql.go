@@ -427,6 +427,39 @@ func (q *Queries) LastHourlyPerTicker(ctx context.Context) ([]LastHourlyPerTicke
 	return items, nil
 }
 
+const lastWeeklyPerTicker = `-- name: LastWeeklyPerTicker :many
+SELECT ticker, MAX(week_ending)::date AS last_date
+FROM weekly_prices
+GROUP BY ticker
+ORDER BY MAX(week_ending) ASC
+`
+
+type LastWeeklyPerTickerRow struct {
+	Ticker   string
+	LastDate pgtype.Date
+}
+
+// Stale weekly: last week_ending per ticker (used by smart price updater to compute fetch limits).
+func (q *Queries) LastWeeklyPerTicker(ctx context.Context) ([]LastWeeklyPerTickerRow, error) {
+	rows, err := q.db.Query(ctx, lastWeeklyPerTicker)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []LastWeeklyPerTickerRow
+	for rows.Next() {
+		var i LastWeeklyPerTickerRow
+		if err := rows.Scan(&i.Ticker, &i.LastDate); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listDailyPrices = `-- name: ListDailyPrices :many
 SELECT ticker, date, open, high, low, close, volume
 FROM daily_prices

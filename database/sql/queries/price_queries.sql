@@ -126,6 +126,13 @@ LEFT JOIN stock_metadata m ON m.symbol = w.ticker
 ORDER BY w.last_date ASC
 LIMIT sqlc.arg(limit_rows);
 
+-- Stale weekly: last week_ending per ticker (used by smart price updater to compute fetch limits).
+-- name: LastWeeklyPerTicker :many
+SELECT ticker, MAX(week_ending)::date AS last_date
+FROM weekly_prices
+GROUP BY ticker
+ORDER BY MAX(week_ending) ASC;
+
 -- Stale hourly: last datetime per ticker (Go computes expected hour and hours_behind).
 -- name: LastHourlyPerTicker :many
 SELECT ticker, MAX(datetime) AS last_dt

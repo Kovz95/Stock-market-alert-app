@@ -6,6 +6,12 @@ import {
   Timeframe,
 } from "../../../../gen/ts/price/v1/price";
 
+export type UpdatePricesParams = {
+  timeframe: number; // Timeframe.HOURLY | Timeframe.DAILY | Timeframe.WEEKLY
+  exchanges: string[];
+  tickers: string[];
+};
+
 export type StockMetadataItem = {
   symbol: string;
   name: string;
@@ -198,4 +204,26 @@ export async function getHourlyDataQuality(): Promise<HourlyDataQualityData> {
     worstGapHours: Number(res.worstGapHours ?? 0),
     worstCalendarGapHours: Number(res.worstCalendarGapHours ?? 0),
   };
+}
+
+/** Runs on-demand price update for the given timeframe, exchanges, and optional tickers. Consumes the stream to completion. */
+export async function updatePrices(params: UpdatePricesParams): Promise<void> {
+  const { timeframe, exchanges, tickers } = params;
+  if (!exchanges?.length) {
+    throw new Error("Select at least one exchange.");
+  }
+  const stream = priceClient.updatePrices({
+    exchanges,
+    tickers: tickers ?? [],
+    timeframe: timeframe as Timeframe,
+  });
+  let lastError: string | null = null;
+  for await (const progress of stream) {
+    if (progress.errorMessage) {
+      lastError = progress.errorMessage;
+    }
+  }
+  if (lastError) {
+    throw new Error(lastError);
+  }
 }

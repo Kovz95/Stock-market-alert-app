@@ -4,11 +4,14 @@ import * as React from "react";
 import {
   useDatabaseStats,
   useLoadPriceData,
+  useUpdatePrices,
   useStockMetadata,
 } from "@/lib/hooks/usePriceDatabase";
+import { Timeframe } from "@/lib/price-database-enums";
 import {
   PriceDatabaseFilters,
   DatabaseStatsCards,
+  type TimeframeKind,
   PriceDataTable,
   ExportSection,
   PriceChartsSection,
@@ -23,6 +26,7 @@ export default function PriceDatabasePage() {
   const { data: metadata, isLoading: metadataLoading } = useStockMetadata();
   const { data: stats } = useDatabaseStats();
   const loadMutation = useLoadPriceData();
+  const updateMutation = useUpdatePrices();
 
   const [filters, setFilters] = React.useState<ReturnType<typeof defaultFilters>>(
     () => defaultFilters(null, null)
@@ -45,7 +49,8 @@ export default function PriceDatabasePage() {
     const params = getLoadParams(
       filters,
       stats?.dailyMin ?? null,
-      stats?.dailyMax ?? null
+      stats?.dailyMax ?? null,
+      metadata ?? undefined
     );
     loadMutation.mutate(params, {
       onSuccess: (rows) => {
@@ -56,7 +61,57 @@ export default function PriceDatabasePage() {
         toast.error(err.message ?? "Failed to load price data");
       },
     });
-  }, [filters, stats?.dailyMin, stats?.dailyMax, loadMutation]);
+  }, [filters, stats?.dailyMin, stats?.dailyMax, metadata, loadMutation]);
+
+  const timeframeToEnum = (k: TimeframeKind): number => {
+    switch (k) {
+      case "hourly":
+        return Timeframe.HOURLY;
+      case "daily":
+        return Timeframe.DAILY;
+      case "weekly":
+        return Timeframe.WEEKLY;
+    }
+  };
+
+  const handleUpdate = React.useCallback(
+    (timeframe: TimeframeKind) => {
+      updateMutation.mutate(
+        {
+          timeframe: timeframeToEnum(timeframe),
+          exchanges: filters.exchanges,
+          tickers: filters.selectedTickers,
+        },
+        {
+          onSuccess: () => {
+            toast.success(`${timeframe} price update complete`);
+          },
+          onError: (err) => {
+            toast.error(err.message ?? "Price update failed");
+          },
+        }
+      );
+    },
+    [filters.exchanges, filters.selectedTickers, updateMutation]
+  );
+
+  const updatePending: Partial<Record<TimeframeKind, boolean>> = React.useMemo(
+    () => ({
+      hourly:
+        updateMutation.isPending &&
+        updateMutation.variables?.timeframe === Timeframe.HOURLY,
+      daily:
+        updateMutation.isPending &&
+        updateMutation.variables?.timeframe === Timeframe.DAILY,
+      weekly:
+        updateMutation.isPending &&
+        updateMutation.variables?.timeframe === Timeframe.WEEKLY,
+    }),
+    [
+      updateMutation.isPending,
+      updateMutation.variables?.timeframe,
+    ]
+  );
 
   const tickerCount = React.useMemo(() => {
     const set = new Set(loadedData.map((r) => r.ticker));
@@ -104,7 +159,13 @@ export default function PriceDatabasePage() {
           <section>
             <h2 className="text-lg font-semibold mb-3">Database statistics</h2>
             {stats ? (
-              <DatabaseStatsCards stats={stats} />
+              <DatabaseStatsCards
+                stats={stats}
+                exchanges={filters.exchanges}
+                selectedTickers={filters.selectedTickers}
+                onUpdate={handleUpdate}
+                updatePending={updatePending}
+              />
             ) : (
               <p className="text-muted-foreground text-sm">
                 Loading database stats…

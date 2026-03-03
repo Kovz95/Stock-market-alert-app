@@ -329,6 +329,30 @@ export interface RunScanResponse {
   errorMessage: string;
 }
 
+/** UpdatePricesRequest requests a price update for the given exchanges and optional tickers. */
+export interface UpdatePricesRequest {
+  /** at least one required */
+  exchanges: string[];
+  /** optional; if empty, all tickers for the exchanges */
+  tickers: string[];
+  /** HOURLY, DAILY, or WEEKLY */
+  timeframe: Timeframe;
+}
+
+/** UpdatePricesProgress is a single progress event (server-streaming). */
+export interface UpdatePricesProgress {
+  exchange: string;
+  /** 1-based index of current exchange */
+  exchangeIndex: number;
+  exchangeTotal: number;
+  tickersUpdated: number;
+  tickersFailed: number;
+  /** true when stream is complete */
+  done: boolean;
+  /** set if an error occurred */
+  errorMessage: string;
+}
+
 function createBaseStockMetadata(): StockMetadata {
   return { symbol: "", name: "", exchange: "", isin: "" };
 }
@@ -3562,7 +3586,285 @@ export const RunScanResponse: MessageFns<RunScanResponse> = {
   },
 };
 
-/** PriceService provides read-only access to the price database. */
+function createBaseUpdatePricesRequest(): UpdatePricesRequest {
+  return { exchanges: [], tickers: [], timeframe: 0 };
+}
+
+export const UpdatePricesRequest: MessageFns<UpdatePricesRequest> = {
+  encode(message: UpdatePricesRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    for (const v of message.exchanges) {
+      writer.uint32(10).string(v!);
+    }
+    for (const v of message.tickers) {
+      writer.uint32(18).string(v!);
+    }
+    if (message.timeframe !== 0) {
+      writer.uint32(24).int32(message.timeframe);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): UpdatePricesRequest {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseUpdatePricesRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.exchanges.push(reader.string());
+          continue;
+        }
+        case 2: {
+          if (tag !== 18) {
+            break;
+          }
+
+          message.tickers.push(reader.string());
+          continue;
+        }
+        case 3: {
+          if (tag !== 24) {
+            break;
+          }
+
+          message.timeframe = reader.int32() as any;
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): UpdatePricesRequest {
+    return {
+      exchanges: globalThis.Array.isArray(object?.exchanges)
+        ? object.exchanges.map((e: any) => globalThis.String(e))
+        : [],
+      tickers: globalThis.Array.isArray(object?.tickers) ? object.tickers.map((e: any) => globalThis.String(e)) : [],
+      timeframe: isSet(object.timeframe) ? timeframeFromJSON(object.timeframe) : 0,
+    };
+  },
+
+  toJSON(message: UpdatePricesRequest): unknown {
+    const obj: any = {};
+    if (message.exchanges?.length) {
+      obj.exchanges = message.exchanges;
+    }
+    if (message.tickers?.length) {
+      obj.tickers = message.tickers;
+    }
+    if (message.timeframe !== 0) {
+      obj.timeframe = timeframeToJSON(message.timeframe);
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<UpdatePricesRequest>, I>>(base?: I): UpdatePricesRequest {
+    return UpdatePricesRequest.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<UpdatePricesRequest>, I>>(object: I): UpdatePricesRequest {
+    const message = createBaseUpdatePricesRequest();
+    message.exchanges = object.exchanges?.map((e) => e) || [];
+    message.tickers = object.tickers?.map((e) => e) || [];
+    message.timeframe = object.timeframe ?? 0;
+    return message;
+  },
+};
+
+function createBaseUpdatePricesProgress(): UpdatePricesProgress {
+  return {
+    exchange: "",
+    exchangeIndex: 0,
+    exchangeTotal: 0,
+    tickersUpdated: 0,
+    tickersFailed: 0,
+    done: false,
+    errorMessage: "",
+  };
+}
+
+export const UpdatePricesProgress: MessageFns<UpdatePricesProgress> = {
+  encode(message: UpdatePricesProgress, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.exchange !== "") {
+      writer.uint32(10).string(message.exchange);
+    }
+    if (message.exchangeIndex !== 0) {
+      writer.uint32(16).int32(message.exchangeIndex);
+    }
+    if (message.exchangeTotal !== 0) {
+      writer.uint32(24).int32(message.exchangeTotal);
+    }
+    if (message.tickersUpdated !== 0) {
+      writer.uint32(32).int32(message.tickersUpdated);
+    }
+    if (message.tickersFailed !== 0) {
+      writer.uint32(40).int32(message.tickersFailed);
+    }
+    if (message.done !== false) {
+      writer.uint32(48).bool(message.done);
+    }
+    if (message.errorMessage !== "") {
+      writer.uint32(58).string(message.errorMessage);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): UpdatePricesProgress {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseUpdatePricesProgress();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.exchange = reader.string();
+          continue;
+        }
+        case 2: {
+          if (tag !== 16) {
+            break;
+          }
+
+          message.exchangeIndex = reader.int32();
+          continue;
+        }
+        case 3: {
+          if (tag !== 24) {
+            break;
+          }
+
+          message.exchangeTotal = reader.int32();
+          continue;
+        }
+        case 4: {
+          if (tag !== 32) {
+            break;
+          }
+
+          message.tickersUpdated = reader.int32();
+          continue;
+        }
+        case 5: {
+          if (tag !== 40) {
+            break;
+          }
+
+          message.tickersFailed = reader.int32();
+          continue;
+        }
+        case 6: {
+          if (tag !== 48) {
+            break;
+          }
+
+          message.done = reader.bool();
+          continue;
+        }
+        case 7: {
+          if (tag !== 58) {
+            break;
+          }
+
+          message.errorMessage = reader.string();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): UpdatePricesProgress {
+    return {
+      exchange: isSet(object.exchange) ? globalThis.String(object.exchange) : "",
+      exchangeIndex: isSet(object.exchangeIndex)
+        ? globalThis.Number(object.exchangeIndex)
+        : isSet(object.exchange_index)
+        ? globalThis.Number(object.exchange_index)
+        : 0,
+      exchangeTotal: isSet(object.exchangeTotal)
+        ? globalThis.Number(object.exchangeTotal)
+        : isSet(object.exchange_total)
+        ? globalThis.Number(object.exchange_total)
+        : 0,
+      tickersUpdated: isSet(object.tickersUpdated)
+        ? globalThis.Number(object.tickersUpdated)
+        : isSet(object.tickers_updated)
+        ? globalThis.Number(object.tickers_updated)
+        : 0,
+      tickersFailed: isSet(object.tickersFailed)
+        ? globalThis.Number(object.tickersFailed)
+        : isSet(object.tickers_failed)
+        ? globalThis.Number(object.tickers_failed)
+        : 0,
+      done: isSet(object.done) ? globalThis.Boolean(object.done) : false,
+      errorMessage: isSet(object.errorMessage)
+        ? globalThis.String(object.errorMessage)
+        : isSet(object.error_message)
+        ? globalThis.String(object.error_message)
+        : "",
+    };
+  },
+
+  toJSON(message: UpdatePricesProgress): unknown {
+    const obj: any = {};
+    if (message.exchange !== "") {
+      obj.exchange = message.exchange;
+    }
+    if (message.exchangeIndex !== 0) {
+      obj.exchangeIndex = Math.round(message.exchangeIndex);
+    }
+    if (message.exchangeTotal !== 0) {
+      obj.exchangeTotal = Math.round(message.exchangeTotal);
+    }
+    if (message.tickersUpdated !== 0) {
+      obj.tickersUpdated = Math.round(message.tickersUpdated);
+    }
+    if (message.tickersFailed !== 0) {
+      obj.tickersFailed = Math.round(message.tickersFailed);
+    }
+    if (message.done !== false) {
+      obj.done = message.done;
+    }
+    if (message.errorMessage !== "") {
+      obj.errorMessage = message.errorMessage;
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<UpdatePricesProgress>, I>>(base?: I): UpdatePricesProgress {
+    return UpdatePricesProgress.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<UpdatePricesProgress>, I>>(object: I): UpdatePricesProgress {
+    const message = createBaseUpdatePricesProgress();
+    message.exchange = object.exchange ?? "";
+    message.exchangeIndex = object.exchangeIndex ?? 0;
+    message.exchangeTotal = object.exchangeTotal ?? 0;
+    message.tickersUpdated = object.tickersUpdated ?? 0;
+    message.tickersFailed = object.tickersFailed ?? 0;
+    message.done = object.done ?? false;
+    message.errorMessage = object.errorMessage ?? "";
+    return message;
+  },
+};
+
+/** PriceService provides read-only access to the price database and on-demand updates. */
 export type PriceServiceDefinition = typeof PriceServiceDefinition;
 export const PriceServiceDefinition = {
   name: "PriceService",
@@ -3640,6 +3942,14 @@ export const PriceServiceDefinition = {
       responseStream: false,
       options: {},
     },
+    updatePrices: {
+      name: "UpdatePrices",
+      requestType: UpdatePricesRequest,
+      requestStream: false,
+      responseType: UpdatePricesProgress,
+      responseStream: true,
+      options: {},
+    },
   },
 } as const;
 
@@ -3677,6 +3987,10 @@ export interface PriceServiceImplementation<CallContextExt = {}> {
     context: CallContext & CallContextExt,
   ): Promise<DeepPartial<GetHourlyDataQualityResponse>>;
   runScan(request: RunScanRequest, context: CallContext & CallContextExt): Promise<DeepPartial<RunScanResponse>>;
+  updatePrices(
+    request: UpdatePricesRequest,
+    context: CallContext & CallContextExt,
+  ): ServerStreamingMethodResult<DeepPartial<UpdatePricesProgress>>;
 }
 
 export interface PriceServiceClient<CallOptionsExt = {}> {
@@ -3713,6 +4027,10 @@ export interface PriceServiceClient<CallOptionsExt = {}> {
     options?: CallOptions & CallOptionsExt,
   ): Promise<GetHourlyDataQualityResponse>;
   runScan(request: DeepPartial<RunScanRequest>, options?: CallOptions & CallOptionsExt): Promise<RunScanResponse>;
+  updatePrices(
+    request: DeepPartial<UpdatePricesRequest>,
+    options?: CallOptions & CallOptionsExt,
+  ): AsyncIterable<UpdatePricesProgress>;
 }
 
 type Builtin = Date | Function | Uint8Array | string | number | boolean | undefined;
@@ -3763,6 +4081,8 @@ function longToNumber(int64: { toString(): string }): number {
 function isSet(value: any): boolean {
   return value !== null && value !== undefined;
 }
+
+export type ServerStreamingMethodResult<Response> = { [Symbol.asyncIterator](): AsyncIterator<Response, void> };
 
 export interface MessageFns<T> {
   encode(message: T, writer?: BinaryWriter): BinaryWriter;

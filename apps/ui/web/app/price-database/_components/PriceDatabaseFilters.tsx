@@ -60,7 +60,8 @@ const defaultFilters = (
 export function getLoadParams(
   filters: PriceFiltersState,
   statsDailyMin?: string | null,
-  statsDailyMax?: string | null
+  statsDailyMax?: string | null,
+  metadata?: StockMetadataItem[]
 ): LoadPriceDataParams {
   const startDate = filters.startDate
     ? new Date(filters.startDate)
@@ -68,9 +69,21 @@ export function getLoadParams(
   const endDate = filters.endDate
     ? new Date(filters.endDate)
     : (statsDailyMax ? new Date(statsDailyMax) : undefined);
+
+  let tickers: string[];
+  if (filters.selectedTickers.length > 0) {
+    tickers = filters.selectedTickers;
+  } else if (filters.exchanges.length > 0 && metadata?.length) {
+    tickers = metadata
+      .filter((m) => filters.exchanges.includes(m.exchange))
+      .map((m) => m.symbol);
+  } else {
+    tickers = [];
+  }
+
   return {
     timeframe: filters.timeframe,
-    tickers: filters.selectedTickers.length > 0 ? filters.selectedTickers : [],
+    tickers,
     startDate: startDate ?? undefined,
     endDate: endDate ?? undefined,
     maxRows: filters.maxRows,

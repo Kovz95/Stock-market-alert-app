@@ -3,19 +3,14 @@ package config
 import (
 	"os"
 	"strconv"
-	"strings"
 	"time"
 )
 
-// Config holds env-based configuration for the scheduler and worker.
+// Config holds env-based configuration for the worker.
 type Config struct {
 	DatabaseURL string
 	RedisAddr   string
 	FMPAPIKey   string
-
-	// WorkerTaskTypes restricts which task types this worker handles (comma-separated:
-	// enqueue, daily, weekly, hourly). Empty = all types.
-	WorkerTaskTypes []string
 
 	// Discord webhooks (optional). If set, status notifications are sent.
 	DiscordWebhookDaily  string
@@ -25,7 +20,7 @@ type Config struct {
 	JobTimeoutSec int
 
 	// ShadowMode: when true, write alert trigger results to ShadowOutputDir for comparison with Python.
-	ShadowMode     bool
+	ShadowMode      bool
 	ShadowOutputDir string
 }
 
@@ -56,29 +51,7 @@ func Load() *Config {
 	if c.RedisAddr == "" {
 		c.RedisAddr = "localhost:6379"
 	}
-	if v := os.Getenv("WORKER_TASK_TYPES"); v != "" {
-		for _, s := range strings.Split(v, ",") {
-			if t := strings.TrimSpace(strings.ToLower(s)); t != "" {
-				c.WorkerTaskTypes = append(c.WorkerTaskTypes, t)
-			}
-		}
-	}
 	return c
-}
-
-// HandlesTaskType returns true if this worker should handle the given task type
-// (e.g. "daily", "weekly", "hourly", "enqueue"). Empty WorkerTaskTypes = handle all.
-func (c *Config) HandlesTaskType(taskType string) bool {
-	if len(c.WorkerTaskTypes) == 0 {
-		return true
-	}
-	t := strings.ToLower(strings.TrimSpace(taskType))
-	for _, allowed := range c.WorkerTaskTypes {
-		if allowed == t {
-			return true
-		}
-	}
-	return false
 }
 
 // JobTimeout returns the job timeout as a duration.

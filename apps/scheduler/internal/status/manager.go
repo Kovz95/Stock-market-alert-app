@@ -3,7 +3,7 @@ package status
 import (
 	"context"
 	"encoding/json"
-	"log"
+	"log/slog"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
@@ -17,15 +17,24 @@ const documentKey = "scheduler_status"
 // Manager updates scheduler status in app_documents for monitoring.
 type Manager struct {
 	queries *db.Queries
+	logger  *slog.Logger
 }
 
 // NewManager creates a status manager that writes to app_documents.
-func NewManager(queries *db.Queries) *Manager {
-	return &Manager{queries: queries}
+func NewManager(queries *db.Queries, logger *slog.Logger) *Manager {
+	if logger == nil {
+		logger = slog.Default()
+	}
+	return &Manager{queries: queries, logger: logger.With("component", "status_manager")}
 }
 
 // UpdateRunning sets status to "running" and records the current job.
 func (m *Manager) UpdateRunning(ctx context.Context, exchange, timeframe string) error {
+	m.logger.Debug("updating status",
+		"type", "running",
+		"exchange", exchange,
+		"timeframe", timeframe,
+	)
 	payload := map[string]interface{}{
 		"status":      "running",
 		"heartbeat":   time.Now().UTC().Format(time.RFC3339),
@@ -40,6 +49,11 @@ func (m *Manager) UpdateRunning(ctx context.Context, exchange, timeframe string)
 
 // UpdateSuccess clears current_job and sets last_run and last_result.
 func (m *Manager) UpdateSuccess(ctx context.Context, exchange, timeframe string, priceStats *discord.PriceStats, alertStats *discord.AlertStats) error {
+	m.logger.Debug("updating status",
+		"type", "success",
+		"exchange", exchange,
+		"timeframe", timeframe,
+	)
 	payload := map[string]interface{}{
 		"status":    "running",
 		"heartbeat": time.Now().UTC().Format(time.RFC3339),
@@ -58,6 +72,12 @@ func (m *Manager) UpdateSuccess(ctx context.Context, exchange, timeframe string,
 
 // UpdateError sets status to "error" and last_error.
 func (m *Manager) UpdateError(ctx context.Context, exchange, timeframe, errMsg string) error {
+	m.logger.Warn("updating status",
+		"type", "error",
+		"exchange", exchange,
+		"timeframe", timeframe,
+		"error_message", errMsg,
+	)
 	payload := map[string]interface{}{
 		"status":    "error",
 		"heartbeat": time.Now().UTC().Format(time.RFC3339),
@@ -82,7 +102,7 @@ func (m *Manager) upsert(ctx context.Context, payload map[string]interface{}) er
 		SourcePath:  pgtype.Text{},
 	})
 	if err != nil {
-		log.Printf("status/manager: upsert failed: %v", err)
+		m.logger.Error("upsert failed", "error", err)
 	}
 	return err
 }

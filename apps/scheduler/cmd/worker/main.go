@@ -4,7 +4,7 @@ package main
 
 import (
 	"context"
-	"log"
+	"log/slog"
 	"os"
 	"os/signal"
 	"syscall"
@@ -22,6 +22,7 @@ import (
 	"stockalert/apps/scheduler/internal/config"
 	"stockalert/apps/scheduler/internal/handler"
 	"stockalert/apps/scheduler/internal/price"
+	"stockalert/apps/scheduler/internal/schedule"
 	"stockalert/apps/scheduler/internal/status"
 	"stockalert/apps/scheduler/internal/tasks"
 )
@@ -31,11 +32,34 @@ const (
 	dbConnectBackoff = 2 * time.Second
 )
 
+// maskSecret masks a secret string, showing only the first 4 chars.
+func maskSecret(s string) string {
+	if len(s) <= 4 {
+		return "****"
+	}
+	return s[:4] + "****"
+}
+
 func main() {
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}))
+	slog.SetDefault(logger)
+
 	cfg := config.Load()
 	if cfg.DatabaseURL == "" {
-		log.Fatal("DATABASE_URL is required")
+		logger.Error("DATABASE_URL is required")
+		os.Exit(1)
 	}
+
+	logger.Info("worker initializing",
+		"redis_addr", cfg.RedisAddr,
+		"database_url", maskSecret(cfg.DatabaseURL),
+		"fmp_api_key", maskSecret(cfg.FMPAPIKey),
+		"job_timeout", cfg.JobTimeout().String(),
+		"shadow_mode", cfg.ShadowMode,
+		"discord_webhook_daily_set", cfg.DiscordWebhookDaily != "",
+		"discord_webhook_weekly_set", cfg.DiscordWebhookWeekly != "",
+		"discord_webhook_hourly_set", cfg.DiscordWebhookHourly != "",
+	)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -45,18 +69,28 @@ func main() {
 		var err error
 		pool, err = pgxpool.New(ctx, cfg.DatabaseURL)
 		if err != nil {
-			log.Printf("database connect (attempt %d/%d): %v", attempt, dbConnectRetries, err)
+			logger.Warn("database connect failed",
+				"attempt", attempt,
+				"max_attempts", dbConnectRetries,
+				"error", err,
+			)
 			if attempt == dbConnectRetries {
-				log.Fatalf("database: %v", err)
+				logger.Error("database connection exhausted retries", "error", err)
+				os.Exit(1)
 			}
 			time.Sleep(dbConnectBackoff)
 			continue
 		}
 		if err := pool.Ping(ctx); err != nil {
 			pool.Close()
-			log.Printf("database ping (attempt %d/%d): %v", attempt, dbConnectRetries, err)
+			logger.Warn("database ping failed",
+				"attempt", attempt,
+				"max_attempts", dbConnectRetries,
+				"error", err,
+			)
 			if attempt == dbConnectRetries {
-				log.Fatalf("database ping: %v", err)
+				logger.Error("database ping exhausted retries", "error", err)
+				os.Exit(1)
 			}
 			time.Sleep(dbConnectBackoff)
 			continue
@@ -65,12 +99,18 @@ func main() {
 	}
 	defer pool.Close()
 
+	poolStats := pool.Stat()
+	logger.Info("database connected",
+		"max_conns", poolStats.MaxConns(),
+		"total_conns", poolStats.TotalConns(),
+	)
+
 	queries := db.New(pool)
 
 	// Router loads config from DB; create with background load
 	router, err := discord.NewRouter(ctx, queries)
 	if err != nil {
-		log.Printf("discord router (using defaults): %v", err)
+		logger.Warn("discord router init error, using defaults", "error", err)
 	}
 
 	registry := indicator.NewDefaultRegistry()
@@ -78,8 +118,8 @@ func main() {
 	notifier := discord.NewNotifier()
 	accum := discord.NewAccumulator(notifier)
 	fmpClient := price.NewFMPClient(cfg.FMPAPIKey)
-	updater := price.NewUpdater(queries, fmpClient)
-	statusMgr := status.NewManager(queries)
+	updater := price.NewUpdater(queries, fmpClient, logger)
+	statusMgr := status.NewManager(queries, logger)
 
 	common := &handler.Common{
 		Queries:       queries,
@@ -89,6 +129,7 @@ func main() {
 		Notifier:      notifier,
 		Updater:       updater,
 		Status:        statusMgr,
+		Logger:        logger,
 		JobTimeout:    cfg.JobTimeout(),
 		WebhookDaily:  cfg.DiscordWebhookDaily,
 		WebhookWeekly: cfg.DiscordWebhookWeekly,
@@ -97,7 +138,7 @@ func main() {
 	}
 	if cfg.ShadowMode {
 		common.ShadowDir = cfg.ShadowOutputDir
-		log.Printf("shadow mode enabled: writing results to %s", common.ShadowDir)
+		logger.Info("shadow mode enabled", "output_dir", common.ShadowDir)
 	}
 
 	asynqClient := asynq.NewClient(asynq.RedisClientOpt{Addr: cfg.RedisAddr})
@@ -112,51 +153,34 @@ func main() {
 	)
 
 	mux := asynq.NewServeMux()
-	var handlers int
-	var jobTypes []string
-	if cfg.HandlesTaskType("daily") {
-		mux.Handle(tasks.TypeDaily, handler.NewDailyHandler(common))
-		jobTypes = append(jobTypes, "daily")
-		handlers++
-	}
-	if cfg.HandlesTaskType("weekly") {
-		mux.Handle(tasks.TypeWeekly, handler.NewWeeklyHandler(common))
-		jobTypes = append(jobTypes, "weekly")
-		handlers++
-	}
-	if cfg.HandlesTaskType("hourly") {
-		mux.Handle(tasks.TypeHourly, handler.NewHourlyHandler(common))
-		jobTypes = append(jobTypes, "hourly")
-		handlers++
-	}
-	if cfg.HandlesTaskType("enqueue") {
-		mux.Handle(tasks.EnqueueTaskType, handler.NewEnqueueHandler(asynqClient))
-		handlers++
-	}
-	if handlers == 0 {
-		log.Fatal("WORKER_TASK_TYPES did not register any handlers; use daily, weekly, hourly, and/or enqueue")
-	}
+	mux.Handle(tasks.TypeDaily, handler.NewDailyHandler(common))
+	mux.Handle(tasks.TypeWeekly, handler.NewWeeklyHandler(common))
+	mux.Handle(tasks.TypeHourly, handler.NewHourlyHandler(common))
+	logger.Info("registered handlers", "task_types", []string{"daily", "weekly", "hourly"})
 
 	go func() {
 		if err := srv.Run(mux); err != nil {
-			log.Printf("asynq server: %v", err)
+			logger.Error("asynq server error", "error", err)
 		}
 	}()
 
+	sched := schedule.New(asynqClient, logger)
+	sched.Start(ctx)
+
+	jobTypes := []string{"daily", "weekly", "hourly"}
 	for _, jt := range jobTypes {
-		log.Printf("%s worker starting", jt)
+		logger.Info("worker starting", "job_type", jt)
 		common.NotifyWorkerLifecycle(jt, "start")
 	}
 
 	sig := make(chan os.Signal, 1)
 	signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)
-	<-sig
+	received := <-sig
 
+	logger.Info("shutting down worker", "signal", received.String())
+	sched.Stop()
 	for _, jt := range jobTypes {
-		log.Printf("%s worker stopping", jt)
 		common.NotifyWorkerLifecycle(jt, "stop")
 	}
-
-	log.Println("shutting down worker")
 	srv.Shutdown()
 }
