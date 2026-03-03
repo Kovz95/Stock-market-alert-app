@@ -155,7 +155,7 @@ export function StockDatabaseFilters({
           else onChange([v]);
         }}
       >
-        <SelectTrigger className="h-8 text-xs">
+        <SelectTrigger className="h-8 w-full text-xs">
           <SelectValue placeholder={`All ${label}`} />
         </SelectTrigger>
         <SelectContent>
@@ -192,7 +192,7 @@ export function StockDatabaseFilters({
             update({ countries: v === "__all__" ? [] : [v] })
           }
         >
-          <SelectTrigger className="h-8 text-xs">
+          <SelectTrigger className="h-8 w-full text-xs">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -212,7 +212,7 @@ export function StockDatabaseFilters({
             update({ exchanges: v === "__all__" ? [] : [v] })
           }
         >
-          <SelectTrigger className="h-8 text-xs">
+          <SelectTrigger className="h-8 w-full text-xs">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -230,7 +230,7 @@ export function StockDatabaseFilters({
           value={filters.assetType}
           onValueChange={(v) => update({ assetType: v as AssetTypeFilter })}
         >
-          <SelectTrigger className="h-8 text-xs">
+          <SelectTrigger className="h-8 w-full text-xs">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
