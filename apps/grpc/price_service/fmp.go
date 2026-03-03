@@ -38,13 +38,14 @@ type dailyRow struct {
 	Volume int64   `json:"volume"`
 }
 
+// Volume is float64 because FMP sometimes returns volume as a float.
 type hourlyRow struct {
 	Date   string  `json:"date"`
 	Open   float64 `json:"open"`
 	High   float64 `json:"high"`
 	Low    float64 `json:"low"`
 	Close  float64 `json:"close"`
-	Volume int64   `json:"volume"`
+	Volume float64 `json:"volume"`
 }
 
 func (c *fmpClient) FetchDaily(ticker string, limit int) ([]dailyRow, error) {

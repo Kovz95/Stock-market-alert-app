@@ -320,7 +320,7 @@ func (u *priceUpdater) updateHourly(ctx context.Context, exchange string, ticker
 					High:     pgtype.Float8{Float64: r.High, Valid: true},
 					Low:      pgtype.Float8{Float64: r.Low, Valid: true},
 					Close:    r.Close,
-					Volume:   pgtype.Int8{Int64: r.Volume, Valid: true},
+					Volume:   pgtype.Int8{Int64: int64(r.Volume), Valid: true},
 				})
 			}
 			results <- hourlyFetchResult{ticker: t, rows: params}

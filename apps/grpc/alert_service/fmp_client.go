@@ -41,13 +41,14 @@ type dailyRow struct {
 }
 
 // hourlyRow is one bar from FMP historical-chart/1hour.
+// Volume is float64 because FMP sometimes returns volume as a float.
 type hourlyRow struct {
 	Date   string  `json:"date"`
 	Open   float64 `json:"open"`
 	High   float64 `json:"high"`
 	Low    float64 `json:"low"`
 	Close  float64 `json:"close"`
-	Volume int64   `json:"volume"`
+	Volume float64 `json:"volume"`
 }
 
 // FetchDaily fetches daily historical prices for a ticker (up to limit days).

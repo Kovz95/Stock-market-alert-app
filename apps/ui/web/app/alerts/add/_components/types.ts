@@ -40,6 +40,7 @@ export type ConditionParams = {
   // RSI
   rsiPeriod?: number;
   rsiLevel?: number;
+  rsiLevelOperator?: string; // ">", "<", ">=", "<=" for rsi_level
   oversoldLevel?: number;
   overboughtLevel?: number;
   // MACD
@@ -95,12 +96,8 @@ export function conditionEntryToExpression(entry: ConditionEntry): string {
         return `rsi(${params.rsiPeriod})[-1] < ${params.oversoldLevel ?? 30}`;
       if (type === "rsi_overbought" && params.rsiPeriod != null)
         return `rsi(${params.rsiPeriod})[-1] > ${params.overboughtLevel ?? 70}`;
-      if (
-        type === "rsi_level" &&
-        params.rsiPeriod != null &&
-        params.rsiLevel != null
-      )
-        return `rsi(${params.rsiPeriod})[-1] ${params.rsiLevel}`;
+      if (type === "rsi_level" && params.rsiPeriod != null && params.rsiLevel != null)
+        return `rsi(${params.rsiPeriod})[-1] ${params.rsiLevelOperator ?? ">"} ${params.rsiLevel}`;
       break;
     case "macd":
       if (type === "macd_bullish_crossover")
@@ -111,8 +108,10 @@ export function conditionEntryToExpression(entry: ConditionEntry): string {
         return "macd_histogram_positive";
       break;
     case "bollinger":
-      if (type === "price_above_upper_band") return "price_above_upper_band";
-      if (type === "price_below_lower_band") return "price_below_lower_band";
+      if (type === "price_above_upper_band" && params.bbPeriod != null && params.bbStd != null)
+        return `close[-1] > bbands(${params.bbPeriod}, ${params.bbStd}, type='upper')[-1]`;
+      if (type === "price_below_lower_band" && params.bbPeriod != null && params.bbStd != null)
+        return `close[-1] < bbands(${params.bbPeriod}, ${params.bbStd}, type='lower')[-1]`;
       break;
     case "volume":
       if (type === "volume_above_average" && params.volumeMultiplier != null)
@@ -152,6 +151,10 @@ export function buildConditionsStruct(
 export function conditionEntryLabel(entry: ConditionEntry): string {
   const expr = conditionEntryToExpression(entry);
   if (expr) return expr;
+  if (entry.category === "rsi" && entry.type === "rsi_level")
+    return "RSI at level (incomplete)";
+  if (entry.category === "bollinger")
+    return `Bollinger ${entry.type === "price_above_upper_band" ? "upper" : "lower"} band (incomplete)`;
   return `${entry.category} – ${entry.type}`;
 }
 
@@ -161,7 +164,7 @@ export interface AddAlertFormState {
   isRatio: boolean;
   ticker: string;
   stockName: string;
-  exchange: string;
+  exchanges: string[]; // Changed from single exchange to array
   country: string;
   ticker1: string;
   ticker2: string;

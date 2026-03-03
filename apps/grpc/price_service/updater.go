@@ -353,7 +353,7 @@ func (u *priceUpdater) updateHourly(ctx context.Context, q *db.Queries, exchange
 				High:     pgtype.Float8{Float64: r.High, Valid: true},
 				Low:      pgtype.Float8{Float64: r.Low, Valid: true},
 				Close:    r.Close,
-				Volume:   pgtype.Int8{Int64: r.Volume, Valid: true},
+				Volume:   pgtype.Int8{Int64: int64(r.Volume), Valid: true},
 			}
 			if err := wq.UpsertHourlyPrice(ctx, arg); err != nil {
 				u.logger.Error("UpsertHourlyPrice failed", "ticker", ticker, "error", err)

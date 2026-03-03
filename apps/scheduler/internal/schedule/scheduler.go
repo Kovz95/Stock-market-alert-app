@@ -85,15 +85,21 @@ func isUniqueConflict(err error) bool {
 // when exchange is open with Unique(30min). Tasks are scheduled for their
 // ProcessAt time (e.g. next market close); they appear in Redis as "scheduled"
 // until that time, then the worker runs them.
+//
+// Hourly: scheduled_hourly can be 0 even when markets are open because we use
+// Unique(30min)—only one task per exchange per 30 min. The other 15-min cycle
+// skips with "task already exists". Check open_exchanges in the log: if > 0,
+// hourly was considered and either newly enqueued or already enqueued.
 func (s *Scheduler) scheduleAll(ctx context.Context) {
+	// Use a single UTC instant for the whole cycle so all exchange checks are consistent.
 	now := time.Now().UTC()
 	exchangeCount := len(calendar.ExchangeSchedules)
 	s.logger.Info("schedule cycle starting",
 		"exchange_count", exchangeCount,
-		"at", now.Format(time.RFC3339),
+		"now_utc", now.Format(time.RFC3339),
 	)
 	start := time.Now()
-	var scheduledDaily, scheduledWeekly, scheduledHourly int
+	var scheduledDaily, scheduledWeekly, scheduledHourly, openExchangeCount int
 
 	for exchange := range calendar.ExchangeSchedules {
 		nextDaily := calendar.GetNextDailyRunTime(exchange, now)
@@ -134,6 +140,7 @@ func (s *Scheduler) scheduleAll(ctx context.Context) {
 			)
 		}
 		if calendar.IsExchangeOpen(exchange, now) {
+			openExchangeCount++
 			payloadHourly, _ := json.Marshal(tasks.Payload{Exchange: exchange, Timeframe: "hourly"})
 			taskHourly := asynq.NewTask(tasks.TypeHourly, payloadHourly)
 			// Schedule for 30 min from now so the task stays visible in "scheduled" until run time.
@@ -160,6 +167,13 @@ func (s *Scheduler) scheduleAll(ctx context.Context) {
 		"scheduled_daily", scheduledDaily,
 		"scheduled_weekly", scheduledWeekly,
 		"scheduled_hourly", scheduledHourly,
+		"open_exchanges", openExchangeCount,
 		"duration_ms", time.Since(start).Milliseconds(),
 	)
+	// When no exchanges are considered open, log why for NYSE to debug UTC vs local timing.
+	if openExchangeCount == 0 && exchangeCount > 0 {
+		s.logger.Info("hourly none open; NYSE diagnostic",
+			"status", calendar.ExchangeOpenStatus(calendar.ExchangeNYSE, now),
+		)
+	}
 }

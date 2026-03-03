@@ -2,6 +2,17 @@
 
 This app runs the Asynq worker that processes daily, weekly, and hourly price/alert tasks. It also runs a **schedule loop** every 15 minutes that enqueues those tasks with `ProcessAt` and `Unique` options.
 
+## Why you might not see hourly jobs enqueued
+
+1. **Market hours**  
+   Hourly tasks are only enqueued when `calendar.IsExchangeOpen(exchange, now)` is true at the time of the 15‑minute cycle. If it’s outside market hours for all exchanges (e.g. weekend, or outside 9:30–16:00 local for each exchange), `scheduled_hourly` and `open_exchanges` will be 0.
+
+2. **Where to look**  
+   Hourly tasks are enqueued with **ProcessAt(now + 30 min)** and **Unique(30 min)**. They appear under **Scheduled** in the queue (e.g. listqueue or Asynqmon), not in the immediate “Enqueued”/pending list until their `ProcessAt` time is reached.
+
+3. **Why `scheduled_hourly` is often 0 in logs**  
+   We only enqueue one hourly task per exchange per 30 minutes. On the next 15‑minute cycle the same exchange is still open, but Asynq returns “task already exists” and we skip. So `scheduled_hourly` is only non‑zero in the cycle where we *newly* enqueue. Check **open_exchanges** in the same log line: if it’s > 0, markets were open and hourly was either newly enqueued or already enqueued (skip).
+
 ## Why you see "task already exists"
 
 The scheduler enqueues each exchange’s tasks with **Unique** (12h for daily/weekly, 30m for hourly). Every 15 minutes it tries to enqueue again. If a task for that exchange was already enqueued within the uniqueness window, Asynq returns **"task already exists"** and does not add a duplicate.
@@ -11,7 +22,7 @@ That is **expected**. Those messages are now logged at **Debug** (e.g. `schedule
 ## Why jobs don’t appear to be "running"
 
 - **Daily and weekly** tasks are enqueued with **ProcessAt(next run time)** (e.g. next market close). They stay in Redis as **scheduled** until that time. They are not "running" until the worker picks them up at `ProcessAt`.
-- **Hourly** tasks are enqueued when the exchange is open and are processed soon after; they may still be **pending** in the queue until a worker is free.
+- **Hourly** tasks are enqueued when the exchange is open, with **ProcessAt(now + 30 min)** and Unique(30 min). They appear in **scheduled** until that time, then move to pending/active.
 
 So you will only see tasks **actively running** when:
 

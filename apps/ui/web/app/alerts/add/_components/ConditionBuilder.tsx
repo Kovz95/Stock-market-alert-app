@@ -77,6 +77,42 @@ function generateId(): string {
   return `cond_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
 }
 
+/** Resolve params with the same defaults the UI displays, so "Add condition" saves what the user sees. */
+function resolveParamsForAdd(
+  category: ConditionCategory,
+  type: string,
+  params: ConditionParams
+): ConditionParams {
+  const p = { ...params };
+  if (category === "rsi") {
+    p.rsiPeriod = p.rsiPeriod ?? 14;
+    if (type === "rsi_oversold") p.oversoldLevel = p.oversoldLevel ?? 30;
+    if (type === "rsi_overbought") p.overboughtLevel = p.overboughtLevel ?? 70;
+    if (type === "rsi_level") {
+      p.rsiLevel = p.rsiLevel ?? 50;
+      p.rsiLevelOperator = p.rsiLevelOperator ?? ">";
+    }
+  }
+  if (category === "moving_average") {
+    if (type === "price_above_ma" || type === "price_below_ma") {
+      p.maPeriod = p.maPeriod ?? 20;
+      p.maType = p.maType ?? "SMA";
+    }
+    if (type === "ma_crossover") {
+      p.fastPeriod = p.fastPeriod ?? 10;
+      p.slowPeriod = p.slowPeriod ?? 20;
+    }
+  }
+  if (category === "volume") {
+    p.volumeMultiplier = p.volumeMultiplier ?? 1.5;
+  }
+  if (category === "bollinger") {
+    p.bbPeriod = p.bbPeriod ?? 20;
+    p.bbStd = p.bbStd ?? 2;
+  }
+  return p;
+}
+
 export interface ConditionBuilderProps {
   onAdd: (entry: ConditionEntry) => void;
 }
@@ -87,11 +123,12 @@ export function ConditionBuilder({ onAdd }: ConditionBuilderProps) {
   const [params, setParams] = useState<ConditionParams>({ priceValue: 100 });
 
   const handleAdd = () => {
+    const resolved = resolveParamsForAdd(category, type, params);
     const entry: ConditionEntry = {
       id: generateId(),
       category,
       type,
-      params: { ...params },
+      params: resolved,
     };
     onAdd(entry);
     setParams({ priceValue: 100 });
@@ -153,7 +190,18 @@ export function ConditionBuilder({ onAdd }: ConditionBuilderProps) {
           <Field>
             <FieldLabel>Condition type</FieldLabel>
             <FieldContent>
-              <Select value={type} onValueChange={setType}>
+              <Select
+              value={type}
+              onValueChange={(v) => {
+                setType(v);
+                if (v === "rsi_level" && (params.rsiLevel == null || params.rsiLevelOperator == null))
+                  setParams({
+                    ...params,
+                    rsiLevel: params.rsiLevel ?? 50,
+                    rsiLevelOperator: params.rsiLevelOperator ?? ">",
+                  });
+              }}
+            >
                 <SelectTrigger className="w-full">
                   <SelectValue />
                 </SelectTrigger>
@@ -305,6 +353,50 @@ export function ConditionBuilder({ onAdd }: ConditionBuilderProps) {
                   />
                 </FieldContent>
               </Field>
+            )}
+            {type === "rsi_level" && (
+              <>
+                <Field>
+                  <FieldLabel>Comparison</FieldLabel>
+                  <FieldContent>
+                    <Select
+                      value={params.rsiLevelOperator ?? ">"}
+                      onValueChange={(v) =>
+                        setParams({ ...params, rsiLevelOperator: v })
+                      }
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value=">">{">"} (above)</SelectItem>
+                        <SelectItem value="<">{"<"} (below)</SelectItem>
+                        <SelectItem value=">=">{"≥"} (at or above)</SelectItem>
+                        <SelectItem value="<=">{"≤"} (at or below)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </FieldContent>
+                </Field>
+                <Field>
+                  <FieldLabel>RSI level (0–100)</FieldLabel>
+                  <FieldContent>
+                    <Input
+                      type="number"
+                      min={0}
+                      max={100}
+                      value={params.rsiLevel ?? 50}
+                      onChange={(e) =>
+                        setParams({
+                          ...params,
+                          rsiLevel: e.target.value
+                            ? Number(e.target.value)
+                            : undefined,
+                        })
+                      }
+                    />
+                  </FieldContent>
+                </Field>
+              </>
             )}
           </>
         )}

@@ -1,6 +1,7 @@
 package calendar
 
 import (
+	"strings"
 	"testing"
 	"time"
 )
@@ -108,6 +109,25 @@ func TestGetCalendarTimezone(t *testing.T) {
 	}
 }
 
+// TestGetCalendarTimezone_AllExchanges ensures every exchange has a non-empty IANA timezone
+// so IsExchangeOpen can convert UTC to local time correctly.
+func TestGetCalendarTimezone_AllExchanges(t *testing.T) {
+	for exchange := range ExchangeSchedules {
+		tz := GetCalendarTimezone(exchange)
+		if tz == "" {
+			t.Errorf("exchange %q: GetCalendarTimezone returned empty string", exchange)
+		}
+		// LoadLocation must succeed for IsExchangeOpen to work
+		loc, err := time.LoadLocation(tz)
+		if err != nil {
+			t.Errorf("exchange %q: timezone %q LoadLocation failed: %v", exchange, tz, err)
+		}
+		if loc == nil {
+			t.Errorf("exchange %q: LoadLocation returned nil", exchange)
+		}
+	}
+}
+
 func TestIsExchangeOpen(t *testing.T) {
 	// Monday 10:00 AM New York -> NYSE open
 	mon := time.Date(2025, 1, 6, 15, 0, 0, 0, time.UTC) // 10 AM ET
@@ -128,6 +148,76 @@ func TestIsExchangeOpen(t *testing.T) {
 	early := time.Date(2025, 1, 6, 12, 0, 0, 0, time.UTC)
 	if IsExchangeOpen(ExchangeNYSE, early) {
 		t.Error("NYSE should be closed at 7 AM ET")
+	}
+	// Tuesday 3:00 PM ET (EDT in March) = 19:00 UTC -> NYSE open
+	marchOpen := time.Date(2025, 3, 4, 19, 0, 0, 0, time.UTC)
+	if !IsExchangeOpen(ExchangeNYSE, marchOpen) {
+		t.Error("NYSE should be open Tuesday 3 PM ET (19:00 UTC in March)")
+	}
+}
+
+func TestExchangeOpenStatus(t *testing.T) {
+	// Monday 10 AM ET -> open; status should contain "=> open"
+	mon := time.Date(2025, 1, 6, 15, 0, 0, 0, time.UTC)
+	status := ExchangeOpenStatus(ExchangeNYSE, mon)
+	if status == "" {
+		t.Error("ExchangeOpenStatus should not be empty")
+	}
+	if !IsExchangeOpen(ExchangeNYSE, mon) {
+		t.Error("NYSE should be open Monday 10 AM ET")
+	}
+	if status != "" && status[len(status)-7:] != "=> open" {
+		t.Errorf("ExchangeOpenStatus for open NYSE should end with '=> open', got %q", status)
+	}
+	// Saturday -> closed
+	sat := time.Date(2025, 1, 4, 15, 0, 0, 0, time.UTC)
+	statusSat := ExchangeOpenStatus(ExchangeNYSE, sat)
+	if statusSat != "" && statusSat[len(statusSat)-9:] != "=> closed" {
+		t.Errorf("ExchangeOpenStatus for Saturday should end with '=> closed', got %q", statusSat)
+	}
+}
+
+// TestIsExchangeOpen_AllExchanges calls IsExchangeOpen for every exchange at a few fixed
+// UTC times to ensure no panic and consistent behavior (weekday vs weekend, open vs closed).
+func TestIsExchangeOpen_AllExchanges(t *testing.T) {
+	// Tuesday 12:00 UTC: Europe afternoon, US morning, Asia evening — mix of open/closed.
+	tueNoonUTC := time.Date(2025, 3, 4, 12, 0, 0, 0, time.UTC)
+	// Saturday same time — all should be closed (weekend).
+	satNoonUTC := time.Date(2025, 3, 1, 12, 0, 0, 0, time.UTC)
+
+	for exchange := range ExchangeSchedules {
+		// Weekday: no panic; result is either open or closed
+		_ = IsExchangeOpen(exchange, tueNoonUTC)
+		// Saturday: all exchanges should be closed
+		openSat := IsExchangeOpen(exchange, satNoonUTC)
+		if openSat {
+			t.Errorf("exchange %q: should be closed on Saturday 12:00 UTC", exchange)
+		}
+	}
+	// Sanity: at least one exchange open on Tuesday noon UTC (e.g. European)
+	openCount := 0
+	for exchange := range ExchangeSchedules {
+		if IsExchangeOpen(exchange, tueNoonUTC) {
+			openCount++
+		}
+	}
+	if openCount == 0 {
+		t.Error("at least one exchange should be open on Tuesday 12:00 UTC (e.g. European)")
+	}
+}
+
+// TestExchangeOpenStatus_AllExchanges ensures ExchangeOpenStatus returns a valid string
+// for every exchange (no panic, ends with "=> open" or "=> closed").
+func TestExchangeOpenStatus_AllExchanges(t *testing.T) {
+	tueNoonUTC := time.Date(2025, 3, 4, 12, 0, 0, 0, time.UTC)
+	for exchange := range ExchangeSchedules {
+		status := ExchangeOpenStatus(exchange, tueNoonUTC)
+		if status == "" {
+			t.Errorf("exchange %q: ExchangeOpenStatus returned empty string", exchange)
+		}
+		if !strings.HasSuffix(status, "=> open") && !strings.HasSuffix(status, "=> closed") {
+			t.Errorf("exchange %q: ExchangeOpenStatus should end with '=> open' or '=> closed', got %q", exchange, status)
+		}
 	}
 }
 

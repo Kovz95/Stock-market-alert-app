@@ -84,3 +84,109 @@ export async function getFullStockMetadata(): Promise<GetFullStockMetadataResult
     return { error: message };
   }
 }
+
+export type CountSymbolsFilters = {
+  exchanges?: string[];
+  country?: string;
+};
+
+export type CountSymbolsResult = {
+  count: number;
+  error?: string;
+};
+
+/**
+ * Count symbols that match the given exchanges and country filters.
+ * "All" in exchanges array means no filter for exchanges.
+ */
+export async function countSymbolsByFilters(
+  filters: CountSymbolsFilters
+): Promise<CountSymbolsResult> {
+  try {
+    const res = await priceClient.getFullStockMetadata({});
+    const items = res.items ?? [];
+
+    let filtered = items;
+
+    // Filter by exchanges if not "All" and array is not empty
+    if (filters.exchanges && filters.exchanges.length > 0) {
+      const validExchanges = filters.exchanges.filter(e => e !== "All");
+      if (validExchanges.length > 0) {
+        filtered = filtered.filter((item) => {
+          const exchange = item.exchange || item["Exchange"] as string;
+          return validExchanges.includes(exchange);
+        });
+      }
+    }
+
+    // Filter by country if not "All"
+    if (filters.country && filters.country !== "All") {
+      filtered = filtered.filter((item) => {
+        const country = item.country || item["Country"] as string;
+        return country === filters.country;
+      });
+    }
+
+    return { count: filtered.length };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return { count: 0, error: message };
+  }
+}
+
+export type SymbolInfo = {
+  symbol: string;
+  name: string;
+  exchange: string;
+  country: string;
+};
+
+export type GetSymbolsByFiltersResult = {
+  symbols: SymbolInfo[];
+  error?: string;
+};
+
+/**
+ * Get actual symbols that match the given exchanges and country filters.
+ */
+export async function getSymbolsByFilters(
+  filters: CountSymbolsFilters
+): Promise<GetSymbolsByFiltersResult> {
+  try {
+    const res = await priceClient.getFullStockMetadata({});
+    const items = res.items ?? [];
+
+    let filtered = items;
+
+    // Filter by exchanges if not "All" and array is not empty
+    if (filters.exchanges && filters.exchanges.length > 0) {
+      const validExchanges = filters.exchanges.filter(e => e !== "All");
+      if (validExchanges.length > 0) {
+        filtered = filtered.filter((item) => {
+          const exchange = item.exchange || item["Exchange"] as string;
+          return validExchanges.includes(exchange);
+        });
+      }
+    }
+
+    // Filter by country if not "All"
+    if (filters.country && filters.country !== "All") {
+      filtered = filtered.filter((item) => {
+        const country = item.country || item["Country"] as string;
+        return country === filters.country;
+      });
+    }
+
+    const symbols: SymbolInfo[] = filtered.map((item) => ({
+      symbol: String(item.symbol || item["Symbol"] || ""),
+      name: String(item.name || item["Name"] || ""),
+      exchange: String(item.exchange || item["Exchange"] || ""),
+      country: String(item.country || item["Country"] || ""),
+    }));
+
+    return { symbols };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return { symbols: [], error: message };
+  }
+}

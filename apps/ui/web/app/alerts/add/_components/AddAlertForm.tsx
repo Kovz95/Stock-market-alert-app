@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useCreateAlert, useCreateAlertsBulk } from "@/lib/hooks/useAlerts";
 import type { CreateAlertInput } from "@/actions/alert-actions";
+import { getSymbolsByFilters } from "@/actions/stock-database-actions";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -34,6 +35,11 @@ import {
   type AddAlertFormState,
   type BulkTickerItem,
 } from "./types";
+import {
+  DEFAULT_TIMEFRAME,
+  DEFAULT_EXCHANGE,
+  DEFAULT_COUNTRY,
+} from "./constants";
 
 const defaultFormState: AddAlertFormState = {
   name: "",
@@ -41,8 +47,8 @@ const defaultFormState: AddAlertFormState = {
   isRatio: false,
   ticker: "",
   stockName: "",
-  exchange: "NYSE",
-  country: "US",
+  exchanges: [DEFAULT_EXCHANGE],
+  country: DEFAULT_COUNTRY,
   ticker1: "",
   ticker2: "",
   stockName1: "",
@@ -50,7 +56,7 @@ const defaultFormState: AddAlertFormState = {
   adjustmentMethod: "",
   conditions: [],
   combinationLogic: "AND",
-  timeframe: "1D",
+  timeframe: DEFAULT_TIMEFRAME,
 };
 
 function parseBulkTickers(text: string): BulkTickerItem[] {
@@ -75,6 +81,8 @@ export function AddAlertForm() {
   const [form, setForm] = useState<AddAlertFormState>(defaultFormState);
   const [bulkMode, setBulkMode] = useState(false);
   const [bulkTickersText, setBulkTickersText] = useState("");
+  const [applyToFiltered, setApplyToFiltered] = useState(false);
+  const [filteredSymbolCount, setFilteredSymbolCount] = useState(0);
 
   const isPending = createAlert.isPending || createAlertsBulk.isPending;
 
@@ -86,14 +94,19 @@ export function AddAlertForm() {
       form.conditions,
       form.combinationLogic
     );
+    // For single alert creation, use the first exchange or empty string
+    // Filter out "All" and take the first valid exchange
+    const validExchanges = form.exchanges.filter(e => e !== "All");
+    const exchange = validExchanges.length > 0 ? validExchanges[0] : "";
+
     return {
       ticker1: form.isRatio ? form.ticker1 : "",
       ticker2: form.isRatio ? form.ticker2 : "",
       combinationLogic: form.combinationLogic,
       action: form.action,
       timeframe: form.timeframe,
-      exchange: form.exchange,
-      country: form.country,
+      exchange,
+      country: form.country === "All" ? "" : form.country,
       ratio: form.isRatio ? "Yes" : "No",
       isRatio: form.isRatio,
       adjustmentMethod: form.adjustmentMethod || "",
@@ -112,13 +125,47 @@ export function AddAlertForm() {
         return;
       }
     } else {
-      if (!form.ticker.trim() && !bulkMode) {
+      if (!form.ticker.trim() && !bulkMode && !applyToFiltered) {
         toast.error("Please enter a ticker symbol.");
         return;
       }
     }
 
     const shared = buildSharedPayload();
+
+    // Handle "Apply to all filtered symbols" mode
+    if (applyToFiltered && !form.isRatio) {
+      const result = await getSymbolsByFilters({ exchanges: form.exchanges, country: form.country });
+      if (result.error || result.symbols.length === 0) {
+        toast.error(result.error || "No symbols found matching the filters.");
+        return;
+      }
+
+      const items = result.symbols.map((sym) => ({
+        ticker: sym.symbol,
+        stockName: sym.name,
+        name: form.name.trim() ? `${sym.name} - ${form.name.trim()}` : undefined,
+      }));
+
+      createAlertsBulk.mutate(
+        { shared, items },
+        {
+          onSuccess: (result) => {
+            if (result.created > 0)
+              toast.success(`Created ${result.created} alert(s).`);
+            if (result.failed > 0)
+              toast.error(`Failed to create ${result.failed} alert(s).`);
+            if (result.errors.length > 0)
+              result.errors.slice(0, 3).forEach((err) => toast.error(err));
+            if (result.created > 0) router.push("/alerts");
+          },
+          onError: (err) => {
+            toast.error(err.message ?? "Bulk create failed.");
+          },
+        }
+      );
+      return;
+    }
 
     if (bulkMode && bulkTickersText.trim()) {
       const items = parseBulkTickers(bulkTickersText);
@@ -228,10 +275,11 @@ export function AddAlertForm() {
                 onActionChange={(v) => setForm((f) => ({ ...f, action: v }))}
                 timeframe={form.timeframe}
                 onTimeframeChange={(v) => setForm((f) => ({ ...f, timeframe: v }))}
-                exchange={form.exchange}
-                onExchangeChange={(v) => setForm((f) => ({ ...f, exchange: v }))}
+                exchanges={form.exchanges}
+                onExchangesChange={(v) => setForm((f) => ({ ...f, exchanges: v }))}
                 country={form.country}
                 onCountryChange={(v) => setForm((f) => ({ ...f, country: v }))}
+                onSymbolCountChange={setFilteredSymbolCount}
               />
             </CardContent>
           </Card>
@@ -272,29 +320,60 @@ export function AddAlertForm() {
               />
 
               {!form.isRatio && (
-                <Field className="mt-4">
-                  <div className="flex items-center gap-2">
-                    <Checkbox
-                      id="bulk-mode"
-                      checked={bulkMode}
-                      onCheckedChange={(c) => setBulkMode(!!c)}
-                    />
-                    <Label htmlFor="bulk-mode">
-                      Create for multiple tickers (same conditions)
-                    </Label>
-                  </div>
-                  {bulkMode && (
-                    <FieldContent className="mt-2">
-                      <Textarea
-                        placeholder="Enter tickers, one per line or comma-separated (e.g. AAPL, MSFT, GOOGL)"
-                        value={bulkTickersText}
-                        onChange={(e) => setBulkTickersText(e.target.value)}
-                        rows={4}
-                        className="font-mono text-sm"
+                <div className="mt-4 space-y-4">
+                  <Field>
+                    <div className="flex items-center gap-2">
+                      <Checkbox
+                        id="apply-to-filtered"
+                        checked={applyToFiltered}
+                        onCheckedChange={(c) => {
+                          setApplyToFiltered(!!c);
+                          if (c) setBulkMode(false);
+                        }}
+                        disabled={filteredSymbolCount === 0}
                       />
-                    </FieldContent>
+                      <Label htmlFor="apply-to-filtered">
+                        Apply to ALL {filteredSymbolCount.toLocaleString()} filtered symbols
+                      </Label>
+                    </div>
+                    {applyToFiltered && filteredSymbolCount > 100 && (
+                      <p className="mt-2 text-sm text-muted-foreground">
+                        ⚠️ Creating alerts for {filteredSymbolCount.toLocaleString()} symbols may take some time.
+                      </p>
+                    )}
+                    {applyToFiltered && filteredSymbolCount > 500 && (
+                      <p className="mt-1 text-sm text-destructive">
+                        ⚠️ WARNING: Creating {filteredSymbolCount.toLocaleString()} alerts may fail. Consider using more specific filters.
+                      </p>
+                    )}
+                  </Field>
+
+                  {!applyToFiltered && (
+                    <Field>
+                      <div className="flex items-center gap-2">
+                        <Checkbox
+                          id="bulk-mode"
+                          checked={bulkMode}
+                          onCheckedChange={(c) => setBulkMode(!!c)}
+                        />
+                        <Label htmlFor="bulk-mode">
+                          Create for multiple tickers (same conditions)
+                        </Label>
+                      </div>
+                      {bulkMode && (
+                        <FieldContent className="mt-2">
+                          <Textarea
+                            placeholder="Enter tickers, one per line or comma-separated (e.g. AAPL, MSFT, GOOGL)"
+                            value={bulkTickersText}
+                            onChange={(e) => setBulkTickersText(e.target.value)}
+                            rows={4}
+                            className="font-mono text-sm"
+                          />
+                        </FieldContent>
+                      )}
+                    </Field>
                   )}
-                </Field>
+                </div>
               )}
             </CardContent>
           </Card>

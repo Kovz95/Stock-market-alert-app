@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import {
   Field,
   FieldGroup,
@@ -15,10 +16,25 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-
-const TIMEFRAMES = ["1D", "1W", "1M"] as const;
-const EXCHANGES = ["NYSE", "NASDAQ", "US"] as const;
-const COUNTRIES = ["US", "CA"] as const;
+import {
+  Combobox,
+  ComboboxChips,
+  ComboboxChip,
+  ComboboxChipsInput,
+  ComboboxContent,
+  ComboboxList,
+  ComboboxItem,
+  ComboboxEmpty,
+  useComboboxAnchor,
+} from "@/components/ui/combobox";
+import {
+  TIMEFRAMES,
+  EXCHANGES,
+  COUNTRIES,
+  COUNTRY_CODE_TO_NAME,
+} from "./constants";
+import { countSymbolsByFilters } from "@/actions/stock-database-actions";
+import { Badge } from "@/components/ui/badge";
 
 export interface AlertBasicFieldsProps {
   name: string;
@@ -27,10 +43,11 @@ export interface AlertBasicFieldsProps {
   onActionChange: (v: "Buy" | "Sell") => void;
   timeframe: string;
   onTimeframeChange: (v: string) => void;
-  exchange: string;
-  onExchangeChange: (v: string) => void;
+  exchanges: string[];
+  onExchangesChange: (v: string[]) => void;
   country: string;
   onCountryChange: (v: string) => void;
+  onSymbolCountChange?: (count: number) => void;
 }
 
 export function AlertBasicFields({
@@ -40,11 +57,50 @@ export function AlertBasicFields({
   onActionChange,
   timeframe,
   onTimeframeChange,
-  exchange,
-  onExchangeChange,
+  exchanges,
+  onExchangesChange,
   country,
   onCountryChange,
+  onSymbolCountChange,
 }: AlertBasicFieldsProps) {
+  const [symbolCount, setSymbolCount] = useState<number | null>(null);
+  const [isCountingSymbols, setIsCountingSymbols] = useState(false);
+
+  // Fetch symbol count when exchanges or country changes
+  useEffect(() => {
+    const fetchCount = async () => {
+      setIsCountingSymbols(true);
+      try {
+        // Count symbols across all selected exchanges
+        const result = await countSymbolsByFilters({ exchanges, country });
+        if (!result.error) {
+          setSymbolCount(result.count);
+          onSymbolCountChange?.(result.count);
+        }
+      } catch (err) {
+        console.error("Failed to count symbols:", err);
+      } finally {
+        setIsCountingSymbols(false);
+      }
+    };
+
+    fetchCount();
+  }, [exchanges, country, onSymbolCountChange]);
+
+  const hasFilters = (!exchanges.includes("All") && exchanges.length > 0) || country !== "All";
+  const showSymbolCount = hasFilters && symbolCount !== null;
+  const exchangeAnchor = useComboboxAnchor();
+
+  const handleExchangeChange = (value: string | string[] | null) => {
+    if (Array.isArray(value)) {
+      onExchangesChange(value);
+    } else if (value) {
+      onExchangesChange([value]);
+    } else {
+      onExchangesChange([]);
+    }
+  };
+
   return (
     <FieldGroup>
       <Field>
@@ -80,8 +136,8 @@ export function AlertBasicFields({
             </SelectTrigger>
             <SelectContent>
               {TIMEFRAMES.map((tf) => (
-                <SelectItem key={tf} value={tf}>
-                  {tf}
+                <SelectItem key={tf.value} value={tf.value}>
+                  {tf.label}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -89,20 +145,33 @@ export function AlertBasicFields({
         </FieldContent>
       </Field>
       <Field>
-        <FieldLegend>Exchange</FieldLegend>
+        <FieldLegend>Exchange(s)</FieldLegend>
         <FieldContent>
-          <Select value={exchange} onValueChange={onExchangeChange}>
-            <SelectTrigger className="w-full">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {EXCHANGES.map((ex) => (
-                <SelectItem key={ex} value={ex}>
+          <Combobox
+            value={exchanges}
+            onValueChange={handleExchangeChange}
+            items={EXCHANGES.map(ex => ({ value: ex, label: ex }))}
+            multiple
+          >
+            <ComboboxChips ref={exchangeAnchor}>
+              {exchanges.map((ex) => (
+                <ComboboxChip key={ex} value={ex}>
                   {ex}
-                </SelectItem>
+                </ComboboxChip>
               ))}
-            </SelectContent>
-          </Select>
+              <ComboboxChipsInput placeholder="Select exchanges..." />
+            </ComboboxChips>
+            <ComboboxContent anchor={exchangeAnchor.current}>
+              <ComboboxList>
+                {EXCHANGES.map((ex) => (
+                  <ComboboxItem key={ex} value={ex}>
+                    {ex}
+                  </ComboboxItem>
+                ))}
+                <ComboboxEmpty>No exchanges found</ComboboxEmpty>
+              </ComboboxList>
+            </ComboboxContent>
+          </Combobox>
         </FieldContent>
       </Field>
       <Field>
@@ -113,15 +182,52 @@ export function AlertBasicFields({
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {COUNTRIES.map((c) => (
-                <SelectItem key={c} value={c}>
-                  {c}
+              {COUNTRIES.map((code) => (
+                <SelectItem key={code} value={code}>
+                  {COUNTRY_CODE_TO_NAME[code] ?? code} ({code})
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
         </FieldContent>
       </Field>
+
+      {showSymbolCount && (
+        <div className="rounded-lg border bg-muted/50 p-3">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium">Filtered symbols:</span>
+            {isCountingSymbols ? (
+              <Badge variant="secondary">Loading...</Badge>
+            ) : (
+              <Badge variant="default" className="font-mono">
+                {symbolCount?.toLocaleString()}
+              </Badge>
+            )}
+          </div>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {(() => {
+              const validExchanges = exchanges.filter(e => e !== "All");
+              const hasExchangeFilter = validExchanges.length > 0;
+              const hasCountryFilter = country !== "All";
+
+              if (hasExchangeFilter && hasCountryFilter) {
+                const exchangeText = validExchanges.length === 1
+                  ? validExchanges[0]
+                  : `${validExchanges.length} exchanges (${validExchanges.join(", ")})`;
+                return `Showing symbols from ${exchangeText} in ${COUNTRY_CODE_TO_NAME[country] ?? country}`;
+              } else if (hasExchangeFilter) {
+                const exchangeText = validExchanges.length === 1
+                  ? validExchanges[0]
+                  : `${validExchanges.length} exchanges (${validExchanges.join(", ")})`;
+                return `Showing symbols from ${exchangeText}`;
+              } else if (hasCountryFilter) {
+                return `Showing symbols in ${COUNTRY_CODE_TO_NAME[country] ?? country}`;
+              }
+              return "";
+            })()}
+          </p>
+        </div>
+      )}
     </FieldGroup>
   );
 }

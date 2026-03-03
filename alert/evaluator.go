@@ -120,6 +120,41 @@ func ExtractConditions(raw []byte) ([]string, error) {
 		}
 	}
 
+	// Try as object with condition groups (e.g. {"condition_1": {"conditions": ["..."], "combination_logic": "AND"}})
+	// Used by web Add Alert and Streamlit when saving via API.
+	if raw[0] == '{' {
+		var obj map[string]json.RawMessage
+		if err := json.Unmarshal(raw, &obj); err != nil {
+			return nil, fmt.Errorf("unmarshal conditions object: %w", err)
+		}
+		var result []string
+		for _, v := range obj {
+			var group map[string]interface{}
+			if err := json.Unmarshal(v, &group); err != nil {
+				continue
+			}
+			condVal, ok := group["conditions"]
+			if !ok {
+				continue
+			}
+			switch c := condVal.(type) {
+			case []interface{}:
+				for _, item := range c {
+					if s, ok := item.(string); ok && s != "" {
+						result = append(result, s)
+					}
+				}
+			case string:
+				if c != "" {
+					result = append(result, c)
+				}
+			}
+		}
+		if len(result) > 0 {
+			return result, nil
+		}
+	}
+
 	return nil, fmt.Errorf("unsupported conditions format: %s", string(raw[:min(len(raw), 50)]))
 }
 

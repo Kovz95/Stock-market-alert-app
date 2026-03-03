@@ -94,7 +94,6 @@ func (u *Updater) tickersForExchange(ctx context.Context, exchange string) ([]st
 }
 
 func (u *Updater) updateDaily(ctx context.Context, tickers []string) (updated, failed int) {
-	var allRows []db.CopyDailyPricesParams
 	for _, ticker := range tickers {
 		rows, err := u.fmp.FetchDaily(ticker, dailyLimit)
 		if err != nil {
@@ -102,12 +101,13 @@ func (u *Updater) updateDaily(ctx context.Context, tickers []string) (updated, f
 			failed++
 			continue
 		}
+		ok := true
 		for _, r := range rows {
 			date, err := time.Parse("2006-01-02", r.Date)
 			if err != nil {
 				continue
 			}
-			allRows = append(allRows, db.CopyDailyPricesParams{
+			arg := db.UpsertDailyPriceParams{
 				Ticker: ticker,
 				Date:   pgtype.Date{Time: date, Valid: true},
 				Open:   pgtype.Float8{Float64: r.Open, Valid: true},
@@ -115,25 +115,22 @@ func (u *Updater) updateDaily(ctx context.Context, tickers []string) (updated, f
 				Low:    pgtype.Float8{Float64: r.Low, Valid: true},
 				Close:  r.Close,
 				Volume: pgtype.Int8{Int64: r.Volume, Valid: true},
-			})
+			}
+			if err := u.queries.UpsertDailyPrice(ctx, arg); err != nil {
+				u.logger.Warn("UpsertDailyPrice failed", "ticker", ticker, "date", r.Date, "error", err)
+				failed++
+				ok = false
+				break
+			}
 		}
-		updated++
+		if ok {
+			updated++
+		}
 	}
-	if len(allRows) == 0 {
-		return updated, failed
-	}
-	n, err := u.queries.CopyDailyPrices(ctx, allRows)
-	if err != nil {
-		u.logger.Error("CopyDailyPrices failed", "error", err)
-		return 0, len(tickers)
-	}
-	u.logger.Debug("daily prices copied", "rows_copied", n, "tickers_processed", updated)
 	return updated, failed
 }
 
 func (u *Updater) updateWeekly(ctx context.Context, tickers []string) (updated, failed int) {
-	// Fetch daily and resample to week-ending (Friday)
-	var allRows []db.CopyWeeklyPricesParams
 	for _, ticker := range tickers {
 		rows, err := u.fmp.FetchDaily(ticker, dailyLimit)
 		if err != nil {
@@ -142,8 +139,9 @@ func (u *Updater) updateWeekly(ctx context.Context, tickers []string) (updated, 
 			continue
 		}
 		weekly := resampleDailyToWeekly(rows)
+		ok := true
 		for _, w := range weekly {
-			allRows = append(allRows, db.CopyWeeklyPricesParams{
+			arg := db.UpsertWeeklyPriceParams{
 				Ticker:     ticker,
 				WeekEnding: pgtype.Date{Time: w.WeekEnding, Valid: true},
 				Open:       pgtype.Float8{Float64: w.Open, Valid: true},
@@ -151,19 +149,18 @@ func (u *Updater) updateWeekly(ctx context.Context, tickers []string) (updated, 
 				Low:        pgtype.Float8{Float64: w.Low, Valid: true},
 				Close:      w.Close,
 				Volume:     pgtype.Int8{Int64: w.Volume, Valid: true},
-			})
+			}
+			if err := u.queries.UpsertWeeklyPrice(ctx, arg); err != nil {
+				u.logger.Warn("UpsertWeeklyPrice failed", "ticker", ticker, "week_ending", w.WeekEnding.Format("2006-01-02"), "error", err)
+				failed++
+				ok = false
+				break
+			}
 		}
-		updated++
+		if ok {
+			updated++
+		}
 	}
-	if len(allRows) == 0 {
-		return updated, failed
-	}
-	n, err := u.queries.CopyWeeklyPrices(ctx, allRows)
-	if err != nil {
-		u.logger.Error("CopyWeeklyPrices failed", "error", err)
-		return 0, len(tickers)
-	}
-	u.logger.Debug("weekly prices copied", "rows_copied", n, "tickers_processed", updated)
 	return updated, failed
 }
 
@@ -244,7 +241,6 @@ func (u *Updater) updateHourly(ctx context.Context, exchange string, tickers []s
 	// Optional: respect calendar hourly alignment to only fetch when exchange is open
 	_ = calendar.GetHourlyAlignment(exchange)
 
-	var allRows []db.CopyHourlyPricesParams
 	for _, ticker := range tickers {
 		rows, err := u.fmp.FetchHourly(ticker)
 		if err != nil {
@@ -252,32 +248,32 @@ func (u *Updater) updateHourly(ctx context.Context, exchange string, tickers []s
 			failed++
 			continue
 		}
+		ok := true
 		for _, r := range rows {
 			// FMP returns "2024-01-15 14:00:00" or RFC3339
 			t, err := time.Parse("2006-01-02 15:04:05", r.Date)
 			if err != nil {
 				t, _ = time.Parse(time.RFC3339, r.Date)
 			}
-			allRows = append(allRows, db.CopyHourlyPricesParams{
+			arg := db.UpsertHourlyPriceParams{
 				Ticker:   ticker,
 				Datetime: pgtype.Timestamptz{Time: t.UTC(), Valid: true},
 				Open:     pgtype.Float8{Float64: r.Open, Valid: true},
 				High:     pgtype.Float8{Float64: r.High, Valid: true},
 				Low:      pgtype.Float8{Float64: r.Low, Valid: true},
 				Close:    r.Close,
-				Volume:   pgtype.Int8{Int64: r.Volume, Valid: true},
-			})
+				Volume:   pgtype.Int8{Int64: int64(r.Volume), Valid: true},
+			}
+			if err := u.queries.UpsertHourlyPrice(ctx, arg); err != nil {
+				u.logger.Warn("UpsertHourlyPrice failed", "ticker", ticker, "datetime", r.Date, "error", err)
+				failed++
+				ok = false
+				break
+			}
 		}
-		updated++
+		if ok {
+			updated++
+		}
 	}
-	if len(allRows) == 0 {
-		return updated, failed
-	}
-	n, err := u.queries.CopyHourlyPrices(ctx, allRows)
-	if err != nil {
-		u.logger.Error("CopyHourlyPrices failed", "error", err)
-		return 0, len(tickers)
-	}
-	u.logger.Debug("hourly prices copied", "rows_copied", n, "tickers_processed", updated)
 	return updated, failed
 }

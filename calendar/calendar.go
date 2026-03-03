@@ -4,6 +4,7 @@
 package calendar
 
 import (
+	"fmt"
 	"log"
 	"time"
 
@@ -219,9 +220,27 @@ const defaultOpenH, defaultOpenM = 9, 30
 const defaultCloseH, defaultCloseM = 16, 0
 
 // IsExchangeOpen reports whether the exchange is open at t (schedule-based fallback: weekday + local open/close).
+// t should be the current time as a UTC instant (e.g. time.Now().UTC()); it is converted to the exchange's
+// local timezone to check session hours.
 func IsExchangeOpen(exchange string, t time.Time) bool {
+	_, _, open := isExchangeOpenDetail(exchange, t)
+	return open
+}
+
+// ExchangeOpenStatus returns a short diagnostic string for why an exchange is open or closed at t.
+// Useful for debugging UTC vs local timing: e.g. "NYSE local=2025-03-04T15:00:00-04:00 session=09:30-16:00 => open".
+func ExchangeOpenStatus(exchange string, t time.Time) string {
+	localStr, sessionStr, open := isExchangeOpenDetail(exchange, t)
+	if open {
+		return localStr + " " + sessionStr + " => open"
+	}
+	return localStr + " " + sessionStr + " => closed"
+}
+
+// isExchangeOpenDetail returns local time string, session string, and open result.
+func isExchangeOpenDetail(exchange string, t time.Time) (localStr, sessionStr string, open bool) {
 	if _, ok := ExchangeSchedules[exchange]; !ok {
-		return false
+		return "", "", false
 	}
 	tzName := GetCalendarTimezone(exchange)
 	if tzName == "" {
@@ -229,12 +248,15 @@ func IsExchangeOpen(exchange string, t time.Time) bool {
 	}
 	loc, err := time.LoadLocation(tzName)
 	if err != nil {
-		return false
+		return "tz_error=" + tzName, "", false
 	}
-	local := t.In(loc)
+	// Normalize to UTC instant so wall clock is unambiguous, then convert to exchange local.
+	utc := t.UTC()
+	local := utc.In(loc)
 	wd := local.Weekday()
 	if wd == time.Saturday || wd == time.Sunday {
-		return false
+		localStr := "utc=" + utc.Format(time.RFC3339) + " local=" + local.Format(time.RFC3339) + " weekday=" + wd.String()
+		return localStr, "", false
 	}
 	openH, openM := defaultOpenH, defaultOpenM
 	if o, ok := localSessionOpen[exchange]; ok {
@@ -244,9 +266,16 @@ func IsExchangeOpen(exchange string, t time.Time) bool {
 	if c, ok := localSessionClose[exchange]; ok {
 		closeH, closeM = c.H, c.M
 	}
-	open := time.Date(local.Year(), local.Month(), local.Day(), openH, openM, 0, 0, loc)
-	close := time.Date(local.Year(), local.Month(), local.Day(), closeH, closeM, 0, 0, loc)
-	return !local.Before(open) && local.Before(close)
+	openT := time.Date(local.Year(), local.Month(), local.Day(), openH, openM, 0, 0, loc)
+	closeT := time.Date(local.Year(), local.Month(), local.Day(), closeH, closeM, 0, 0, loc)
+	open = !local.Before(openT) && local.Before(closeT)
+	localStr = "utc=" + utc.Format(time.RFC3339) + " " + exchange + "_local=" + local.Format(time.RFC3339)
+	sessionStr = "session=" + fmtHHMM(openH, openM) + "-" + fmtHHMM(closeH, closeM)
+	return localStr, sessionStr, open
+}
+
+func fmtHHMM(h, m int) string {
+	return fmt.Sprintf("%02d:%02d", h, m)
 }
 
 // GetNextDailyRunTime returns the next run time (session close + 40 minutes) in Eastern for the exchange.
