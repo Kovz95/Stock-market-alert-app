@@ -113,7 +113,7 @@ export async function countSymbolsByFilters(
       const validExchanges = filters.exchanges.filter(e => e !== "All");
       if (validExchanges.length > 0) {
         filtered = filtered.filter((item) => {
-          const exchange = item.exchange || item["Exchange"] as string;
+          const exchange = item.exchange || item["exchange"] as string;
           return validExchanges.includes(exchange);
         });
       }
@@ -122,7 +122,7 @@ export async function countSymbolsByFilters(
     // Filter by country if not "All"
     if (filters.country && filters.country !== "All") {
       filtered = filtered.filter((item) => {
-        const country = item.country || item["Country"] as string;
+        const country = item.country || item["country"] as string;
         return country === filters.country;
       });
     }
@@ -163,7 +163,7 @@ export async function getSymbolsByFilters(
       const validExchanges = filters.exchanges.filter(e => e !== "All");
       if (validExchanges.length > 0) {
         filtered = filtered.filter((item) => {
-          const exchange = item.exchange || item["Exchange"] as string;
+          const exchange = item.exchange || item["exchange"] as string;
           return validExchanges.includes(exchange);
         });
       }
@@ -172,16 +172,16 @@ export async function getSymbolsByFilters(
     // Filter by country if not "All"
     if (filters.country && filters.country !== "All") {
       filtered = filtered.filter((item) => {
-        const country = item.country || item["Country"] as string;
+        const country = item.country || item["country"] as string;
         return country === filters.country;
       });
     }
 
     const symbols: SymbolInfo[] = filtered.map((item) => ({
-      symbol: String(item.symbol || item["Symbol"] || ""),
-      name: String(item.name || item["Name"] || ""),
-      exchange: String(item.exchange || item["Exchange"] || ""),
-      country: String(item.country || item["Country"] || ""),
+      symbol: String(item.symbol || item["symbol"] || ""),
+      name: String(item.name || item["name"] || ""),
+      exchange: String(item.exchange || item["exchange"] || ""),
+      country: String(item.country || item["country"] || ""),
     }));
 
     return { symbols };

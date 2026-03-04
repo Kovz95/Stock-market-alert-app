@@ -20,7 +20,10 @@ import (
 	"stockalert/apps/scheduler/internal/tasks"
 )
 
-const defaultQueue = "default"
+const (
+	defaultQueue   = "default"
+	listPageSize   = 500 // asynq defaults to 30; use 500 to show all exchanges (44 daily + 44 weekly + 44 hourly)
+)
 
 func main() {
 	cfg := config.Load()
@@ -46,7 +49,7 @@ func main() {
 type listFunc func(queue string, opts ...asynq.ListOption) ([]*asynq.TaskInfo, error)
 
 func printTasks(tw *tabwriter.Writer, inspector *asynq.Inspector, state, queue string, list listFunc) {
-	infos, err := list(queue)
+	infos, err := list(queue, asynq.PageSize(listPageSize))
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "List %s: %v\n", state, err)
 		return

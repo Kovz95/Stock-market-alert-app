@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"log/slog"
+	"sort"
 	"strings"
 	"time"
 
@@ -80,20 +81,25 @@ func isUniqueConflict(err error) bool {
 	return err != nil && strings.Contains(err.Error(), "task already exists")
 }
 
-// scheduleAll iterates all exchanges, computes next run times, and enqueues
-// daily (and weekly when Friday) with ProcessAt + Unique(12h), and hourly
-// when exchange is open with Unique(30min). Tasks are scheduled for their
-// ProcessAt time (e.g. next market close); they appear in Redis as "scheduled"
-// until that time, then the worker runs them.
+// scheduleAll iterates all exchanges (in deterministic order), and for each
+// exchange attempts to enqueue: (1) daily, (2) weekly if next daily run is
+// Friday, (3) hourly if the exchange is currently open. Each task type uses
+// Unique so duplicates within the window are skipped; failures for one type
+// do not skip the others. Tasks use ProcessAt and appear in Redis as
+// "scheduled" until run time.
 //
 // Hourly: scheduled_hourly can be 0 even when markets are open because we use
-// Unique(30min)—only one task per exchange per 30 min. The other 15-min cycle
-// skips with "task already exists". Check open_exchanges in the log: if > 0,
-// hourly was considered and either newly enqueued or already enqueued.
+// Unique(30min)—only one task per exchange per 30 min. Check open_exchanges in
+// the log: if > 0, hourly was considered and either newly enqueued or already enqueued.
 func (s *Scheduler) scheduleAll(ctx context.Context) {
-	// Use a single UTC instant for the whole cycle so all exchange checks are consistent.
 	now := time.Now().UTC()
-	exchangeCount := len(calendar.ExchangeSchedules)
+	exchanges := make([]string, 0, len(calendar.ExchangeSchedules))
+	for exchange := range calendar.ExchangeSchedules {
+		exchanges = append(exchanges, exchange)
+	}
+	sort.Strings(exchanges)
+	exchangeCount := len(exchanges)
+
 	s.logger.Info("schedule cycle starting",
 		"exchange_count", exchangeCount,
 		"now_utc", now.Format(time.RFC3339),
@@ -101,7 +107,7 @@ func (s *Scheduler) scheduleAll(ctx context.Context) {
 	start := time.Now()
 	var scheduledDaily, scheduledWeekly, scheduledHourly, openExchangeCount int
 
-	for exchange := range calendar.ExchangeSchedules {
+	for _, exchange := range exchanges {
 		nextDaily := calendar.GetNextDailyRunTime(exchange, now)
 		payload, _ := json.Marshal(tasks.Payload{Exchange: exchange, Timeframe: "daily"})
 		task := asynq.NewTask(tasks.TypeDaily, payload)
@@ -112,14 +118,15 @@ func (s *Scheduler) scheduleAll(ctx context.Context) {
 			} else {
 				s.logger.Warn("schedule daily failed", "exchange", exchange, "error", err)
 			}
-			continue
+		} else {
+			scheduledDaily++
+			s.logger.Debug("task scheduled",
+				"exchange", exchange,
+				"timeframe", "daily",
+				"process_at", nextDaily.Format(time.RFC3339),
+			)
 		}
-		scheduledDaily++
-		s.logger.Debug("task scheduled",
-			"exchange", exchange,
-			"timeframe", "daily",
-			"process_at", nextDaily.Format(time.RFC3339),
-		)
+
 		if nextDaily.Weekday() == time.Friday {
 			payloadWeekly, _ := json.Marshal(tasks.Payload{Exchange: exchange, Timeframe: "weekly"})
 			taskWeekly := asynq.NewTask(tasks.TypeWeekly, payloadWeekly)
@@ -130,15 +137,16 @@ func (s *Scheduler) scheduleAll(ctx context.Context) {
 				} else {
 					s.logger.Warn("schedule weekly failed", "exchange", exchange, "error", err)
 				}
-				continue
+			} else {
+				scheduledWeekly++
+				s.logger.Debug("task scheduled",
+					"exchange", exchange,
+					"timeframe", "weekly",
+					"process_at", nextDaily.Format(time.RFC3339),
+				)
 			}
-			scheduledWeekly++
-			s.logger.Debug("task scheduled",
-				"exchange", exchange,
-				"timeframe", "weekly",
-				"process_at", nextDaily.Format(time.RFC3339),
-			)
 		}
+
 		if calendar.IsExchangeOpen(exchange, now) {
 			openExchangeCount++
 			payloadHourly, _ := json.Marshal(tasks.Payload{Exchange: exchange, Timeframe: "hourly"})

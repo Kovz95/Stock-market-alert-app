@@ -16,13 +16,9 @@ import {
 } from "@/components/ui/card";
 import {
   Field,
-  FieldGroup,
   FieldSet,
-  FieldLabel,
   FieldContent,
-  FieldLegend,
 } from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -37,7 +33,6 @@ import {
 } from "./types";
 import {
   DEFAULT_TIMEFRAME,
-  DEFAULT_EXCHANGE,
   DEFAULT_COUNTRY,
 } from "./constants";
 
@@ -47,7 +42,7 @@ const defaultFormState: AddAlertFormState = {
   isRatio: false,
   ticker: "",
   stockName: "",
-  exchanges: [DEFAULT_EXCHANGE],
+  exchanges: [],
   country: DEFAULT_COUNTRY,
   ticker1: "",
   ticker2: "",
