@@ -2,6 +2,28 @@
 
 This app runs the Asynq worker that processes daily, weekly, and hourly price/alert tasks. It also runs a **schedule loop** every 15 minutes that enqueues those tasks with `ProcessAt` and `Unique` options.
 
+## Concurrency (why multiple jobs run with one worker)
+
+The worker uses **Asynq’s per-process concurrency**: one process can run several tasks in parallel (multiple goroutines). That is controlled by **`SCHEDULER_CONCURRENCY`** (default **1**).
+
+- **Default 1**: One job at a time per process. With a single worker process you’ll see one “job starting” / “hourly task received” at a time; others wait in the queue.
+- **Set to 4** (or higher): Up to that many tasks run in parallel in the same process (e.g. COLOMBIA, LONDON, BUENOS AIRES at once).
+
+Example: to allow 4 concurrent jobs in one process:
+
+```bash
+SCHEDULER_CONCURRENCY=4
+```
+
+## Hourly price update performance
+
+For large exchanges (e.g. NASDAQ with 1800+ tickers), the hourly job fetches prices from FMP in **parallel**. That is controlled by **`SCHEDULER_FMP_HOURLY_CONCURRENCY`** (default **25**).
+
+- Higher values (e.g. 30–50) can reduce run time further if your FMP plan allows the rate.
+- Lower values (e.g. 10) avoid hitting FMP rate limits.
+
+Prices are then written in bulk (batch upsert), so total time is dominated by FMP fetch parallelism.
+
 ## Why you might not see hourly jobs enqueued
 
 1. **Market hours**  

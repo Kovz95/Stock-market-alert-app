@@ -265,3 +265,60 @@ func TestExchangeCount(t *testing.T) {
 		t.Errorf("expected at least 42 exchanges, got %d", n)
 	}
 }
+
+func TestExpectedLastTradingDate(t *testing.T) {
+	// Tuesday 10 AM ET: before close -> last completed = Monday
+	tue10amET := time.Date(2025, 1, 7, 15, 0, 0, 0, time.UTC) // 10 AM ET
+	got := ExpectedLastTradingDate(ExchangeNYSE, tue10amET)
+	// Monday Jan 6, 2025
+	if got.Year() != 2025 || got.Month() != 1 || got.Day() != 6 {
+		t.Errorf("ExpectedLastTradingDate(Tue 10am ET) = %s, want 2025-01-06", got.Format("2006-01-02"))
+	}
+	// Tuesday 6 PM ET: after close+40 -> last completed = Tuesday
+	tue6pmET := time.Date(2025, 1, 7, 23, 0, 0, 0, time.UTC) // 6 PM ET
+	got2 := ExpectedLastTradingDate(ExchangeNYSE, tue6pmET)
+	if got2.Year() != 2025 || got2.Month() != 1 || got2.Day() != 7 {
+		t.Errorf("ExpectedLastTradingDate(Tue 6pm ET) = %s, want 2025-01-07", got2.Format("2006-01-02"))
+	}
+}
+
+func TestExpectedLastWeekEnding(t *testing.T) {
+	// Friday before close -> previous Friday
+	friNoonET := time.Date(2025, 1, 10, 17, 0, 0, 0, time.UTC) // Fri noon ET
+	got := ExpectedLastWeekEnding(ExchangeNYSE, friNoonET)
+	if got.Year() != 2025 || got.Month() != 1 || got.Day() != 3 {
+		t.Errorf("ExpectedLastWeekEnding(Fri noon ET) = %s, want 2025-01-03", got.Format("2006-01-02"))
+	}
+	// Friday after close+40 -> this Friday
+	fri6pmET := time.Date(2025, 1, 11, 0, 0, 0, 0, time.UTC) // Fri 7pm ET = after 16:40+40
+	got2 := ExpectedLastWeekEnding(ExchangeNYSE, fri6pmET)
+	if got2.Year() != 2025 || got2.Month() != 1 || got2.Day() != 10 {
+		t.Errorf("ExpectedLastWeekEnding(Fri 7pm ET) = %s, want 2025-01-10", got2.Format("2006-01-02"))
+	}
+}
+
+func TestIsExchangeOpenFromSnapshot(t *testing.T) {
+	// Nil snapshot -> false
+	if IsExchangeOpenFromSnapshot(ExchangeNYSE, nil) {
+		t.Error("nil snapshot should return false")
+	}
+	// Empty snapshot -> false
+	snap := &MarketHoursSnapshot{ByExchange: map[string]FMPExchangeHours{}}
+	if IsExchangeOpenFromSnapshot(ExchangeNYSE, snap) {
+		t.Error("empty snapshot should return false")
+	}
+	// NYSE in snapshot, open -> true
+	snap.ByExchange[ExchangeNYSE] = FMPExchangeHours{Exchange: "NYSE", IsMarketOpen: true}
+	if !IsExchangeOpenFromSnapshot(ExchangeNYSE, snap) {
+		t.Error("NYSE open in snapshot should return true")
+	}
+	// NYSE in snapshot, closed -> false
+	snap.ByExchange[ExchangeNYSE] = FMPExchangeHours{Exchange: "NYSE", IsMarketOpen: false}
+	if IsExchangeOpenFromSnapshot(ExchangeNYSE, snap) {
+		t.Error("NYSE closed in snapshot should return false")
+	}
+	// Unknown exchange in snapshot -> false
+	if IsExchangeOpenFromSnapshot("UNKNOWN_EXCHANGE", snap) {
+		t.Error("unknown exchange should return false")
+	}
+}

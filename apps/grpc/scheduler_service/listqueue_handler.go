@@ -25,16 +25,19 @@ func (s *Server) ListQueueTasks(ctx context.Context, req *schedulerv1.ListQueueT
 
 	var out []*schedulerv1.QueueTask
 
+	opts := []asynq.ListOption{}
+	opts = append(opts, asynq.PageSize(100))
+
 	for _, state := range []string{"scheduled", "pending", "active"} {
 		var infos []*asynq.TaskInfo
 		var err error
 		switch state {
 		case "scheduled":
-			infos, err = s.inspector.ListScheduledTasks(queue)
+			infos, err = s.inspector.ListScheduledTasks(queue, opts...)
 		case "pending":
-			infos, err = s.inspector.ListPendingTasks(queue)
+			infos, err = s.inspector.ListPendingTasks(queue, opts...)
 		case "active":
-			infos, err = s.inspector.ListActiveTasks(queue)
+			infos, err = s.inspector.ListActiveTasks(queue, opts...)
 		default:
 			continue
 		}

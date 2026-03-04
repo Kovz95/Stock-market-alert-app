@@ -19,6 +19,14 @@ type Config struct {
 
 	JobTimeoutSec int
 
+	// Concurrency is the number of tasks this worker process runs in parallel (Asynq concurrency).
+	// Default 1 = one job at a time per process; increase for parallel exchange jobs.
+	Concurrency int
+
+	// FMPHourlyConcurrency is how many FMP API calls run in parallel during hourly price update.
+	// Higher values speed up large exchanges (e.g. NASDAQ) but must stay within FMP rate limits.
+	FMPHourlyConcurrency int
+
 	// ShadowMode: when true, write alert trigger results to ShadowOutputDir for comparison with Python.
 	ShadowMode      bool
 	ShadowOutputDir string
@@ -35,7 +43,9 @@ func Load() *Config {
 		DiscordWebhookWeekly: os.Getenv("DISCORD_WEBHOOK_WEEKLY"),
 		DiscordWebhookHourly: os.Getenv("DISCORD_WEBHOOK_HOURLY"),
 
-		JobTimeoutSec: 900,
+		JobTimeoutSec:         900,
+		Concurrency:            1,  // one job at a time per process by default
+		FMPHourlyConcurrency:   25, // parallel FMP fetches for hourly (stay under API rate limit)
 
 		ShadowMode:      os.Getenv("SCHEDULER_SHADOW_MODE") == "true" || os.Getenv("SCHEDULER_SHADOW_MODE") == "1",
 		ShadowOutputDir: os.Getenv("SCHEDULER_SHADOW_OUTPUT_DIR"),
@@ -47,6 +57,19 @@ func Load() *Config {
 		if n, err := strconv.Atoi(v); err == nil && n >= 60 {
 			c.JobTimeoutSec = n
 		}
+	}
+	if v := os.Getenv("SCHEDULER_CONCURRENCY"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n >= 1 {
+			c.Concurrency = n
+		}
+	}
+	if v := os.Getenv("SCHEDULER_FMP_HOURLY_CONCURRENCY"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n >= 1 {
+			c.FMPHourlyConcurrency = n
+		}
+	}
+	if c.JobTimeoutSec == 0 {
+		c.JobTimeoutSec = 900
 	}
 	if c.RedisAddr == "" {
 		c.RedisAddr = "localhost:6379"

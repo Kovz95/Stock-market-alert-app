@@ -27,20 +27,23 @@ const (
 // Scheduler runs scheduleAll on startup and every 15 minutes, enqueueing
 // task:daily, task:weekly (when Friday), and task:hourly (when exchange open)
 // with ProcessAt/Unique so the same worker processes them at the right time.
+// FMPAPIKey (from env FMP_API_KEY) is used to fetch market hours for open/closed; if empty, fallback calendar is used.
 type Scheduler struct {
-	client *asynq.Client
-	logger *slog.Logger
-	stop   chan struct{}
-	done   chan struct{}
+	client    *asynq.Client
+	logger    *slog.Logger
+	fmpAPIKey string
+	stop      chan struct{}
+	done      chan struct{}
 }
 
-// New returns a Scheduler that uses the given client and logger.
-func New(client *asynq.Client, logger *slog.Logger) *Scheduler {
+// New returns a Scheduler that uses the given client, logger, and optional FMP API key for market hours.
+func New(client *asynq.Client, logger *slog.Logger, fmpAPIKey string) *Scheduler {
 	return &Scheduler{
-		client: client,
-		logger: logger.With("component", "schedule"),
-		stop:   make(chan struct{}),
-		done:   make(chan struct{}),
+		client:    client,
+		logger:    logger.With("component", "schedule"),
+		fmpAPIKey: fmpAPIKey,
+		stop:      make(chan struct{}),
+		done:      make(chan struct{}),
 	}
 }
 
@@ -100,9 +103,21 @@ func (s *Scheduler) scheduleAll(ctx context.Context) {
 	sort.Strings(exchanges)
 	exchangeCount := len(exchanges)
 
+	// Single FMP call per cycle: use for "is exchange open" when available; fallback to local calendar on error or missing key.
+	var fmpSnapshot *calendar.MarketHoursSnapshot
+	if s.fmpAPIKey != "" {
+		snap, err := calendar.FetchAllExchangeMarketHours(ctx, s.fmpAPIKey, nil)
+		if err != nil {
+			s.logger.Warn("FMP market hours fetch failed, using calendar fallback", "error", err)
+		} else {
+			fmpSnapshot = snap
+		}
+	}
+
 	s.logger.Info("schedule cycle starting",
 		"exchange_count", exchangeCount,
 		"now_utc", now.Format(time.RFC3339),
+		"fmp_snapshot", fmpSnapshot != nil,
 	)
 	start := time.Now()
 	var scheduledDaily, scheduledWeekly, scheduledHourly, openExchangeCount int
@@ -147,7 +162,13 @@ func (s *Scheduler) scheduleAll(ctx context.Context) {
 			}
 		}
 
-		if calendar.IsExchangeOpen(exchange, now) {
+		open := false
+		if fmpSnapshot != nil {
+			open = calendar.IsExchangeOpenFromSnapshot(exchange, fmpSnapshot)
+		} else {
+			open = calendar.IsExchangeOpen(exchange, now)
+		}
+		if open {
 			openExchangeCount++
 			payloadHourly, _ := json.Marshal(tasks.Payload{Exchange: exchange, Timeframe: "hourly"})
 			taskHourly := asynq.NewTask(tasks.TypeHourly, payloadHourly)

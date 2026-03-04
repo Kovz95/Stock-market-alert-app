@@ -309,3 +309,52 @@ func GetNextDailyRunTime(exchange string, ref time.Time) time.Time {
 
 	return runET.UTC()
 }
+
+// ExpectedLastTradingDate returns the calendar date (as UTC midnight) of the most recent trading day
+// that has closed for the exchange (i.e. we expect daily data to be available for this date).
+// Uses the same close+40min convention as GetNextDailyRunTime.
+func ExpectedLastTradingDate(exchange string, now time.Time) time.Time {
+	if _, ok := ExchangeSchedules[exchange]; !ok {
+		return now.UTC().Truncate(24 * time.Hour)
+	}
+	refET := now.In(eastern)
+	candidate := refET
+	for candidate.Weekday() == time.Saturday || candidate.Weekday() == time.Sunday {
+		candidate = candidate.AddDate(0, 0, 1)
+	}
+	hour, minute := GetExchangeCloseTime(exchange, candidate)
+	closeET := time.Date(candidate.Year(), candidate.Month(), candidate.Day(), hour, minute, 0, 0, eastern)
+	runET := closeET.Add(40 * time.Minute)
+	var lastCompleted time.Time
+	if refET.Before(runET) {
+		// Today's run hasn't happened; last completed = previous trading day
+		prev := candidate.AddDate(0, 0, -1)
+		for prev.Weekday() == time.Saturday || prev.Weekday() == time.Sunday {
+			prev = prev.AddDate(0, 0, -1)
+		}
+		lastCompleted = prev
+	} else {
+		lastCompleted = candidate
+	}
+	return time.Date(lastCompleted.Year(), lastCompleted.Month(), lastCompleted.Day(), 0, 0, 0, 0, time.UTC)
+}
+
+// ExpectedLastWeekEnding returns the calendar date (UTC midnight) of the most recent completed
+// week-ending Friday for the exchange. After Friday's close+40min we consider that week complete.
+func ExpectedLastWeekEnding(exchange string, now time.Time) time.Time {
+	if _, ok := ExchangeSchedules[exchange]; !ok {
+		return now.UTC().Truncate(24 * time.Hour)
+	}
+	refET := now.In(eastern)
+	friday := refET
+	for friday.Weekday() != time.Friday {
+		friday = friday.AddDate(0, 0, -1)
+	}
+	hour, minute := GetExchangeCloseTime(exchange, friday)
+	closeET := time.Date(friday.Year(), friday.Month(), friday.Day(), hour, minute, 0, 0, eastern)
+	runET := closeET.Add(40 * time.Minute)
+	if refET.Before(runET) {
+		friday = friday.AddDate(0, 0, -7)
+	}
+	return time.Date(friday.Year(), friday.Month(), friday.Day(), 0, 0, 0, 0, time.UTC)
+}

@@ -220,6 +220,19 @@ INSERT INTO daily_prices (ticker, date, open, high, low, close, volume) VALUES (
 -- name: CopyHourlyPrices :copyfrom
 INSERT INTO hourly_prices (ticker, datetime, open, high, low, close, volume) VALUES ($1, $2, $3, $4, $5, $6, $7);
 
+-- Bulk upsert hourly prices (arrays; used by scheduler for fast hourly update).
+-- name: BulkUpsertHourlyPrices :exec
+INSERT INTO hourly_prices (ticker, datetime, open, high, low, close, volume)
+SELECT unnest($1::text[]), unnest($2::timestamptz[]), unnest($3::float8[]), unnest($4::float8[]),
+       unnest($5::float8[]), unnest($6::float8[]), unnest($7::bigint[])
+ON CONFLICT (ticker, datetime) DO UPDATE SET
+    open = EXCLUDED.open,
+    high = EXCLUDED.high,
+    low = EXCLUDED.low,
+    close = EXCLUDED.close,
+    volume = EXCLUDED.volume,
+    updated_at = NOW();
+
 -- name: CopyWeeklyPrices :copyfrom
 INSERT INTO weekly_prices (ticker, week_ending, open, high, low, close, volume) VALUES ($1, $2, $3, $4, $5, $6, $7);
 

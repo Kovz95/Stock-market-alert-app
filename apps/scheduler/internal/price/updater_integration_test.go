@@ -43,7 +43,7 @@ func TestUpdater_UpdateForExchange_Integration(t *testing.T) {
 		},
 	}
 
-	updater := NewUpdater(queries, mock, nil)
+	updater := NewUpdater(queries, mock, nil, 0)
 
 	// UpdateForExchange loads tickers from DB; if none for "NYSE" we get Total=0 and no FMP calls.
 	// If the test DB has tickers for NYSE, mock will be used for those tickers (we only seeded TEST_TICKER).

@@ -11,6 +11,43 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const bulkUpsertHourlyPrices = `-- name: BulkUpsertHourlyPrices :exec
+INSERT INTO hourly_prices (ticker, datetime, open, high, low, close, volume)
+SELECT unnest($1::text[]), unnest($2::timestamptz[]), unnest($3::float8[]), unnest($4::float8[]),
+       unnest($5::float8[]), unnest($6::float8[]), unnest($7::bigint[])
+ON CONFLICT (ticker, datetime) DO UPDATE SET
+    open = EXCLUDED.open,
+    high = EXCLUDED.high,
+    low = EXCLUDED.low,
+    close = EXCLUDED.close,
+    volume = EXCLUDED.volume,
+    updated_at = NOW()
+`
+
+type BulkUpsertHourlyPricesParams struct {
+	Column1 []string
+	Column2 []pgtype.Timestamptz
+	Column3 []float64
+	Column4 []float64
+	Column5 []float64
+	Column6 []float64
+	Column7 []int64
+}
+
+// Bulk upsert hourly prices (arrays; used by scheduler for fast hourly update).
+func (q *Queries) BulkUpsertHourlyPrices(ctx context.Context, arg BulkUpsertHourlyPricesParams) error {
+	_, err := q.db.Exec(ctx, bulkUpsertHourlyPrices,
+		arg.Column1,
+		arg.Column2,
+		arg.Column3,
+		arg.Column4,
+		arg.Column5,
+		arg.Column6,
+		arg.Column7,
+	)
+	return err
+}
+
 type CopyDailyPricesParams struct {
 	Ticker string
 	Date   pgtype.Date

@@ -10,6 +10,7 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
+	"stockalert/calendar"
 	db "stockalert/database/generated"
 	pricev1 "stockalert/gen/go/price/v1"
 )
@@ -358,7 +359,7 @@ func (s *Server) ScanStaleDaily(ctx context.Context, req *pricev1.ScanStaleDaily
 		return nil, status.Errorf(codes.Internal, "failed to list last daily per ticker: %v", err)
 	}
 
-	expected := expectedLastTradingDayUTC(time.Now().UTC())
+	expected := calendar.ExpectedLastTradingDate(calendar.ExchangeNYSE, time.Now().UTC())
 	expectedDate := time.Date(expected.Year(), expected.Month(), expected.Day(), 0, 0, 0, 0, time.UTC)
 	var out []*pricev1.StaleTickerRow
 	limit := req.Limit
@@ -395,7 +396,7 @@ func (s *Server) ScanStaleWeekly(ctx context.Context, req *pricev1.ScanStaleWeek
 	}
 	defer conn.Release()
 
-	expected := expectedWeekEndingUTC(time.Now().UTC())
+	expected := calendar.ExpectedLastWeekEnding(calendar.ExchangeNYSE, time.Now().UTC())
 	limit := req.Limit
 	if limit <= 0 {
 		limit = 10000

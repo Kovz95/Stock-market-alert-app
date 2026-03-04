@@ -6,6 +6,7 @@ require (
 	github.com/jackc/pgx/v5 v5.8.0
 	google.golang.org/grpc v1.73.0
 	google.golang.org/protobuf v1.36.6
+	stockalert/calendar v0.0.0
 	stockalert/database v0.0.0
 	stockalert/expr v0.0.0
 	stockalert/gen/go v0.0.0
@@ -25,6 +26,7 @@ require (
 )
 
 replace (
+	stockalert/calendar => ../../../calendar
 	stockalert/database => ../../../database
 	stockalert/expr => ../../../expr
 	stockalert/gen/go => ../../../gen/go

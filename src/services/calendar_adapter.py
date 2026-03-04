@@ -11,11 +11,14 @@ Uses EXCHANGE_SCHEDULES from exchange_schedule_config_v2 for exchange metadata.
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timedelta
-from typing import Optional, Tuple
+import os
+import time
+from datetime import datetime, timedelta, timezone
+from typing import Any, Optional, Tuple
 
 import pandas as pd
 import pytz
+import requests
 
 # Import exchange_calendars if available
 try:
@@ -36,6 +39,144 @@ from src.config.exchange_schedule_config import (
     get_exchange_close_time,
     is_dst_active,
 )
+
+# FMP All Exchange Market Hours: base URL and cache (key: internal exchange -> isMarketOpen, timezone, etc.)
+FMP_STABLE_BASE = "https://financialmodelingprep.com/stable"
+_FMP_MARKET_HOURS_CACHE: Optional[dict[str, Any]] = None
+_FMP_MARKET_HOURS_CACHE_TIME: float = 0
+FMP_MARKET_HOURS_CACHE_TTL_SEC = 15 * 60  # 15 minutes, match scheduler cycle
+
+# FMP API exchange symbol -> our internal exchange constant (align with Go calendar.FMPToInternal)
+FMP_TO_INTERNAL: dict[str, str] = {
+    "NASDAQ": "NASDAQ",
+    "NYSE": "NYSE",
+    "NYSE MKT": "NYSE AMERICAN",
+    "AMEX": "NYSE AMERICAN",
+    "ARCA": "NYSE ARCA",
+    "NYSEARCA": "NYSE ARCA",
+    "BATS": "CBOE BZX",
+    "CBOE": "CBOE BZX",
+    "TSX": "TORONTO",
+    "TSXV": "TORONTO",
+    "BVMF": "SAO PAULO",
+    "BMV": "MEXICO",
+    "MEXICO": "MEXICO",
+    "BCBA": "BUENOS AIRES",
+    "BCS": "SANTIAGO",
+    "LSE": "LONDON",
+    "LONDON": "LONDON",
+    "XETR": "XETRA",
+    "XETRA": "XETRA",
+    "EPA": "EURONEXT PARIS",
+    "PARIS": "EURONEXT PARIS",
+    "EURONEXT PARIS": "EURONEXT PARIS",
+    "AEA": "EURONEXT AMSTERDAM",
+    "AMS": "EURONEXT AMSTERDAM",
+    "BRU": "EURONEXT BRUSSELS",
+    "LIS": "EURONEXT LISBON",
+    "DUB": "EURONEXT DUBLIN",
+    "ISE": "EURONEXT DUBLIN",
+    "BIT": "MILAN",
+    "MILAN": "MILAN",
+    "MAD": "SPAIN",
+    "MADRID": "SPAIN",
+    "SIX": "SIX SWISS",
+    "SWX": "SIX SWISS",
+    "VIENNA": "VIENNA",
+    "WBAG": "VIENNA",
+    "STO": "OMX NORDIC STOCKHOLM",
+    "OMXSTO": "OMX NORDIC STOCKHOLM",
+    "CPH": "OMX NORDIC COPENHAGEN",
+    "OMXCPH": "OMX NORDIC COPENHAGEN",
+    "HEL": "OMX NORDIC HELSINKI",
+    "OMXHEL": "OMX NORDIC HELSINKI",
+    "ICE": "OMX NORDIC ICELAND",
+    "OMXICE": "OMX NORDIC ICELAND",
+    "OSE": "OSLO",
+    "OSLO": "OSLO",
+    "WAR": "WARSAW",
+    "WSE": "WARSAW",
+    "PRA": "PRAGUE",
+    "BUD": "BUDAPEST",
+    "BUX": "BUDAPEST",
+    "ASE": "ATHENS",
+    "ATHENS": "ATHENS",
+    "BIST": "ISTANBUL",
+    "XIST": "ISTANBUL",
+    "ISTANBUL": "ISTANBUL",
+    "JSE": "JSE",
+    "JOHANNESBURG": "JSE",
+    "TSE": "TOKYO",
+    "JPX": "TOKYO",
+    "TOKYO": "TOKYO",
+    "HKG": "HONG KONG",
+    "HKEX": "HONG KONG",
+    "HONG KONG": "HONG KONG",
+    "SES": "SINGAPORE",
+    "SGX": "SINGAPORE",
+    "SINGAPORE": "SINGAPORE",
+    "ASX": "ASX",
+    "AUSTRALIA": "ASX",
+    "TWSE": "TAIWAN",
+    "TAIWAN": "TAIWAN",
+    "NSE": "NSE INDIA",
+    "NSE INDIA": "NSE INDIA",
+    "BSE": "BSE INDIA",
+    "BSE INDIA": "BSE INDIA",
+    "IDX": "INDONESIA",
+    "INDONESIA": "INDONESIA",
+    "SET": "THAILAND",
+    "THAILAND": "THAILAND",
+    "KLSE": "MALAYSIA",
+    "MALAYSIA": "MALAYSIA",
+    "BVB": "BUCHAREST SPOT",
+    "BUCHAREST": "BUCHAREST SPOT",
+    "BVC": "COLOMBIA",
+    "COLOMBIA": "COLOMBIA",
+}
+
+
+def fetch_all_exchange_market_hours(api_key: Optional[str] = None) -> Optional[dict[str, Any]]:
+    """
+    Call FMP all-exchange-market-hours. Result is keyed by internal exchange name.
+    Uses 15-minute in-memory cache. API key from env FMP_API_KEY if not passed.
+    """
+    global _FMP_MARKET_HOURS_CACHE, _FMP_MARKET_HOURS_CACHE_TIME
+    key = api_key or os.getenv("FMP_API_KEY")
+    if not key:
+        return None
+    now_sec = time.time()
+    if _FMP_MARKET_HOURS_CACHE is not None and (now_sec - _FMP_MARKET_HOURS_CACHE_TIME) < FMP_MARKET_HOURS_CACHE_TTL_SEC:
+        return _FMP_MARKET_HOURS_CACHE
+    url = f"{FMP_STABLE_BASE}/all-exchange-market-hours"
+    try:
+        resp = requests.get(url, params={"apikey": key}, timeout=15)
+        resp.raise_for_status()
+        raw = resp.json()
+    except Exception as e:
+        logger.debug("FMP all-exchange-market-hours failed: %s", e)
+        return None
+    if not isinstance(raw, list):
+        return None
+    by_internal: dict[str, Any] = {}
+    for item in raw:
+        if not isinstance(item, dict):
+            continue
+        fmp_exchange = item.get("exchange")
+        if not fmp_exchange:
+            continue
+        internal = FMP_TO_INTERNAL.get(fmp_exchange, fmp_exchange)
+        by_internal[internal] = {
+            "isMarketOpen": item.get("isMarketOpen", False),
+            "timezone": item.get("timezone") or "",
+            "openingHour": item.get("openingHour") or "",
+            "closingHour": item.get("closingHour") or "",
+            "name": item.get("name") or "",
+        }
+    _FMP_MARKET_HOURS_CACHE = by_internal
+    _FMP_MARKET_HOURS_CACHE_TIME = now_sec
+    return _FMP_MARKET_HOURS_CACHE
+
 
 # Mapping of exchange names to exchange_calendars calendar codes
 EXCHANGE_TO_CALENDAR = {
@@ -340,12 +481,10 @@ def is_exchange_open(exchange: str, timestamp: pd.Timestamp) -> bool:
     """
     Check if an exchange is open at a given timestamp.
 
-    Args:
-        exchange: Exchange code (e.g., "NYSE", "LONDON")
-        timestamp: Timestamp to check (should be timezone-aware)
-
-    Returns:
-        True if exchange is open, False otherwise
+    Uses FMP all-exchange-market-hours when available (cached 15 min); otherwise
+    exchange_calendars or session-bounds fallback. FMP is only used when the
+    requested time is effectively "now" (within 2 min of UTC now) so the cached
+    isMarketOpen is valid.
     """
     # Ensure timestamp is timezone-aware
     if timestamp.tzinfo is None:
@@ -353,18 +492,24 @@ def is_exchange_open(exchange: str, timestamp: pd.Timestamp) -> bool:
     else:
         timestamp = timestamp.tz_convert("UTC")
 
-    # Try using exchange_calendars
+    # Prefer FMP when we have a fresh snapshot and the query is for "now"
+    now_utc = pd.Timestamp.now(tz="UTC")
+    if abs((timestamp - now_utc).total_seconds()) <= 120:
+        snapshot = fetch_all_exchange_market_hours()
+        if snapshot and exchange in snapshot:
+            return bool(snapshot[exchange].get("isMarketOpen", False))
+
+    # Fallback: exchange_calendars then session bounds
     cal = _get_exchange_calendar(exchange)
     if cal is not None:
         try:
             return cal.is_open_at_time(timestamp)
         except Exception as e:
-            logger.debug(f"exchange_calendars failed for {exchange}: {e}, falling back")
+            logger.debug("exchange_calendars failed for %s: %s, falling back", exchange, e)
 
-    # Fallback: Check against session bounds
     try:
         session_open, session_close = get_session_bounds(exchange, timestamp, next_if_closed=False)
-        return session_open <= timestamp <= session_close
+        return bool(session_open <= timestamp <= session_close)
     except Exception:
         return False
 
@@ -423,6 +568,7 @@ def get_market_open_close_times(
 # Export the EXCHANGE_SCHEDULES for convenience
 __all__ = [
     "EXCHANGE_SCHEDULES",
+    "fetch_all_exchange_market_hours",
     "get_calendar_timezone",
     "get_hourly_alignment",
     "get_session_bounds",

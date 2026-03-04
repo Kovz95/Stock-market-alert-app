@@ -3,6 +3,7 @@ package price
 import (
 	"context"
 	"log/slog"
+	"sync"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
@@ -12,21 +13,30 @@ import (
 	"stockalert/discord"
 )
 
-const dailyLimit = 750
+const (
+	dailyLimit         = 750
+	hourlyUpsertChunk  = 10000 // rows per BulkUpsertHourlyPrices call
+	defaultHourlyConc  = 25    // used when HourlyConcurrency <= 0
+)
 
 // Updater orchestrates FMP API calls and upserts prices via sqlc.
 type Updater struct {
-	queries *db.Queries
-	fmp     FMPFetcher
-	logger  *slog.Logger
+	queries            *db.Queries
+	fmp                FMPFetcher
+	logger             *slog.Logger
+	hourlyConcurrency  int
 }
 
-// NewUpdater creates an Updater.
-func NewUpdater(queries *db.Queries, fmp FMPFetcher, logger *slog.Logger) *Updater {
+// NewUpdater creates an Updater. hourlyConcurrency is the max parallel FMP fetches for hourly updates (0 = use defaultHourlyConc).
+func NewUpdater(queries *db.Queries, fmp FMPFetcher, logger *slog.Logger, hourlyConcurrency int) *Updater {
 	if logger == nil {
 		logger = slog.Default()
 	}
-	return &Updater{queries: queries, fmp: fmp, logger: logger.With("component", "price_updater")}
+	conc := hourlyConcurrency
+	if conc <= 0 {
+		conc = defaultHourlyConc
+	}
+	return &Updater{queries: queries, fmp: fmp, logger: logger.With("component", "price_updater"), hourlyConcurrency: conc}
 }
 
 // UpdateForExchange updates prices for all tickers on the given exchange and timeframe.
@@ -237,42 +247,96 @@ func resampleDailyToWeekly(rows []DailyRow) []weeklyBar {
 	return out
 }
 
+type hourlyFetchResult struct {
+	ticker string
+	rows   []HourlyRow
+	err    error
+}
+
 func (u *Updater) updateHourly(ctx context.Context, exchange string, tickers []string) (updated, failed int) {
-	// Optional: respect calendar hourly alignment to only fetch when exchange is open
 	_ = calendar.GetHourlyAlignment(exchange)
 
+	conc := u.hourlyConcurrency
+	if conc <= 0 {
+		conc = defaultHourlyConc
+	}
+	results := make(chan hourlyFetchResult, len(tickers))
+	sem := make(chan struct{}, conc)
+	var wg sync.WaitGroup
+
 	for _, ticker := range tickers {
-		rows, err := u.fmp.FetchHourly(ticker)
-		if err != nil {
-			u.logger.Warn("FMP hourly fetch error", "ticker", ticker, "error", err)
+		if ctx.Err() != nil {
+			break
+		}
+		wg.Add(1)
+		t := ticker
+		go func() {
+			defer wg.Done()
+			sem <- struct{}{}
+			defer func() { <-sem }()
+			rows, err := u.fmp.FetchHourly(t)
+			if err != nil {
+				results <- hourlyFetchResult{ticker: t, err: err}
+				return
+			}
+			results <- hourlyFetchResult{ticker: t, rows: rows}
+		}()
+	}
+	go func() {
+		wg.Wait()
+		close(results)
+	}()
+
+	var tickersCol []string
+	var datetimesCol []pgtype.Timestamptz
+	var opensCol, highsCol, lowsCol []float64
+	var closesCol []float64
+	var volumesCol []int64
+
+	for r := range results {
+		if r.err != nil {
+			u.logger.Warn("FMP hourly fetch error", "ticker", r.ticker, "error", r.err)
 			failed++
 			continue
 		}
-		ok := true
-		for _, r := range rows {
-			// FMP returns "2024-01-15 14:00:00" or RFC3339
-			t, err := time.Parse("2006-01-02 15:04:05", r.Date)
+		for _, row := range r.rows {
+			t, err := time.Parse("2006-01-02 15:04:05", row.Date)
 			if err != nil {
-				t, _ = time.Parse(time.RFC3339, r.Date)
+				t, _ = time.Parse(time.RFC3339, row.Date)
 			}
-			arg := db.UpsertHourlyPriceParams{
-				Ticker:   ticker,
-				Datetime: pgtype.Timestamptz{Time: t.UTC(), Valid: true},
-				Open:     pgtype.Float8{Float64: r.Open, Valid: true},
-				High:     pgtype.Float8{Float64: r.High, Valid: true},
-				Low:      pgtype.Float8{Float64: r.Low, Valid: true},
-				Close:    r.Close,
-				Volume:   pgtype.Int8{Int64: int64(r.Volume), Valid: true},
-			}
-			if err := u.queries.UpsertHourlyPrice(ctx, arg); err != nil {
-				u.logger.Warn("UpsertHourlyPrice failed", "ticker", ticker, "datetime", r.Date, "error", err)
-				failed++
-				ok = false
-				break
-			}
+			tickersCol = append(tickersCol, r.ticker)
+			datetimesCol = append(datetimesCol, pgtype.Timestamptz{Time: t.UTC(), Valid: true})
+			opensCol = append(opensCol, row.Open)
+			highsCol = append(highsCol, row.High)
+			lowsCol = append(lowsCol, row.Low)
+			closesCol = append(closesCol, row.Close)
+			volumesCol = append(volumesCol, int64(row.Volume))
 		}
-		if ok {
-			updated++
+		updated++
+	}
+
+	if len(tickersCol) == 0 {
+		return updated, failed
+	}
+
+	// Bulk upsert in chunks to avoid huge single query
+	for i := 0; i < len(tickersCol); i += hourlyUpsertChunk {
+		end := i + hourlyUpsertChunk
+		if end > len(tickersCol) {
+			end = len(tickersCol)
+		}
+		arg := db.BulkUpsertHourlyPricesParams{
+			Column1: tickersCol[i:end],
+			Column2: datetimesCol[i:end],
+			Column3: opensCol[i:end],
+			Column4: highsCol[i:end],
+			Column5: lowsCol[i:end],
+			Column6: closesCol[i:end],
+			Column7: volumesCol[i:end],
+		}
+		if err := u.queries.BulkUpsertHourlyPrices(ctx, arg); err != nil {
+			u.logger.Warn("BulkUpsertHourlyPrices failed", "offset", i, "count", end-i, "error", err)
+			return updated, failed
 		}
 	}
 	return updated, failed

@@ -56,6 +56,7 @@ func main() {
 		"fmp_api_key", maskSecret(cfg.FMPAPIKey),
 		"job_timeout", cfg.JobTimeout().String(),
 		"shadow_mode", cfg.ShadowMode,
+		"fmp_hourly_concurrency", cfg.FMPHourlyConcurrency,
 		"discord_webhook_daily_set", cfg.DiscordWebhookDaily != "",
 		"discord_webhook_weekly_set", cfg.DiscordWebhookWeekly != "",
 		"discord_webhook_hourly_set", cfg.DiscordWebhookHourly != "",
@@ -118,7 +119,7 @@ func main() {
 	notifier := discord.NewNotifier()
 	accum := discord.NewAccumulator(notifier)
 	fmpClient := price.NewFMPClient(cfg.FMPAPIKey)
-	updater := price.NewUpdater(queries, fmpClient, logger)
+	updater := price.NewUpdater(queries, fmpClient, logger, cfg.FMPHourlyConcurrency)
 	statusMgr := status.NewManager(queries, logger)
 
 	common := &handler.Common{
@@ -144,10 +145,15 @@ func main() {
 	asynqClient := asynq.NewClient(asynq.RedisClientOpt{Addr: cfg.RedisAddr})
 	defer asynqClient.Close()
 
+	concurrency := cfg.Concurrency
+	if concurrency < 1 {
+		concurrency = 1
+	}
+	logger.Info("worker concurrency", "concurrency", concurrency)
 	srv := asynq.NewServer(
 		asynq.RedisClientOpt{Addr: cfg.RedisAddr},
 		asynq.Config{
-			Concurrency: 4,
+			Concurrency: concurrency,
 			LogLevel:    asynq.InfoLevel,
 		},
 	)
@@ -164,7 +170,7 @@ func main() {
 		}
 	}()
 
-	sched := schedule.New(asynqClient, logger)
+	sched := schedule.New(asynqClient, logger, cfg.FMPAPIKey)
 	sched.Start(ctx)
 
 	jobTypes := []string{"daily", "weekly", "hourly"}
