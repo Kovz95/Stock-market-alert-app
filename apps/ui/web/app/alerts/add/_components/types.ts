@@ -10,6 +10,7 @@ export type ConditionCategory =
   | "macd"
   | "bollinger"
   | "volume"
+  | "ma_slope_curve"
   | "custom";
 
 export type PriceConditionType = "price_above" | "price_below" | "price_equals";
@@ -28,6 +29,18 @@ export type BBConditionType =
 export type VolumeConditionType =
   | "volume_above_average"
   | "volume_spike";
+
+export type MASlopeCurveConditionType =
+  | "slope_positive"
+  | "slope_negative"
+  | "slope_turn_up"
+  | "slope_turn_dn"
+  | "curve_positive"
+  | "curve_negative"
+  | "bend_up"
+  | "bend_dn"
+  | "early_bend_up"
+  | "early_bend_dn";
 
 export type ConditionParams = {
   // Price
@@ -53,6 +66,16 @@ export type ConditionParams = {
   // Volume
   volumeMultiplier?: number;
   volumeFraction?: number;
+  // MA Slope + Curvature
+  maLen?: number;
+  maType?: string; // HMA, EMA, SMA, WMA, RMA
+  slopeLookback?: number;
+  smoothType?: string; // None, EMA, SMA, RMA
+  smoothLen?: number;
+  normMode?: string; // None, ATR, Percent
+  atrLen?: number;
+  slopeThr?: number;
+  curveThr?: number;
   // Custom
   customExpression?: string;
 };
@@ -119,6 +142,43 @@ export function conditionEntryToExpression(entry: ConditionEntry): string {
       if (type === "volume_spike" && params.volumeMultiplier != null)
         return `volume_spike: ${params.volumeMultiplier}x`;
       break;
+    case "ma_slope_curve": {
+      const maLen = params.maLen ?? 200;
+      const slopeLookback = params.slopeLookback ?? 3;
+      const maType = params.maType ?? "HMA";
+      const smoothType = params.smoothType ?? "EMA";
+      const smoothLen = params.smoothLen ?? 2;
+      const normMode = params.normMode ?? "ATR";
+      const atrLen = params.atrLen ?? 14;
+      const slopeThr = params.slopeThr ?? 0;
+      const curveThr = params.curveThr ?? 0;
+      const baseParams = `ma_len=${maLen}, slope_lookback=${slopeLookback}, ma_type='${maType}', smooth_type='${smoothType}', smooth_len=${smoothLen}, norm_mode='${normMode}', atr_len=${atrLen}, slope_thr=${slopeThr}, curve_thr=${curveThr}`;
+      const shortParams = `ma_len=${maLen}, slope_lookback=${slopeLookback}, ma_type='${maType}'`;
+      switch (type) {
+        case "slope_positive":
+          return `ma_slope_curve_slope(${baseParams})[-1] > 0`;
+        case "slope_negative":
+          return `ma_slope_curve_slope(${baseParams})[-1] < 0`;
+        case "slope_turn_up":
+          return `ma_slope_curve_turn_up(${shortParams})[-1] == 1`;
+        case "slope_turn_dn":
+          return `ma_slope_curve_turn_dn(${shortParams})[-1] == 1`;
+        case "curve_positive":
+          return `ma_slope_curve_curve(${baseParams})[-1] > 0`;
+        case "curve_negative":
+          return `ma_slope_curve_curve(${baseParams})[-1] < 0`;
+        case "bend_up":
+          return `ma_slope_curve_bend_up(${shortParams})[-1] == 1`;
+        case "bend_dn":
+          return `ma_slope_curve_bend_dn(${shortParams})[-1] == 1`;
+        case "early_bend_up":
+          return `ma_slope_curve_early_up(${shortParams})[-1] == 1`;
+        case "early_bend_dn":
+          return `ma_slope_curve_early_dn(${shortParams})[-1] == 1`;
+        default:
+          return "";
+      }
+    }
     case "custom":
       if (params.customExpression) return params.customExpression;
       break;
@@ -155,6 +215,8 @@ export function conditionEntryLabel(entry: ConditionEntry): string {
     return "RSI at level (incomplete)";
   if (entry.category === "bollinger")
     return `Bollinger ${entry.type === "price_above_upper_band" ? "upper" : "lower"} band (incomplete)`;
+  if (entry.category === "ma_slope_curve")
+    return `MA Slope+Curvature: ${entry.type}`;
   return `${entry.category} – ${entry.type}`;
 }
 

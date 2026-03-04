@@ -27,6 +27,7 @@ import {
   type MACDConditionType,
   type BBConditionType,
   type VolumeConditionType,
+  type MASlopeCurveConditionType,
 } from "./types";
 
 const CATEGORY_OPTIONS: { value: ConditionCategory; label: string }[] = [
@@ -36,6 +37,7 @@ const CATEGORY_OPTIONS: { value: ConditionCategory; label: string }[] = [
   { value: "macd", label: "MACD" },
   { value: "bollinger", label: "Bollinger Bands" },
   { value: "volume", label: "Volume" },
+  { value: "ma_slope_curve", label: "MA Slope + Curvature" },
   { value: "custom", label: "Custom expression" },
 ];
 
@@ -71,6 +73,19 @@ const BB_TYPES: { value: BBConditionType; label: string }[] = [
 const VOLUME_TYPES: { value: VolumeConditionType; label: string }[] = [
   { value: "volume_above_average", label: "Volume above average" },
   { value: "volume_spike", label: "Volume spike" },
+];
+
+const MA_SLOPE_CURVE_TYPES: { value: MASlopeCurveConditionType; label: string }[] = [
+  { value: "slope_positive", label: "Slope > 0" },
+  { value: "slope_negative", label: "Slope < 0" },
+  { value: "slope_turn_up", label: "Slope turn up (pulse)" },
+  { value: "slope_turn_dn", label: "Slope turn down (pulse)" },
+  { value: "curve_positive", label: "Curvature > 0" },
+  { value: "curve_negative", label: "Curvature < 0" },
+  { value: "bend_up", label: "Curvature bend up (pulse)" },
+  { value: "bend_dn", label: "Curvature bend down (pulse)" },
+  { value: "early_bend_up", label: "Early bend up (pulse)" },
+  { value: "early_bend_dn", label: "Early bend down (pulse)" },
 ];
 
 function generateId(): string {
@@ -110,6 +125,17 @@ function resolveParamsForAdd(
     p.bbPeriod = p.bbPeriod ?? 20;
     p.bbStd = p.bbStd ?? 2;
   }
+  if (category === "ma_slope_curve") {
+    p.maLen = p.maLen ?? 200;
+    p.maType = p.maType ?? "HMA";
+    p.slopeLookback = p.slopeLookback ?? 3;
+    p.smoothType = p.smoothType ?? "EMA";
+    p.smoothLen = p.smoothLen ?? 2;
+    p.normMode = p.normMode ?? "ATR";
+    p.atrLen = p.atrLen ?? 14;
+    p.slopeThr = p.slopeThr ?? 0;
+    p.curveThr = p.curveThr ?? 0;
+  }
   return p;
 }
 
@@ -121,6 +147,7 @@ export function ConditionBuilder({ onAdd }: ConditionBuilderProps) {
   const [category, setCategory] = useState<ConditionCategory>("price");
   const [type, setType] = useState<string>("price_above");
   const [params, setParams] = useState<ConditionParams>({ priceValue: 100 });
+  const isMaSlopeCurve = category === "ma_slope_curve";
 
   const handleAdd = () => {
     const resolved = resolveParamsForAdd(category, type, params);
@@ -149,7 +176,9 @@ export function ConditionBuilder({ onAdd }: ConditionBuilderProps) {
               ? BB_TYPES
               : category === "volume"
                 ? VOLUME_TYPES
-                : [];
+                : category === "ma_slope_curve"
+                  ? MA_SLOPE_CURVE_TYPES
+                  : [];
 
   const showTypeSelect = typeOptions.length > 0;
 
@@ -170,6 +199,7 @@ export function ConditionBuilder({ onAdd }: ConditionBuilderProps) {
                 else if (v === "macd") setType("macd_bullish_crossover");
                 else if (v === "bollinger") setType("price_above_upper_band");
                 else if (v === "volume") setType("volume_above_average");
+                else if (v === "ma_slope_curve") setType("slope_positive");
               }}
             >
               <SelectTrigger className="w-full">
@@ -450,6 +480,166 @@ export function ConditionBuilder({ onAdd }: ConditionBuilderProps) {
                     setParams({
                       ...params,
                       bbStd: e.target.value ? Number(e.target.value) : undefined,
+                    })
+                  }
+                />
+              </FieldContent>
+            </Field>
+          </>
+        )}
+
+        {isMaSlopeCurve && (
+          <>
+            <Field>
+              <FieldLabel>MA type</FieldLabel>
+              <FieldContent>
+                <Select
+                  value={params.maType ?? "HMA"}
+                  onValueChange={(v) => setParams({ ...params, maType: v })}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="HMA">HMA</SelectItem>
+                    <SelectItem value="EMA">EMA</SelectItem>
+                    <SelectItem value="SMA">SMA</SelectItem>
+                    <SelectItem value="WMA">WMA</SelectItem>
+                    <SelectItem value="RMA">RMA</SelectItem>
+                  </SelectContent>
+                </Select>
+              </FieldContent>
+            </Field>
+            <Field>
+              <FieldLabel>MA length</FieldLabel>
+              <FieldContent>
+                <Input
+                  type="number"
+                  min={1}
+                  value={params.maLen ?? 200}
+                  onChange={(e) =>
+                    setParams({
+                      ...params,
+                      maLen: e.target.value ? Number(e.target.value) : undefined,
+                    })
+                  }
+                />
+              </FieldContent>
+            </Field>
+            <Field>
+              <FieldLabel>Slope lookback (bars)</FieldLabel>
+              <FieldContent>
+                <Input
+                  type="number"
+                  min={1}
+                  value={params.slopeLookback ?? 3}
+                  onChange={(e) =>
+                    setParams({
+                      ...params,
+                      slopeLookback: e.target.value ? Number(e.target.value) : undefined,
+                    })
+                  }
+                />
+              </FieldContent>
+            </Field>
+            <Field>
+              <FieldLabel>Smoothing</FieldLabel>
+              <FieldContent>
+                <Select
+                  value={params.smoothType ?? "EMA"}
+                  onValueChange={(v) => setParams({ ...params, smoothType: v })}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="None">None</SelectItem>
+                    <SelectItem value="EMA">EMA</SelectItem>
+                    <SelectItem value="SMA">SMA</SelectItem>
+                    <SelectItem value="RMA">RMA</SelectItem>
+                  </SelectContent>
+                </Select>
+              </FieldContent>
+            </Field>
+            <Field>
+              <FieldLabel>Smooth length</FieldLabel>
+              <FieldContent>
+                <Input
+                  type="number"
+                  min={1}
+                  value={params.smoothLen ?? 2}
+                  onChange={(e) =>
+                    setParams({
+                      ...params,
+                      smoothLen: e.target.value ? Number(e.target.value) : undefined,
+                    })
+                  }
+                />
+              </FieldContent>
+            </Field>
+            <Field>
+              <FieldLabel>Normalize by</FieldLabel>
+              <FieldContent>
+                <Select
+                  value={params.normMode ?? "ATR"}
+                  onValueChange={(v) => setParams({ ...params, normMode: v })}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="None">None</SelectItem>
+                    <SelectItem value="ATR">ATR</SelectItem>
+                    <SelectItem value="Percent">Percent</SelectItem>
+                  </SelectContent>
+                </Select>
+              </FieldContent>
+            </Field>
+            {(params.normMode ?? "ATR") === "ATR" && (
+              <Field>
+                <FieldLabel>ATR length</FieldLabel>
+                <FieldContent>
+                  <Input
+                    type="number"
+                    min={1}
+                    value={params.atrLen ?? 14}
+                    onChange={(e) =>
+                      setParams({
+                        ...params,
+                        atrLen: e.target.value ? Number(e.target.value) : undefined,
+                      })
+                    }
+                  />
+                </FieldContent>
+              </Field>
+            )}
+            <Field>
+              <FieldLabel>Slope threshold (optional)</FieldLabel>
+              <FieldContent>
+                <Input
+                  type="number"
+                  step="0.0001"
+                  value={params.slopeThr ?? 0}
+                  onChange={(e) =>
+                    setParams({
+                      ...params,
+                      slopeThr: e.target.value ? Number(e.target.value) : undefined,
+                    })
+                  }
+                />
+              </FieldContent>
+            </Field>
+            <Field>
+              <FieldLabel>Curvature threshold (optional)</FieldLabel>
+              <FieldContent>
+                <Input
+                  type="number"
+                  step="0.0001"
+                  value={params.curveThr ?? 0}
+                  onChange={(e) =>
+                    setParams({
+                      ...params,
+                      curveThr: e.target.value ? Number(e.target.value) : undefined,
                     })
                   }
                 />

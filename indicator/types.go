@@ -278,6 +278,21 @@ func CumSum(data []float64) []float64 {
 	return out
 }
 
+// RMA computes Wilders smoothing (Pine ta.rma): alpha = 1/length.
+func RMA(data []float64, length int) []float64 {
+	n := len(data)
+	if n == 0 || length <= 0 {
+		return nil
+	}
+	alpha := 1.0 / float64(length)
+	out := make([]float64, n)
+	out[0] = data[0]
+	for i := 1; i < n; i++ {
+		out[i] = alpha*data[i] + (1-alpha)*out[i-1]
+	}
+	return out
+}
+
 // EWM computes an exponential weighted mean (EMA) with the given span.
 // adjust=false mode (recursive), matching pandas ewm(span=span, adjust=False).mean().
 func EWM(data []float64, span int) []float64 {

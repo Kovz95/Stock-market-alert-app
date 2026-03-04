@@ -124,6 +124,17 @@ func NewDefaultRegistry() *Registry {
 	r.Register("pivot_sr_crossover", PivotSRCrossover)
 	r.Register("pivot_sr_proximity", PivotSRProximity)
 
+	// MA Slope + Curvature
+	r.Register("ma_slope_curve_ma", MaSlopeCurveMA)
+	r.Register("ma_slope_curve_slope", MaSlopeCurveSlope)
+	r.Register("ma_slope_curve_curve", MaSlopeCurveCurve)
+	r.Register("ma_slope_curve_turn_up", MaSlopeCurveTurnUp)
+	r.Register("ma_slope_curve_turn_dn", MaSlopeCurveTurnDn)
+	r.Register("ma_slope_curve_bend_up", MaSlopeCurveBendUp)
+	r.Register("ma_slope_curve_bend_dn", MaSlopeCurveBendDn)
+	r.Register("ma_slope_curve_early_up", MaSlopeCurveEarlyUp)
+	r.Register("ma_slope_curve_early_dn", MaSlopeCurveEarlyDn)
+
 	return r
 }
 

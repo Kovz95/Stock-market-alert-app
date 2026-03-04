@@ -341,6 +341,10 @@ func remapPositionalParams(op *Operand) {
 			op.Params["timeperiod"] = period
 			delete(op.Params, "period")
 		}
+		if strings.HasPrefix(ind, "ma_slope_curve") {
+			op.Params["ma_len"] = period
+			delete(op.Params, "period")
+		}
 	}
 
 	// Handle multi-positional indicators
