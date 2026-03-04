@@ -155,7 +155,7 @@ export function AlertBasicFields({
           >
             <ComboboxChips ref={exchangeAnchor}>
               {exchanges.map((ex) => (
-                <ComboboxChip key={ex} value={ex}>
+                <ComboboxChip key={ex}>
                   {ex}
                 </ComboboxChip>
               ))}

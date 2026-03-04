@@ -5,8 +5,10 @@ import (
 	"sync"
 )
 
-// Accumulator collects Discord embeds grouped by webhook URL,
-// then flushes them in batches of up to 10 (Discord's per-message limit).
+// Accumulator collects Discord embeds grouped by webhook URL during alert checks.
+// Nothing is sent until FlushAll() is called; then embeds are sent in batches of
+// up to 10 per webhook (Discord's per-message limit), with rate limiting between
+// sends to the same webhook.
 type Accumulator struct {
 	mu       sync.Mutex
 	notifier *Notifier

@@ -23,8 +23,16 @@ type Config struct {
 	// Default 1 = one job at a time per process; increase for parallel exchange jobs.
 	Concurrency int
 
+	// FMPDailyConcurrency is how many FMP API calls run in parallel during daily price update.
+	// Throughput is still capped by FMP client rate limit (FMP_MIN_INTERVAL_MS). Lower = safer for 429s.
+	FMPDailyConcurrency int
+
+	// FMPWeeklyConcurrency is how many FMP API calls run in parallel during weekly price update.
+	// Weekly uses daily data from FMP then resamples; this limits parallel fetches.
+	FMPWeeklyConcurrency int
+
 	// FMPHourlyConcurrency is how many FMP API calls run in parallel during hourly price update.
-	// Higher values speed up large exchanges (e.g. NASDAQ) but must stay within FMP rate limits.
+	// Throughput is still capped by FMP client rate limit. Lower = safer for 429s.
 	FMPHourlyConcurrency int
 
 	// ShadowMode: when true, write alert trigger results to ShadowOutputDir for comparison with Python.
@@ -43,9 +51,11 @@ func Load() *Config {
 		DiscordWebhookWeekly: os.Getenv("DISCORD_WEBHOOK_WEEKLY"),
 		DiscordWebhookHourly: os.Getenv("DISCORD_WEBHOOK_HOURLY"),
 
-		JobTimeoutSec:         900,
-		Concurrency:            1,  // one job at a time per process by default
-		FMPHourlyConcurrency:   25, // parallel FMP fetches for hourly (stay under API rate limit)
+		JobTimeoutSec:           900,
+		Concurrency:             1,  // one job at a time per process by default
+		FMPDailyConcurrency:     10, // parallel FMP fetches; client rate limit (FMP_MIN_INTERVAL_MS) caps throughput
+		FMPWeeklyConcurrency:    10,
+		FMPHourlyConcurrency:    10,
 
 		ShadowMode:      os.Getenv("SCHEDULER_SHADOW_MODE") == "true" || os.Getenv("SCHEDULER_SHADOW_MODE") == "1",
 		ShadowOutputDir: os.Getenv("SCHEDULER_SHADOW_OUTPUT_DIR"),
@@ -61,6 +71,16 @@ func Load() *Config {
 	if v := os.Getenv("SCHEDULER_CONCURRENCY"); v != "" {
 		if n, err := strconv.Atoi(v); err == nil && n >= 1 {
 			c.Concurrency = n
+		}
+	}
+	if v := os.Getenv("SCHEDULER_FMP_DAILY_CONCURRENCY"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n >= 1 {
+			c.FMPDailyConcurrency = n
+		}
+	}
+	if v := os.Getenv("SCHEDULER_FMP_WEEKLY_CONCURRENCY"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n >= 1 {
+			c.FMPWeeklyConcurrency = n
 		}
 	}
 	if v := os.Getenv("SCHEDULER_FMP_HOURLY_CONCURRENCY"); v != "" {

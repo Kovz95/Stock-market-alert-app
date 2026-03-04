@@ -45,7 +45,7 @@ func TestCommon_Execute_Integration(t *testing.T) {
 	notifier := discord.NewNotifier()
 	accum := discord.NewAccumulator(notifier)
 	mockFMP := &price.MockFMP{Daily: map[string][]price.DailyRow{}}
-	updater := price.NewUpdater(queries, mockFMP, nil, 0)
+	updater := price.NewUpdater(queries, mockFMP, nil, 0, 0, 0)
 	statusMgr := status.NewManager(queries, nil)
 
 	common := &Common{

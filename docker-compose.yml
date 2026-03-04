@@ -163,6 +163,23 @@ services:
       scheduler_service:
         condition: service_healthy
 
+  web:
+    build:
+      context: .
+      dockerfile: apps/ui/web/Dockerfile
+    container_name: stockalert-web
+    restart: unless-stopped
+    ports:
+      - "8501:3000"
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=production
+      - GRPC_ENDPOINT=envoy:8080
+    depends_on:
+      envoy:
+        condition: service_started
+
   autoheal:
     image: willfarrell/autoheal:latest
     container_name: stockalert-autoheal

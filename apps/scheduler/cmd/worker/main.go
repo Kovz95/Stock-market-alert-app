@@ -56,6 +56,8 @@ func main() {
 		"fmp_api_key", maskSecret(cfg.FMPAPIKey),
 		"job_timeout", cfg.JobTimeout().String(),
 		"shadow_mode", cfg.ShadowMode,
+		"fmp_daily_concurrency", cfg.FMPDailyConcurrency,
+		"fmp_weekly_concurrency", cfg.FMPWeeklyConcurrency,
 		"fmp_hourly_concurrency", cfg.FMPHourlyConcurrency,
 		"discord_webhook_daily_set", cfg.DiscordWebhookDaily != "",
 		"discord_webhook_weekly_set", cfg.DiscordWebhookWeekly != "",
@@ -119,7 +121,7 @@ func main() {
 	notifier := discord.NewNotifier()
 	accum := discord.NewAccumulator(notifier)
 	fmpClient := price.NewFMPClient(cfg.FMPAPIKey)
-	updater := price.NewUpdater(queries, fmpClient, logger, cfg.FMPHourlyConcurrency)
+	updater := price.NewUpdater(queries, fmpClient, logger, cfg.FMPDailyConcurrency, cfg.FMPWeeklyConcurrency, cfg.FMPHourlyConcurrency)
 	statusMgr := status.NewManager(queries, logger)
 
 	common := &handler.Common{

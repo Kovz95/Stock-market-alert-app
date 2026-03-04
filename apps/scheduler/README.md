@@ -15,14 +15,23 @@ Example: to allow 4 concurrent jobs in one process:
 SCHEDULER_CONCURRENCY=4
 ```
 
+## FMP rate limiting and 429s
+
+The FMP client **rate-limits** all requests (daily, weekly, hourly) with a minimum interval between calls. It also **retries on 429** (up to 3 times with backoff). This keeps you under FMP’s per-minute limits and avoids failed jobs when you occasionally hit 429.
+
+- **`FMP_MIN_INTERVAL_MS`** – Minimum milliseconds between any two FMP API requests (default **200** ≈ 5 req/s, ~300/min). Increase (e.g. `300` or `500`) if you still see 429s.
+- **`SCHEDULER_FMP_DAILY_CONCURRENCY`**, **`SCHEDULER_FMP_WEEKLY_CONCURRENCY`**, **`SCHEDULER_FMP_HOURLY_CONCURRENCY`** – Max parallel FMP fetches per job (default **10**). Throughput is still capped by `FMP_MIN_INTERVAL_MS`. Lower concurrency reduces burst; higher concurrency just means more goroutines waiting on the same rate limit.
+
+The schedule loop’s single **market-hours** FMP call also retries on 429.
+
 ## Hourly price update performance
 
-For large exchanges (e.g. NASDAQ with 1800+ tickers), the hourly job fetches prices from FMP in **parallel**. That is controlled by **`SCHEDULER_FMP_HOURLY_CONCURRENCY`** (default **25**).
+For large exchanges (e.g. NASDAQ with 1800+ tickers), the hourly job fetches prices from FMP in **parallel**. That is controlled by **`SCHEDULER_FMP_HOURLY_CONCURRENCY`** (default **10**).
 
-- Higher values (e.g. 30–50) can reduce run time further if your FMP plan allows the rate.
-- Lower values (e.g. 10) avoid hitting FMP rate limits.
+- Higher values (e.g. 15–20) allow more parallel fetches; actual throughput is still capped by **`FMP_MIN_INTERVAL_MS`**.
+- Lower values (e.g. 5) reduce burst and can help if you still see 429s.
 
-Prices are then written in bulk (batch upsert), so total time is dominated by FMP fetch parallelism.
+Prices are then written in bulk (batch upsert), so total time is dominated by FMP fetch rate and parallelism.
 
 ## Why you might not see hourly jobs enqueued
 

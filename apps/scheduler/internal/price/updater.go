@@ -14,29 +14,48 @@ import (
 )
 
 const (
-	dailyLimit         = 750
-	hourlyUpsertChunk  = 10000 // rows per BulkUpsertHourlyPrices call
-	defaultHourlyConc  = 25    // used when HourlyConcurrency <= 0
+	dailyLimit          = 750
+	hourlyUpsertChunk   = 10000 // rows per BulkUpsertHourlyPrices call
+	defaultDailyConc   = 25    // used when DailyConcurrency <= 0
+	defaultWeeklyConc  = 25    // used when WeeklyConcurrency <= 0
+	defaultHourlyConc   = 25    // used when HourlyConcurrency <= 0
 )
 
 // Updater orchestrates FMP API calls and upserts prices via sqlc.
 type Updater struct {
-	queries            *db.Queries
-	fmp                FMPFetcher
-	logger             *slog.Logger
-	hourlyConcurrency  int
+	queries             *db.Queries
+	fmp                 FMPFetcher
+	logger              *slog.Logger
+	dailyConcurrency    int
+	weeklyConcurrency   int
+	hourlyConcurrency   int
 }
 
-// NewUpdater creates an Updater. hourlyConcurrency is the max parallel FMP fetches for hourly updates (0 = use defaultHourlyConc).
-func NewUpdater(queries *db.Queries, fmp FMPFetcher, logger *slog.Logger, hourlyConcurrency int) *Updater {
+// NewUpdater creates an Updater. dailyConc, weeklyConc, hourlyConc are max parallel FMP fetches per timeframe (0 = use defaults).
+func NewUpdater(queries *db.Queries, fmp FMPFetcher, logger *slog.Logger, dailyConc, weeklyConc, hourlyConc int) *Updater {
 	if logger == nil {
 		logger = slog.Default()
 	}
-	conc := hourlyConcurrency
-	if conc <= 0 {
-		conc = defaultHourlyConc
+	d := dailyConc
+	if d <= 0 {
+		d = defaultDailyConc
 	}
-	return &Updater{queries: queries, fmp: fmp, logger: logger.With("component", "price_updater"), hourlyConcurrency: conc}
+	w := weeklyConc
+	if w <= 0 {
+		w = defaultWeeklyConc
+	}
+	h := hourlyConc
+	if h <= 0 {
+		h = defaultHourlyConc
+	}
+	return &Updater{
+		queries:           queries,
+		fmp:               fmp,
+		logger:             logger.With("component", "price_updater"),
+		dailyConcurrency:   d,
+		weeklyConcurrency: w,
+		hourlyConcurrency: h,
+	}
 }
 
 // UpdateForExchange updates prices for all tickers on the given exchange and timeframe.
@@ -103,31 +122,67 @@ func (u *Updater) tickersForExchange(ctx context.Context, exchange string) ([]st
 	return tickers, nil
 }
 
+type dailyFetchResult struct {
+	ticker string
+	rows   []DailyRow
+	err    error
+}
+
 func (u *Updater) updateDaily(ctx context.Context, tickers []string) (updated, failed int) {
+	conc := u.dailyConcurrency
+	if conc <= 0 {
+		conc = defaultDailyConc
+	}
+	results := make(chan dailyFetchResult, len(tickers))
+	sem := make(chan struct{}, conc)
+	var wg sync.WaitGroup
+
 	for _, ticker := range tickers {
-		rows, err := u.fmp.FetchDaily(ticker, dailyLimit)
-		if err != nil {
-			u.logger.Warn("FMP daily fetch error", "ticker", ticker, "error", err)
+		if ctx.Err() != nil {
+			break
+		}
+		wg.Add(1)
+		t := ticker
+		go func() {
+			defer wg.Done()
+			sem <- struct{}{}
+			defer func() { <-sem }()
+			rows, err := u.fmp.FetchDaily(t, dailyLimit)
+			if err != nil {
+				results <- dailyFetchResult{ticker: t, err: err}
+				return
+			}
+			results <- dailyFetchResult{ticker: t, rows: rows}
+		}()
+	}
+	go func() {
+		wg.Wait()
+		close(results)
+	}()
+
+	for r := range results {
+		if r.err != nil {
+			u.logger.Warn("FMP daily fetch error", "ticker", r.ticker, "error", r.err)
 			failed++
 			continue
 		}
 		ok := true
-		for _, r := range rows {
-			date, err := time.Parse("2006-01-02", r.Date)
+		for _, row := range r.rows {
+			date, err := time.Parse("2006-01-02", row.Date)
 			if err != nil {
 				continue
 			}
 			arg := db.UpsertDailyPriceParams{
-				Ticker: ticker,
+				Ticker: r.ticker,
 				Date:   pgtype.Date{Time: date, Valid: true},
-				Open:   pgtype.Float8{Float64: r.Open, Valid: true},
-				High:   pgtype.Float8{Float64: r.High, Valid: true},
-				Low:    pgtype.Float8{Float64: r.Low, Valid: true},
-				Close:  r.Close,
-				Volume: pgtype.Int8{Int64: r.Volume, Valid: true},
+				Open:   pgtype.Float8{Float64: row.Open, Valid: true},
+				High:   pgtype.Float8{Float64: row.High, Valid: true},
+				Low:    pgtype.Float8{Float64: row.Low, Valid: true},
+				Close:  row.Close,
+				Volume: pgtype.Int8{Int64: row.Volume, Valid: true},
 			}
 			if err := u.queries.UpsertDailyPrice(ctx, arg); err != nil {
-				u.logger.Warn("UpsertDailyPrice failed", "ticker", ticker, "date", r.Date, "error", err)
+				u.logger.Warn("UpsertDailyPrice failed", "ticker", r.ticker, "date", row.Date, "error", err)
 				failed++
 				ok = false
 				break
@@ -140,19 +195,55 @@ func (u *Updater) updateDaily(ctx context.Context, tickers []string) (updated, f
 	return updated, failed
 }
 
+type weeklyFetchResult struct {
+	ticker string
+	rows   []DailyRow
+	err    error
+}
+
 func (u *Updater) updateWeekly(ctx context.Context, tickers []string) (updated, failed int) {
+	conc := u.weeklyConcurrency
+	if conc <= 0 {
+		conc = defaultWeeklyConc
+	}
+	results := make(chan weeklyFetchResult, len(tickers))
+	sem := make(chan struct{}, conc)
+	var wg sync.WaitGroup
+
 	for _, ticker := range tickers {
-		rows, err := u.fmp.FetchDaily(ticker, dailyLimit)
-		if err != nil {
-			u.logger.Warn("FMP daily (weekly) fetch error", "ticker", ticker, "error", err)
+		if ctx.Err() != nil {
+			break
+		}
+		wg.Add(1)
+		t := ticker
+		go func() {
+			defer wg.Done()
+			sem <- struct{}{}
+			defer func() { <-sem }()
+			rows, err := u.fmp.FetchDaily(t, dailyLimit)
+			if err != nil {
+				results <- weeklyFetchResult{ticker: t, err: err}
+				return
+			}
+			results <- weeklyFetchResult{ticker: t, rows: rows}
+		}()
+	}
+	go func() {
+		wg.Wait()
+		close(results)
+	}()
+
+	for r := range results {
+		if r.err != nil {
+			u.logger.Warn("FMP daily (weekly) fetch error", "ticker", r.ticker, "error", r.err)
 			failed++
 			continue
 		}
-		weekly := resampleDailyToWeekly(rows)
+		weekly := resampleDailyToWeekly(r.rows)
 		ok := true
 		for _, w := range weekly {
 			arg := db.UpsertWeeklyPriceParams{
-				Ticker:     ticker,
+				Ticker:     r.ticker,
 				WeekEnding: pgtype.Date{Time: w.WeekEnding, Valid: true},
 				Open:       pgtype.Float8{Float64: w.Open, Valid: true},
 				High:       pgtype.Float8{Float64: w.High, Valid: true},
@@ -161,7 +252,7 @@ func (u *Updater) updateWeekly(ctx context.Context, tickers []string) (updated, 
 				Volume:     pgtype.Int8{Int64: w.Volume, Valid: true},
 			}
 			if err := u.queries.UpsertWeeklyPrice(ctx, arg); err != nil {
-				u.logger.Warn("UpsertWeeklyPrice failed", "ticker", ticker, "week_ending", w.WeekEnding.Format("2006-01-02"), "error", err)
+				u.logger.Warn("UpsertWeeklyPrice failed", "ticker", r.ticker, "week_ending", w.WeekEnding.Format("2006-01-02"), "error", err)
 				failed++
 				ok = false
 				break

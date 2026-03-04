@@ -2,6 +2,7 @@ import type { NextConfig } from "next";
 import path from "path";
 
 const nextConfig: NextConfig = {
+  output: "standalone",
   // Turbopack config (Next.js 16 default bundler)
   turbopack: {
     root: path.resolve(__dirname, "../../.."),

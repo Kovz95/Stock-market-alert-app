@@ -4,9 +4,11 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -20,18 +22,26 @@ type Notifier struct {
 	mu       sync.Mutex
 	lastSend map[string]time.Time
 
-	// MinInterval between sends to the same webhook URL.
+	// MinInterval between sends to the same webhook URL (per webhook).
+	// Default 2s keeps under Discord's ~30 requests/min per webhook.
 	MinInterval time.Duration
 }
 
 // NewNotifier creates a Notifier with sensible defaults.
+// MinInterval can be overridden via DISCORD_WEBHOOK_INTERVAL_SEC (e.g. "2" or "2.5").
 func NewNotifier() *Notifier {
+	interval := 2 * time.Second
+	if s := os.Getenv("DISCORD_WEBHOOK_INTERVAL_SEC"); s != "" {
+		if sec, err := strconv.ParseFloat(strings.TrimSpace(s), 64); err == nil && sec > 0 {
+			interval = time.Duration(sec * float64(time.Second))
+		}
+	}
 	return &Notifier{
 		client: &http.Client{
 			Timeout: 10 * time.Second,
 		},
 		lastSend:    make(map[string]time.Time),
-		MinInterval: 500 * time.Millisecond, // Discord allows ~30 messages/min per webhook
+		MinInterval: interval,
 	}
 }
 
@@ -86,6 +96,7 @@ func (n *Notifier) SendMessage(webhookURL, message string) error {
 }
 
 // SendEmbeds sends a batch of embeds (max 10) to a Discord webhook.
+// On 429 (rate limit), it waits for Retry-After then retries up to maxRetries.
 func (n *Notifier) SendEmbeds(webhookURL string, embeds []Embed) error {
 	if !SendEnabled() {
 		log.Printf("discord: send disabled, skipping %d embeds", len(embeds))
@@ -114,16 +125,57 @@ func (n *Notifier) SendEmbeds(webhookURL string, embeds []Embed) error {
 		return fmt.Errorf("discord: marshal embeds payload: %w", err)
 	}
 
-	resp, err := n.client.Post(webhookURL, "application/json", bytes.NewReader(body))
-	if err != nil {
-		return fmt.Errorf("discord: post webhook: %w", err)
-	}
-	defer resp.Body.Close()
+	const maxRetries = 3
+	var lastErr error
+	for attempt := 0; attempt < maxRetries; attempt++ {
+		resp, err := n.client.Post(webhookURL, "application/json", bytes.NewReader(body))
+		if err != nil {
+			lastErr = fmt.Errorf("discord: post webhook: %w", err)
+			continue
+		}
 
-	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNoContent {
-		return fmt.Errorf("discord: webhook returned HTTP %d", resp.StatusCode)
+		if resp.StatusCode == http.StatusTooManyRequests {
+			retryAfter := n.parseRetryAfter(resp)
+			resp.Body.Close()
+			if retryAfter > 0 && attempt+1 < maxRetries {
+				log.Printf("discord: rate limited (429), waiting %.1fs before retry", retryAfter.Seconds())
+				time.Sleep(retryAfter)
+				continue
+			}
+			lastErr = fmt.Errorf("discord: webhook rate limited (429) after %d retries", attempt+1)
+			break
+		}
+
+		if resp.StatusCode == http.StatusOK || resp.StatusCode == http.StatusNoContent {
+			resp.Body.Close()
+			return nil
+		}
+		_ = resp.Body.Close()
+		lastErr = fmt.Errorf("discord: webhook returned HTTP %d", resp.StatusCode)
+		break
 	}
-	return nil
+	return lastErr
+}
+
+// parseRetryAfter reads Retry-After header or JSON retry_after from 429 response.
+func (n *Notifier) parseRetryAfter(resp *http.Response) time.Duration {
+	if s := resp.Header.Get("Retry-After"); s != "" {
+		if sec, err := strconv.ParseFloat(strings.TrimSpace(s), 64); err == nil && sec > 0 {
+			return time.Duration(sec * float64(time.Second))
+		}
+	}
+	// Fallback: parse JSON body for retry_after
+	raw, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return 2 * time.Second
+	}
+	var v struct {
+		RetryAfter float64 `json:"retry_after"`
+	}
+	if json.Unmarshal(raw, &v) == nil && v.RetryAfter > 0 {
+		return time.Duration(v.RetryAfter * float64(time.Second))
+	}
+	return 2 * time.Second
 }
 
 // rateLimit blocks until enough time has passed since the last send

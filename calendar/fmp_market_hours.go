@@ -9,6 +9,8 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strconv"
+	"strings"
 	"time"
 )
 
@@ -125,6 +127,7 @@ var FMPToInternal = map[string]string{
 // FetchAllExchangeMarketHours calls FMP's all-exchange-market-hours endpoint.
 // apiKey is read from environment by the caller (e.g. FMP_API_KEY from .env).
 // If client is nil, http.DefaultClient is used. If apiKey is empty, returns (nil, nil).
+// On 429, retries up to 3 times with backoff (Retry-After or 60s).
 func FetchAllExchangeMarketHours(ctx context.Context, apiKey string, client *http.Client) (*MarketHoursSnapshot, error) {
 	if apiKey == "" {
 		return nil, nil
@@ -138,35 +141,77 @@ func FetchAllExchangeMarketHours(ctx context.Context, apiKey string, client *htt
 	}
 	u.RawQuery = url.Values{"apikey": {apiKey}}.Encode()
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(io.LimitReader(resp.Body, 512))
-		return nil, fmt.Errorf("FMP all-exchange-market-hours: %s %s", resp.Status, string(body))
-	}
-	var raw []FMPExchangeHours
-	if err := json.NewDecoder(resp.Body).Decode(&raw); err != nil {
-		return nil, err
-	}
-	snap := &MarketHoursSnapshot{
-		ByExchange: make(map[string]FMPExchangeHours),
-		FetchedAt:  time.Now().UTC(),
-	}
-	for _, h := range raw {
-		internal := FMPToInternal[h.Exchange]
-		if internal == "" {
-			internal = h.Exchange
+	const maxRetries = 3
+	var lastErr error
+	for attempt := 0; attempt < maxRetries; attempt++ {
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
+		if err != nil {
+			return nil, err
 		}
-		snap.ByExchange[internal] = h
+		resp, err := client.Do(req)
+		if err != nil {
+			lastErr = err
+			continue
+		}
+
+		if resp.StatusCode == http.StatusTooManyRequests {
+			backoff := parseFMPRetryAfter(resp)
+			resp.Body.Close()
+			if attempt+1 < maxRetries && backoff > 0 {
+				select {
+				case <-ctx.Done():
+					return nil, ctx.Err()
+				case <-time.After(backoff):
+				}
+				continue
+			}
+			lastErr = fmt.Errorf("FMP all-exchange-market-hours: 429 rate limited after %d retries", attempt+1)
+			break
+		}
+
+		if resp.StatusCode != http.StatusOK {
+			body, _ := io.ReadAll(io.LimitReader(resp.Body, 512))
+			resp.Body.Close()
+			lastErr = fmt.Errorf("FMP all-exchange-market-hours: %s %s", resp.Status, string(body))
+			break
+		}
+
+		var raw []FMPExchangeHours
+		if err := json.NewDecoder(resp.Body).Decode(&raw); err != nil {
+			resp.Body.Close()
+			return nil, err
+		}
+		resp.Body.Close()
+		snap := &MarketHoursSnapshot{
+			ByExchange: make(map[string]FMPExchangeHours),
+			FetchedAt:  time.Now().UTC(),
+		}
+		for _, h := range raw {
+			internal := FMPToInternal[h.Exchange]
+			if internal == "" {
+				internal = h.Exchange
+			}
+			snap.ByExchange[internal] = h
+		}
+		return snap, nil
 	}
-	return snap, nil
+	return nil, lastErr
+}
+
+func parseFMPRetryAfter(resp *http.Response) time.Duration {
+	if s := resp.Header.Get("Retry-After"); s != "" {
+		if sec, err := strconv.ParseFloat(strings.TrimSpace(s), 64); err == nil && sec > 0 {
+			return time.Duration(sec * float64(time.Second))
+		}
+	}
+	raw, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
+	var v struct {
+		RetryAfter float64 `json:"retry_after"`
+	}
+	if json.Unmarshal(raw, &v) == nil && v.RetryAfter > 0 {
+		return time.Duration(v.RetryAfter * float64(time.Second))
+	}
+	return 60 * time.Second
 }
 
 // IsExchangeOpenFromSnapshot returns whether the exchange is open according to the FMP snapshot.
