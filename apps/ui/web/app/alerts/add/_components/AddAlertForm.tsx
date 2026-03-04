@@ -254,8 +254,8 @@ export function AddAlertForm() {
   return (
     <div className="space-y-8">
       <form onSubmit={handleSubmit}>
-        <FieldSet className="flex flex-col gap-8">
-          <Card>
+        <FieldSet className="flex flex-row">
+          <Card className="flex-1">
             <CardHeader>
               <CardTitle>Basic settings</CardTitle>
               <CardDescription>
@@ -277,7 +277,7 @@ export function AddAlertForm() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="flex-1">
             <CardHeader>
               <CardTitle>Ticker / assets</CardTitle>
               <CardDescription>
@@ -371,7 +371,7 @@ export function AddAlertForm() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="flex-1">
             <CardHeader>
               <CardTitle>Conditions</CardTitle>
               <CardDescription>
@@ -391,26 +391,24 @@ export function AddAlertForm() {
               />
             </CardContent>
           </Card>
-
-          <div className="flex flex-wrap gap-3">
-            <Button type="submit" disabled={isPending}>
-              {isPending
-                ? "Creating…"
-                : bulkMode && bulkTickersText.trim()
-                  ? "Create alerts"
-                  : "Add alert"}
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => router.push("/alerts")}
-            >
-              Cancel
-            </Button>
-          </div>
         </FieldSet>
+        <div className="flex flex-wrap gap-3 mt-3">
+          <Button type="submit" disabled={isPending}>
+            {isPending
+              ? "Creating…"
+              : bulkMode && bulkTickersText.trim()
+                ? "Create alerts"
+                : "Add alert"}
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => router.push("/alerts")}
+          >
+            Cancel
+          </Button>
+        </div>
       </form>
-
       <IndicatorGuide />
     </div>
   );
