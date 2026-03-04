@@ -39,8 +39,6 @@ import { Badge } from "@/components/ui/badge";
 export interface AlertBasicFieldsProps {
   name: string;
   onNameChange: (v: string) => void;
-  action: "Buy" | "Sell";
-  onActionChange: (v: "Buy" | "Sell") => void;
   timeframe: string;
   onTimeframeChange: (v: string) => void;
   exchanges: string[];
@@ -53,8 +51,6 @@ export interface AlertBasicFieldsProps {
 export function AlertBasicFields({
   name,
   onNameChange,
-  action,
-  onActionChange,
   timeframe,
   onTimeframeChange,
   exchanges,
@@ -87,8 +83,7 @@ export function AlertBasicFields({
     fetchCount();
   }, [exchanges, country, onSymbolCountChange]);
 
-  const hasFilters = (!exchanges.includes("All") && exchanges.length > 0) || country !== "All";
-  const showSymbolCount = hasFilters && symbolCount !== null;
+  const showSymbolCount = symbolCount !== null;
   const exchangeAnchor = useComboboxAnchor();
 
   const handleExchangeChange = (value: string | string[] | null) => {
@@ -111,20 +106,6 @@ export function AlertBasicFields({
             value={name}
             onChange={(e) => onNameChange(e.target.value)}
           />
-        </FieldContent>
-      </Field>
-      <Field>
-        <FieldLegend>Action</FieldLegend>
-        <FieldContent>
-          <Select value={action} onValueChange={(v) => onActionChange(v as "Buy" | "Sell")}>
-            <SelectTrigger className="w-full">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="Buy">Buy</SelectItem>
-              <SelectItem value="Sell">Sell</SelectItem>
-            </SelectContent>
-          </Select>
         </FieldContent>
       </Field>
       <Field>
@@ -223,7 +204,7 @@ export function AlertBasicFields({
               } else if (hasCountryFilter) {
                 return `Showing symbols in ${COUNTRY_CODE_TO_NAME[country] ?? country}`;
               }
-              return "";
+              return "Showing symbols from all exchanges";
             })()}
           </p>
         </div>

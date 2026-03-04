@@ -45,7 +45,7 @@ export type MASlopeCurveConditionType =
 export type ConditionParams = {
   // Price
   priceValue?: number;
-  // MA
+  // MA (moving_average: SMA etc.; ma_slope_curve: HMA, EMA, SMA, WMA, RMA)
   maType?: string;
   maPeriod?: number;
   fastPeriod?: number;
@@ -68,7 +68,6 @@ export type ConditionParams = {
   volumeFraction?: number;
   // MA Slope + Curvature
   maLen?: number;
-  maType?: string; // HMA, EMA, SMA, WMA, RMA
   slopeLookback?: number;
   smoothType?: string; // None, EMA, SMA, RMA
   smoothLen?: number;

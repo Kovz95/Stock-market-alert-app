@@ -2,13 +2,49 @@
 
 import { alertClient } from "@/lib/grpc/channel";
 import type {
-  AuditSummaryRow,
   GetPerformanceMetricsResponse,
-  AuditHistoryRow,
   GetFailedPriceDataResponse,
 } from "../../../../gen/ts/alert/v1/alert";
 
-export type { AuditSummaryRow, AuditHistoryRow };
+/** Row type for audit summary; defined here to avoid re-export from generated proto (avoids SSR ReferenceError). */
+export interface AuditSummaryRow {
+  alertId: string;
+  ticker: string;
+  stockName: string;
+  exchange: string;
+  timeframe: string;
+  action: string;
+  evaluationType: string;
+  totalChecks: number;
+  successfulPricePulls: number;
+  successfulEvaluations: number;
+  totalTriggers: number;
+  avgExecutionTimeMs: number;
+  lastCheck?: Date | undefined;
+  firstCheck?: Date | undefined;
+}
+
+/** Row type for alert history; defined here to avoid re-export from generated proto (avoids SSR ReferenceError). */
+export interface AuditHistoryRow {
+  id: number;
+  timestamp?: Date | undefined;
+  alertId: string;
+  ticker: string;
+  stockName: string;
+  exchange: string;
+  timeframe: string;
+  action: string;
+  evaluationType: string;
+  priceDataPulled: boolean;
+  priceDataSource: string;
+  conditionsEvaluated: boolean;
+  alertTriggered: boolean;
+  triggerReason: string;
+  executionTimeMs: number;
+  cacheHit: boolean;
+  errorMessage: string;
+  alertName: string;
+}
 
 export type PerformanceMetrics = GetPerformanceMetricsResponse;
 

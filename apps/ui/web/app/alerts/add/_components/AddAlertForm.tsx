@@ -259,15 +259,13 @@ export function AddAlertForm() {
             <CardHeader>
               <CardTitle>Basic settings</CardTitle>
               <CardDescription>
-                Name, action, timeframe, exchange, and country.
+                Name, timeframe, exchange, and country.
               </CardDescription>
             </CardHeader>
             <CardContent>
               <AlertBasicFields
                 name={form.name}
                 onNameChange={(v) => setForm((f) => ({ ...f, name: v }))}
-                action={form.action}
-                onActionChange={(v) => setForm((f) => ({ ...f, action: v }))}
                 timeframe={form.timeframe}
                 onTimeframeChange={(v) => setForm((f) => ({ ...f, timeframe: v }))}
                 exchanges={form.exchanges}
