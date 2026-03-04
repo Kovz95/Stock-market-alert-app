@@ -254,8 +254,8 @@ export function AddAlertForm() {
   return (
     <div className="space-y-8">
       <form onSubmit={handleSubmit}>
-        <FieldSet className="flex flex-row">
-          <Card className="flex-1">
+        <FieldSet className="flex flex-col lg:flex-row">
+          <Card className="lg:flex-1">
             <CardHeader>
               <CardTitle>Basic settings</CardTitle>
               <CardDescription>
@@ -277,7 +277,7 @@ export function AddAlertForm() {
             </CardContent>
           </Card>
 
-          <Card className="flex-1">
+          <Card className="lg:flex-1">
             <CardHeader>
               <CardTitle>Ticker / assets</CardTitle>
               <CardDescription>
@@ -371,7 +371,7 @@ export function AddAlertForm() {
             </CardContent>
           </Card>
 
-          <Card className="flex-1">
+          <Card className="lg:flex-1">
             <CardHeader>
               <CardTitle>Conditions</CardTitle>
               <CardDescription>
