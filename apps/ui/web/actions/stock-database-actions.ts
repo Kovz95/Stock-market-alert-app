@@ -95,9 +95,50 @@ export type CountSymbolsResult = {
   error?: string;
 };
 
+/** Country code → display name. Backend may store either; we match both when filtering. */
+const COUNTRY_CODE_TO_NAME: Record<string, string> = {
+  US: "United States",
+  CA: "Canada",
+  UK: "United Kingdom",
+  JP: "Japan",
+  DE: "Germany",
+  FR: "France",
+  AU: "Australia",
+  CH: "Switzerland",
+  NL: "Netherlands",
+  IT: "Italy",
+  ES: "Spain",
+  SE: "Sweden",
+  NO: "Norway",
+  DK: "Denmark",
+  FI: "Finland",
+  BE: "Belgium",
+  IE: "Ireland",
+  PT: "Portugal",
+  AT: "Austria",
+  PL: "Poland",
+  GR: "Greece",
+  HU: "Hungary",
+  CZ: "Czech Republic",
+  TR: "Turkey",
+  MX: "Mexico",
+  HK: "Hong Kong",
+  SG: "Singapore",
+  TW: "Taiwan",
+  MY: "Malaysia",
+  KR: "South Korea",
+  IN: "India",
+  CN: "China",
+  TH: "Thailand",
+  ID: "Indonesia",
+  PH: "Philippines",
+  VN: "Vietnam",
+};
+
 /**
  * Count symbols that match the given exchanges and country filters.
  * "All" in exchanges array means no filter for exchanges.
+ * Country filter matches both code (e.g. "US") and display name (e.g. "United States") since the backend may store either.
  */
 export async function countSymbolsByFilters(
   filters: CountSymbolsFilters
@@ -119,11 +160,13 @@ export async function countSymbolsByFilters(
       }
     }
 
-    // Filter by country if not "All"
+    // Filter by country if not "All" (match both code and display name; backend may store either)
     if (filters.country && filters.country !== "All") {
+      const code = filters.country;
+      const name = COUNTRY_CODE_TO_NAME[code];
       filtered = filtered.filter((item) => {
-        const country = item.country || item["country"] as string;
-        return country === filters.country;
+        const itemCountry = (item.country ?? item["country"] ?? "") as string;
+        return itemCountry === code || (name != null && itemCountry === name);
       });
     }
 
@@ -169,11 +212,13 @@ export async function getSymbolsByFilters(
       }
     }
 
-    // Filter by country if not "All"
+    // Filter by country if not "All" (match both code and display name; backend may store either)
     if (filters.country && filters.country !== "All") {
+      const code = filters.country;
+      const name = COUNTRY_CODE_TO_NAME[code];
       filtered = filtered.filter((item) => {
-        const country = item.country || item["country"] as string;
-        return country === filters.country;
+        const itemCountry = (item.country ?? item["country"] ?? "") as string;
+        return itemCountry === code || (name != null && itemCountry === name);
       });
     }
 

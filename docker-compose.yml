@@ -149,8 +149,8 @@ services:
     image: envoyproxy/envoy:v1.31-latest
     container_name: stockalert-envoy
     restart: unless-stopped
-    ports:
-      - "8080:8080"
+    # No host port binding - only used by web service on Docker network (envoy:8081)
+    ports: []
     volumes:
       - ./envoy.yaml:/etc/envoy/envoy.yaml
     depends_on:
@@ -175,7 +175,7 @@ services:
       - .env
     environment:
       - NODE_ENV=production
-      - GRPC_ENDPOINT=envoy:8080
+      - GRPC_ENDPOINT=envoy:8081
     depends_on:
       envoy:
         condition: service_started
