@@ -1,8 +1,8 @@
 "use client";
 
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Provider } from 'jotai';
+import { QueryClient } from "@tanstack/react-query";
+import { QueryClientAtomProvider } from "jotai-tanstack-query/react";
 import { ThemeProvider } from "next-themes";
 import { useState } from "react";
 
@@ -20,14 +20,10 @@ export function Providers({ children }: { children: React.ReactNode }) {
   );
 
   return (
-    <QueryClientProvider client={queryClient}>
+    <QueryClientAtomProvider client={queryClient}>
       <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-        <TooltipProvider>
-          <Provider>
-            {children}
-          </Provider>
-        </TooltipProvider>
+        <TooltipProvider>{children}</TooltipProvider>
       </ThemeProvider>
-    </QueryClientProvider>
+    </QueryClientAtomProvider>
   );
 }

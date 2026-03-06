@@ -59,7 +59,7 @@ func fSmooth(x []float64, smoothType string, smoothLen int) []float64 {
 	case "EMA":
 		return EWM(x, smoothLen)
 	case "SMA":
-		return RollingMean(x, smoothLen)
+		return talib.Sma(x, smoothLen)
 	case "RMA":
 		return RMA(x, smoothLen)
 	default:

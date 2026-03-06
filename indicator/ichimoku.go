@@ -2,12 +2,14 @@ package indicator
 
 import (
 	"math"
+
+	"github.com/markcheno/go-talib"
 )
 
 // donchianMid computes (highest high + lowest low) / 2 over the given period.
 func donchianMid(high, low []float64, period int) []float64 {
-	hh := RollingMax(high, period)
-	ll := RollingMin(low, period)
+	hh := talib.Max(high, period)
+	ll := talib.Min(low, period)
 	out := make([]float64, len(high))
 	for i := range out {
 		out[i] = (hh[i] + ll[i]) / 2

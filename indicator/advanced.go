@@ -289,8 +289,8 @@ func MASpreadZscore(data *OHLCV, params map[string]interface{}) ([]float64, erro
 		}
 	}
 
-	spreadMean := RollingMean(spread, spreadMeanWindow)
-	spreadStd := RollingStd(spread, spreadStdWindow)
+	spreadMean := talib.Sma(spread, spreadMeanWindow)
+	spreadStd := talib.StdDev(spread, spreadStdWindow, 1.0)
 
 	zscore := make([]float64, n)
 	for i := range zscore {

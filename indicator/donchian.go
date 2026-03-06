@@ -2,6 +2,8 @@ package indicator
 
 import (
 	"math"
+
+	"github.com/markcheno/go-talib"
 )
 
 // DonchianUpper returns the highest high over the period.
@@ -10,7 +12,7 @@ func DonchianUpper(data *OHLCV, params map[string]interface{}) ([]float64, error
 	length := paramInt(params, "length", 20)
 	offset := paramInt(params, "offset", 0)
 
-	upper := RollingMax(data.High, length)
+	upper := talib.Max(data.High, length)
 	if offset != 0 {
 		upper = Shift(upper, offset)
 	}
@@ -23,7 +25,7 @@ func DonchianLower(data *OHLCV, params map[string]interface{}) ([]float64, error
 	length := paramInt(params, "length", 20)
 	offset := paramInt(params, "offset", 0)
 
-	lower := RollingMin(data.Low, length)
+	lower := talib.Min(data.Low, length)
 	if offset != 0 {
 		lower = Shift(lower, offset)
 	}
@@ -36,8 +38,8 @@ func DonchianBasis(data *OHLCV, params map[string]interface{}) ([]float64, error
 	length := paramInt(params, "length", 20)
 	offset := paramInt(params, "offset", 0)
 
-	upper := RollingMax(data.High, length)
-	lower := RollingMin(data.Low, length)
+	upper := talib.Max(data.High, length)
+	lower := talib.Min(data.Low, length)
 
 	basis := make([]float64, len(upper))
 	for i := range basis {
@@ -54,8 +56,8 @@ func DonchianBasis(data *OHLCV, params map[string]interface{}) ([]float64, error
 func DonchianWidth(data *OHLCV, params map[string]interface{}) ([]float64, error) {
 	length := paramInt(params, "length", 20)
 
-	upper := RollingMax(data.High, length)
-	lower := RollingMin(data.Low, length)
+	upper := talib.Max(data.High, length)
+	lower := talib.Min(data.Low, length)
 
 	width := make([]float64, len(upper))
 	for i := range width {
@@ -69,8 +71,8 @@ func DonchianWidth(data *OHLCV, params map[string]interface{}) ([]float64, error
 func DonchianPosition(data *OHLCV, params map[string]interface{}) ([]float64, error) {
 	length := paramInt(params, "length", 20)
 
-	upper := RollingMax(data.High, length)
-	lower := RollingMin(data.Low, length)
+	upper := talib.Max(data.High, length)
+	lower := talib.Min(data.Low, length)
 
 	pos := make([]float64, len(upper))
 	for i := range pos {

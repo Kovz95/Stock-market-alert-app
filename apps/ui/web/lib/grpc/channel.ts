@@ -16,7 +16,7 @@ import {
   type SchedulerServiceClient,
 } from "../../../../../gen/ts/scheduler/v1/scheduler";
 
-const GRPC_ENDPOINT = process.env.GRPC_ENDPOINT || "127.0.0.1:8080";
+const GRPC_ENDPOINT = process.env.GRPC_ENDPOINT || "127.0.0.1:8081";
 
 const channel = createChannel(GRPC_ENDPOINT);
 

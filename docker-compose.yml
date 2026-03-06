@@ -150,7 +150,9 @@ services:
     container_name: stockalert-envoy
     restart: unless-stopped
     # No host port binding - only used by web service on Docker network (envoy:8081)
-    ports: []
+    ports: [
+      "8081:8081",
+    ]
     volumes:
       - ./envoy.yaml:/etc/envoy/envoy.yaml
     depends_on:

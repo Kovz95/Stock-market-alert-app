@@ -45,7 +45,7 @@ Frontend for Stockalert: Next.js 16 (App Router), React 19, Jotai, React Query, 
 
 ### Pages and layouts
 
-- **Root layout** (`app/layout.tsx`) – Wraps the app with `ClerkProvider`, `QueryProvider`, Jotai `Provider`, `TooltipProvider`, `AuthenticatedLayout`. Stays a server component; providers are client components.
+- **Root layout** (`app/layout.tsx`) – Wraps the app with `QueryClientAtomProvider` (Jotai + TanStack Query), `ThemeProvider`, `TooltipProvider`, and layout components. Stays a server component; providers are client components.
 - **Page components** – Prefer thin server pages that render a single client container when the route is interactive (e.g. `app/(reference)/modifications/page.tsx` just returns `<ModificationsContainer />`). Use async server pages for content routes (e.g. `app/(reference)/rules/[[...slug]]/page.tsx`) with `generateStaticParams` and `generateMetadata` where applicable.
 - **Params and searchParams** – In App Router they are **Promises**. Always `await` them in server components: `const { slug } = await params;`.
 
@@ -153,9 +153,16 @@ Mirror the pattern in `lib/atoms/effect-atoms.ts` and `lib/atoms/modification-at
 
 ## React Query
 
-- **Provider:** `QueryProvider` in root layout wraps the app with `QueryClientProvider`.
+- **Provider:** Root layout uses `QueryClientAtomProvider` from `jotai-tanstack-query/react`, which provides both the TanStack Query client and Jotai so atoms and hooks share the same cache.
 - **Usage:** Hooks in `hooks/` (e.g. `useEffects`, `useCreateEffect`, `useUpdateEffect`, `useDeleteEffect`) use `useQuery` / `useMutation` with server actions. Mutations call `queryClient.invalidateQueries({ queryKey: ["effects"] })` (or the relevant key) on success.
 - **Server actions:** All actual I/O lives in server actions; React Query only calls them and manages cache and loading/error state.
+
+### jotai-tanstack-query
+
+- **Purpose:** Exposes TanStack Query as Jotai atoms so query keys and refetch can depend on Jotai state (e.g. pagination, filters) and any component can read/trigger the same query via `useAtom` without prop drilling.
+- **Same cache:** Atoms from `atomWithQuery` / `atomWithInfiniteQuery` / `atomWithMutation` use the same `QueryClient` as `useQuery`/`useMutation`; invalidating a query key updates both hook and atom consumers.
+- **When to use atoms vs hooks:** Use **hooks** when you only need loading/error/data in one place and no composition with Jotai. Use **jotai-tanstack-query** when the query key or refetch should depend on Jotai state (e.g. `alertsPaginatedQueryAtom` reading `alertsPageAtom` / `alertsPageSizeAtom`) or you want multiple components to subscribe via atoms. You can migrate one feature at a time; the rest can stay on hooks.
+- **Example:** Paginated alerts use `alertsPaginatedQueryAtom` in `lib/store/alerts.ts` (atomWithQuery that reads page/pageSize atoms); the alerts page uses it via `useAlertsPaginated()` which is a thin wrapper around `useAtom(alertsPaginatedQueryAtom)`.
 
 ---
 

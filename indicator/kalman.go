@@ -53,9 +53,9 @@ func KalmanROCStoch(data *OHLCV, params map[string]interface{}) ([]float64, erro
 		}
 	}
 
-	// Stochastic
-	lowestLow := RollingMin(data.Low, stochLen)
-	highestHigh := RollingMax(data.High, stochLen)
+	// Stochastic (using go-talib Min/Max/Sma)
+	lowestLow := talib.Min(data.Low, stochLen)
+	highestHigh := talib.Max(data.High, stochLen)
 	kRaw := make([]float64, n)
 	for i := range kRaw {
 		denom := highestHigh[i] - lowestLow[i]
@@ -65,8 +65,8 @@ func KalmanROCStoch(data *OHLCV, params map[string]interface{}) ([]float64, erro
 			kRaw[i] = math.NaN()
 		}
 	}
-	kSma := RollingMean(kRaw, smoothK)
-	dSma := RollingMean(kSma, smoothD)
+	kSma := talib.Sma(kRaw, smoothK)
+	dSma := talib.Sma(kSma, smoothD)
 
 	// Blend ROC and Stochastic D
 	blendRaw := make([]float64, n)
@@ -82,7 +82,7 @@ func KalmanROCStoch(data *OHLCV, params map[string]interface{}) ([]float64, erro
 func applyMASmoothing(data []float64, maType string, length int) []float64 {
 	switch maType {
 	case "SMA":
-		return RollingMean(data, length)
+		return talib.Sma(data, length)
 	case "EMA":
 		return talib.Ema(data, length)
 	case "DEMA":
@@ -94,7 +94,7 @@ func applyMASmoothing(data []float64, maType string, length int) []float64 {
 	case "HMA":
 		return computeHMA(data, length)
 	default:
-		return RollingMean(data, length)
+		return talib.Sma(data, length)
 	}
 }
 

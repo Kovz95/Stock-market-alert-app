@@ -2,25 +2,20 @@ package indicator
 
 import (
 	"math"
+
+	"github.com/markcheno/go-talib"
 )
 
-// computeCCI computes CCI manually (matching Python implementation).
+// computeCCI returns CCI using go-talib. For "HLC" (typical price) uses talib.Cci;
+// for "Close" uses CCI computed on close series with talib.Sma for the moving average.
 func computeCCI(data *OHLCV, period int, priceType string) []float64 {
-	var price []float64
-	switch priceType {
-	case "HLC":
-		price = make([]float64, data.Len())
-		for i := range price {
-			price[i] = (data.High[i] + data.Low[i] + data.Close[i]) / 3
-		}
-	default:
-		price = data.Close
+	if priceType == "HLC" {
+		return talib.Cci(data.High, data.Low, data.Close, period)
 	}
-
+	// priceType "Close" or default: CCI on close only
+	price := data.Close
+	sma := talib.Sma(price, period)
 	n := len(price)
-	sma := RollingMean(price, period)
-
-	// Mean deviation
 	meanDev := make([]float64, n)
 	for i := 0; i < n; i++ {
 		if i < period-1 {
@@ -33,7 +28,6 @@ func computeCCI(data *OHLCV, period int, priceType string) []float64 {
 		}
 		meanDev[i] = sum / float64(period)
 	}
-
 	cci := make([]float64, n)
 	for i := range cci {
 		if meanDev[i] != 0 && !math.IsNaN(meanDev[i]) {
@@ -57,8 +51,7 @@ func TrendMagic(data *OHLCV, params map[string]interface{}) ([]float64, error) {
 
 	n := data.Len()
 
-	tr := TrueRange(data.High, data.Low, data.Close)
-	atr := RollingMean(tr, atrPeriod)
+	atr := talib.Atr(data.High, data.Low, data.Close, atrPeriod)
 	cci := computeCCI(data, cciPeriod, priceType)
 
 	// Upper = Low - ATR * multiplier, Lower = High + ATR * multiplier

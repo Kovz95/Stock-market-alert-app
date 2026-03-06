@@ -2,6 +2,8 @@ package indicator
 
 import (
 	"math"
+
+	"github.com/markcheno/go-talib"
 )
 
 // computeSupertrend is the core Supertrend algorithm returning trend, upper band, lower band.
@@ -17,9 +19,8 @@ func computeSupertrend(data *OHLCV, period int, multiplier float64) (trend, up, 
 		src[i] = (high[i] + low[i]) / 2
 	}
 
-	// True Range -> ATR (SMA of TR)
-	tr := TrueRange(high, low, close)
-	atr := RollingMean(tr, period)
+	// ATR from go-talib (SMA of True Range)
+	atr := talib.Atr(high, low, close, period)
 
 	// Basic bands
 	up = make([]float64, n)
