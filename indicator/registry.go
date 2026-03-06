@@ -66,6 +66,26 @@ func NewDefaultRegistry() *Registry {
 	r.Register("cci", CCI)
 	r.Register("willr", WILLR)
 
+	// Additional TA-Lib (talib_ext.go)
+	r.Register("adx", ADX)
+	r.Register("stoch_k", StochK)
+	r.Register("stoch_d", StochD)
+	r.Register("stoch_rsi_k", StochRsiK)
+	r.Register("stoch_rsi_d", StochRsiD)
+	r.Register("obv", OBV)
+	r.Register("mfi", MFI)
+	r.Register("mom", Mom)
+	r.Register("ad", Ad)
+	// Medium priority: trend / volatility / slope
+	r.Register("plus_di", PlusDI)
+	r.Register("minus_di", MinusDI)
+	r.Register("natr", Natr)
+	r.Register("linear_reg_slope", LinearRegSlope)
+	r.Register("linear_reg", LinearReg)
+	r.Register("stddev", StdDev)
+	r.Register("aroon_osc", AroonOsc)
+	r.Register("cmo", Cmo)
+
 	// Multi-output indicators
 	r.Register("macd", MACD)
 	r.Register("bbands", BBANDS)
@@ -123,6 +143,9 @@ func NewDefaultRegistry() *Registry {
 	r.Register("pivot_sr", PivotSR)
 	r.Register("pivot_sr_crossover", PivotSRCrossover)
 	r.Register("pivot_sr_proximity", PivotSRProximity)
+
+	// Custom (e.g. from TradingView / Pine Script — add more in indicator/custom.go)
+	r.Register("my_smoothed_rsi", MySmoothedRSI)
 
 	// MA Slope + Curvature
 	r.Register("ma_slope_curve_ma", MaSlopeCurveMA)

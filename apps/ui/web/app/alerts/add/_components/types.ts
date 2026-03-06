@@ -11,6 +11,7 @@ export type ConditionCategory =
   | "bollinger"
   | "volume"
   | "ma_slope_curve"
+  | "indicator"
   | "custom";
 
 export type PriceConditionType = "price_above" | "price_below" | "price_equals";
@@ -75,6 +76,11 @@ export type ConditionParams = {
   atrLen?: number;
   slopeThr?: number;
   curveThr?: number;
+  // Indicator (any registered indicator: name, optional params, operator, value)
+  indicatorName?: string;
+  indicatorParams?: string;
+  indicatorOperator?: string;
+  indicatorValue?: number;
   // Custom
   customExpression?: string;
 };
@@ -141,6 +147,16 @@ export function conditionEntryToExpression(entry: ConditionEntry): string {
       if (type === "volume_spike" && params.volumeMultiplier != null)
         return `volume_spike: ${params.volumeMultiplier}x`;
       break;
+    case "indicator": {
+      const name = params.indicatorName?.trim();
+      const op = params.indicatorOperator ?? ">";
+      const val = params.indicatorValue ?? 0;
+      if (!name) return "";
+      const paramStr = params.indicatorParams?.trim();
+      const args = paramStr ? paramStr : "";
+      const expr = args ? `${name}(${args})[-1] ${op} ${val}` : `${name}()[-1] ${op} ${val}`;
+      return expr;
+    }
     case "ma_slope_curve": {
       const maLen = params.maLen ?? 200;
       const slopeLookback = params.slopeLookback ?? 3;
@@ -216,6 +232,10 @@ export function conditionEntryLabel(entry: ConditionEntry): string {
     return `Bollinger ${entry.type === "price_above_upper_band" ? "upper" : "lower"} band (incomplete)`;
   if (entry.category === "ma_slope_curve")
     return `MA Slope+Curvature: ${entry.type}`;
+  if (entry.category === "indicator") {
+    const expr = conditionEntryToExpression(entry);
+    return expr || "Indicator (incomplete)";
+  }
   return `${entry.category} – ${entry.type}`;
 }
 

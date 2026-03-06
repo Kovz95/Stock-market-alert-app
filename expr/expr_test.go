@@ -778,3 +778,56 @@ func TestResolveOperandOutOfBounds(t *testing.T) {
 		t.Fatalf("expected NaN for out-of-bounds, got %f", val)
 	}
 }
+
+// TestEvalIndicatorAliases ensures alias names (bb, psar, harsi) resolve to canonical indicators.
+func TestEvalIndicatorAliases(t *testing.T) {
+	data := testOHLCV(50)
+	reg := indicator.NewDefaultRegistry()
+	eval := NewEvaluator(reg)
+
+	// bb -> bbands
+	_, err := eval.EvalCondition(data, "bb(20, 2)[-1] > 0", nil)
+	if err != nil {
+		t.Errorf("alias bb: %v", err)
+	}
+	// psar -> sar
+	_, err = eval.EvalCondition(data, "psar(0.02, 0.2)[-1] > 0", nil)
+	if err != nil {
+		t.Errorf("alias psar: %v", err)
+	}
+	// harsi -> harsi_flip
+	_, err = eval.EvalCondition(data, "harsi(14)[-1] >= 0", nil)
+	if err != nil {
+		t.Errorf("alias harsi: %v", err)
+	}
+}
+
+// TestEvalAllIndicators ensures every registered indicator can be evaluated with
+// default params and sufficient OHLCV data (no panic, no "unknown indicator").
+func TestEvalAllIndicators(t *testing.T) {
+	reg := indicator.NewDefaultRegistry()
+	eval := NewEvaluator(reg)
+	// Use enough bars for long lookbacks (e.g. ma_slope_curve_ma default ma_len 200)
+	data := testOHLCV(260)
+
+	names := reg.Names()
+	if len(names) == 0 {
+		t.Fatal("registry has no indicators")
+	}
+
+	for _, name := range names {
+		op := &Operand{
+			Indicator: name,
+			Params:    make(map[string]interface{}),
+			Specifier: -1,
+		}
+		series, err := eval.computeSeries(data, op, nil)
+		if err != nil {
+			t.Errorf("indicator %q: computeSeries failed: %v", name, err)
+			continue
+		}
+		if len(series) != data.Len() {
+			t.Errorf("indicator %q: series length %d, want %d", name, len(series), data.Len())
+		}
+	}
+}

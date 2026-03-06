@@ -29,6 +29,7 @@ import {
   type VolumeConditionType,
   type MASlopeCurveConditionType,
 } from "./types";
+import { INDICATOR_NAMES } from "./indicatorList";
 
 const CATEGORY_OPTIONS: { value: ConditionCategory; label: string }[] = [
   { value: "price", label: "Price" },
@@ -38,7 +39,17 @@ const CATEGORY_OPTIONS: { value: ConditionCategory; label: string }[] = [
   { value: "bollinger", label: "Bollinger Bands" },
   { value: "volume", label: "Volume" },
   { value: "ma_slope_curve", label: "MA Slope + Curvature" },
+  { value: "indicator", label: "Any indicator" },
   { value: "custom", label: "Custom expression" },
+];
+
+const INDICATOR_OPERATORS: { value: string; label: string }[] = [
+  { value: ">", label: "> (greater than)" },
+  { value: "<", label: "< (less than)" },
+  { value: ">=", label: "≥ (at least)" },
+  { value: "<=", label: "≤ (at most)" },
+  { value: "==", label: "= (equals)" },
+  { value: "!=", label: "≠ (not equals)" },
 ];
 
 const PRICE_TYPES: { value: PriceConditionType; label: string }[] = [
@@ -136,6 +147,10 @@ function resolveParamsForAdd(
     p.slopeThr = p.slopeThr ?? 0;
     p.curveThr = p.curveThr ?? 0;
   }
+  if (category === "indicator") {
+    p.indicatorOperator = p.indicatorOperator ?? ">";
+    p.indicatorValue = p.indicatorValue ?? 0;
+  }
   return p;
 }
 
@@ -178,7 +193,9 @@ export function ConditionBuilder({ onAdd }: ConditionBuilderProps) {
                 ? VOLUME_TYPES
                 : category === "ma_slope_curve"
                   ? MA_SLOPE_CURVE_TYPES
-                  : [];
+                  : category === "indicator"
+                    ? [] // single type: indicator_compare; no sub-select
+                    : [];
 
   const showTypeSelect = typeOptions.length > 0;
 
@@ -200,6 +217,7 @@ export function ConditionBuilder({ onAdd }: ConditionBuilderProps) {
                 else if (v === "bollinger") setType("price_above_upper_band");
                 else if (v === "volume") setType("volume_above_average");
                 else if (v === "ma_slope_curve") setType("slope_positive");
+                else if (v === "indicator") setType("indicator_compare");
               }}
             >
               <SelectTrigger className="w-full">
@@ -648,6 +666,91 @@ export function ConditionBuilder({ onAdd }: ConditionBuilderProps) {
           </>
         )}
 
+        {category === "indicator" && (
+          <>
+            <Field>
+              <FieldLabel>Indicator</FieldLabel>
+              <FieldContent>
+                <Select
+                  value={params.indicatorName ?? ""}
+                  onValueChange={(v) =>
+                    setParams({ ...params, indicatorName: v })
+                  }
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select indicator" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {INDICATOR_NAMES.map((name) => (
+                      <SelectItem key={name} value={name}>
+                        {name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </FieldContent>
+            </Field>
+            <Field>
+              <FieldLabel>Parameters (optional)</FieldLabel>
+              <FieldContent>
+                <Input
+                  placeholder="e.g. 14 or 20, 2 or timeperiod=14"
+                  value={params.indicatorParams ?? ""}
+                  onChange={(e) =>
+                    setParams({ ...params, indicatorParams: e.target.value })
+                  }
+                />
+              </FieldContent>
+            </Field>
+            <Field>
+              <FieldLabel>Compare</FieldLabel>
+              <FieldContent>
+                <Select
+                  value={params.indicatorOperator ?? ">"}
+                  onValueChange={(v) =>
+                    setParams({ ...params, indicatorOperator: v })
+                  }
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {INDICATOR_OPERATORS.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </FieldContent>
+            </Field>
+            <Field>
+              <FieldLabel>Value</FieldLabel>
+              <FieldContent>
+                <Input
+                  type="number"
+                  step="any"
+                  placeholder="e.g. 0 or 30"
+                  value={
+                    params.indicatorValue !== undefined &&
+                    params.indicatorValue !== null
+                      ? params.indicatorValue
+                      : ""
+                  }
+                  onChange={(e) =>
+                    setParams({
+                      ...params,
+                      indicatorValue: e.target.value
+                        ? Number(e.target.value)
+                        : undefined,
+                    })
+                  }
+                />
+              </FieldContent>
+            </Field>
+          </>
+        )}
+
         {category === "custom" && (
           <Field>
             <FieldLabel>Expression</FieldLabel>
@@ -663,7 +766,15 @@ export function ConditionBuilder({ onAdd }: ConditionBuilderProps) {
           </Field>
         )}
       </FieldGroup>
-      <Button type="button" onClick={handleAdd} size="sm">
+      <Button
+        type="button"
+        onClick={handleAdd}
+        size="sm"
+        disabled={
+          category === "indicator" &&
+          !params.indicatorName?.trim()
+        }
+      >
         Add condition
       </Button>
     </div>

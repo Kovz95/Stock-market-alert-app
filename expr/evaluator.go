@@ -114,9 +114,24 @@ func (e *Evaluator) resolveOperand(data *indicator.OHLCV, op *Operand, ctx map[s
 	return val, nil
 }
 
+// indicatorAliases maps alternative names to the canonical registry name.
+var indicatorAliases = map[string]string{
+	"bb":    "bbands",
+	"psar":  "sar",
+	"harsi": "harsi_flip",
+}
+
+// resolveIndicatorName returns the canonical indicator name for registry lookup.
+func resolveIndicatorName(name string) string {
+	if canonical, ok := indicatorAliases[name]; ok {
+		return canonical
+	}
+	return name
+}
+
 // computeSeries computes the indicator or column series for an operand.
 func (e *Evaluator) computeSeries(data *indicator.OHLCV, op *Operand, ctx map[string]interface{}) ([]float64, error) {
-	name := op.Indicator
+	name := resolveIndicatorName(op.Indicator)
 
 	// Check if it's a price column
 	switch name {

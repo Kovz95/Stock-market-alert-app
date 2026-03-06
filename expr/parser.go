@@ -337,12 +337,16 @@ func remapPositionalParams(op *Operand) {
 	// Map "period" to indicator-specific param names
 	if period, ok := op.Params["period"]; ok {
 		switch ind {
-		case "sma", "ema", "hma", "rsi", "roc", "atr", "cci", "willr", "volume_ratio":
+		case "sma", "ema", "hma", "rsi", "roc", "atr", "cci", "willr", "volume_ratio", "my_smoothed_rsi", "adx", "mfi", "mom", "stoch_rsi_k", "stoch_rsi_d", "plus_di", "minus_di", "natr", "linear_reg_slope", "linear_reg", "aroon_osc", "cmo", "stddev":
 			op.Params["timeperiod"] = period
 			delete(op.Params, "period")
 		}
 		if strings.HasPrefix(ind, "ma_slope_curve") {
 			op.Params["ma_len"] = period
+			delete(op.Params, "period")
+		}
+		if ind == "donchian_upper" || ind == "donchian_lower" || ind == "donchian_basis" || ind == "donchian_width" || ind == "donchian_position" {
+			op.Params["length"] = period
 			delete(op.Params, "period")
 		}
 	}
@@ -384,7 +388,7 @@ func remapPositionalParams(op *Operand) {
 			op.Params["max_acceleration"] = v
 			delete(op.Params, "_pos_1")
 		}
-	case "supertrend":
+	case "supertrend", "supertrend_upper", "supertrend_lower":
 		if v, ok := op.Params["_pos_1"]; ok {
 			op.Params["multiplier"] = v
 			delete(op.Params, "_pos_1")
@@ -396,6 +400,24 @@ func remapPositionalParams(op *Operand) {
 		}
 		if v, ok := op.Params["_pos_1"]; ok {
 			op.Params["smoothing"] = v
+			delete(op.Params, "_pos_1")
+		}
+	case "stoch_k", "stoch_d":
+		if v, ok := op.Params["period"]; ok {
+			op.Params["fast_k_period"] = v
+			delete(op.Params, "period")
+		}
+		if v, ok := op.Params["_pos_1"]; ok {
+			op.Params["slow_k_period"] = v
+			delete(op.Params, "_pos_1")
+		}
+		if v, ok := op.Params["_pos_2"]; ok {
+			op.Params["slow_d_period"] = v
+			delete(op.Params, "_pos_2")
+		}
+	case "stddev":
+		if v, ok := op.Params["_pos_1"]; ok {
+			op.Params["nb_dev"] = v
 			delete(op.Params, "_pos_1")
 		}
 	}
