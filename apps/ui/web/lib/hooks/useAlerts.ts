@@ -8,6 +8,7 @@ import {
   createAlertsBulk,
   updateAlert,
   deleteAlert,
+  listAllAlertsForHistory,
 } from "@/actions/alert-actions";
 import {
   ALERTS_KEY,
@@ -73,6 +74,17 @@ export function useUpdateAlert() {
         queryClient.setQueryData([...ALERTS_KEY, data.alertId], data);
       }
     },
+  });
+}
+
+const ALL_ALERTS_KEY = [...ALERTS_KEY, "all"] as const;
+
+/** Fetch all alerts (all pages) for client-side filtering (e.g. delete page). */
+export function useAllAlerts() {
+  return useQuery({
+    queryKey: ALL_ALERTS_KEY,
+    queryFn: listAllAlertsForHistory,
+    staleTime: 1000 * 60 * 2, // 2 minutes
   });
 }
 
