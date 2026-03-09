@@ -7,6 +7,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/structpb"
@@ -37,17 +38,68 @@ func (s *Server) ListAlerts(ctx context.Context, req *alertv1.ListAlertsRequest)
 	defer conn.Release()
 
 	q := db.New(conn)
-	alerts, err := q.ListAlertsPaginated(ctx, db.ListAlertsPaginatedParams{
-		Limit:  pageSize,
-		Offset: offset,
-	})
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to list alerts: %v", err)
-	}
 
-	totalCount, err := q.CountAlerts(ctx)
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to count alerts: %v", err)
+	hasFilters := req.GetSearch() != "" ||
+		len(req.GetExchanges()) > 0 ||
+		len(req.GetTimeframes()) > 0 ||
+		len(req.GetCountries()) > 0 ||
+		req.GetTriggeredFilter() != "" ||
+		req.GetConditionSearch() != ""
+
+	var alerts []db.Alert
+	var totalCount int64
+
+	if hasFilters {
+		// Use non-nil slices so pgx sends PostgreSQL '{}' instead of NULL;
+		// NULL would make cardinality(NULL)=NULL and exclude all rows.
+		exchanges := req.GetExchanges()
+		if exchanges == nil {
+			exchanges = []string{}
+		}
+		timeframes := req.GetTimeframes()
+		if timeframes == nil {
+			timeframes = []string{}
+		}
+		countries := req.GetCountries()
+		if countries == nil {
+			countries = []string{}
+		}
+		alerts, err = q.SearchAlertsPaginated(ctx, db.SearchAlertsPaginatedParams{
+			Search:           req.GetSearch(),
+			FilterExchanges:  exchanges,
+			FilterTimeframes: timeframes,
+			FilterCountries:  countries,
+			TriggeredFilter:  req.GetTriggeredFilter(),
+			ConditionSearch:  req.GetConditionSearch(),
+			Lim:              pageSize,
+			Off:              offset,
+		})
+		if err != nil {
+			return nil, status.Errorf(codes.Internal, "failed to search alerts: %v", err)
+		}
+		totalCount, err = q.CountSearchAlerts(ctx, db.CountSearchAlertsParams{
+			Search:           req.GetSearch(),
+			FilterExchanges:  exchanges,
+			FilterTimeframes: timeframes,
+			FilterCountries:  countries,
+			TriggeredFilter:  req.GetTriggeredFilter(),
+			ConditionSearch:  req.GetConditionSearch(),
+		})
+		if err != nil {
+			return nil, status.Errorf(codes.Internal, "failed to count search alerts: %v", err)
+		}
+	} else {
+		alerts, err = q.ListAlertsPaginated(ctx, db.ListAlertsPaginatedParams{
+			Limit:  pageSize,
+			Offset: offset,
+		})
+		if err != nil {
+			return nil, status.Errorf(codes.Internal, "failed to list alerts: %v", err)
+		}
+		totalCount, err = q.CountAlerts(ctx)
+		if err != nil {
+			return nil, status.Errorf(codes.Internal, "failed to count alerts: %v", err)
+		}
 	}
 
 	protoAlerts := make([]*alertv1.Alert, len(alerts))
@@ -62,6 +114,61 @@ func (s *Server) ListAlerts(ctx context.Context, req *alertv1.ListAlertsRequest)
 		HasNextPage: hasNextPage,
 		TotalCount:  int32(totalCount),
 	}, nil
+}
+
+const searchAlertsStreamChunkSize = 100
+
+func (s *Server) SearchAlertsStream(req *alertv1.SearchAlertsStreamRequest, stream grpc.ServerStreamingServer[alertv1.SearchAlertsStreamChunk]) error {
+	ctx := stream.Context()
+	exchanges := req.GetExchanges()
+	if exchanges == nil {
+		exchanges = []string{}
+	}
+	timeframes := req.GetTimeframes()
+	if timeframes == nil {
+		timeframes = []string{}
+	}
+	countries := req.GetCountries()
+	if countries == nil {
+		countries = []string{}
+	}
+
+	conn, err := s.pool.Acquire(ctx)
+	if err != nil {
+		return status.Errorf(codes.Internal, "failed to acquire connection: %v", err)
+	}
+	defer conn.Release()
+
+	q := db.New(conn)
+	offset := int32(0)
+	for {
+		alerts, err := q.SearchAlertsPaginated(ctx, db.SearchAlertsPaginatedParams{
+			Search:           req.GetSearch(),
+			FilterExchanges:  exchanges,
+			FilterTimeframes: timeframes,
+			FilterCountries:  countries,
+			TriggeredFilter:  req.GetTriggeredFilter(),
+			ConditionSearch:  req.GetConditionSearch(),
+			Lim:              searchAlertsStreamChunkSize,
+			Off:              offset,
+		})
+		if err != nil {
+			return status.Errorf(codes.Internal, "failed to search alerts: %v", err)
+		}
+		protoAlerts := make([]*alertv1.Alert, len(alerts))
+		for i, a := range alerts {
+			protoAlerts[i] = dbAlertToProto(a)
+		}
+		done := len(alerts) < searchAlertsStreamChunkSize
+		if err := stream.Send(&alertv1.SearchAlertsStreamChunk{Alerts: protoAlerts, Done: done}); err != nil {
+			return err
+		}
+		if done {
+			break
+		}
+		offset += searchAlertsStreamChunkSize
+	}
+	return nil
 }
 
 func (s *Server) GetAlert(ctx context.Context, req *alertv1.GetAlertRequest) (*alertv1.GetAlertResponse, error) {

@@ -37,12 +37,34 @@ message Alert {
 message ListAlertsRequest {
   int32 page_size = 1;  // default 20, max 100
   int32 page = 2;       // 1-based page number
+  // Optional filters (empty = no filter)
+  string search = 3;          // ticker/name/stock_name ILIKE search
+  repeated string exchanges = 4;
+  repeated string timeframes = 5;
+  repeated string countries = 6;
+  string triggered_filter = 7; // "never", "today", "this_week", "this_month", "this_year"
+  string condition_search = 8; // text search in conditions JSON
 }
 
 message ListAlertsResponse {
   repeated Alert alerts = 1;
   bool has_next_page = 2;
   int32 total_count = 3;
+}
+
+// SearchAlertsStream: server-streaming search (same filters as ListAlerts, no pagination).
+message SearchAlertsStreamRequest {
+  string search = 1;
+  repeated string exchanges = 2;
+  repeated string timeframes = 3;
+  repeated string countries = 4;
+  string triggered_filter = 5;
+  string condition_search = 6;
+}
+
+message SearchAlertsStreamChunk {
+  repeated Alert alerts = 1;
+  bool done = 2;
 }
 
 // GetAlert
@@ -374,6 +396,7 @@ message EvaluateExchangeResponse {
 // AlertService provides CRUD operations for stock alerts and audit logs.
 service AlertService {
   rpc ListAlerts(ListAlertsRequest) returns (ListAlertsResponse);
+  rpc SearchAlertsStream(SearchAlertsStreamRequest) returns (stream SearchAlertsStreamChunk);
   rpc GetAlert(GetAlertRequest) returns (GetAlertResponse);
   rpc CreateAlert(CreateAlertRequest) returns (CreateAlertResponse);
   rpc UpdateAlert(UpdateAlertRequest) returns (UpdateAlertResponse);

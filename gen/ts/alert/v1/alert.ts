@@ -44,12 +44,36 @@ export interface ListAlertsRequest {
   pageSize: number;
   /** 1-based page number */
   page: number;
+  /** Optional filters (empty = no filter) */
+  search: string;
+  exchanges: string[];
+  timeframes: string[];
+  countries: string[];
+  /** "never", "today", "this_week", "this_month", "this_year" */
+  triggeredFilter: string;
+  /** text search in conditions JSON */
+  conditionSearch: string;
 }
 
 export interface ListAlertsResponse {
   alerts: Alert[];
   hasNextPage: boolean;
   totalCount: number;
+}
+
+/** SearchAlertsStream: server-streaming search (same filters as ListAlerts, no pagination). */
+export interface SearchAlertsStreamRequest {
+  search: string;
+  exchanges: string[];
+  timeframes: string[];
+  countries: string[];
+  triggeredFilter: string;
+  conditionSearch: string;
+}
+
+export interface SearchAlertsStreamChunk {
+  alerts: Alert[];
+  done: boolean;
 }
 
 /** GetAlert */
@@ -849,7 +873,16 @@ export const Alert: MessageFns<Alert> = {
 };
 
 function createBaseListAlertsRequest(): ListAlertsRequest {
-  return { pageSize: 0, page: 0 };
+  return {
+    pageSize: 0,
+    page: 0,
+    search: "",
+    exchanges: [],
+    timeframes: [],
+    countries: [],
+    triggeredFilter: "",
+    conditionSearch: "",
+  };
 }
 
 export const ListAlertsRequest: MessageFns<ListAlertsRequest> = {
@@ -859,6 +892,24 @@ export const ListAlertsRequest: MessageFns<ListAlertsRequest> = {
     }
     if (message.page !== 0) {
       writer.uint32(16).int32(message.page);
+    }
+    if (message.search !== "") {
+      writer.uint32(26).string(message.search);
+    }
+    for (const v of message.exchanges) {
+      writer.uint32(34).string(v!);
+    }
+    for (const v of message.timeframes) {
+      writer.uint32(42).string(v!);
+    }
+    for (const v of message.countries) {
+      writer.uint32(50).string(v!);
+    }
+    if (message.triggeredFilter !== "") {
+      writer.uint32(58).string(message.triggeredFilter);
+    }
+    if (message.conditionSearch !== "") {
+      writer.uint32(66).string(message.conditionSearch);
     }
     return writer;
   },
@@ -886,6 +937,54 @@ export const ListAlertsRequest: MessageFns<ListAlertsRequest> = {
           message.page = reader.int32();
           continue;
         }
+        case 3: {
+          if (tag !== 26) {
+            break;
+          }
+
+          message.search = reader.string();
+          continue;
+        }
+        case 4: {
+          if (tag !== 34) {
+            break;
+          }
+
+          message.exchanges.push(reader.string());
+          continue;
+        }
+        case 5: {
+          if (tag !== 42) {
+            break;
+          }
+
+          message.timeframes.push(reader.string());
+          continue;
+        }
+        case 6: {
+          if (tag !== 50) {
+            break;
+          }
+
+          message.countries.push(reader.string());
+          continue;
+        }
+        case 7: {
+          if (tag !== 58) {
+            break;
+          }
+
+          message.triggeredFilter = reader.string();
+          continue;
+        }
+        case 8: {
+          if (tag !== 66) {
+            break;
+          }
+
+          message.conditionSearch = reader.string();
+          continue;
+        }
       }
       if ((tag & 7) === 4 || tag === 0) {
         break;
@@ -903,6 +1002,26 @@ export const ListAlertsRequest: MessageFns<ListAlertsRequest> = {
         ? globalThis.Number(object.page_size)
         : 0,
       page: isSet(object.page) ? globalThis.Number(object.page) : 0,
+      search: isSet(object.search) ? globalThis.String(object.search) : "",
+      exchanges: globalThis.Array.isArray(object?.exchanges)
+        ? object.exchanges.map((e: any) => globalThis.String(e))
+        : [],
+      timeframes: globalThis.Array.isArray(object?.timeframes)
+        ? object.timeframes.map((e: any) => globalThis.String(e))
+        : [],
+      countries: globalThis.Array.isArray(object?.countries)
+        ? object.countries.map((e: any) => globalThis.String(e))
+        : [],
+      triggeredFilter: isSet(object.triggeredFilter)
+        ? globalThis.String(object.triggeredFilter)
+        : isSet(object.triggered_filter)
+        ? globalThis.String(object.triggered_filter)
+        : "",
+      conditionSearch: isSet(object.conditionSearch)
+        ? globalThis.String(object.conditionSearch)
+        : isSet(object.condition_search)
+        ? globalThis.String(object.condition_search)
+        : "",
     };
   },
 
@@ -914,6 +1033,24 @@ export const ListAlertsRequest: MessageFns<ListAlertsRequest> = {
     if (message.page !== 0) {
       obj.page = Math.round(message.page);
     }
+    if (message.search !== "") {
+      obj.search = message.search;
+    }
+    if (message.exchanges?.length) {
+      obj.exchanges = message.exchanges;
+    }
+    if (message.timeframes?.length) {
+      obj.timeframes = message.timeframes;
+    }
+    if (message.countries?.length) {
+      obj.countries = message.countries;
+    }
+    if (message.triggeredFilter !== "") {
+      obj.triggeredFilter = message.triggeredFilter;
+    }
+    if (message.conditionSearch !== "") {
+      obj.conditionSearch = message.conditionSearch;
+    }
     return obj;
   },
 
@@ -924,6 +1061,12 @@ export const ListAlertsRequest: MessageFns<ListAlertsRequest> = {
     const message = createBaseListAlertsRequest();
     message.pageSize = object.pageSize ?? 0;
     message.page = object.page ?? 0;
+    message.search = object.search ?? "";
+    message.exchanges = object.exchanges?.map((e) => e) || [];
+    message.timeframes = object.timeframes?.map((e) => e) || [];
+    message.countries = object.countries?.map((e) => e) || [];
+    message.triggeredFilter = object.triggeredFilter ?? "";
+    message.conditionSearch = object.conditionSearch ?? "";
     return message;
   },
 };
@@ -1024,6 +1167,236 @@ export const ListAlertsResponse: MessageFns<ListAlertsResponse> = {
     message.alerts = object.alerts?.map((e) => Alert.fromPartial(e)) || [];
     message.hasNextPage = object.hasNextPage ?? false;
     message.totalCount = object.totalCount ?? 0;
+    return message;
+  },
+};
+
+function createBaseSearchAlertsStreamRequest(): SearchAlertsStreamRequest {
+  return { search: "", exchanges: [], timeframes: [], countries: [], triggeredFilter: "", conditionSearch: "" };
+}
+
+export const SearchAlertsStreamRequest: MessageFns<SearchAlertsStreamRequest> = {
+  encode(message: SearchAlertsStreamRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.search !== "") {
+      writer.uint32(10).string(message.search);
+    }
+    for (const v of message.exchanges) {
+      writer.uint32(18).string(v!);
+    }
+    for (const v of message.timeframes) {
+      writer.uint32(26).string(v!);
+    }
+    for (const v of message.countries) {
+      writer.uint32(34).string(v!);
+    }
+    if (message.triggeredFilter !== "") {
+      writer.uint32(42).string(message.triggeredFilter);
+    }
+    if (message.conditionSearch !== "") {
+      writer.uint32(50).string(message.conditionSearch);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): SearchAlertsStreamRequest {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseSearchAlertsStreamRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.search = reader.string();
+          continue;
+        }
+        case 2: {
+          if (tag !== 18) {
+            break;
+          }
+
+          message.exchanges.push(reader.string());
+          continue;
+        }
+        case 3: {
+          if (tag !== 26) {
+            break;
+          }
+
+          message.timeframes.push(reader.string());
+          continue;
+        }
+        case 4: {
+          if (tag !== 34) {
+            break;
+          }
+
+          message.countries.push(reader.string());
+          continue;
+        }
+        case 5: {
+          if (tag !== 42) {
+            break;
+          }
+
+          message.triggeredFilter = reader.string();
+          continue;
+        }
+        case 6: {
+          if (tag !== 50) {
+            break;
+          }
+
+          message.conditionSearch = reader.string();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): SearchAlertsStreamRequest {
+    return {
+      search: isSet(object.search) ? globalThis.String(object.search) : "",
+      exchanges: globalThis.Array.isArray(object?.exchanges)
+        ? object.exchanges.map((e: any) => globalThis.String(e))
+        : [],
+      timeframes: globalThis.Array.isArray(object?.timeframes)
+        ? object.timeframes.map((e: any) => globalThis.String(e))
+        : [],
+      countries: globalThis.Array.isArray(object?.countries)
+        ? object.countries.map((e: any) => globalThis.String(e))
+        : [],
+      triggeredFilter: isSet(object.triggeredFilter)
+        ? globalThis.String(object.triggeredFilter)
+        : isSet(object.triggered_filter)
+        ? globalThis.String(object.triggered_filter)
+        : "",
+      conditionSearch: isSet(object.conditionSearch)
+        ? globalThis.String(object.conditionSearch)
+        : isSet(object.condition_search)
+        ? globalThis.String(object.condition_search)
+        : "",
+    };
+  },
+
+  toJSON(message: SearchAlertsStreamRequest): unknown {
+    const obj: any = {};
+    if (message.search !== "") {
+      obj.search = message.search;
+    }
+    if (message.exchanges?.length) {
+      obj.exchanges = message.exchanges;
+    }
+    if (message.timeframes?.length) {
+      obj.timeframes = message.timeframes;
+    }
+    if (message.countries?.length) {
+      obj.countries = message.countries;
+    }
+    if (message.triggeredFilter !== "") {
+      obj.triggeredFilter = message.triggeredFilter;
+    }
+    if (message.conditionSearch !== "") {
+      obj.conditionSearch = message.conditionSearch;
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<SearchAlertsStreamRequest>, I>>(base?: I): SearchAlertsStreamRequest {
+    return SearchAlertsStreamRequest.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<SearchAlertsStreamRequest>, I>>(object: I): SearchAlertsStreamRequest {
+    const message = createBaseSearchAlertsStreamRequest();
+    message.search = object.search ?? "";
+    message.exchanges = object.exchanges?.map((e) => e) || [];
+    message.timeframes = object.timeframes?.map((e) => e) || [];
+    message.countries = object.countries?.map((e) => e) || [];
+    message.triggeredFilter = object.triggeredFilter ?? "";
+    message.conditionSearch = object.conditionSearch ?? "";
+    return message;
+  },
+};
+
+function createBaseSearchAlertsStreamChunk(): SearchAlertsStreamChunk {
+  return { alerts: [], done: false };
+}
+
+export const SearchAlertsStreamChunk: MessageFns<SearchAlertsStreamChunk> = {
+  encode(message: SearchAlertsStreamChunk, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    for (const v of message.alerts) {
+      Alert.encode(v!, writer.uint32(10).fork()).join();
+    }
+    if (message.done !== false) {
+      writer.uint32(16).bool(message.done);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): SearchAlertsStreamChunk {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseSearchAlertsStreamChunk();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.alerts.push(Alert.decode(reader, reader.uint32()));
+          continue;
+        }
+        case 2: {
+          if (tag !== 16) {
+            break;
+          }
+
+          message.done = reader.bool();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): SearchAlertsStreamChunk {
+    return {
+      alerts: globalThis.Array.isArray(object?.alerts) ? object.alerts.map((e: any) => Alert.fromJSON(e)) : [],
+      done: isSet(object.done) ? globalThis.Boolean(object.done) : false,
+    };
+  },
+
+  toJSON(message: SearchAlertsStreamChunk): unknown {
+    const obj: any = {};
+    if (message.alerts?.length) {
+      obj.alerts = message.alerts.map((e) => Alert.toJSON(e));
+    }
+    if (message.done !== false) {
+      obj.done = message.done;
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<SearchAlertsStreamChunk>, I>>(base?: I): SearchAlertsStreamChunk {
+    return SearchAlertsStreamChunk.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<SearchAlertsStreamChunk>, I>>(object: I): SearchAlertsStreamChunk {
+    const message = createBaseSearchAlertsStreamChunk();
+    message.alerts = object.alerts?.map((e) => Alert.fromPartial(e)) || [];
+    message.done = object.done ?? false;
     return message;
   },
 };
@@ -6229,6 +6602,14 @@ export const AlertServiceDefinition = {
       responseStream: false,
       options: {},
     },
+    searchAlertsStream: {
+      name: "SearchAlertsStream",
+      requestType: SearchAlertsStreamRequest,
+      requestStream: false,
+      responseType: SearchAlertsStreamChunk,
+      responseStream: true,
+      options: {},
+    },
     getAlert: {
       name: "GetAlert",
       requestType: GetAlertRequest,
@@ -6401,6 +6782,10 @@ export interface AlertServiceImplementation<CallContextExt = {}> {
     request: ListAlertsRequest,
     context: CallContext & CallContextExt,
   ): Promise<DeepPartial<ListAlertsResponse>>;
+  searchAlertsStream(
+    request: SearchAlertsStreamRequest,
+    context: CallContext & CallContextExt,
+  ): ServerStreamingMethodResult<DeepPartial<SearchAlertsStreamChunk>>;
   getAlert(request: GetAlertRequest, context: CallContext & CallContextExt): Promise<DeepPartial<GetAlertResponse>>;
   createAlert(
     request: CreateAlertRequest,
@@ -6489,6 +6874,10 @@ export interface AlertServiceClient<CallOptionsExt = {}> {
     request: DeepPartial<ListAlertsRequest>,
     options?: CallOptions & CallOptionsExt,
   ): Promise<ListAlertsResponse>;
+  searchAlertsStream(
+    request: DeepPartial<SearchAlertsStreamRequest>,
+    options?: CallOptions & CallOptionsExt,
+  ): AsyncIterable<SearchAlertsStreamChunk>;
   getAlert(request: DeepPartial<GetAlertRequest>, options?: CallOptions & CallOptionsExt): Promise<GetAlertResponse>;
   createAlert(
     request: DeepPartial<CreateAlertRequest>,
@@ -6624,6 +7013,8 @@ function isObject(value: any): boolean {
 function isSet(value: any): boolean {
   return value !== null && value !== undefined;
 }
+
+export type ServerStreamingMethodResult<Response> = { [Symbol.asyncIterator](): AsyncIterator<Response, void> };
 
 export interface MessageFns<T> {
   encode(message: T, writer?: BinaryWriter): BinaryWriter;

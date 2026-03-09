@@ -90,6 +90,80 @@ export async function listAllAlertsForHistory(): Promise<AlertData[]> {
   return all;
 }
 
+export type SearchAlertsFilters = {
+  search?: string;
+  exchanges?: string[];
+  timeframes?: string[];
+  countries?: string[];
+  triggeredFilter?: string;
+  conditionSearch?: string;
+};
+
+/** Server-side filtered + paginated alert search. */
+export async function searchAlerts(
+  filters: SearchAlertsFilters,
+  page: number = 1,
+  pageSize: number = DEFAULT_PAGE_SIZE
+): Promise<ListAlertsResult> {
+  const size = Math.min(Math.max(1, pageSize), MAX_PAGE_SIZE);
+  const pageNum = Math.max(1, page);
+
+  // Map triggered filter labels to server values
+  const triggeredMap: Record<string, string> = {
+    "Never": "never",
+    "Today": "today",
+    "This Week": "this_week",
+    "This Month": "this_month",
+    "This Year": "this_year",
+  };
+
+  const response = await alertClient.listAlerts({
+    pageSize: size,
+    page: pageNum,
+    search: filters.search || "",
+    exchanges: filters.exchanges || [],
+    timeframes: filters.timeframes || [],
+    countries: filters.countries || [],
+    triggeredFilter: triggeredMap[filters.triggeredFilter || ""] || filters.triggeredFilter || "",
+    conditionSearch: filters.conditionSearch || "",
+  });
+  return {
+    alerts: response.alerts.map(toAlertData),
+    totalCount: response.totalCount,
+    hasNextPage: response.hasNextPage,
+  };
+}
+
+/** Server-streaming search: returns all matching alerts in one request (for "Select all filtered"). */
+export async function searchAlertsStream(
+  filters: SearchAlertsFilters
+): Promise<AlertData[]> {
+  const triggeredMap: Record<string, string> = {
+    "Never": "never",
+    "Today": "today",
+    "This Week": "this_week",
+    "This Month": "this_month",
+    "This Year": "this_year",
+  };
+
+  const stream = alertClient.searchAlertsStream({
+    search: filters.search || "",
+    exchanges: filters.exchanges || [],
+    timeframes: filters.timeframes || [],
+    countries: filters.countries || [],
+    triggeredFilter: triggeredMap[filters.triggeredFilter || ""] || filters.triggeredFilter || "",
+    conditionSearch: filters.conditionSearch || "",
+  });
+
+  const all: AlertData[] = [];
+  for await (const chunk of stream) {
+    for (const alert of chunk.alerts) {
+      all.push(toAlertData(alert));
+    }
+  }
+  return all;
+}
+
 export async function getAlert(alertId: string): Promise<AlertData | null> {
   const response = await alertClient.getAlert({ alertId });
   return response.alert ? toAlertData(response.alert) : null;

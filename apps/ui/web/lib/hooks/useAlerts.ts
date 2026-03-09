@@ -8,8 +8,9 @@ import {
   createAlertsBulk,
   updateAlert,
   deleteAlert,
-  listAllAlertsForHistory,
+  searchAlerts,
 } from "@/actions/alert-actions";
+import type { SearchAlertsFilters } from "@/actions/alert-actions";
 import {
   ALERTS_KEY,
   alertsPaginatedQueryAtom,
@@ -77,14 +78,18 @@ export function useUpdateAlert() {
   });
 }
 
-const ALL_ALERTS_KEY = [...ALERTS_KEY, "all"] as const;
+const SEARCH_ALERTS_KEY = [...ALERTS_KEY, "search"] as const;
 
-/** Fetch all alerts (all pages) for client-side filtering (e.g. delete page). */
-export function useAllAlerts() {
+/** Server-side filtered + paginated alert search (e.g. delete page). */
+export function useSearchAlerts(
+  filters: SearchAlertsFilters,
+  page: number,
+  pageSize: number
+) {
   return useQuery({
-    queryKey: ALL_ALERTS_KEY,
-    queryFn: listAllAlertsForHistory,
-    staleTime: 1000 * 60 * 2, // 2 minutes
+    queryKey: [...SEARCH_ALERTS_KEY, filters, page, pageSize],
+    queryFn: () => searchAlerts(filters, page, pageSize),
+    placeholderData: (prev) => prev,
   });
 }
 

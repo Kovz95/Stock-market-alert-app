@@ -20,6 +20,7 @@ const _ = grpc.SupportPackageIsVersion9
 
 const (
 	AlertService_ListAlerts_FullMethodName                = "/stockalert.alert.v1.AlertService/ListAlerts"
+	AlertService_SearchAlertsStream_FullMethodName        = "/stockalert.alert.v1.AlertService/SearchAlertsStream"
 	AlertService_GetAlert_FullMethodName                  = "/stockalert.alert.v1.AlertService/GetAlert"
 	AlertService_CreateAlert_FullMethodName               = "/stockalert.alert.v1.AlertService/CreateAlert"
 	AlertService_UpdateAlert_FullMethodName               = "/stockalert.alert.v1.AlertService/UpdateAlert"
@@ -49,6 +50,7 @@ const (
 // AlertService provides CRUD operations for stock alerts and audit logs.
 type AlertServiceClient interface {
 	ListAlerts(ctx context.Context, in *ListAlertsRequest, opts ...grpc.CallOption) (*ListAlertsResponse, error)
+	SearchAlertsStream(ctx context.Context, in *SearchAlertsStreamRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[SearchAlertsStreamChunk], error)
 	GetAlert(ctx context.Context, in *GetAlertRequest, opts ...grpc.CallOption) (*GetAlertResponse, error)
 	CreateAlert(ctx context.Context, in *CreateAlertRequest, opts ...grpc.CallOption) (*CreateAlertResponse, error)
 	UpdateAlert(ctx context.Context, in *UpdateAlertRequest, opts ...grpc.CallOption) (*UpdateAlertResponse, error)
@@ -92,6 +94,25 @@ func (c *alertServiceClient) ListAlerts(ctx context.Context, in *ListAlertsReque
 	}
 	return out, nil
 }
+
+func (c *alertServiceClient) SearchAlertsStream(ctx context.Context, in *SearchAlertsStreamRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[SearchAlertsStreamChunk], error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	stream, err := c.cc.NewStream(ctx, &AlertService_ServiceDesc.Streams[0], AlertService_SearchAlertsStream_FullMethodName, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &grpc.GenericClientStream[SearchAlertsStreamRequest, SearchAlertsStreamChunk]{ClientStream: stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type AlertService_SearchAlertsStreamClient = grpc.ServerStreamingClient[SearchAlertsStreamChunk]
 
 func (c *alertServiceClient) GetAlert(ctx context.Context, in *GetAlertRequest, opts ...grpc.CallOption) (*GetAlertResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
@@ -300,6 +321,7 @@ func (c *alertServiceClient) EvaluateExchange(ctx context.Context, in *EvaluateE
 // AlertService provides CRUD operations for stock alerts and audit logs.
 type AlertServiceServer interface {
 	ListAlerts(context.Context, *ListAlertsRequest) (*ListAlertsResponse, error)
+	SearchAlertsStream(*SearchAlertsStreamRequest, grpc.ServerStreamingServer[SearchAlertsStreamChunk]) error
 	GetAlert(context.Context, *GetAlertRequest) (*GetAlertResponse, error)
 	CreateAlert(context.Context, *CreateAlertRequest) (*CreateAlertResponse, error)
 	UpdateAlert(context.Context, *UpdateAlertRequest) (*UpdateAlertResponse, error)
@@ -336,6 +358,9 @@ type UnimplementedAlertServiceServer struct{}
 
 func (UnimplementedAlertServiceServer) ListAlerts(context.Context, *ListAlertsRequest) (*ListAlertsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListAlerts not implemented")
+}
+func (UnimplementedAlertServiceServer) SearchAlertsStream(*SearchAlertsStreamRequest, grpc.ServerStreamingServer[SearchAlertsStreamChunk]) error {
+	return status.Error(codes.Unimplemented, "method SearchAlertsStream not implemented")
 }
 func (UnimplementedAlertServiceServer) GetAlert(context.Context, *GetAlertRequest) (*GetAlertResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetAlert not implemented")
@@ -435,6 +460,17 @@ func _AlertService_ListAlerts_Handler(srv interface{}, ctx context.Context, dec 
 	}
 	return interceptor(ctx, in, info, handler)
 }
+
+func _AlertService_SearchAlertsStream_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(SearchAlertsStreamRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(AlertServiceServer).SearchAlertsStream(m, &grpc.GenericServerStream[SearchAlertsStreamRequest, SearchAlertsStreamChunk]{ServerStream: stream})
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type AlertService_SearchAlertsStreamServer = grpc.ServerStreamingServer[SearchAlertsStreamChunk]
 
 func _AlertService_GetAlert_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetAlertRequest)
@@ -888,6 +924,12 @@ var AlertService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _AlertService_EvaluateExchange_Handler,
 		},
 	},
-	Streams:  []grpc.StreamDesc{},
+	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "SearchAlertsStream",
+			Handler:       _AlertService_SearchAlertsStream_Handler,
+			ServerStreams: true,
+		},
+	},
 	Metadata: "alert/v1/alert.proto",
 }

@@ -81,6 +81,58 @@ UPDATE alerts SET
     updated_at = NOW()
 WHERE alert_id = $1;
 
+-- Server-side filtered + paginated alert search (delete alerts page).
+
+-- name: SearchAlertsPaginated :many
+SELECT
+    alert_id, name, stock_name, ticker, ticker1, ticker2,
+    conditions, combination_logic, last_triggered, action,
+    timeframe, exchange, country, ratio, is_ratio,
+    adjustment_method, dtp_params, multi_timeframe_params,
+    mixed_timeframe_params, raw_payload, created_at, updated_at
+FROM alerts
+WHERE
+  (sqlc.arg(search)::text = '' OR
+    name ILIKE '%' || sqlc.arg(search)::text || '%' OR
+    ticker ILIKE '%' || sqlc.arg(search)::text || '%' OR
+    stock_name ILIKE '%' || sqlc.arg(search)::text || '%')
+  AND (cardinality(COALESCE(sqlc.arg(filter_exchanges)::text[], '{}'::text[])) = 0 OR exchange = ANY(COALESCE(sqlc.arg(filter_exchanges)::text[], '{}'::text[])))
+  AND (cardinality(COALESCE(sqlc.arg(filter_timeframes)::text[], '{}'::text[])) = 0 OR timeframe = ANY(COALESCE(sqlc.arg(filter_timeframes)::text[], '{}'::text[])))
+  AND (cardinality(COALESCE(sqlc.arg(filter_countries)::text[], '{}'::text[])) = 0 OR country = ANY(COALESCE(sqlc.arg(filter_countries)::text[], '{}'::text[])))
+  AND (CASE sqlc.arg(triggered_filter)::text
+    WHEN '' THEN TRUE
+    WHEN 'never' THEN last_triggered IS NULL
+    WHEN 'today' THEN last_triggered::date = CURRENT_DATE
+    WHEN 'this_week' THEN last_triggered >= CURRENT_DATE - INTERVAL '7 days'
+    WHEN 'this_month' THEN date_trunc('month', last_triggered) = date_trunc('month', CURRENT_DATE)
+    WHEN 'this_year' THEN date_trunc('year', last_triggered) = date_trunc('year', CURRENT_DATE)
+    ELSE TRUE END)
+  AND (sqlc.arg(condition_search)::text = '' OR
+    conditions::text ILIKE '%' || sqlc.arg(condition_search)::text || '%')
+ORDER BY updated_at DESC, name ASC
+LIMIT sqlc.arg(lim) OFFSET sqlc.arg(off);
+
+-- name: CountSearchAlerts :one
+SELECT COUNT(*) FROM alerts
+WHERE
+  (sqlc.arg(search)::text = '' OR
+    name ILIKE '%' || sqlc.arg(search)::text || '%' OR
+    ticker ILIKE '%' || sqlc.arg(search)::text || '%' OR
+    stock_name ILIKE '%' || sqlc.arg(search)::text || '%')
+  AND (cardinality(COALESCE(sqlc.arg(filter_exchanges)::text[], '{}'::text[])) = 0 OR exchange = ANY(COALESCE(sqlc.arg(filter_exchanges)::text[], '{}'::text[])))
+  AND (cardinality(COALESCE(sqlc.arg(filter_timeframes)::text[], '{}'::text[])) = 0 OR timeframe = ANY(COALESCE(sqlc.arg(filter_timeframes)::text[], '{}'::text[])))
+  AND (cardinality(COALESCE(sqlc.arg(filter_countries)::text[], '{}'::text[])) = 0 OR country = ANY(COALESCE(sqlc.arg(filter_countries)::text[], '{}'::text[])))
+  AND (CASE sqlc.arg(triggered_filter)::text
+    WHEN '' THEN TRUE
+    WHEN 'never' THEN last_triggered IS NULL
+    WHEN 'today' THEN last_triggered::date = CURRENT_DATE
+    WHEN 'this_week' THEN last_triggered >= CURRENT_DATE - INTERVAL '7 days'
+    WHEN 'this_month' THEN date_trunc('month', last_triggered) = date_trunc('month', CURRENT_DATE)
+    WHEN 'this_year' THEN date_trunc('year', last_triggered) = date_trunc('year', CURRENT_DATE)
+    ELSE TRUE END)
+  AND (sqlc.arg(condition_search)::text = '' OR
+    conditions::text ILIKE '%' || sqlc.arg(condition_search)::text || '%');
+
 -- Scheduler queries: filter alerts by exchange(s) for a specific job run.
 
 -- name: ListAlertsByExchange :many

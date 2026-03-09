@@ -3,10 +3,10 @@
 import * as React from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { useAllAlerts, ALERTS_KEY } from "@/lib/hooks/useAlerts";
+import { useSearchAlerts, ALERTS_KEY } from "@/lib/hooks/useAlerts";
 import { useFullStockMetadata } from "@/lib/hooks/useStockDatabase";
-import { deleteAlert } from "@/actions/alert-actions";
-import type { AlertData } from "@/actions/alert-actions";
+import { deleteAlert, searchAlertsStream } from "@/actions/alert-actions";
+import type { AlertData, SearchAlertsFilters } from "@/actions/alert-actions";
 import type { FullStockMetadataRow } from "@/actions/stock-database-actions";
 import { applyStockDatabaseFilters } from "@/app/database/stock/_components/types";
 import { DeleteAlertsFilters } from "./DeleteAlertsFilters";
@@ -18,7 +18,58 @@ import { defaultDeleteAlertsFilters } from "./types";
 import { Button } from "@/components/ui/button";
 import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
 
-const PAGE_SIZE = 20;
+const PAGE_SIZE = 100;
+
+/**
+ * Check if any market-data (client-side) filters are active.
+ * These require joining alert tickers to stock metadata, so they must be
+ * applied client-side. Country and exchange are NOT included here — they
+ * are sent as server-side SQL filters on the alerts table directly.
+ */
+function hasMarketDataFilters(filters: DeleteAlertsFiltersState): boolean {
+  return (
+    filters.assetType !== "All" ||
+    filters.economies.length > 0 ||
+    filters.sectors.length > 0 ||
+    filters.subsectors.length > 0 ||
+    filters.industryGroups.length > 0 ||
+    filters.industries.length > 0 ||
+    filters.subindustries.length > 0 ||
+    filters.issuers.length > 0 ||
+    filters.assetClasses.length > 0 ||
+    filters.focuses.length > 0 ||
+    filters.niches.length > 0
+  );
+}
+
+/** Build the server-side filter object from the full filter state. */
+function toServerFilters(filters: DeleteAlertsFiltersState): SearchAlertsFilters {
+  // Merge conditionType dropdown + freeform conditionSearch into one server field.
+  // The server does conditions::text ILIKE '%term%', so either source works.
+  // Prefer conditionType when set; if both are set, conditionSearch is applied
+  // client-side as a post-filter.
+  const conditionSearch =
+    filters.conditionType !== "All"
+      ? filters.conditionType
+      : filters.conditionSearch.trim() || undefined;
+
+  // Merge nameSearch into the main search field.
+  // The server searches name, ticker, and stock_name with ILIKE.
+  // If both searchText and nameSearch are set, prefer searchText (ticker/company)
+  // since the server only supports one search term. nameSearch will be applied
+  // client-side as a post-filter.
+  const search = filters.searchText.trim() || filters.nameSearch.trim() || undefined;
+
+  return {
+    search,
+    exchanges: filters.exchanges.length > 0 ? filters.exchanges : undefined,
+    timeframes: filters.timeframes.length > 0 ? filters.timeframes : undefined,
+    countries: filters.countries.length > 0 ? filters.countries : undefined,
+    triggeredFilter:
+      filters.triggeredFilter !== "All" ? filters.triggeredFilter : undefined,
+    conditionSearch,
+  };
+}
 
 function extractConditionText(conditions: unknown): string {
   if (!Array.isArray(conditions)) return "";
@@ -31,110 +82,39 @@ function extractConditionText(conditions: unknown): string {
   return parts.join(" | ");
 }
 
-function matchesTriggeredFilter(
-  lastTriggered: string | null,
-  filter: string
-): boolean {
-  if (filter === "All") return true;
-  if (filter === "Never") return !lastTriggered;
-  if (!lastTriggered) return false;
-
-  const date = new Date(lastTriggered);
-  const now = new Date();
-
-  switch (filter) {
-    case "Today":
-      return date.toDateString() === now.toDateString();
-    case "This Week": {
-      const weekAgo = new Date(now);
-      weekAgo.setDate(weekAgo.getDate() - 7);
-      return date >= weekAgo;
-    }
-    case "This Month": {
-      return (
-        date.getMonth() === now.getMonth() &&
-        date.getFullYear() === now.getFullYear()
-      );
-    }
-    case "This Year":
-      return date.getFullYear() === now.getFullYear();
-    default:
-      return true;
-  }
-}
-
-function applyAlertFilters(
+/**
+ * Apply client-side post-filters to server results.
+ * Handles: market-data filters (RBICS/ETF), and residual text filters
+ * that couldn't be fully handled server-side (e.g. nameSearch when
+ * searchText is also set, or conditionSearch when conditionType is set).
+ */
+function applyClientFilters(
   alerts: AlertData[],
   filters: DeleteAlertsFiltersState,
   metadataMap: Map<string, FullStockMetadataRow>
 ): AlertData[] {
   let result = alerts;
 
-  // Text search (ticker / company name)
-  const searchQ = filters.searchText.trim().toLowerCase();
-  if (searchQ) {
-    result = result.filter(
-      (a) =>
-        a.ticker.toLowerCase().includes(searchQ) ||
-        a.stockName.toLowerCase().includes(searchQ) ||
-        a.name.toLowerCase().includes(searchQ)
-    );
-  }
-
-  // Alert name search
+  // If both searchText and nameSearch are set, the server only got searchText.
+  // Apply nameSearch as a client-side post-filter on alert name.
   const nameQ = filters.nameSearch.trim().toLowerCase();
-  if (nameQ) {
+  const searchQ = filters.searchText.trim();
+  if (nameQ && searchQ) {
     result = result.filter((a) => a.name.toLowerCase().includes(nameQ));
   }
 
-  // Condition type filter
-  if (filters.conditionType !== "All") {
-    const term = filters.conditionType.toLowerCase();
-    result = result.filter((a) => {
-      const text = extractConditionText(a.conditions).toLowerCase();
-      return text.includes(term);
-    });
-  }
-
-  // Custom condition search
+  // If conditionType is set, the server got that. But if conditionSearch is also
+  // set, we need to apply it client-side as an additional refinement.
   const condQ = filters.conditionSearch.trim().toLowerCase();
-  if (condQ) {
+  if (filters.conditionType !== "All" && condQ) {
     result = result.filter((a) => {
       const text = extractConditionText(a.conditions).toLowerCase();
       return text.includes(condQ);
     });
   }
 
-  // Timeframe filter
-  if (filters.timeframes.length > 0) {
-    result = result.filter((a) => filters.timeframes.includes(a.timeframe));
-  }
-
-  // Last triggered filter
-  if (filters.triggeredFilter !== "All") {
-    result = result.filter((a) =>
-      matchesTriggeredFilter(a.lastTriggered, filters.triggeredFilter)
-    );
-  }
-
-  // Market data filters — check if any are active
-  const hasMarketFilters =
-    filters.countries.length > 0 ||
-    filters.exchanges.length > 0 ||
-    filters.assetType !== "All" ||
-    filters.economies.length > 0 ||
-    filters.sectors.length > 0 ||
-    filters.subsectors.length > 0 ||
-    filters.industryGroups.length > 0 ||
-    filters.industries.length > 0 ||
-    filters.subindustries.length > 0 ||
-    filters.issuers.length > 0 ||
-    filters.assetClasses.length > 0 ||
-    filters.focuses.length > 0 ||
-    filters.niches.length > 0;
-
-  if (hasMarketFilters && metadataMap.size > 0) {
-    // Build set of tickers that pass the stock database filters
+  // Market-data filters (RBICS/ETF)
+  if (hasMarketDataFilters(filters) && metadataMap.size > 0) {
     const allMetadata = Array.from(metadataMap.values());
     const filteredMetadata = applyStockDatabaseFilters(allMetadata, filters);
     const allowedSymbols = new Set(
@@ -143,11 +123,9 @@ function applyAlertFilters(
 
     result = result.filter((a) => {
       const ticker = a.ticker.toUpperCase();
-      // Try exact, then base (before dash)
       if (allowedSymbols.has(ticker)) return true;
       const base = ticker.split("-")[0];
       if (base !== ticker && allowedSymbols.has(base)) return true;
-      // Also try with common suffixes
       if (allowedSymbols.has(`${base}-US`)) return true;
       return false;
     });
@@ -158,7 +136,6 @@ function applyAlertFilters(
 
 export function DeleteAlertsContainer() {
   const queryClient = useQueryClient();
-  const { data: alerts, isLoading: alertsLoading, error: alertsError } = useAllAlerts();
   const { data: stockData, isLoading: stockLoading } = useFullStockMetadata();
 
   const [filters, setFilters] = React.useState<DeleteAlertsFiltersState>(
@@ -168,6 +145,38 @@ export function DeleteAlertsContainer() {
   const [page, setPage] = React.useState(1);
   const [confirmOpen, setConfirmOpen] = React.useState(false);
   const [isDeleting, setIsDeleting] = React.useState(false);
+  const [isSelectingAll, setIsSelectingAll] = React.useState(false);
+
+  // Debounce server filters to avoid spamming on every keystroke
+  const [debouncedFilters, setDebouncedFilters] =
+    React.useState<DeleteAlertsFiltersState>(filters);
+
+  React.useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedFilters(filters);
+      setPage(1);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [filters]);
+
+  const serverFilters = React.useMemo(
+    () => toServerFilters(debouncedFilters),
+    [debouncedFilters]
+  );
+
+  // When market-data filters are active we need to fetch a larger page
+  // from the server so client-side filtering has enough data.
+  // Otherwise use normal page size with server pagination.
+  const hasClientFilters = hasMarketDataFilters(debouncedFilters);
+  const serverPageSize = hasClientFilters ? 100 : PAGE_SIZE;
+  const serverPage = hasClientFilters ? 1 : page;
+
+  const {
+    data: searchResult,
+    isLoading: alertsLoading,
+    error: alertsError,
+    isFetching,
+  } = useSearchAlerts(serverFilters, serverPage, serverPageSize);
 
   // Build ticker → metadata map
   const metadataMap = React.useMemo(() => {
@@ -181,24 +190,22 @@ export function DeleteAlertsContainer() {
     return map;
   }, [stockData]);
 
-  // Apply filters
+  // Apply client-side market-data filters
   const filteredAlerts = React.useMemo(() => {
-    if (!alerts) return [];
-    return applyAlertFilters(alerts, filters, metadataMap);
-  }, [alerts, filters, metadataMap]);
+    if (!searchResult?.alerts) return [];
+    return applyClientFilters(searchResult.alerts, debouncedFilters, metadataMap);
+  }, [searchResult, debouncedFilters, metadataMap]);
 
-  // Paginate
-  const totalPages = Math.max(1, Math.ceil(filteredAlerts.length / PAGE_SIZE));
+  // Pagination
+  const serverTotalCount = searchResult?.totalCount ?? 0;
+  const displayAlerts = hasClientFilters
+    ? filteredAlerts.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+    : filteredAlerts;
+  const totalFiltered = hasClientFilters
+    ? filteredAlerts.length
+    : serverTotalCount;
+  const totalPages = Math.max(1, Math.ceil(totalFiltered / PAGE_SIZE));
   const safePage = Math.min(page, totalPages);
-  const pagedAlerts = React.useMemo(() => {
-    const start = (safePage - 1) * PAGE_SIZE;
-    return filteredAlerts.slice(start, start + PAGE_SIZE);
-  }, [filteredAlerts, safePage]);
-
-  // Reset page when filters change
-  React.useEffect(() => {
-    setPage(1);
-  }, [filters]);
 
   // Selection handlers
   const toggleOne = (alertId: string) => {
@@ -213,7 +220,7 @@ export function DeleteAlertsContainer() {
   const toggleAllOnPage = (checked: boolean) => {
     setSelected((prev) => {
       const next = new Set(prev);
-      for (const a of pagedAlerts) {
+      for (const a of displayAlerts) {
         if (checked) next.add(a.alertId);
         else next.delete(a.alertId);
       }
@@ -221,9 +228,20 @@ export function DeleteAlertsContainer() {
     });
   };
 
-  const selectAllFiltered = () => {
-    setSelected(new Set(filteredAlerts.map((a) => a.alertId)));
-  };
+  /** Select every alert that matches the current filters (one stream when server-paginated). */
+  const selectAllFiltered = React.useCallback(async () => {
+    if (totalFiltered <= filteredAlerts.length) {
+      setSelected(new Set(filteredAlerts.map((a) => a.alertId)));
+      return;
+    }
+    setIsSelectingAll(true);
+    try {
+      const alerts = await searchAlertsStream(serverFilters);
+      setSelected(new Set(alerts.map((a) => a.alertId)));
+    } finally {
+      setIsSelectingAll(false);
+    }
+  }, [serverFilters, totalFiltered, filteredAlerts]);
 
   const clearSelection = () => {
     setSelected(new Set());
@@ -277,14 +295,6 @@ export function DeleteAlertsContainer() {
     );
   }
 
-  if (!alerts || alerts.length === 0) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <p className="text-muted-foreground">No alerts found.</p>
-      </div>
-    );
-  }
-
   return (
     <div className="flex gap-6">
       {/* Sidebar filters */}
@@ -302,22 +312,24 @@ export function DeleteAlertsContainer() {
           <div>
             <h1 className="text-2xl font-bold">Delete Alerts</h1>
             <p className="text-sm text-muted-foreground mt-1">
-              {filteredAlerts.length} of {alerts.length} alerts shown
+              {totalFiltered} alert{totalFiltered !== 1 ? "s" : ""} found
+              {isFetching ? " (loading...)" : ""}
             </p>
           </div>
         </div>
 
         <DeleteAlertsActionBar
           selectedCount={selected.size}
-          totalFiltered={filteredAlerts.length}
-          pageCount={pagedAlerts.length}
+          totalFiltered={totalFiltered}
+          pageCount={displayAlerts.length}
+          isSelectingAll={isSelectingAll}
           onSelectAllFiltered={selectAllFiltered}
           onClearSelection={clearSelection}
           onDelete={() => setConfirmOpen(true)}
         />
 
         <DeleteAlertsTable
-          alerts={pagedAlerts}
+          alerts={displayAlerts}
           selected={selected}
           onToggle={toggleOne}
           onToggleAll={toggleAllOnPage}

@@ -59,6 +59,51 @@ func (q *Queries) CountAlerts(ctx context.Context) (int64, error) {
 	return count, err
 }
 
+const countSearchAlerts = `-- name: CountSearchAlerts :one
+SELECT COUNT(*) FROM alerts
+WHERE
+  ($1::text = '' OR
+    name ILIKE '%' || $1::text || '%' OR
+    ticker ILIKE '%' || $1::text || '%' OR
+    stock_name ILIKE '%' || $1::text || '%')
+  AND (cardinality(COALESCE($2::text[], '{}'::text[])) = 0 OR exchange = ANY(COALESCE($2::text[], '{}'::text[])))
+  AND (cardinality(COALESCE($3::text[], '{}'::text[])) = 0 OR timeframe = ANY(COALESCE($3::text[], '{}'::text[])))
+  AND (cardinality(COALESCE($4::text[], '{}'::text[])) = 0 OR country = ANY(COALESCE($4::text[], '{}'::text[])))
+  AND (CASE $5::text
+    WHEN '' THEN TRUE
+    WHEN 'never' THEN last_triggered IS NULL
+    WHEN 'today' THEN last_triggered::date = CURRENT_DATE
+    WHEN 'this_week' THEN last_triggered >= CURRENT_DATE - INTERVAL '7 days'
+    WHEN 'this_month' THEN date_trunc('month', last_triggered) = date_trunc('month', CURRENT_DATE)
+    WHEN 'this_year' THEN date_trunc('year', last_triggered) = date_trunc('year', CURRENT_DATE)
+    ELSE TRUE END)
+  AND ($6::text = '' OR
+    conditions::text ILIKE '%' || $6::text || '%')
+`
+
+type CountSearchAlertsParams struct {
+	Search           string
+	FilterExchanges  []string
+	FilterTimeframes []string
+	FilterCountries  []string
+	TriggeredFilter  string
+	ConditionSearch  string
+}
+
+func (q *Queries) CountSearchAlerts(ctx context.Context, arg CountSearchAlertsParams) (int64, error) {
+	row := q.db.QueryRow(ctx, countSearchAlerts,
+		arg.Search,
+		arg.FilterExchanges,
+		arg.FilterTimeframes,
+		arg.FilterCountries,
+		arg.TriggeredFilter,
+		arg.ConditionSearch,
+	)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createAlert = `-- name: CreateAlert :one
 INSERT INTO alerts (
     alert_id, name, stock_name, ticker, ticker1, ticker2,
@@ -511,6 +556,101 @@ type ListAlertsPaginatedParams struct {
 
 func (q *Queries) ListAlertsPaginated(ctx context.Context, arg ListAlertsPaginatedParams) ([]Alert, error) {
 	rows, err := q.db.Query(ctx, listAlertsPaginated, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Alert
+	for rows.Next() {
+		var i Alert
+		if err := rows.Scan(
+			&i.AlertID,
+			&i.Name,
+			&i.StockName,
+			&i.Ticker,
+			&i.Ticker1,
+			&i.Ticker2,
+			&i.Conditions,
+			&i.CombinationLogic,
+			&i.LastTriggered,
+			&i.Action,
+			&i.Timeframe,
+			&i.Exchange,
+			&i.Country,
+			&i.Ratio,
+			&i.IsRatio,
+			&i.AdjustmentMethod,
+			&i.DtpParams,
+			&i.MultiTimeframeParams,
+			&i.MixedTimeframeParams,
+			&i.RawPayload,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const searchAlertsPaginated = `-- name: SearchAlertsPaginated :many
+
+SELECT
+    alert_id, name, stock_name, ticker, ticker1, ticker2,
+    conditions, combination_logic, last_triggered, action,
+    timeframe, exchange, country, ratio, is_ratio,
+    adjustment_method, dtp_params, multi_timeframe_params,
+    mixed_timeframe_params, raw_payload, created_at, updated_at
+FROM alerts
+WHERE
+  ($1::text = '' OR
+    name ILIKE '%' || $1::text || '%' OR
+    ticker ILIKE '%' || $1::text || '%' OR
+    stock_name ILIKE '%' || $1::text || '%')
+  AND (cardinality(COALESCE($2::text[], '{}'::text[])) = 0 OR exchange = ANY(COALESCE($2::text[], '{}'::text[])))
+  AND (cardinality(COALESCE($3::text[], '{}'::text[])) = 0 OR timeframe = ANY(COALESCE($3::text[], '{}'::text[])))
+  AND (cardinality(COALESCE($4::text[], '{}'::text[])) = 0 OR country = ANY(COALESCE($4::text[], '{}'::text[])))
+  AND (CASE $5::text
+    WHEN '' THEN TRUE
+    WHEN 'never' THEN last_triggered IS NULL
+    WHEN 'today' THEN last_triggered::date = CURRENT_DATE
+    WHEN 'this_week' THEN last_triggered >= CURRENT_DATE - INTERVAL '7 days'
+    WHEN 'this_month' THEN date_trunc('month', last_triggered) = date_trunc('month', CURRENT_DATE)
+    WHEN 'this_year' THEN date_trunc('year', last_triggered) = date_trunc('year', CURRENT_DATE)
+    ELSE TRUE END)
+  AND ($6::text = '' OR
+    conditions::text ILIKE '%' || $6::text || '%')
+ORDER BY updated_at DESC, name ASC
+LIMIT $8 OFFSET $7
+`
+
+type SearchAlertsPaginatedParams struct {
+	Search           string
+	FilterExchanges  []string
+	FilterTimeframes []string
+	FilterCountries  []string
+	TriggeredFilter  string
+	ConditionSearch  string
+	Off              int32
+	Lim              int32
+}
+
+// Server-side filtered + paginated alert search (delete alerts page).
+func (q *Queries) SearchAlertsPaginated(ctx context.Context, arg SearchAlertsPaginatedParams) ([]Alert, error) {
+	rows, err := q.db.Query(ctx, searchAlertsPaginated,
+		arg.Search,
+		arg.FilterExchanges,
+		arg.FilterTimeframes,
+		arg.FilterCountries,
+		arg.TriggeredFilter,
+		arg.ConditionSearch,
+		arg.Off,
+		arg.Lim,
+	)
 	if err != nil {
 		return nil, err
 	}
