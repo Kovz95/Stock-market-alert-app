@@ -207,7 +207,11 @@ func (c *Common) Execute(ctx context.Context, exchange, timeframe string, status
 		)
 		conditions := []string{}
 		if result.Triggered {
-			conditions = []string{"Conditions met"}
+			if parsed, err := alert.ExtractConditions(a.Conditions); err == nil && len(parsed) > 0 {
+				conditions = parsed
+			} else {
+				conditions = []string{"Conditions met"}
+			}
 		}
 		embed := discord.FormatAlertEmbed(discord.AlertInfo{
 			Ticker:     ticker,

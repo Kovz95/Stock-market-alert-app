@@ -81,6 +81,10 @@ func (s *Server) EvaluateExchange(ctx context.Context, req *alertv1.EvaluateExch
 			exchange,
 			a.IsRatio.Bool && a.IsRatio.Valid,
 		)
+		conditions := []string{"Conditions met"}
+		if parsed, err := alert.ExtractConditions(a.Conditions); err == nil && len(parsed) > 0 {
+			conditions = parsed
+		}
 		embed := discord.FormatAlertEmbed(discord.AlertInfo{
 			Ticker:     ticker,
 			StockName:  pgText(a.StockName),
@@ -89,7 +93,7 @@ func (s *Server) EvaluateExchange(ctx context.Context, req *alertv1.EvaluateExch
 			Exchange:   pgText(a.Exchange),
 			Economy:    s.router.GetEconomy(ticker),
 			ISIN:       s.router.GetISIN(ticker),
-			Conditions: []string{"Conditions met"},
+			Conditions: conditions,
 		})
 		s.accum.Add(webhookURL, embed)
 	}
