@@ -172,11 +172,21 @@ message BulkUpdateLastTriggeredResponse {
 // GetDashboardStats: lightweight aggregates for dashboard KPI cards (no large payloads).
 message GetDashboardStatsRequest {}
 
+// Counts split by timeframe (hourly, daily, weekly) for dashboard breakdown.
+message DashboardTimeframeBreakdown {
+  int32 hourly = 1;
+  int32 daily = 2;
+  int32 weekly = 3;
+}
+
 message GetDashboardStatsResponse {
   int32 active_alerts = 1;      // COUNT(*) FROM alerts
   int32 triggered_today = 2;     // COUNT(*) FROM alert_audits WHERE alert_triggered AND timestamp today
   int32 watched_symbols = 3;     // COUNT(DISTINCT ticker/ratio) FROM alerts
   int32 triggers_last_7d = 4;    // COUNT(*) FROM alert_audits WHERE alert_triggered AND timestamp last 7d
+  DashboardTimeframeBreakdown active_alerts_by_timeframe = 5;
+  DashboardTimeframeBreakdown triggered_today_by_timeframe = 6;
+  DashboardTimeframeBreakdown triggers_last_7d_by_timeframe = 7;
 }
 
 // GetTriggerCountByDay: trigger counts per day from alert_audits (same source as dashboard stats).

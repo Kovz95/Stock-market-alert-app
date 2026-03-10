@@ -6,11 +6,20 @@ import {
   getTriggerCountByDayFromServer,
 } from "@/actions/audit-actions";
 
+export type DashboardTimeframeBreakdown = {
+  hourly: number;
+  daily: number;
+  weekly: number;
+};
+
 export type DashboardStats = {
   activeAlerts: number;
   triggeredToday: number;
   watchedSymbols: number;
   triggersLast7d: number;
+  activeAlertsByTimeframe?: DashboardTimeframeBreakdown;
+  triggeredTodayByTimeframe?: DashboardTimeframeBreakdown;
+  triggersLast7dByTimeframe?: DashboardTimeframeBreakdown;
   /** Set when one or more backend calls failed; stats are best-effort or zeros. */
   error?: string;
 };
@@ -30,6 +39,9 @@ export async function getDashboardStats(): Promise<DashboardStats> {
       triggeredToday: data.triggeredToday,
       watchedSymbols: data.watchedSymbols,
       triggersLast7d: data.triggersLast7d,
+      activeAlertsByTimeframe: data.activeAlertsByTimeframe,
+      triggeredTodayByTimeframe: data.triggeredTodayByTimeframe,
+      triggersLast7dByTimeframe: data.triggersLast7dByTimeframe,
     };
   } catch (err) {
     const message =

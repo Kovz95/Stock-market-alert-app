@@ -50,12 +50,30 @@ export type PerformanceMetrics = GetPerformanceMetricsResponse;
 
 export type FailedPriceData = GetFailedPriceDataResponse;
 
+export type DashboardTimeframeBreakdown = {
+  hourly: number;
+  daily: number;
+  weekly: number;
+};
+
 export type DashboardStatsResponse = {
   activeAlerts: number;
   triggeredToday: number;
   watchedSymbols: number;
   triggersLast7d: number;
+  activeAlertsByTimeframe?: DashboardTimeframeBreakdown;
+  triggeredTodayByTimeframe?: DashboardTimeframeBreakdown;
+  triggersLast7dByTimeframe?: DashboardTimeframeBreakdown;
 };
+
+function mapBreakdown(b: { hourly?: number; daily?: number; weekly?: number } | undefined): DashboardTimeframeBreakdown {
+  if (!b) return { hourly: 0, daily: 0, weekly: 0 };
+  return {
+    hourly: b.hourly ?? 0,
+    daily: b.daily ?? 0,
+    weekly: b.weekly ?? 0,
+  };
+}
 
 export async function getDashboardStatsFromServer(): Promise<DashboardStatsResponse> {
   const response = await alertClient.getDashboardStats({});
@@ -64,6 +82,9 @@ export async function getDashboardStatsFromServer(): Promise<DashboardStatsRespo
     triggeredToday: response.triggeredToday ?? 0,
     watchedSymbols: response.watchedSymbols ?? 0,
     triggersLast7d: response.triggersLast7d ?? 0,
+    activeAlertsByTimeframe: mapBreakdown(response.activeAlertsByTimeframe),
+    triggeredTodayByTimeframe: mapBreakdown(response.triggeredTodayByTimeframe),
+    triggersLast7dByTimeframe: mapBreakdown(response.triggersLast7dByTimeframe),
   };
 }
 

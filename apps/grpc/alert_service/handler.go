@@ -447,7 +447,12 @@ func jsonToStruct(b []byte) *structpb.Struct {
 	}
 	var m map[string]any
 	if err := json.Unmarshal(b, &m); err != nil {
-		return nil
+		// JSON may be stored as an array (e.g. legacy or alternate format); wrap so we still return a Struct.
+		var arr []any
+		if arrErr := json.Unmarshal(b, &arr); arrErr != nil {
+			return nil
+		}
+		m = map[string]any{"conditions": arr}
 	}
 	s, err := structpb.NewStruct(m)
 	if err != nil {

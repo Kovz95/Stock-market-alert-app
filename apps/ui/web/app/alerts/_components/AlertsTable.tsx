@@ -16,6 +16,7 @@ export function AlertsTable({
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b bg-muted/50">
+            <th className="w-9 p-3" aria-label="Expand row" />
             <th className="text-left p-3 font-medium">Name</th>
             <th className="text-left p-3 font-medium">Ticker</th>
             <th className="text-left p-3 font-medium">Timeframe</th>
@@ -38,6 +39,7 @@ export function AlertsTable({
                   ? triggerCountByAlertId[alert.alertId]
                   : undefined
               }
+              columnCount={showTriggerCount ? 9 : 8}
             />
           ))}
         </tbody>

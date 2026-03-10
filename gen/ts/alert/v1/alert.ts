@@ -182,6 +182,13 @@ export interface BulkUpdateLastTriggeredResponse {
 export interface GetDashboardStatsRequest {
 }
 
+/** Counts split by timeframe (hourly, daily, weekly) for dashboard breakdown. */
+export interface DashboardTimeframeBreakdown {
+  hourly: number;
+  daily: number;
+  weekly: number;
+}
+
 export interface GetDashboardStatsResponse {
   /** COUNT(*) FROM alerts */
   activeAlerts: number;
@@ -191,6 +198,9 @@ export interface GetDashboardStatsResponse {
   watchedSymbols: number;
   /** COUNT(*) FROM alert_audits WHERE alert_triggered AND timestamp last 7d */
   triggersLast7d: number;
+  activeAlertsByTimeframe?: DashboardTimeframeBreakdown | undefined;
+  triggeredTodayByTimeframe?: DashboardTimeframeBreakdown | undefined;
+  triggersLast7dByTimeframe?: DashboardTimeframeBreakdown | undefined;
 }
 
 /** GetTriggerCountByDay: trigger counts per day from alert_audits (same source as dashboard stats). */
@@ -3088,8 +3098,108 @@ export const GetDashboardStatsRequest: MessageFns<GetDashboardStatsRequest> = {
   },
 };
 
+function createBaseDashboardTimeframeBreakdown(): DashboardTimeframeBreakdown {
+  return { hourly: 0, daily: 0, weekly: 0 };
+}
+
+export const DashboardTimeframeBreakdown: MessageFns<DashboardTimeframeBreakdown> = {
+  encode(message: DashboardTimeframeBreakdown, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.hourly !== 0) {
+      writer.uint32(8).int32(message.hourly);
+    }
+    if (message.daily !== 0) {
+      writer.uint32(16).int32(message.daily);
+    }
+    if (message.weekly !== 0) {
+      writer.uint32(24).int32(message.weekly);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): DashboardTimeframeBreakdown {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseDashboardTimeframeBreakdown();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 8) {
+            break;
+          }
+
+          message.hourly = reader.int32();
+          continue;
+        }
+        case 2: {
+          if (tag !== 16) {
+            break;
+          }
+
+          message.daily = reader.int32();
+          continue;
+        }
+        case 3: {
+          if (tag !== 24) {
+            break;
+          }
+
+          message.weekly = reader.int32();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): DashboardTimeframeBreakdown {
+    return {
+      hourly: isSet(object.hourly) ? globalThis.Number(object.hourly) : 0,
+      daily: isSet(object.daily) ? globalThis.Number(object.daily) : 0,
+      weekly: isSet(object.weekly) ? globalThis.Number(object.weekly) : 0,
+    };
+  },
+
+  toJSON(message: DashboardTimeframeBreakdown): unknown {
+    const obj: any = {};
+    if (message.hourly !== 0) {
+      obj.hourly = Math.round(message.hourly);
+    }
+    if (message.daily !== 0) {
+      obj.daily = Math.round(message.daily);
+    }
+    if (message.weekly !== 0) {
+      obj.weekly = Math.round(message.weekly);
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<DashboardTimeframeBreakdown>, I>>(base?: I): DashboardTimeframeBreakdown {
+    return DashboardTimeframeBreakdown.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<DashboardTimeframeBreakdown>, I>>(object: I): DashboardTimeframeBreakdown {
+    const message = createBaseDashboardTimeframeBreakdown();
+    message.hourly = object.hourly ?? 0;
+    message.daily = object.daily ?? 0;
+    message.weekly = object.weekly ?? 0;
+    return message;
+  },
+};
+
 function createBaseGetDashboardStatsResponse(): GetDashboardStatsResponse {
-  return { activeAlerts: 0, triggeredToday: 0, watchedSymbols: 0, triggersLast7d: 0 };
+  return {
+    activeAlerts: 0,
+    triggeredToday: 0,
+    watchedSymbols: 0,
+    triggersLast7d: 0,
+    activeAlertsByTimeframe: undefined,
+    triggeredTodayByTimeframe: undefined,
+    triggersLast7dByTimeframe: undefined,
+  };
 }
 
 export const GetDashboardStatsResponse: MessageFns<GetDashboardStatsResponse> = {
@@ -3105,6 +3215,15 @@ export const GetDashboardStatsResponse: MessageFns<GetDashboardStatsResponse> = 
     }
     if (message.triggersLast7d !== 0) {
       writer.uint32(32).int32(message.triggersLast7d);
+    }
+    if (message.activeAlertsByTimeframe !== undefined) {
+      DashboardTimeframeBreakdown.encode(message.activeAlertsByTimeframe, writer.uint32(42).fork()).join();
+    }
+    if (message.triggeredTodayByTimeframe !== undefined) {
+      DashboardTimeframeBreakdown.encode(message.triggeredTodayByTimeframe, writer.uint32(50).fork()).join();
+    }
+    if (message.triggersLast7dByTimeframe !== undefined) {
+      DashboardTimeframeBreakdown.encode(message.triggersLast7dByTimeframe, writer.uint32(58).fork()).join();
     }
     return writer;
   },
@@ -3148,6 +3267,30 @@ export const GetDashboardStatsResponse: MessageFns<GetDashboardStatsResponse> = 
           message.triggersLast7d = reader.int32();
           continue;
         }
+        case 5: {
+          if (tag !== 42) {
+            break;
+          }
+
+          message.activeAlertsByTimeframe = DashboardTimeframeBreakdown.decode(reader, reader.uint32());
+          continue;
+        }
+        case 6: {
+          if (tag !== 50) {
+            break;
+          }
+
+          message.triggeredTodayByTimeframe = DashboardTimeframeBreakdown.decode(reader, reader.uint32());
+          continue;
+        }
+        case 7: {
+          if (tag !== 58) {
+            break;
+          }
+
+          message.triggersLast7dByTimeframe = DashboardTimeframeBreakdown.decode(reader, reader.uint32());
+          continue;
+        }
       }
       if ((tag & 7) === 4 || tag === 0) {
         break;
@@ -3179,6 +3322,21 @@ export const GetDashboardStatsResponse: MessageFns<GetDashboardStatsResponse> = 
         : isSet(object.triggers_last_7d)
         ? globalThis.Number(object.triggers_last_7d)
         : 0,
+      activeAlertsByTimeframe: isSet(object.activeAlertsByTimeframe)
+        ? DashboardTimeframeBreakdown.fromJSON(object.activeAlertsByTimeframe)
+        : isSet(object.active_alerts_by_timeframe)
+        ? DashboardTimeframeBreakdown.fromJSON(object.active_alerts_by_timeframe)
+        : undefined,
+      triggeredTodayByTimeframe: isSet(object.triggeredTodayByTimeframe)
+        ? DashboardTimeframeBreakdown.fromJSON(object.triggeredTodayByTimeframe)
+        : isSet(object.triggered_today_by_timeframe)
+        ? DashboardTimeframeBreakdown.fromJSON(object.triggered_today_by_timeframe)
+        : undefined,
+      triggersLast7dByTimeframe: isSet(object.triggersLast7dByTimeframe)
+        ? DashboardTimeframeBreakdown.fromJSON(object.triggersLast7dByTimeframe)
+        : isSet(object.triggers_last_7d_by_timeframe)
+        ? DashboardTimeframeBreakdown.fromJSON(object.triggers_last_7d_by_timeframe)
+        : undefined,
     };
   },
 
@@ -3196,6 +3354,15 @@ export const GetDashboardStatsResponse: MessageFns<GetDashboardStatsResponse> = 
     if (message.triggersLast7d !== 0) {
       obj.triggersLast7d = Math.round(message.triggersLast7d);
     }
+    if (message.activeAlertsByTimeframe !== undefined) {
+      obj.activeAlertsByTimeframe = DashboardTimeframeBreakdown.toJSON(message.activeAlertsByTimeframe);
+    }
+    if (message.triggeredTodayByTimeframe !== undefined) {
+      obj.triggeredTodayByTimeframe = DashboardTimeframeBreakdown.toJSON(message.triggeredTodayByTimeframe);
+    }
+    if (message.triggersLast7dByTimeframe !== undefined) {
+      obj.triggersLast7dByTimeframe = DashboardTimeframeBreakdown.toJSON(message.triggersLast7dByTimeframe);
+    }
     return obj;
   },
 
@@ -3208,6 +3375,18 @@ export const GetDashboardStatsResponse: MessageFns<GetDashboardStatsResponse> = 
     message.triggeredToday = object.triggeredToday ?? 0;
     message.watchedSymbols = object.watchedSymbols ?? 0;
     message.triggersLast7d = object.triggersLast7d ?? 0;
+    message.activeAlertsByTimeframe =
+      (object.activeAlertsByTimeframe !== undefined && object.activeAlertsByTimeframe !== null)
+        ? DashboardTimeframeBreakdown.fromPartial(object.activeAlertsByTimeframe)
+        : undefined;
+    message.triggeredTodayByTimeframe =
+      (object.triggeredTodayByTimeframe !== undefined && object.triggeredTodayByTimeframe !== null)
+        ? DashboardTimeframeBreakdown.fromPartial(object.triggeredTodayByTimeframe)
+        : undefined;
+    message.triggersLast7dByTimeframe =
+      (object.triggersLast7dByTimeframe !== undefined && object.triggersLast7dByTimeframe !== null)
+        ? DashboardTimeframeBreakdown.fromPartial(object.triggersLast7dByTimeframe)
+        : undefined;
     return message;
   },
 };

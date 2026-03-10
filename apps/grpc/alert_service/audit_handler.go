@@ -44,11 +44,67 @@ func (s *Server) GetDashboardStats(ctx context.Context, _ *alertv1.GetDashboardS
 		return nil, status.Errorf(codes.Internal, "dashboard watched symbols: %v", err)
 	}
 
+	// Active alerts by timeframe (alerts.timeframe may be '1d'/'daily', '1wk'/'weekly', '1h'/'hourly')
+	var activeHourly, activeDaily, activeWeekly int64
+	err = conn.QueryRow(ctx, `
+		SELECT
+			COUNT(*) FILTER (WHERE LOWER(TRIM(COALESCE(timeframe, ''))) IN ('hourly', '1h', '1hr')) AS hourly,
+			COUNT(*) FILTER (WHERE LOWER(TRIM(COALESCE(timeframe, ''))) IN ('daily', '1d')) AS daily,
+			COUNT(*) FILTER (WHERE LOWER(TRIM(COALESCE(timeframe, ''))) IN ('weekly', '1wk', '1w')) AS weekly
+		FROM alerts
+	`).Scan(&activeHourly, &activeDaily, &activeWeekly)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "dashboard active by timeframe: %v", err)
+	}
+
+	// Triggered today by timeframe (alert_audits.evaluation_type is normalized: daily/weekly/hourly)
+	var todayHourly, todayDaily, todayWeekly int64
+	err = conn.QueryRow(ctx, `
+		SELECT
+			COUNT(*) FILTER (WHERE LOWER(TRIM(COALESCE(evaluation_type, ''))) = 'hourly') AS hourly,
+			COUNT(*) FILTER (WHERE LOWER(TRIM(COALESCE(evaluation_type, ''))) = 'daily') AS daily,
+			COUNT(*) FILTER (WHERE LOWER(TRIM(COALESCE(evaluation_type, ''))) = 'weekly') AS weekly
+		FROM alert_audits
+		WHERE alert_triggered = true AND timestamp >= (date_trunc('day', NOW() AT TIME ZONE 'UTC') AT TIME ZONE 'UTC')
+	`).Scan(&todayHourly, &todayDaily, &todayWeekly)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "dashboard triggered today by timeframe: %v", err)
+	}
+
+	// Triggers last 7d by timeframe
+	var last7dHourly, last7dDaily, last7dWeekly int64
+	err = conn.QueryRow(ctx, `
+		SELECT
+			COUNT(*) FILTER (WHERE LOWER(TRIM(COALESCE(evaluation_type, ''))) = 'hourly') AS hourly,
+			COUNT(*) FILTER (WHERE LOWER(TRIM(COALESCE(evaluation_type, ''))) = 'daily') AS daily,
+			COUNT(*) FILTER (WHERE LOWER(TRIM(COALESCE(evaluation_type, ''))) = 'weekly') AS weekly
+		FROM alert_audits
+		WHERE alert_triggered = true AND timestamp >= (NOW() AT TIME ZONE 'UTC') - INTERVAL '7 days'
+	`).Scan(&last7dHourly, &last7dDaily, &last7dWeekly)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "dashboard triggers 7d by timeframe: %v", err)
+	}
+
 	return &alertv1.GetDashboardStatsResponse{
 		ActiveAlerts:    int32(activeAlerts),
 		TriggeredToday:  int32(triggeredToday),
 		WatchedSymbols:  int32(watchedSymbols),
 		TriggersLast_7D: int32(triggersLast7d),
+		ActiveAlertsByTimeframe: &alertv1.DashboardTimeframeBreakdown{
+			Hourly: int32(activeHourly),
+			Daily:  int32(activeDaily),
+			Weekly: int32(activeWeekly),
+		},
+		TriggeredTodayByTimeframe: &alertv1.DashboardTimeframeBreakdown{
+			Hourly: int32(todayHourly),
+			Daily:  int32(todayDaily),
+			Weekly: int32(todayWeekly),
+		},
+		TriggersLast_7DByTimeframe: &alertv1.DashboardTimeframeBreakdown{
+			Hourly: int32(last7dHourly),
+			Daily:  int32(last7dDaily),
+			Weekly: int32(last7dWeekly),
+		},
 	}, nil
 }
 
