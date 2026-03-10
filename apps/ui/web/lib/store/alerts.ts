@@ -1,6 +1,6 @@
 "use client";
 
-import { listAlertsPaginated } from "@/actions/alert-actions";
+import { searchAlerts } from "@/actions/alert-actions";
 import { atom } from "jotai";
 import { atomWithQuery } from "jotai-tanstack-query";
 
@@ -13,12 +13,21 @@ export const alertsPageAtom = atom(1);
 /** Page size for the alerts list */
 export const alertsPageSizeAtom = atom(DEFAULT_ALERTS_PAGE_SIZE);
 
-/** Paginated alerts query as a Jotai atom; key depends on alertsPageAtom and alertsPageSizeAtom. */
+/** Server-side search query (name, ticker, etc.). Empty string = no filter. */
+export const alertsSearchAtom = atom("");
+
+/** Paginated alerts query; server-side search + pagination. */
 export const alertsPaginatedQueryAtom = atomWithQuery((get) => {
   const page = get(alertsPageAtom);
   const pageSize = get(alertsPageSizeAtom);
+  const search = get(alertsSearchAtom);
   return {
-    queryKey: [...ALERTS_KEY, "paginated", page, pageSize],
-    queryFn: () => listAlertsPaginated(page, pageSize),
+    queryKey: [...ALERTS_KEY, "paginated", search, page, pageSize],
+    queryFn: () =>
+      searchAlerts(
+        { search: search.trim() },
+        page,
+        pageSize
+      ),
   };
 });

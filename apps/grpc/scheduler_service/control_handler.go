@@ -4,9 +4,14 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
+	"sort"
+	"strings"
 	"time"
 
 	"github.com/hibiken/asynq"
+
+	"stockalert/calendar"
 
 	schedulerv1 "stockalert/gen/go/scheduler/v1"
 )
@@ -53,6 +58,12 @@ func (s *Server) StartScheduler(ctx context.Context, _ *schedulerv1.StartSchedul
 		}, nil
 	}
 
+	// Enqueue all scheduled tasks so the queue is populated immediately (worker also runs schedule every 15 min).
+	if s.client != nil {
+		n := enqueueScheduleAll(ctx, s.client, s.logger)
+		s.logger.Info("StartScheduler: enqueued tasks on start", "count", n)
+	}
+
 	s.logger.Info("StartScheduler: queue successfully unpaused", "queue", defaultQueue)
 	return &schedulerv1.StartSchedulerResponse{
 		Success: true,
@@ -83,11 +94,138 @@ func (s *Server) StopScheduler(ctx context.Context, _ *schedulerv1.StopScheduler
 		}, nil
 	}
 
-	s.logger.Info("StopScheduler: queue successfully paused", "queue", defaultQueue)
+	total, err := purgeQueue(s.inspector, defaultQueue, s.logger)
+	if err != nil {
+		s.logger.Warn("StopScheduler: purge had errors (queue already paused)", "error", err, "deleted", total)
+		// Queue is already paused; report success and that we cleared what we could
+	}
+	if total > 0 {
+		s.logger.Info("StopScheduler: queue purged", "queue", defaultQueue, "tasks_removed", total)
+	}
+
 	return &schedulerv1.StopSchedulerResponse{
 		Success: true,
-		Message: "Scheduler queue paused",
+		Message: "Scheduler queue paused and cleared",
 	}, nil
+}
+
+// purgeQueue deletes all tasks in the queue (scheduled, pending, retry, archived, completed, active).
+// Active tasks are canceled via CancelProcessing first (required by asynq); then bulk deletes run
+// so any canceled tasks that land in archived are removed. Returns total number of tasks removed
+// and any error from the last failing operation.
+func purgeQueue(inspector *asynq.Inspector, queue string, logger *slog.Logger) (int, error) {
+	var total int
+
+	// Active first: asynq does not allow DeleteTask on active; must use CancelProcessing.
+	// Canceled tasks may move to archived, which we delete in the next step.
+	infos, err := inspector.ListActiveTasks(queue, asynq.PageSize(500))
+	if err != nil {
+		return total, fmt.Errorf("list active: %w", err)
+	}
+	for _, info := range infos {
+		if err := inspector.CancelProcessing(info.ID); err != nil {
+			logger.Debug("purgeQueue: cancel active task failed", "task_id", info.ID, "error", err)
+			continue
+		}
+		total++
+		logger.Debug("purgeQueue: canceled active task", "task_id", info.ID)
+	}
+	if len(infos) > 0 {
+		logger.Info("purgeQueue: canceled active tasks", "count", len(infos))
+	}
+
+	// Bulk-deletable states (same order as apps/scheduler/cmd/resetqueue).
+	// Run after canceling active so any tasks that moved to archived are removed.
+	type bulkOp struct {
+		name string
+		del  func(string) (int, error)
+	}
+	for _, op := range []bulkOp{
+		{"scheduled", inspector.DeleteAllScheduledTasks},
+		{"pending", inspector.DeleteAllPendingTasks},
+		{"retry", inspector.DeleteAllRetryTasks},
+		{"archived", inspector.DeleteAllArchivedTasks},
+		{"completed", inspector.DeleteAllCompletedTasks},
+	} {
+		n, err := op.del(queue)
+		if err != nil {
+			return total, fmt.Errorf("delete all %s: %w", op.name, err)
+		}
+		if n > 0 {
+			logger.Debug("purgeQueue: deleted", "state", op.name, "count", n)
+			total += n
+		}
+	}
+
+	return total, nil
+}
+
+const (
+	enqueueDailyUnique  = 12 * time.Hour
+	enqueueHourlyUnique = 30 * time.Minute
+)
+
+func isUniqueConflict(err error) bool {
+	return err != nil && strings.Contains(err.Error(), "task already exists")
+}
+
+// enqueueScheduleAll enqueues daily, weekly (if Friday), and hourly (if exchange open) tasks for all exchanges.
+// Matches the worker's schedule logic so Start immediately repopulates the queue. Returns number enqueued.
+func enqueueScheduleAll(ctx context.Context, client *asynq.Client, logger *slog.Logger) int {
+	now := time.Now().UTC()
+	exchanges := make([]string, 0, len(calendar.ExchangeSchedules))
+	for exchange := range calendar.ExchangeSchedules {
+		exchanges = append(exchanges, exchange)
+	}
+	sort.Strings(exchanges)
+	var enqueued int
+	for _, exchange := range exchanges {
+		nextDaily := calendar.GetNextDailyRunTime(exchange, now)
+		payload, _ := json.Marshal(taskPayload{Exchange: exchange, Timeframe: "daily"})
+		task := asynq.NewTask(taskName("daily"), payload)
+		_, err := client.EnqueueContext(ctx, task, asynq.ProcessAt(nextDaily), asynq.Unique(enqueueDailyUnique))
+		if err != nil {
+			if isUniqueConflict(err) {
+				logger.Debug("enqueueScheduleAll: daily skipped (already enqueued)", "exchange", exchange)
+			} else {
+				logger.Warn("enqueueScheduleAll: daily failed", "exchange", exchange, "error", err)
+			}
+		} else {
+			enqueued++
+		}
+
+		if nextDaily.Weekday() == time.Friday {
+			payloadWeekly, _ := json.Marshal(taskPayload{Exchange: exchange, Timeframe: "weekly"})
+			taskWeekly := asynq.NewTask(taskName("weekly"), payloadWeekly)
+			_, err = client.EnqueueContext(ctx, taskWeekly, asynq.ProcessAt(nextDaily), asynq.Unique(enqueueDailyUnique))
+			if err != nil {
+				if isUniqueConflict(err) {
+					logger.Debug("enqueueScheduleAll: weekly skipped (already enqueued)", "exchange", exchange)
+				} else {
+					logger.Warn("enqueueScheduleAll: weekly failed", "exchange", exchange, "error", err)
+				}
+			} else {
+				enqueued++
+			}
+		}
+
+		if calendar.IsExchangeOpen(exchange, now) {
+			payloadHourly, _ := json.Marshal(taskPayload{Exchange: exchange, Timeframe: "hourly"})
+			taskHourly := asynq.NewTask(taskName("hourly"), payloadHourly)
+			nextHourly := now.Add(enqueueHourlyUnique)
+			_, err = client.EnqueueContext(ctx, taskHourly, asynq.ProcessAt(nextHourly), asynq.Unique(enqueueHourlyUnique))
+			if err != nil {
+				if isUniqueConflict(err) {
+					logger.Debug("enqueueScheduleAll: hourly skipped (already enqueued)", "exchange", exchange)
+				} else {
+					logger.Warn("enqueueScheduleAll: hourly failed", "exchange", exchange, "error", err)
+				}
+			} else {
+				enqueued++
+			}
+		}
+	}
+	return enqueued
 }
 
 func (s *Server) RunExchangeJob(ctx context.Context, req *schedulerv1.RunExchangeJobRequest) (*schedulerv1.RunExchangeJobResponse, error) {

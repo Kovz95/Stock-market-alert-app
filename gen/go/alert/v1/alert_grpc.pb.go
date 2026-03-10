@@ -22,10 +22,13 @@ const (
 	AlertService_ListAlerts_FullMethodName                = "/stockalert.alert.v1.AlertService/ListAlerts"
 	AlertService_SearchAlertsStream_FullMethodName        = "/stockalert.alert.v1.AlertService/SearchAlertsStream"
 	AlertService_GetAlert_FullMethodName                  = "/stockalert.alert.v1.AlertService/GetAlert"
+	AlertService_GetTopTriggeredAlerts_FullMethodName     = "/stockalert.alert.v1.AlertService/GetTopTriggeredAlerts"
 	AlertService_CreateAlert_FullMethodName               = "/stockalert.alert.v1.AlertService/CreateAlert"
 	AlertService_UpdateAlert_FullMethodName               = "/stockalert.alert.v1.AlertService/UpdateAlert"
 	AlertService_DeleteAlert_FullMethodName               = "/stockalert.alert.v1.AlertService/DeleteAlert"
 	AlertService_BulkUpdateLastTriggered_FullMethodName   = "/stockalert.alert.v1.AlertService/BulkUpdateLastTriggered"
+	AlertService_GetDashboardStats_FullMethodName         = "/stockalert.alert.v1.AlertService/GetDashboardStats"
+	AlertService_GetTriggerCountByDay_FullMethodName      = "/stockalert.alert.v1.AlertService/GetTriggerCountByDay"
 	AlertService_GetAuditSummary_FullMethodName           = "/stockalert.alert.v1.AlertService/GetAuditSummary"
 	AlertService_GetPerformanceMetrics_FullMethodName     = "/stockalert.alert.v1.AlertService/GetPerformanceMetrics"
 	AlertService_GetAlertHistory_FullMethodName           = "/stockalert.alert.v1.AlertService/GetAlertHistory"
@@ -52,11 +55,14 @@ type AlertServiceClient interface {
 	ListAlerts(ctx context.Context, in *ListAlertsRequest, opts ...grpc.CallOption) (*ListAlertsResponse, error)
 	SearchAlertsStream(ctx context.Context, in *SearchAlertsStreamRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[SearchAlertsStreamChunk], error)
 	GetAlert(ctx context.Context, in *GetAlertRequest, opts ...grpc.CallOption) (*GetAlertResponse, error)
+	GetTopTriggeredAlerts(ctx context.Context, in *GetTopTriggeredAlertsRequest, opts ...grpc.CallOption) (*GetTopTriggeredAlertsResponse, error)
 	CreateAlert(ctx context.Context, in *CreateAlertRequest, opts ...grpc.CallOption) (*CreateAlertResponse, error)
 	UpdateAlert(ctx context.Context, in *UpdateAlertRequest, opts ...grpc.CallOption) (*UpdateAlertResponse, error)
 	DeleteAlert(ctx context.Context, in *DeleteAlertRequest, opts ...grpc.CallOption) (*DeleteAlertResponse, error)
 	BulkUpdateLastTriggered(ctx context.Context, in *BulkUpdateLastTriggeredRequest, opts ...grpc.CallOption) (*BulkUpdateLastTriggeredResponse, error)
 	// Audit logs
+	GetDashboardStats(ctx context.Context, in *GetDashboardStatsRequest, opts ...grpc.CallOption) (*GetDashboardStatsResponse, error)
+	GetTriggerCountByDay(ctx context.Context, in *GetTriggerCountByDayRequest, opts ...grpc.CallOption) (*GetTriggerCountByDayResponse, error)
 	GetAuditSummary(ctx context.Context, in *GetAuditSummaryRequest, opts ...grpc.CallOption) (*GetAuditSummaryResponse, error)
 	GetPerformanceMetrics(ctx context.Context, in *GetPerformanceMetricsRequest, opts ...grpc.CallOption) (*GetPerformanceMetricsResponse, error)
 	GetAlertHistory(ctx context.Context, in *GetAlertHistoryRequest, opts ...grpc.CallOption) (*GetAlertHistoryResponse, error)
@@ -124,6 +130,16 @@ func (c *alertServiceClient) GetAlert(ctx context.Context, in *GetAlertRequest, 
 	return out, nil
 }
 
+func (c *alertServiceClient) GetTopTriggeredAlerts(ctx context.Context, in *GetTopTriggeredAlertsRequest, opts ...grpc.CallOption) (*GetTopTriggeredAlertsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetTopTriggeredAlertsResponse)
+	err := c.cc.Invoke(ctx, AlertService_GetTopTriggeredAlerts_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *alertServiceClient) CreateAlert(ctx context.Context, in *CreateAlertRequest, opts ...grpc.CallOption) (*CreateAlertResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(CreateAlertResponse)
@@ -158,6 +174,26 @@ func (c *alertServiceClient) BulkUpdateLastTriggered(ctx context.Context, in *Bu
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(BulkUpdateLastTriggeredResponse)
 	err := c.cc.Invoke(ctx, AlertService_BulkUpdateLastTriggered_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *alertServiceClient) GetDashboardStats(ctx context.Context, in *GetDashboardStatsRequest, opts ...grpc.CallOption) (*GetDashboardStatsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetDashboardStatsResponse)
+	err := c.cc.Invoke(ctx, AlertService_GetDashboardStats_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *alertServiceClient) GetTriggerCountByDay(ctx context.Context, in *GetTriggerCountByDayRequest, opts ...grpc.CallOption) (*GetTriggerCountByDayResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetTriggerCountByDayResponse)
+	err := c.cc.Invoke(ctx, AlertService_GetTriggerCountByDay_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -323,11 +359,14 @@ type AlertServiceServer interface {
 	ListAlerts(context.Context, *ListAlertsRequest) (*ListAlertsResponse, error)
 	SearchAlertsStream(*SearchAlertsStreamRequest, grpc.ServerStreamingServer[SearchAlertsStreamChunk]) error
 	GetAlert(context.Context, *GetAlertRequest) (*GetAlertResponse, error)
+	GetTopTriggeredAlerts(context.Context, *GetTopTriggeredAlertsRequest) (*GetTopTriggeredAlertsResponse, error)
 	CreateAlert(context.Context, *CreateAlertRequest) (*CreateAlertResponse, error)
 	UpdateAlert(context.Context, *UpdateAlertRequest) (*UpdateAlertResponse, error)
 	DeleteAlert(context.Context, *DeleteAlertRequest) (*DeleteAlertResponse, error)
 	BulkUpdateLastTriggered(context.Context, *BulkUpdateLastTriggeredRequest) (*BulkUpdateLastTriggeredResponse, error)
 	// Audit logs
+	GetDashboardStats(context.Context, *GetDashboardStatsRequest) (*GetDashboardStatsResponse, error)
+	GetTriggerCountByDay(context.Context, *GetTriggerCountByDayRequest) (*GetTriggerCountByDayResponse, error)
 	GetAuditSummary(context.Context, *GetAuditSummaryRequest) (*GetAuditSummaryResponse, error)
 	GetPerformanceMetrics(context.Context, *GetPerformanceMetricsRequest) (*GetPerformanceMetricsResponse, error)
 	GetAlertHistory(context.Context, *GetAlertHistoryRequest) (*GetAlertHistoryResponse, error)
@@ -365,6 +404,9 @@ func (UnimplementedAlertServiceServer) SearchAlertsStream(*SearchAlertsStreamReq
 func (UnimplementedAlertServiceServer) GetAlert(context.Context, *GetAlertRequest) (*GetAlertResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetAlert not implemented")
 }
+func (UnimplementedAlertServiceServer) GetTopTriggeredAlerts(context.Context, *GetTopTriggeredAlertsRequest) (*GetTopTriggeredAlertsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetTopTriggeredAlerts not implemented")
+}
 func (UnimplementedAlertServiceServer) CreateAlert(context.Context, *CreateAlertRequest) (*CreateAlertResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method CreateAlert not implemented")
 }
@@ -376,6 +418,12 @@ func (UnimplementedAlertServiceServer) DeleteAlert(context.Context, *DeleteAlert
 }
 func (UnimplementedAlertServiceServer) BulkUpdateLastTriggered(context.Context, *BulkUpdateLastTriggeredRequest) (*BulkUpdateLastTriggeredResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method BulkUpdateLastTriggered not implemented")
+}
+func (UnimplementedAlertServiceServer) GetDashboardStats(context.Context, *GetDashboardStatsRequest) (*GetDashboardStatsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetDashboardStats not implemented")
+}
+func (UnimplementedAlertServiceServer) GetTriggerCountByDay(context.Context, *GetTriggerCountByDayRequest) (*GetTriggerCountByDayResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetTriggerCountByDay not implemented")
 }
 func (UnimplementedAlertServiceServer) GetAuditSummary(context.Context, *GetAuditSummaryRequest) (*GetAuditSummaryResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetAuditSummary not implemented")
@@ -490,6 +538,24 @@ func _AlertService_GetAlert_Handler(srv interface{}, ctx context.Context, dec fu
 	return interceptor(ctx, in, info, handler)
 }
 
+func _AlertService_GetTopTriggeredAlerts_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetTopTriggeredAlertsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AlertServiceServer).GetTopTriggeredAlerts(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AlertService_GetTopTriggeredAlerts_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AlertServiceServer).GetTopTriggeredAlerts(ctx, req.(*GetTopTriggeredAlertsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _AlertService_CreateAlert_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(CreateAlertRequest)
 	if err := dec(in); err != nil {
@@ -558,6 +624,42 @@ func _AlertService_BulkUpdateLastTriggered_Handler(srv interface{}, ctx context.
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(AlertServiceServer).BulkUpdateLastTriggered(ctx, req.(*BulkUpdateLastTriggeredRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AlertService_GetDashboardStats_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetDashboardStatsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AlertServiceServer).GetDashboardStats(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AlertService_GetDashboardStats_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AlertServiceServer).GetDashboardStats(ctx, req.(*GetDashboardStatsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AlertService_GetTriggerCountByDay_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetTriggerCountByDayRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AlertServiceServer).GetTriggerCountByDay(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AlertService_GetTriggerCountByDay_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AlertServiceServer).GetTriggerCountByDay(ctx, req.(*GetTriggerCountByDayRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -848,6 +950,10 @@ var AlertService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _AlertService_GetAlert_Handler,
 		},
 		{
+			MethodName: "GetTopTriggeredAlerts",
+			Handler:    _AlertService_GetTopTriggeredAlerts_Handler,
+		},
+		{
 			MethodName: "CreateAlert",
 			Handler:    _AlertService_CreateAlert_Handler,
 		},
@@ -862,6 +968,14 @@ var AlertService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "BulkUpdateLastTriggered",
 			Handler:    _AlertService_BulkUpdateLastTriggered_Handler,
+		},
+		{
+			MethodName: "GetDashboardStats",
+			Handler:    _AlertService_GetDashboardStats_Handler,
+		},
+		{
+			MethodName: "GetTriggerCountByDay",
+			Handler:    _AlertService_GetTriggerCountByDay_Handler,
 		},
 		{
 			MethodName: "GetAuditSummary",

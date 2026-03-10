@@ -85,6 +85,24 @@ export interface GetAlertResponse {
   alert?: Alert | undefined;
 }
 
+/** GetTopTriggeredAlerts: top N alerts by count of alert_triggered = true in alert_audits (only existing alerts). */
+export interface GetTopTriggeredAlertsRequest {
+  /** how many days back (default 30, max 90) */
+  days: number;
+  /** max alerts to return (default 10, max 50) */
+  limit: number;
+}
+
+export interface TopTriggeredAlert {
+  alert?: Alert | undefined;
+  triggerCount: number;
+}
+
+export interface GetTopTriggeredAlertsResponse {
+  alerts: TopTriggeredAlert[];
+  totalCount: number;
+}
+
 /** CreateAlert */
 export interface CreateAlertRequest {
   name: string;
@@ -160,9 +178,42 @@ export interface BulkUpdateLastTriggeredResponse {
   updatedCount: number;
 }
 
+/** GetDashboardStats: lightweight aggregates for dashboard KPI cards (no large payloads). */
+export interface GetDashboardStatsRequest {
+}
+
+export interface GetDashboardStatsResponse {
+  /** COUNT(*) FROM alerts */
+  activeAlerts: number;
+  /** COUNT(*) FROM alert_audits WHERE alert_triggered AND timestamp today */
+  triggeredToday: number;
+  /** COUNT(DISTINCT ticker/ratio) FROM alerts */
+  watchedSymbols: number;
+  /** COUNT(*) FROM alert_audits WHERE alert_triggered AND timestamp last 7d */
+  triggersLast7d: number;
+}
+
+/** GetTriggerCountByDay: trigger counts per day from alert_audits (same source as dashboard stats). */
+export interface GetTriggerCountByDayRequest {
+  /** 7-90, default 30 */
+  days: number;
+}
+
+export interface TriggerCountRow {
+  /** YYYY-MM-DD */
+  date: string;
+  count: number;
+}
+
+export interface GetTriggerCountByDayResponse {
+  rows: TriggerCountRow[];
+}
+
 export interface GetAuditSummaryRequest {
   /** default 7, how many days back */
   days: number;
+  /** optional; when > 0, return only top N rows ordered by total_triggers DESC */
+  limit: number;
 }
 
 export interface AuditSummaryRow {
@@ -1523,6 +1574,246 @@ export const GetAlertResponse: MessageFns<GetAlertResponse> = {
   },
 };
 
+function createBaseGetTopTriggeredAlertsRequest(): GetTopTriggeredAlertsRequest {
+  return { days: 0, limit: 0 };
+}
+
+export const GetTopTriggeredAlertsRequest: MessageFns<GetTopTriggeredAlertsRequest> = {
+  encode(message: GetTopTriggeredAlertsRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.days !== 0) {
+      writer.uint32(8).int32(message.days);
+    }
+    if (message.limit !== 0) {
+      writer.uint32(16).int32(message.limit);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): GetTopTriggeredAlertsRequest {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseGetTopTriggeredAlertsRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 8) {
+            break;
+          }
+
+          message.days = reader.int32();
+          continue;
+        }
+        case 2: {
+          if (tag !== 16) {
+            break;
+          }
+
+          message.limit = reader.int32();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): GetTopTriggeredAlertsRequest {
+    return {
+      days: isSet(object.days) ? globalThis.Number(object.days) : 0,
+      limit: isSet(object.limit) ? globalThis.Number(object.limit) : 0,
+    };
+  },
+
+  toJSON(message: GetTopTriggeredAlertsRequest): unknown {
+    const obj: any = {};
+    if (message.days !== 0) {
+      obj.days = Math.round(message.days);
+    }
+    if (message.limit !== 0) {
+      obj.limit = Math.round(message.limit);
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<GetTopTriggeredAlertsRequest>, I>>(base?: I): GetTopTriggeredAlertsRequest {
+    return GetTopTriggeredAlertsRequest.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<GetTopTriggeredAlertsRequest>, I>>(object: I): GetTopTriggeredAlertsRequest {
+    const message = createBaseGetTopTriggeredAlertsRequest();
+    message.days = object.days ?? 0;
+    message.limit = object.limit ?? 0;
+    return message;
+  },
+};
+
+function createBaseTopTriggeredAlert(): TopTriggeredAlert {
+  return { alert: undefined, triggerCount: 0 };
+}
+
+export const TopTriggeredAlert: MessageFns<TopTriggeredAlert> = {
+  encode(message: TopTriggeredAlert, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.alert !== undefined) {
+      Alert.encode(message.alert, writer.uint32(10).fork()).join();
+    }
+    if (message.triggerCount !== 0) {
+      writer.uint32(16).int64(message.triggerCount);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): TopTriggeredAlert {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseTopTriggeredAlert();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.alert = Alert.decode(reader, reader.uint32());
+          continue;
+        }
+        case 2: {
+          if (tag !== 16) {
+            break;
+          }
+
+          message.triggerCount = longToNumber(reader.int64());
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): TopTriggeredAlert {
+    return {
+      alert: isSet(object.alert) ? Alert.fromJSON(object.alert) : undefined,
+      triggerCount: isSet(object.triggerCount)
+        ? globalThis.Number(object.triggerCount)
+        : isSet(object.trigger_count)
+        ? globalThis.Number(object.trigger_count)
+        : 0,
+    };
+  },
+
+  toJSON(message: TopTriggeredAlert): unknown {
+    const obj: any = {};
+    if (message.alert !== undefined) {
+      obj.alert = Alert.toJSON(message.alert);
+    }
+    if (message.triggerCount !== 0) {
+      obj.triggerCount = Math.round(message.triggerCount);
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<TopTriggeredAlert>, I>>(base?: I): TopTriggeredAlert {
+    return TopTriggeredAlert.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<TopTriggeredAlert>, I>>(object: I): TopTriggeredAlert {
+    const message = createBaseTopTriggeredAlert();
+    message.alert = (object.alert !== undefined && object.alert !== null) ? Alert.fromPartial(object.alert) : undefined;
+    message.triggerCount = object.triggerCount ?? 0;
+    return message;
+  },
+};
+
+function createBaseGetTopTriggeredAlertsResponse(): GetTopTriggeredAlertsResponse {
+  return { alerts: [], totalCount: 0 };
+}
+
+export const GetTopTriggeredAlertsResponse: MessageFns<GetTopTriggeredAlertsResponse> = {
+  encode(message: GetTopTriggeredAlertsResponse, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    for (const v of message.alerts) {
+      TopTriggeredAlert.encode(v!, writer.uint32(10).fork()).join();
+    }
+    if (message.totalCount !== 0) {
+      writer.uint32(16).int32(message.totalCount);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): GetTopTriggeredAlertsResponse {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseGetTopTriggeredAlertsResponse();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.alerts.push(TopTriggeredAlert.decode(reader, reader.uint32()));
+          continue;
+        }
+        case 2: {
+          if (tag !== 16) {
+            break;
+          }
+
+          message.totalCount = reader.int32();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): GetTopTriggeredAlertsResponse {
+    return {
+      alerts: globalThis.Array.isArray(object?.alerts)
+        ? object.alerts.map((e: any) => TopTriggeredAlert.fromJSON(e))
+        : [],
+      totalCount: isSet(object.totalCount)
+        ? globalThis.Number(object.totalCount)
+        : isSet(object.total_count)
+        ? globalThis.Number(object.total_count)
+        : 0,
+    };
+  },
+
+  toJSON(message: GetTopTriggeredAlertsResponse): unknown {
+    const obj: any = {};
+    if (message.alerts?.length) {
+      obj.alerts = message.alerts.map((e) => TopTriggeredAlert.toJSON(e));
+    }
+    if (message.totalCount !== 0) {
+      obj.totalCount = Math.round(message.totalCount);
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<GetTopTriggeredAlertsResponse>, I>>(base?: I): GetTopTriggeredAlertsResponse {
+    return GetTopTriggeredAlertsResponse.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<GetTopTriggeredAlertsResponse>, I>>(
+    object: I,
+  ): GetTopTriggeredAlertsResponse {
+    const message = createBaseGetTopTriggeredAlertsResponse();
+    message.alerts = object.alerts?.map((e) => TopTriggeredAlert.fromPartial(e)) || [];
+    message.totalCount = object.totalCount ?? 0;
+    return message;
+  },
+};
+
 function createBaseCreateAlertRequest(): CreateAlertRequest {
   return {
     name: "",
@@ -2754,22 +3045,189 @@ export const BulkUpdateLastTriggeredResponse: MessageFns<BulkUpdateLastTriggered
   },
 };
 
-function createBaseGetAuditSummaryRequest(): GetAuditSummaryRequest {
+function createBaseGetDashboardStatsRequest(): GetDashboardStatsRequest {
+  return {};
+}
+
+export const GetDashboardStatsRequest: MessageFns<GetDashboardStatsRequest> = {
+  encode(_: GetDashboardStatsRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): GetDashboardStatsRequest {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseGetDashboardStatsRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(_: any): GetDashboardStatsRequest {
+    return {};
+  },
+
+  toJSON(_: GetDashboardStatsRequest): unknown {
+    const obj: any = {};
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<GetDashboardStatsRequest>, I>>(base?: I): GetDashboardStatsRequest {
+    return GetDashboardStatsRequest.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<GetDashboardStatsRequest>, I>>(_: I): GetDashboardStatsRequest {
+    const message = createBaseGetDashboardStatsRequest();
+    return message;
+  },
+};
+
+function createBaseGetDashboardStatsResponse(): GetDashboardStatsResponse {
+  return { activeAlerts: 0, triggeredToday: 0, watchedSymbols: 0, triggersLast7d: 0 };
+}
+
+export const GetDashboardStatsResponse: MessageFns<GetDashboardStatsResponse> = {
+  encode(message: GetDashboardStatsResponse, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.activeAlerts !== 0) {
+      writer.uint32(8).int32(message.activeAlerts);
+    }
+    if (message.triggeredToday !== 0) {
+      writer.uint32(16).int32(message.triggeredToday);
+    }
+    if (message.watchedSymbols !== 0) {
+      writer.uint32(24).int32(message.watchedSymbols);
+    }
+    if (message.triggersLast7d !== 0) {
+      writer.uint32(32).int32(message.triggersLast7d);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): GetDashboardStatsResponse {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseGetDashboardStatsResponse();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 8) {
+            break;
+          }
+
+          message.activeAlerts = reader.int32();
+          continue;
+        }
+        case 2: {
+          if (tag !== 16) {
+            break;
+          }
+
+          message.triggeredToday = reader.int32();
+          continue;
+        }
+        case 3: {
+          if (tag !== 24) {
+            break;
+          }
+
+          message.watchedSymbols = reader.int32();
+          continue;
+        }
+        case 4: {
+          if (tag !== 32) {
+            break;
+          }
+
+          message.triggersLast7d = reader.int32();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): GetDashboardStatsResponse {
+    return {
+      activeAlerts: isSet(object.activeAlerts)
+        ? globalThis.Number(object.activeAlerts)
+        : isSet(object.active_alerts)
+        ? globalThis.Number(object.active_alerts)
+        : 0,
+      triggeredToday: isSet(object.triggeredToday)
+        ? globalThis.Number(object.triggeredToday)
+        : isSet(object.triggered_today)
+        ? globalThis.Number(object.triggered_today)
+        : 0,
+      watchedSymbols: isSet(object.watchedSymbols)
+        ? globalThis.Number(object.watchedSymbols)
+        : isSet(object.watched_symbols)
+        ? globalThis.Number(object.watched_symbols)
+        : 0,
+      triggersLast7d: isSet(object.triggersLast7d)
+        ? globalThis.Number(object.triggersLast7d)
+        : isSet(object.triggers_last_7d)
+        ? globalThis.Number(object.triggers_last_7d)
+        : 0,
+    };
+  },
+
+  toJSON(message: GetDashboardStatsResponse): unknown {
+    const obj: any = {};
+    if (message.activeAlerts !== 0) {
+      obj.activeAlerts = Math.round(message.activeAlerts);
+    }
+    if (message.triggeredToday !== 0) {
+      obj.triggeredToday = Math.round(message.triggeredToday);
+    }
+    if (message.watchedSymbols !== 0) {
+      obj.watchedSymbols = Math.round(message.watchedSymbols);
+    }
+    if (message.triggersLast7d !== 0) {
+      obj.triggersLast7d = Math.round(message.triggersLast7d);
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<GetDashboardStatsResponse>, I>>(base?: I): GetDashboardStatsResponse {
+    return GetDashboardStatsResponse.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<GetDashboardStatsResponse>, I>>(object: I): GetDashboardStatsResponse {
+    const message = createBaseGetDashboardStatsResponse();
+    message.activeAlerts = object.activeAlerts ?? 0;
+    message.triggeredToday = object.triggeredToday ?? 0;
+    message.watchedSymbols = object.watchedSymbols ?? 0;
+    message.triggersLast7d = object.triggersLast7d ?? 0;
+    return message;
+  },
+};
+
+function createBaseGetTriggerCountByDayRequest(): GetTriggerCountByDayRequest {
   return { days: 0 };
 }
 
-export const GetAuditSummaryRequest: MessageFns<GetAuditSummaryRequest> = {
-  encode(message: GetAuditSummaryRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+export const GetTriggerCountByDayRequest: MessageFns<GetTriggerCountByDayRequest> = {
+  encode(message: GetTriggerCountByDayRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
     if (message.days !== 0) {
       writer.uint32(8).int32(message.days);
     }
     return writer;
   },
 
-  decode(input: BinaryReader | Uint8Array, length?: number): GetAuditSummaryRequest {
+  decode(input: BinaryReader | Uint8Array, length?: number): GetTriggerCountByDayRequest {
     const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
     const end = length === undefined ? reader.len : reader.pos + length;
-    const message = createBaseGetAuditSummaryRequest();
+    const message = createBaseGetTriggerCountByDayRequest();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -2790,14 +3248,225 @@ export const GetAuditSummaryRequest: MessageFns<GetAuditSummaryRequest> = {
     return message;
   },
 
-  fromJSON(object: any): GetAuditSummaryRequest {
+  fromJSON(object: any): GetTriggerCountByDayRequest {
     return { days: isSet(object.days) ? globalThis.Number(object.days) : 0 };
+  },
+
+  toJSON(message: GetTriggerCountByDayRequest): unknown {
+    const obj: any = {};
+    if (message.days !== 0) {
+      obj.days = Math.round(message.days);
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<GetTriggerCountByDayRequest>, I>>(base?: I): GetTriggerCountByDayRequest {
+    return GetTriggerCountByDayRequest.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<GetTriggerCountByDayRequest>, I>>(object: I): GetTriggerCountByDayRequest {
+    const message = createBaseGetTriggerCountByDayRequest();
+    message.days = object.days ?? 0;
+    return message;
+  },
+};
+
+function createBaseTriggerCountRow(): TriggerCountRow {
+  return { date: "", count: 0 };
+}
+
+export const TriggerCountRow: MessageFns<TriggerCountRow> = {
+  encode(message: TriggerCountRow, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.date !== "") {
+      writer.uint32(10).string(message.date);
+    }
+    if (message.count !== 0) {
+      writer.uint32(16).int64(message.count);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): TriggerCountRow {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseTriggerCountRow();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.date = reader.string();
+          continue;
+        }
+        case 2: {
+          if (tag !== 16) {
+            break;
+          }
+
+          message.count = longToNumber(reader.int64());
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): TriggerCountRow {
+    return {
+      date: isSet(object.date) ? globalThis.String(object.date) : "",
+      count: isSet(object.count) ? globalThis.Number(object.count) : 0,
+    };
+  },
+
+  toJSON(message: TriggerCountRow): unknown {
+    const obj: any = {};
+    if (message.date !== "") {
+      obj.date = message.date;
+    }
+    if (message.count !== 0) {
+      obj.count = Math.round(message.count);
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<TriggerCountRow>, I>>(base?: I): TriggerCountRow {
+    return TriggerCountRow.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<TriggerCountRow>, I>>(object: I): TriggerCountRow {
+    const message = createBaseTriggerCountRow();
+    message.date = object.date ?? "";
+    message.count = object.count ?? 0;
+    return message;
+  },
+};
+
+function createBaseGetTriggerCountByDayResponse(): GetTriggerCountByDayResponse {
+  return { rows: [] };
+}
+
+export const GetTriggerCountByDayResponse: MessageFns<GetTriggerCountByDayResponse> = {
+  encode(message: GetTriggerCountByDayResponse, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    for (const v of message.rows) {
+      TriggerCountRow.encode(v!, writer.uint32(10).fork()).join();
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): GetTriggerCountByDayResponse {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseGetTriggerCountByDayResponse();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.rows.push(TriggerCountRow.decode(reader, reader.uint32()));
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): GetTriggerCountByDayResponse {
+    return {
+      rows: globalThis.Array.isArray(object?.rows) ? object.rows.map((e: any) => TriggerCountRow.fromJSON(e)) : [],
+    };
+  },
+
+  toJSON(message: GetTriggerCountByDayResponse): unknown {
+    const obj: any = {};
+    if (message.rows?.length) {
+      obj.rows = message.rows.map((e) => TriggerCountRow.toJSON(e));
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<GetTriggerCountByDayResponse>, I>>(base?: I): GetTriggerCountByDayResponse {
+    return GetTriggerCountByDayResponse.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<GetTriggerCountByDayResponse>, I>>(object: I): GetTriggerCountByDayResponse {
+    const message = createBaseGetTriggerCountByDayResponse();
+    message.rows = object.rows?.map((e) => TriggerCountRow.fromPartial(e)) || [];
+    return message;
+  },
+};
+
+function createBaseGetAuditSummaryRequest(): GetAuditSummaryRequest {
+  return { days: 0, limit: 0 };
+}
+
+export const GetAuditSummaryRequest: MessageFns<GetAuditSummaryRequest> = {
+  encode(message: GetAuditSummaryRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.days !== 0) {
+      writer.uint32(8).int32(message.days);
+    }
+    if (message.limit !== 0) {
+      writer.uint32(16).int32(message.limit);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): GetAuditSummaryRequest {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseGetAuditSummaryRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 8) {
+            break;
+          }
+
+          message.days = reader.int32();
+          continue;
+        }
+        case 2: {
+          if (tag !== 16) {
+            break;
+          }
+
+          message.limit = reader.int32();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): GetAuditSummaryRequest {
+    return {
+      days: isSet(object.days) ? globalThis.Number(object.days) : 0,
+      limit: isSet(object.limit) ? globalThis.Number(object.limit) : 0,
+    };
   },
 
   toJSON(message: GetAuditSummaryRequest): unknown {
     const obj: any = {};
     if (message.days !== 0) {
       obj.days = Math.round(message.days);
+    }
+    if (message.limit !== 0) {
+      obj.limit = Math.round(message.limit);
     }
     return obj;
   },
@@ -2808,6 +3477,7 @@ export const GetAuditSummaryRequest: MessageFns<GetAuditSummaryRequest> = {
   fromPartial<I extends Exact<DeepPartial<GetAuditSummaryRequest>, I>>(object: I): GetAuditSummaryRequest {
     const message = createBaseGetAuditSummaryRequest();
     message.days = object.days ?? 0;
+    message.limit = object.limit ?? 0;
     return message;
   },
 };
@@ -6618,6 +7288,14 @@ export const AlertServiceDefinition = {
       responseStream: false,
       options: {},
     },
+    getTopTriggeredAlerts: {
+      name: "GetTopTriggeredAlerts",
+      requestType: GetTopTriggeredAlertsRequest,
+      requestStream: false,
+      responseType: GetTopTriggeredAlertsResponse,
+      responseStream: false,
+      options: {},
+    },
     createAlert: {
       name: "CreateAlert",
       requestType: CreateAlertRequest,
@@ -6651,6 +7329,22 @@ export const AlertServiceDefinition = {
       options: {},
     },
     /** Audit logs */
+    getDashboardStats: {
+      name: "GetDashboardStats",
+      requestType: GetDashboardStatsRequest,
+      requestStream: false,
+      responseType: GetDashboardStatsResponse,
+      responseStream: false,
+      options: {},
+    },
+    getTriggerCountByDay: {
+      name: "GetTriggerCountByDay",
+      requestType: GetTriggerCountByDayRequest,
+      requestStream: false,
+      responseType: GetTriggerCountByDayResponse,
+      responseStream: false,
+      options: {},
+    },
     getAuditSummary: {
       name: "GetAuditSummary",
       requestType: GetAuditSummaryRequest,
@@ -6787,6 +7481,10 @@ export interface AlertServiceImplementation<CallContextExt = {}> {
     context: CallContext & CallContextExt,
   ): ServerStreamingMethodResult<DeepPartial<SearchAlertsStreamChunk>>;
   getAlert(request: GetAlertRequest, context: CallContext & CallContextExt): Promise<DeepPartial<GetAlertResponse>>;
+  getTopTriggeredAlerts(
+    request: GetTopTriggeredAlertsRequest,
+    context: CallContext & CallContextExt,
+  ): Promise<DeepPartial<GetTopTriggeredAlertsResponse>>;
   createAlert(
     request: CreateAlertRequest,
     context: CallContext & CallContextExt,
@@ -6804,6 +7502,14 @@ export interface AlertServiceImplementation<CallContextExt = {}> {
     context: CallContext & CallContextExt,
   ): Promise<DeepPartial<BulkUpdateLastTriggeredResponse>>;
   /** Audit logs */
+  getDashboardStats(
+    request: GetDashboardStatsRequest,
+    context: CallContext & CallContextExt,
+  ): Promise<DeepPartial<GetDashboardStatsResponse>>;
+  getTriggerCountByDay(
+    request: GetTriggerCountByDayRequest,
+    context: CallContext & CallContextExt,
+  ): Promise<DeepPartial<GetTriggerCountByDayResponse>>;
   getAuditSummary(
     request: GetAuditSummaryRequest,
     context: CallContext & CallContextExt,
@@ -6879,6 +7585,10 @@ export interface AlertServiceClient<CallOptionsExt = {}> {
     options?: CallOptions & CallOptionsExt,
   ): AsyncIterable<SearchAlertsStreamChunk>;
   getAlert(request: DeepPartial<GetAlertRequest>, options?: CallOptions & CallOptionsExt): Promise<GetAlertResponse>;
+  getTopTriggeredAlerts(
+    request: DeepPartial<GetTopTriggeredAlertsRequest>,
+    options?: CallOptions & CallOptionsExt,
+  ): Promise<GetTopTriggeredAlertsResponse>;
   createAlert(
     request: DeepPartial<CreateAlertRequest>,
     options?: CallOptions & CallOptionsExt,
@@ -6896,6 +7606,14 @@ export interface AlertServiceClient<CallOptionsExt = {}> {
     options?: CallOptions & CallOptionsExt,
   ): Promise<BulkUpdateLastTriggeredResponse>;
   /** Audit logs */
+  getDashboardStats(
+    request: DeepPartial<GetDashboardStatsRequest>,
+    options?: CallOptions & CallOptionsExt,
+  ): Promise<GetDashboardStatsResponse>;
+  getTriggerCountByDay(
+    request: DeepPartial<GetTriggerCountByDayRequest>,
+    options?: CallOptions & CallOptionsExt,
+  ): Promise<GetTriggerCountByDayResponse>;
   getAuditSummary(
     request: DeepPartial<GetAuditSummaryRequest>,
     options?: CallOptions & CallOptionsExt,

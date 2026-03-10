@@ -76,6 +76,22 @@ message GetAlertResponse {
   Alert alert = 1;
 }
 
+// GetTopTriggeredAlerts: top N alerts by count of alert_triggered = true in alert_audits (only existing alerts).
+message GetTopTriggeredAlertsRequest {
+  int32 days = 1;   // how many days back (default 30, max 90)
+  int32 limit = 2;   // max alerts to return (default 10, max 50)
+}
+
+message TopTriggeredAlert {
+  Alert alert = 1;
+  int64 trigger_count = 2;
+}
+
+message GetTopTriggeredAlertsResponse {
+  repeated TopTriggeredAlert alerts = 1;
+  int32 total_count = 2;
+}
+
 // CreateAlert
 message CreateAlertRequest {
   string name = 1;
@@ -153,8 +169,33 @@ message BulkUpdateLastTriggeredResponse {
 // Alert Audit Logs (audit summary, metrics, history, failed price data)
 // ---------------------------------------------------------------------------
 
+// GetDashboardStats: lightweight aggregates for dashboard KPI cards (no large payloads).
+message GetDashboardStatsRequest {}
+
+message GetDashboardStatsResponse {
+  int32 active_alerts = 1;      // COUNT(*) FROM alerts
+  int32 triggered_today = 2;     // COUNT(*) FROM alert_audits WHERE alert_triggered AND timestamp today
+  int32 watched_symbols = 3;     // COUNT(DISTINCT ticker/ratio) FROM alerts
+  int32 triggers_last_7d = 4;    // COUNT(*) FROM alert_audits WHERE alert_triggered AND timestamp last 7d
+}
+
+// GetTriggerCountByDay: trigger counts per day from alert_audits (same source as dashboard stats).
+message GetTriggerCountByDayRequest {
+  int32 days = 1;  // 7-90, default 30
+}
+
+message TriggerCountRow {
+  string date = 1;   // YYYY-MM-DD
+  int64 count = 2;
+}
+
+message GetTriggerCountByDayResponse {
+  repeated TriggerCountRow rows = 1;
+}
+
 message GetAuditSummaryRequest {
-  int32 days = 1;  // default 7, how many days back
+  int32 days = 1;   // default 7, how many days back
+  int32 limit = 2;  // optional; when > 0, return only top N rows ordered by total_triggers DESC
 }
 
 message AuditSummaryRow {
@@ -398,12 +439,15 @@ service AlertService {
   rpc ListAlerts(ListAlertsRequest) returns (ListAlertsResponse);
   rpc SearchAlertsStream(SearchAlertsStreamRequest) returns (stream SearchAlertsStreamChunk);
   rpc GetAlert(GetAlertRequest) returns (GetAlertResponse);
+  rpc GetTopTriggeredAlerts(GetTopTriggeredAlertsRequest) returns (GetTopTriggeredAlertsResponse);
   rpc CreateAlert(CreateAlertRequest) returns (CreateAlertResponse);
   rpc UpdateAlert(UpdateAlertRequest) returns (UpdateAlertResponse);
   rpc DeleteAlert(DeleteAlertRequest) returns (DeleteAlertResponse);
   rpc BulkUpdateLastTriggered(BulkUpdateLastTriggeredRequest) returns (BulkUpdateLastTriggeredResponse);
 
   // Audit logs
+  rpc GetDashboardStats(GetDashboardStatsRequest) returns (GetDashboardStatsResponse);
+  rpc GetTriggerCountByDay(GetTriggerCountByDayRequest) returns (GetTriggerCountByDayResponse);
   rpc GetAuditSummary(GetAuditSummaryRequest) returns (GetAuditSummaryResponse);
   rpc GetPerformanceMetrics(GetPerformanceMetricsRequest) returns (GetPerformanceMetricsResponse);
   rpc GetAlertHistory(GetAlertHistoryRequest) returns (GetAlertHistoryResponse);

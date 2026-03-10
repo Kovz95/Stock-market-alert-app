@@ -78,7 +78,10 @@ export function DashboardActiveAlerts() {
           </Link>
         </Button>
       </div>
-      <AlertsTable alerts={data.alerts} />
+      <AlertsTable
+        alerts={data.alerts}
+        triggerCountByAlertId={data.triggerCountByAlertId}
+      />
       {data.totalCount > data.alerts.length && (
         <p className="text-muted-foreground text-xs mt-2">
           Showing {data.alerts.length} of {data.totalCount} alerts.{" "}

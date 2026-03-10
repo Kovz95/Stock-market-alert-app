@@ -50,9 +50,45 @@ export type PerformanceMetrics = GetPerformanceMetricsResponse;
 
 export type FailedPriceData = GetFailedPriceDataResponse;
 
-export async function getAuditSummary(days: number = 7): Promise<AuditSummaryRow[]> {
+export type DashboardStatsResponse = {
+  activeAlerts: number;
+  triggeredToday: number;
+  watchedSymbols: number;
+  triggersLast7d: number;
+};
+
+export async function getDashboardStatsFromServer(): Promise<DashboardStatsResponse> {
+  const response = await alertClient.getDashboardStats({});
+  return {
+    activeAlerts: response.activeAlerts ?? 0,
+    triggeredToday: response.triggeredToday ?? 0,
+    watchedSymbols: response.watchedSymbols ?? 0,
+    triggersLast7d: response.triggersLast7d ?? 0,
+  };
+}
+
+export type TriggerCountByDayRow = { date: string; count: number };
+
+export async function getTriggerCountByDayFromServer(
+  days: number = 30
+): Promise<TriggerCountByDayRow[]> {
+  const clamped = Math.min(90, Math.max(7, days));
+  const response = await alertClient.getTriggerCountByDay({ days: clamped });
+  return (response.rows ?? []).map((r) => ({
+    date: r.date ?? "",
+    count: Number(r.count ?? 0),
+  }));
+}
+
+export async function getAuditSummary(
+  days: number = 7,
+  limit?: number
+): Promise<AuditSummaryRow[]> {
   const daysClamped = Math.min(90, Math.max(1, days));
-  const response = await alertClient.getAuditSummary({ days: daysClamped });
+  const response = await alertClient.getAuditSummary({
+    days: daysClamped,
+    ...(limit != null && limit > 0 && { limit }),
+  });
   return response.rows ?? [];
 }
 

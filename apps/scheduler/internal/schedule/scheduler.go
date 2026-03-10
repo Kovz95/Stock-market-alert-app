@@ -52,13 +52,23 @@ func (s *Scheduler) Start(ctx context.Context) {
 	go s.run(ctx)
 }
 
-// run loops: scheduleAll once, then every 15 min until stop or ctx done.
+// run loops: scheduleAll once after a short delay (so Redis/server are ready), then every 15 min until stop or ctx done.
 func (s *Scheduler) run(ctx context.Context) {
 	defer close(s.done)
 	ticker := time.NewTicker(cycleInterval)
 	defer ticker.Stop()
 
-	s.scheduleAll(ctx)
+	// Give Redis and asynq server a moment to be ready before first enqueue.
+	const startupDelay = 3 * time.Second
+	select {
+	case <-time.After(startupDelay):
+		s.logger.Info("running initial schedule cycle")
+		s.scheduleAll(ctx)
+	case <-s.stop:
+		return
+	case <-ctx.Done():
+		return
+	}
 	for {
 		select {
 		case <-s.stop:

@@ -1,11 +1,10 @@
 "use server";
 
+import { getTopTriggeredAlerts, type AlertData } from "@/actions/alert-actions";
 import {
-  listAlertsPaginated,
-  listAllAlertsForHistory,
-} from "@/actions/alert-actions";
-import { getAuditSummary, getAlertHistory } from "@/actions/audit-actions";
-import type { AlertData } from "@/actions/alert-actions";
+  getDashboardStatsFromServer,
+  getTriggerCountByDayFromServer,
+} from "@/actions/audit-actions";
 
 export type DashboardStats = {
   activeAlerts: number;
@@ -16,7 +15,7 @@ export type DashboardStats = {
   error?: string;
 };
 
-/** Stats for the dashboard KPI cards. Never throws; returns fallback and optional error. */
+/** Stats for the dashboard KPI cards. Uses GetDashboardStats RPC (lightweight). Never throws; returns fallback and optional error. */
 export async function getDashboardStats(): Promise<DashboardStats> {
   const fallback: DashboardStats = {
     activeAlerts: 0,
@@ -25,31 +24,12 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     triggersLast7d: 0,
   };
   try {
-    const [alertsPage, allAlerts, summary1d, summary7d] = await Promise.all([
-      listAlertsPaginated(1, 1),
-      listAllAlertsForHistory(),
-      getAuditSummary(1),
-      getAuditSummary(7),
-    ]);
-
-    const uniqueTickers = new Set(
-      allAlerts.map((a) => (a.isRatio ? a.ratio : a.ticker)).filter(Boolean)
-    );
-
-    const triggeredToday = summary1d.reduce(
-      (s, r) => s + (r.totalTriggers ?? 0),
-      0
-    );
-    const triggersLast7d = summary7d.reduce(
-      (s, r) => s + (r.totalTriggers ?? 0),
-      0
-    );
-
+    const data = await getDashboardStatsFromServer();
     return {
-      activeAlerts: alertsPage.totalCount,
-      triggeredToday,
-      watchedSymbols: uniqueTickers.size,
-      triggersLast7d,
+      activeAlerts: data.activeAlerts,
+      triggeredToday: data.triggeredToday,
+      watchedSymbols: data.watchedSymbols,
+      triggersLast7d: data.triggersLast7d,
     };
   } catch (err) {
     const message =
@@ -60,51 +40,13 @@ export async function getDashboardStats(): Promise<DashboardStats> {
 
 export type TriggerCountByDay = { date: string; count: number }[];
 
-/** Alert trigger counts by day for the activity chart. Samples up to maxAlerts alerts. Never throws. */
+/** Alert trigger counts by day for the activity chart. Uses GetTriggerCountByDay RPC (same source as dashboard stats). Never throws. */
 export async function getTriggerCountByDay(
-  days: number = 90,
-  maxAlerts: number = 30
+  days: number = 90
 ): Promise<TriggerCountByDay> {
   const clampedDays = Math.min(90, Math.max(7, days));
   try {
-    const result = await listAlertsPaginated(1, maxAlerts);
-    if (!result.alerts.length) {
-      return fillEmptyDays(clampedDays);
-    }
-
-    const historyByAlert = await Promise.all(
-      result.alerts.map((a) =>
-        getAlertHistory(a.alertId, 200).then((rows) =>
-          rows.filter((r) => r.alertTriggered && r.timestamp)
-        )
-      )
-    );
-
-    const countByDay: Record<string, number> = {};
-    const start = new Date();
-    start.setDate(start.getDate() - clampedDays);
-    start.setHours(0, 0, 0, 0);
-
-    for (let d = 0; d < clampedDays; d++) {
-      const day = new Date(start);
-      day.setDate(day.getDate() + d);
-      const key = day.toISOString().slice(0, 10);
-      countByDay[key] = 0;
-    }
-
-    for (const rows of historyByAlert) {
-      for (const row of rows) {
-        const ts = row.timestamp!;
-        const day = new Date(ts);
-        day.setHours(0, 0, 0, 0);
-        const key = day.toISOString().slice(0, 10);
-        if (key in countByDay) countByDay[key]++;
-      }
-    }
-
-    return Object.entries(countByDay)
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([date, count]) => ({ date, count }));
+    return await getTriggerCountByDayFromServer(clampedDays);
   } catch {
     return fillEmptyDays(clampedDays);
   }
@@ -114,19 +56,22 @@ export type DashboardAlertsResult = {
   alerts: AlertData[];
   totalCount: number;
   hasNextPage: boolean;
+  /** alertId -> trigger count (only present for dashboard top-triggered list). */
+  triggerCountByAlertId?: Record<string, number>;
   error?: string;
 };
 
-/** First page of alerts for the dashboard. Never throws. */
+/** Top N most-triggered alerts for the dashboard (from alert_audits where alert_triggered = true). Never throws. */
 export async function getDashboardAlerts(
-  pageSize: number = 10
+  limit: number = 10
 ): Promise<DashboardAlertsResult> {
   try {
-    const result = await listAlertsPaginated(1, pageSize);
+    const result = await getTopTriggeredAlerts(30, limit);
     return {
       alerts: result.alerts,
       totalCount: result.totalCount,
       hasNextPage: result.hasNextPage,
+      triggerCountByAlertId: result.triggerCountByAlertId,
     };
   } catch (err) {
     const message =

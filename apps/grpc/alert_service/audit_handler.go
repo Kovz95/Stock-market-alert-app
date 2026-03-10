@@ -10,7 +10,109 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	alertv1 "stockalert/gen/go/alert/v1"
+	db "stockalert/database/generated"
 )
+
+// GetDashboardStats returns lightweight aggregates for dashboard KPI cards (no large payloads).
+func (s *Server) GetDashboardStats(ctx context.Context, _ *alertv1.GetDashboardStatsRequest) (*alertv1.GetDashboardStatsResponse, error) {
+	conn, err := s.pool.Acquire(ctx)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to acquire connection: %v", err)
+	}
+	defer conn.Release()
+
+	var activeAlerts, triggeredToday, triggersLast7d int64
+	err = conn.QueryRow(ctx, `
+		SELECT
+			(SELECT COUNT(*) FROM alerts),
+			(SELECT COUNT(*) FROM alert_audits WHERE alert_triggered = true AND timestamp >= (date_trunc('day', NOW() AT TIME ZONE 'UTC') AT TIME ZONE 'UTC')),
+			(SELECT COUNT(*) FROM alert_audits WHERE alert_triggered = true AND timestamp >= (NOW() AT TIME ZONE 'UTC') - INTERVAL '7 days')
+	`).Scan(&activeAlerts, &triggeredToday, &triggersLast7d)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "dashboard stats query: %v", err)
+	}
+
+	var watchedSymbols int64
+	err = conn.QueryRow(ctx, `
+		SELECT COUNT(*) FROM (
+			SELECT DISTINCT COALESCE(CASE WHEN is_ratio AND NULLIF(TRIM(ratio), '') IS NOT NULL THEN TRIM(ratio) ELSE NULL END, NULLIF(TRIM(ticker), '')) AS sym
+			FROM alerts
+			WHERE (is_ratio AND NULLIF(TRIM(ratio), '') IS NOT NULL) OR (NOT is_ratio AND NULLIF(TRIM(ticker), '') IS NOT NULL)
+		) t WHERE sym IS NOT NULL AND sym != ''
+	`).Scan(&watchedSymbols)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "dashboard watched symbols: %v", err)
+	}
+
+	return &alertv1.GetDashboardStatsResponse{
+		ActiveAlerts:    int32(activeAlerts),
+		TriggeredToday:  int32(triggeredToday),
+		WatchedSymbols:  int32(watchedSymbols),
+		TriggersLast_7D: int32(triggersLast7d),
+	}, nil
+}
+
+// GetTriggerCountByDay returns trigger counts per day from alert_audits (same source as dashboard stats).
+func (s *Server) GetTriggerCountByDay(ctx context.Context, req *alertv1.GetTriggerCountByDayRequest) (*alertv1.GetTriggerCountByDayResponse, error) {
+	days := req.GetDays()
+	if days < 7 {
+		days = 7
+	}
+	if days > 90 {
+		days = 90
+	}
+	cutoff := time.Now().UTC().AddDate(0, 0, -int(days))
+	cutoff = time.Date(cutoff.Year(), cutoff.Month(), cutoff.Day(), 0, 0, 0, 0, time.UTC)
+
+	conn, err := s.pool.Acquire(ctx)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to acquire connection: %v", err)
+	}
+	defer conn.Release()
+
+	query := `
+		SELECT (date_trunc('day', timestamp AT TIME ZONE 'UTC'))::date::text AS day, COUNT(*)::bigint
+		FROM alert_audits
+		WHERE alert_triggered = true AND timestamp >= $1
+		GROUP BY (date_trunc('day', timestamp AT TIME ZONE 'UTC'))::date
+		ORDER BY day
+	`
+	rows, err := conn.Query(ctx, query, cutoff)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "trigger count by day: %v", err)
+	}
+	defer rows.Close()
+
+	var out []*alertv1.TriggerCountRow
+	for rows.Next() {
+		var day string
+		var count int64
+		if err := rows.Scan(&day, &count); err != nil {
+			return nil, status.Errorf(codes.Internal, "scan trigger count row: %v", err)
+		}
+		out = append(out, &alertv1.TriggerCountRow{Date: day, Count: count})
+	}
+	if err := rows.Err(); err != nil {
+		return nil, status.Errorf(codes.Internal, "trigger count rows: %v", err)
+	}
+
+	// Fill missing days with 0 so the chart has a point for every day
+	daySet := make(map[string]int64)
+	for _, r := range out {
+		daySet[r.Date] = r.Count
+	}
+	var filled []*alertv1.TriggerCountRow
+	for d := 0; d < int(days); d++ {
+		dt := cutoff.AddDate(0, 0, d)
+		key := dt.Format("2006-01-02")
+		c := int64(0)
+		if n, ok := daySet[key]; ok {
+			c = n
+		}
+		filled = append(filled, &alertv1.TriggerCountRow{Date: key, Count: c})
+	}
+	return &alertv1.GetTriggerCountByDayResponse{Rows: filled}, nil
+}
 
 func (s *Server) GetAuditSummary(ctx context.Context, req *alertv1.GetAuditSummaryRequest) (*alertv1.GetAuditSummaryResponse, error) {
 	days := req.GetDays()
@@ -21,6 +123,7 @@ func (s *Server) GetAuditSummary(ctx context.Context, req *alertv1.GetAuditSumma
 		days = 90
 	}
 	cutoff := time.Now().UTC().AddDate(0, 0, -int(days))
+	limit := req.GetLimit()
 
 	conn, err := s.pool.Acquire(ctx)
 	if err != nil {
@@ -28,7 +131,7 @@ func (s *Server) GetAuditSummary(ctx context.Context, req *alertv1.GetAuditSumma
 	}
 	defer conn.Release()
 
-	query := `
+	baseQuery := `
 		SELECT
 			alert_id,
 			ticker,
@@ -47,9 +150,15 @@ func (s *Server) GetAuditSummary(ctx context.Context, req *alertv1.GetAuditSumma
 		FROM alert_audits
 		WHERE timestamp >= $1
 		GROUP BY alert_id, ticker, stock_name, exchange, timeframe, action, evaluation_type
-		ORDER BY last_check DESC
 	`
-	rows, err := conn.Query(ctx, query, cutoff)
+	var rows pgx.Rows
+	if limit > 0 {
+		query := `SELECT * FROM (` + baseQuery + `) t ORDER BY total_triggers DESC LIMIT $2`
+		rows, err = conn.Query(ctx, query, cutoff, limit)
+	} else {
+		query := baseQuery + ` ORDER BY last_check DESC`
+		rows, err = conn.Query(ctx, query, cutoff)
+	}
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "audit summary query: %v", err)
 	}
@@ -96,6 +205,109 @@ func (s *Server) GetAuditSummary(ctx context.Context, req *alertv1.GetAuditSumma
 		return nil, status.Errorf(codes.Internal, "audit summary rows: %v", err)
 	}
 	return &alertv1.GetAuditSummaryResponse{Rows: out}, nil
+}
+
+// GetTopTriggeredAlerts returns the top N alerts by count of rows in alert_audits where alert_triggered = true.
+// Only alerts that still exist in the alerts table are returned (INNER JOIN).
+func (s *Server) GetTopTriggeredAlerts(ctx context.Context, req *alertv1.GetTopTriggeredAlertsRequest) (*alertv1.GetTopTriggeredAlertsResponse, error) {
+	days := req.GetDays()
+	if days <= 0 {
+		days = 30
+	}
+	if days > 90 {
+		days = 90
+	}
+	limit := req.GetLimit()
+	if limit <= 0 {
+		limit = 10
+	}
+	if limit > 50 {
+		limit = 50
+	}
+	cutoff := time.Now().UTC().AddDate(0, 0, -int(days))
+
+	conn, err := s.pool.Acquire(ctx)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to acquire connection: %v", err)
+	}
+	defer conn.Release()
+
+	query := `
+		WITH top AS (
+			SELECT alert_id, COUNT(*) AS trigger_count
+			FROM alert_audits
+			WHERE alert_triggered = true
+			AND timestamp >= $1
+			GROUP BY alert_id
+			ORDER BY trigger_count DESC
+			LIMIT $2
+		)
+		SELECT
+			top.trigger_count,
+			a.alert_id, a.name, a.stock_name, a.ticker, a.ticker1, a.ticker2,
+			a.conditions, a.combination_logic, a.last_triggered, a.action,
+			a.timeframe, a.exchange, a.country, a.ratio, a.is_ratio,
+			a.adjustment_method, a.dtp_params, a.multi_timeframe_params,
+			a.mixed_timeframe_params, a.raw_payload, a.created_at, a.updated_at
+		FROM alerts a
+		INNER JOIN top ON top.alert_id = a.alert_id::text
+		ORDER BY top.trigger_count DESC
+	`
+	rows, err := conn.Query(ctx, query, cutoff, limit)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "top triggered alerts query: %v", err)
+	}
+	defer rows.Close()
+
+	var out []*alertv1.TopTriggeredAlert
+	for rows.Next() {
+		var triggerCount int64
+		var a db.Alert
+		err := rows.Scan(
+			&triggerCount,
+			&a.AlertID,
+			&a.Name,
+			&a.StockName,
+			&a.Ticker,
+			&a.Ticker1,
+			&a.Ticker2,
+			&a.Conditions,
+			&a.CombinationLogic,
+			&a.LastTriggered,
+			&a.Action,
+			&a.Timeframe,
+			&a.Exchange,
+			&a.Country,
+			&a.Ratio,
+			&a.IsRatio,
+			&a.AdjustmentMethod,
+			&a.DtpParams,
+			&a.MultiTimeframeParams,
+			&a.MixedTimeframeParams,
+			&a.RawPayload,
+			&a.CreatedAt,
+			&a.UpdatedAt,
+		)
+		if err != nil {
+			return nil, status.Errorf(codes.Internal, "scan top triggered alert: %v", err)
+		}
+		out = append(out, &alertv1.TopTriggeredAlert{
+			Alert:        dbAlertToProto(a),
+			TriggerCount: triggerCount,
+		})
+	}
+	if err := rows.Err(); err != nil {
+		return nil, status.Errorf(codes.Internal, "top triggered alerts rows: %v", err)
+	}
+
+	var totalCount int64
+	if err := conn.QueryRow(ctx, "SELECT COUNT(*) FROM alerts").Scan(&totalCount); err != nil {
+		return nil, status.Errorf(codes.Internal, "count alerts: %v", err)
+	}
+	return &alertv1.GetTopTriggeredAlertsResponse{
+		Alerts:     out,
+		TotalCount: int32(totalCount),
+	}, nil
 }
 
 func (s *Server) GetPerformanceMetrics(ctx context.Context, req *alertv1.GetPerformanceMetricsRequest) (*alertv1.GetPerformanceMetricsResponse, error) {

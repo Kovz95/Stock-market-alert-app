@@ -3,7 +3,14 @@
 import type { AlertData } from "@/actions/alert-actions";
 import { AlertsTableRow } from "./AlertsTableRow";
 
-export function AlertsTable({ alerts }: { alerts: AlertData[] }) {
+export function AlertsTable({
+  alerts,
+  triggerCountByAlertId,
+}: {
+  alerts: AlertData[];
+  triggerCountByAlertId?: Record<string, number>;
+}) {
+  const showTriggerCount = triggerCountByAlertId != null;
   return (
     <div className="border rounded-lg overflow-hidden">
       <table className="w-full text-sm">
@@ -14,13 +21,24 @@ export function AlertsTable({ alerts }: { alerts: AlertData[] }) {
             <th className="text-left p-3 font-medium">Timeframe</th>
             <th className="text-left p-3 font-medium">Exchange</th>
             <th className="text-left p-3 font-medium">Action</th>
+            {showTriggerCount && (
+              <th className="text-left p-3 font-medium">Triggered</th>
+            )}
             <th className="text-left p-3 font-medium">Last Triggered</th>
             <th className="text-left p-3 font-medium">Updated</th>
           </tr>
         </thead>
         <tbody>
           {alerts.map((alert) => (
-            <AlertsTableRow key={alert.alertId} alert={alert} />
+            <AlertsTableRow
+              key={alert.alertId}
+              alert={alert}
+              triggerCount={
+                showTriggerCount
+                  ? triggerCountByAlertId[alert.alertId]
+                  : undefined
+              }
+            />
           ))}
         </tbody>
       </table>

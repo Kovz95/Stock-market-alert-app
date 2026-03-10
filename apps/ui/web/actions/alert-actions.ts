@@ -1,5 +1,6 @@
 "use server";
 
+import { ClientError, Status } from "nice-grpc-common";
 import { alertClient } from "@/lib/grpc/channel";
 import type {
   Alert as AlertProto,
@@ -60,6 +61,11 @@ export type ListAlertsResult = {
   hasNextPage: boolean;
 };
 
+export type TopTriggeredAlertsResult = ListAlertsResult & {
+  /** alertId -> number of times triggered (in the requested window). */
+  triggerCountByAlertId: Record<string, number>;
+};
+
 export async function listAlertsPaginated(
   page: number = 1,
   pageSize: number = DEFAULT_PAGE_SIZE
@@ -74,6 +80,32 @@ export async function listAlertsPaginated(
     alerts: response.alerts.map(toAlertData),
     totalCount: response.totalCount,
     hasNextPage: response.hasNextPage,
+  };
+}
+
+/** Top N alerts by count of alert_triggered = true in alert_audits (single query, only existing alerts). */
+export async function getTopTriggeredAlerts(
+  days: number = 30,
+  limit: number = 10
+): Promise<TopTriggeredAlertsResult> {
+  const response = await alertClient.getTopTriggeredAlerts({
+    days: Math.min(90, Math.max(1, days)),
+    limit: Math.min(50, Math.max(1, limit)),
+  });
+  const items = response.alerts ?? [];
+  const alerts = items.map((item) => toAlertData(item.alert!)).filter(Boolean);
+  const triggerCountByAlertId: Record<string, number> = {};
+  for (const item of items) {
+    if (item.alert?.alertId != null) {
+      triggerCountByAlertId[item.alert.alertId] = Number(item.triggerCount ?? 0);
+    }
+  }
+  const totalCount = response.totalCount ?? 0;
+  return {
+    alerts,
+    totalCount,
+    hasNextPage: alerts.length < totalCount,
+    triggerCountByAlertId,
   };
 }
 
@@ -165,8 +197,15 @@ export async function searchAlertsStream(
 }
 
 export async function getAlert(alertId: string): Promise<AlertData | null> {
-  const response = await alertClient.getAlert({ alertId });
-  return response.alert ? toAlertData(response.alert) : null;
+  try {
+    const response = await alertClient.getAlert({ alertId });
+    return response.alert ? toAlertData(response.alert) : null;
+  } catch (err) {
+    if (err instanceof ClientError && err.code === Status.NOT_FOUND) {
+      return null;
+    }
+    throw err;
+  }
 }
 
 export type CreateAlertInput = Partial<CreateAlertRequest> & {
