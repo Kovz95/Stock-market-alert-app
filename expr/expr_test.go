@@ -802,6 +802,53 @@ func TestEvalIndicatorAliases(t *testing.T) {
 	}
 }
 
+// TestEvalAdvancedIndicatorConditions ensures key advanced indicators used by the
+// scanner can be parsed and evaluated from string conditions without error.
+func TestEvalAdvancedIndicatorConditions(t *testing.T) {
+	data := testOHLCV(260)
+	reg := indicator.NewDefaultRegistry()
+	eval := NewEvaluator(reg)
+
+	conditions := []string{
+		// Donchian Channels
+		"Close[-1] > donchian_upper(20)[-1]",
+		"Close[-1] < donchian_lower(20)[-1]",
+		"donchian_position(20)[-1] >= 0",
+		// Pivot S/R
+		"pivot_sr()[-1] >= -3",
+		"pivot_sr_proximity()[-1] <= 1",
+		"pivot_sr_crossover()[-1] == 0",
+		// Kalman ROC Stoch
+		"kalman_roc_stoch()[-1] == kalman_roc_stoch()[-1]",
+		"kalman_roc_stoch_signal()[-1] >= -1",
+		"kalman_roc_stoch_crossover()[-1] <= 1",
+		// Ichimoku Cloud
+		"ichimoku_cloud_top()[-1] >= ichimoku_cloud_bottom()[-1]",
+		"ichimoku_cloud_signal()[-1] >= -1",
+		// Trend Magic
+		"trend_magic_signal()[-1] >= -1",
+		// Supertrend and SAR
+		"supertrend(10, 3.0)[-1] == supertrend(10, 3.0)[-1]",
+		"sar(0.02, 0.2)[-1] == sar(0.02, 0.2)[-1]",
+		// OBV MACD
+		"obv_macd()[-1] == obv_macd()[-1]",
+		"obv_macd_signal()[-1] == obv_macd_signal()[-1]",
+		// MA spread z-score
+		"ma_spread_zscore()[-1] == ma_spread_zscore()[-1]",
+		// Other core indicators explicitly requested
+		"roc(14)[-1] == roc(14)[-1]",
+		"willr(14)[-1] == willr(14)[-1]",
+		"cci(20)[-1] == cci(20)[-1]",
+		"atr(14)[-1] == atr(14)[-1]",
+	}
+
+	for _, cond := range conditions {
+		if _, err := eval.EvalCondition(data, cond, nil); err != nil {
+			t.Errorf("EvalCondition(%q): %v", cond, err)
+		}
+	}
+}
+
 // TestEvalAllIndicators ensures every registered indicator can be evaluated with
 // default params and sufficient OHLCV data (no panic, no "unknown indicator").
 func TestEvalAllIndicators(t *testing.T) {
