@@ -20,7 +20,7 @@ type ScannerResultsProps = {
   scanProgress?: { batch: number; totalBatches: number } | null;
 };
 
-export function ScannerResults({ matches, onDownloadCsv, scanning, scanProgress }: ScannerResultsProps) {
+function ScannerResultsComponent({ matches, onDownloadCsv, scanning, scanProgress }: ScannerResultsProps) {
   const [search, setSearch] = React.useState("");
 
   const hasMatchDates = React.useMemo(() => matches.some((m) => m.matchDate), [matches]);
@@ -121,6 +121,8 @@ export function ScannerResults({ matches, onDownloadCsv, scanning, scanProgress 
     </div>
   );
 }
+
+export const ScannerResults = React.memo(ScannerResultsComponent);
 
 export function scanMatchesToCsv(matches: ScanMatch[]): string {
   const hasMatchDates = matches.some((m) => m.matchDate);

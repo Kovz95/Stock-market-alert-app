@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useAtomValue, useSetAtom } from "jotai";
 import { useFullStockMetadata } from "@/lib/hooks/useStockDatabase";
 import { usePortfolios } from "@/lib/hooks/useAlertHistory";
 import { runScan } from "@/actions/scanner-actions";
@@ -12,9 +13,7 @@ import {
   scanMatchesToCsv,
 } from "./_components";
 import {
-  defaultStockDatabaseFilters,
   applyStockDatabaseFilters,
-  type StockDatabaseFiltersState,
 } from "@/app/database/stock/_components";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,40 +27,28 @@ import {
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Timeframe } from "../../../../../gen/ts/price/v1/price";
+import {
+  scannerFiltersAtom,
+  scannerPortfolioIdAtom,
+  scannerConditionsAtom,
+  scannerCombinationLogicAtom,
+  scannerTimeframeAtom,
+  scannerLookbackDaysAtom,
+  scannerLookbackInputAtom,
+  scannerResultsAtom,
+  scannerScanningAtom,
+  scannerScanErrorAtom,
+  scannerScanProgressAtom,
+  scannerPresetNameAtom,
+  scannerSelectedPresetAtom,
+  scannerPresetsAtom,
+  type SavedPreset,
+  type ScannerTimeframe,
+} from "@/lib/store/scanner";
 
-const SCANNER_PRESETS_KEY = "scanner_presets";
 const MAX_TICKERS = 20000;
 /** Chunk size for RunScan to avoid "request too large" (Envoy/gRPC limits). */
 const SCAN_BATCH_SIZE = 200;
-
-type SavedPreset = {
-  name: string;
-  conditions: string[];
-  combinationLogic: string;
-  timeframe: string;
-  filters: StockDatabaseFiltersState;
-  portfolioId: string;
-  lookbackDays: number;
-  savedAt: string;
-};
-
-function loadPresets(): SavedPreset[] {
-  if (typeof window === "undefined") return [];
-  try {
-    const raw = localStorage.getItem(SCANNER_PRESETS_KEY);
-    if (!raw) return [];
-    return JSON.parse(raw);
-  } catch {
-    return [];
-  }
-}
-
-function savePreset(preset: SavedPreset) {
-  const list = loadPresets();
-  const next = list.filter((p) => p.name !== preset.name);
-  next.push(preset);
-  localStorage.setItem(SCANNER_PRESETS_KEY, JSON.stringify(next));
-}
 
 function chunk<T>(arr: T[], size: number): T[][] {
   const out: T[][] = [];
@@ -71,28 +58,46 @@ function chunk<T>(arr: T[], size: number): T[][] {
   return out;
 }
 
+function timeframeToEnum(timeframe: ScannerTimeframe): Timeframe {
+  switch (timeframe) {
+    case "1h":
+      return Timeframe.TIMEFRAME_HOURLY;
+    case "1wk":
+      return Timeframe.TIMEFRAME_WEEKLY;
+    default:
+      return Timeframe.TIMEFRAME_DAILY;
+  }
+}
+
 export default function ScannerPage() {
   const { data: metadata, isLoading: metaLoading, error: metaError } = useFullStockMetadata();
   const { data: portfolios } = usePortfolios();
 
-  const [filters, setFilters] = React.useState<StockDatabaseFiltersState>(defaultStockDatabaseFilters);
-  const [portfolioId, setPortfolioId] = React.useState("All");
-  const [conditions, setConditions] = React.useState<string[]>([]);
-  const [combinationLogic, setCombinationLogic] = React.useState("AND");
-  const [timeframe, setTimeframe] = React.useState<"1h" | "1d" | "1wk">("1d");
-  const [lookbackDays, setLookbackDays] = React.useState(0);
-  const [results, setResults] = React.useState<ScanMatch[] | null>(null);
-  const [scanning, setScanning] = React.useState(false);
-  const [scanError, setScanError] = React.useState<string | null>(null);
-  const [scanProgress, setScanProgress] = React.useState<{ batch: number; totalBatches: number } | null>(null);
+  const filters = useAtomValue(scannerFiltersAtom);
+  const portfolioId = useAtomValue(scannerPortfolioIdAtom);
+  const conditions = useAtomValue(scannerConditionsAtom);
+  const combinationLogic = useAtomValue(scannerCombinationLogicAtom);
+  const timeframe = useAtomValue(scannerTimeframeAtom);
+  const lookbackDays = useAtomValue(scannerLookbackDaysAtom);
+  const lookbackInput = useAtomValue(scannerLookbackInputAtom);
+  const results = useAtomValue(scannerResultsAtom);
+  const scanning = useAtomValue(scannerScanningAtom);
+  const scanError = useAtomValue(scannerScanErrorAtom);
+  const scanProgress = useAtomValue(scannerScanProgressAtom);
+  const setFilters = useSetAtom(scannerFiltersAtom);
+  const setPortfolioId = useSetAtom(scannerPortfolioIdAtom);
+  const setConditions = useSetAtom(scannerConditionsAtom);
+  const setCombinationLogic = useSetAtom(scannerCombinationLogicAtom);
+  const setTimeframe = useSetAtom(scannerTimeframeAtom);
+  const setLookbackDays = useSetAtom(scannerLookbackDaysAtom);
+  const setLookbackInput = useSetAtom(scannerLookbackInputAtom);
+  const setResults = useSetAtom(scannerResultsAtom);
+  const setScanning = useSetAtom(scannerScanningAtom);
+  const setScanError = useSetAtom(scannerScanErrorAtom);
+  const setScanProgress = useSetAtom(scannerScanProgressAtom);
 
-  const [presetName, setPresetName] = React.useState("");
-  const [presets, setPresets] = React.useState<SavedPreset[]>([]);
-  const [selectedPreset, setSelectedPreset] = React.useState("");
-
-  React.useEffect(() => {
-    setPresets(loadPresets());
-  }, []);
+  const deferredFilters = React.useDeferredValue(filters);
+  const deferredPortfolioId = React.useDeferredValue(portfolioId);
 
   const portfolioOptions = React.useMemo(() => {
     if (!portfolios) return [];
@@ -103,7 +108,20 @@ export default function ScannerPage() {
     }));
   }, [portfolios]);
 
-  const filteredSymbols = React.useMemo(() => {
+  const filteredCount = React.useMemo(() => {
+    if (!metadata) return 0;
+    let rows = applyStockDatabaseFilters(metadata, deferredFilters);
+    if (deferredPortfolioId !== "All") {
+      const p = portfolioOptions.find((o) => o.portfolioId === deferredPortfolioId);
+      if (p) {
+        const set = new Set(p.tickers);
+        rows = rows.filter((r) => set.has(r.symbol));
+      }
+    }
+    return Math.min(rows.length, MAX_TICKERS);
+  }, [metadata, deferredFilters, deferredPortfolioId, portfolioOptions]);
+
+  const filteredSymbolsForScan = React.useMemo(() => {
     if (!metadata) return [];
     let rows = applyStockDatabaseFilters(metadata, filters);
     if (portfolioId !== "All") {
@@ -116,18 +134,7 @@ export default function ScannerPage() {
     return rows.map((r) => r.symbol).slice(0, MAX_TICKERS);
   }, [metadata, filters, portfolioId, portfolioOptions]);
 
-  const timeframeEnum = (): Timeframe => {
-    switch (timeframe) {
-      case "1h":
-        return Timeframe.TIMEFRAME_HOURLY;
-      case "1wk":
-        return Timeframe.TIMEFRAME_WEEKLY;
-      default:
-        return Timeframe.TIMEFRAME_DAILY;
-    }
-  };
-
-  const handleRunScan = async () => {
+  const handleRunScan = React.useCallback(async () => {
     if (conditions.length === 0) {
       setScanError("Add at least one condition.");
       return;
@@ -135,13 +142,13 @@ export default function ScannerPage() {
     setScanning(true);
     setScanError(null);
     setResults([]);
-    const batches = chunk(filteredSymbols, SCAN_BATCH_SIZE);
+    const batches = chunk(filteredSymbolsForScan, SCAN_BATCH_SIZE);
     setScanProgress({ batch: 0, totalBatches: batches.length });
     const allMatches: ScanMatch[] = [];
     for (let i = 0; i < batches.length; i++) {
       setScanProgress({ batch: i + 1, totalBatches: batches.length });
       const res = await runScan({
-        timeframe: timeframeEnum(),
+        timeframe: timeframeToEnum(timeframe),
         conditions,
         combinationLogic: combinationLogic || "AND",
         tickers: batches[i],
@@ -161,11 +168,22 @@ export default function ScannerPage() {
     setScanning(false);
     setScanProgress(null);
     setResults(allMatches);
-  };
+  }, [
+    conditions,
+    combinationLogic,
+    timeframe,
+    lookbackDays,
+    filteredSymbolsForScan,
+    setScanning,
+    setScanError,
+    setResults,
+    setScanProgress,
+  ]);
 
-  const handleDownloadCsv = () => {
-    if (!results || results.length === 0) return;
-    const csv = scanMatchesToCsv(results);
+  const handleDownloadCsv = React.useCallback(() => {
+    const currentResults = results;
+    if (!currentResults || currentResults.length === 0) return;
+    const csv = scanMatchesToCsv(currentResults);
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -173,35 +191,7 @@ export default function ScannerPage() {
     a.download = `scan_results_${new Date().toISOString().slice(0, 19).replace(/[-:T]/g, "")}.csv`;
     a.click();
     URL.revokeObjectURL(url);
-  };
-
-  const handleSavePreset = () => {
-    if (!presetName.trim()) return;
-    savePreset({
-      name: presetName.trim(),
-      conditions: [...conditions],
-      combinationLogic,
-      timeframe,
-      filters: { ...filters },
-      portfolioId,
-      lookbackDays,
-      savedAt: new Date().toISOString(),
-    });
-    setPresets(loadPresets());
-    setPresetName("");
-  };
-
-  const handleLoadPreset = () => {
-    const p = presets.find((x) => x.name === selectedPreset);
-    if (!p) return;
-    setConditions(p.conditions);
-    setCombinationLogic(p.combinationLogic);
-    setTimeframe(p.timeframe as "1h" | "1d" | "1wk");
-    setFilters(p.filters);
-    setPortfolioId(p.portfolioId);
-    setLookbackDays(p.lookbackDays ?? 0);
-    setSelectedPreset("");
-  };
+  }, [results]);
 
   if (metaLoading || !metadata) {
     return (
@@ -232,59 +222,33 @@ export default function ScannerPage() {
         <aside className="space-y-4">
           <ScannerFilters
             metadata={metadata}
-            filters={filters}
-            onFiltersChange={setFilters}
-            portfolioId={portfolioId}
-            onPortfolioIdChange={setPortfolioId}
             portfolioOptions={portfolioOptions}
+            filteredCount={filteredCount}
           />
         </aside>
 
         <main className="space-y-6">
-          <div className="flex flex-wrap items-end gap-4">
-            <div className="space-y-2">
-              <Label className="text-xs">Timeframe</Label>
-              <Select value={timeframe} onValueChange={(v) => setTimeframe(v as "1h" | "1d" | "1wk")}>
-                <SelectTrigger className="h-8 w-32">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="1h">Hourly</SelectItem>
-                  <SelectItem value="1d">Daily</SelectItem>
-                  <SelectItem value="1wk">Weekly</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label className="text-xs">Lookback days</Label>
-              <Input
-                type="number"
-                min={0}
-                max={100}
-                className="h-7 w-24"
-                value={lookbackDays}
-                onChange={(e) => setLookbackDays(Math.max(0, Math.min(100, Number(e.target.value) || 0)))}
-              />
-            </div>
-          </div>
-
-          <ScannerConditionSection
-            conditions={conditions}
-            onConditionsChange={setConditions}
-            combinationLogic={combinationLogic}
-            onCombinationLogicChange={setCombinationLogic}
+          <ScannerTimeframeAndLookback
+            timeframe={timeframe}
+            setTimeframe={setTimeframe}
+            lookbackInput={lookbackInput}
+            setLookbackInput={setLookbackInput}
+            lookbackDays={lookbackDays}
+            setLookbackDays={setLookbackDays}
           />
+
+          <ScannerConditionSection />
 
           <div className="flex flex-wrap items-center gap-4">
             <Button
               onClick={handleRunScan}
-              disabled={scanning || conditions.length === 0 || filteredSymbols.length === 0}
+              disabled={scanning || conditions.length === 0 || filteredSymbolsForScan.length === 0}
             >
               {scanning ? "Scanning…" : "Run Scan"}
             </Button>
             {scanning && scanProgress && (
               <span className="text-sm text-muted-foreground">
-                Scanning batch {scanProgress.batch}/{scanProgress.totalBatches} ({filteredSymbols.length.toLocaleString()} symbols)…
+                Scanning batch {scanProgress.batch}/{scanProgress.totalBatches} ({filteredSymbolsForScan.length.toLocaleString()} symbols)…
               </span>
             )}
             {scanning && !scanProgress && (
@@ -309,44 +273,157 @@ export default function ScannerPage() {
             />
           )}
 
-          <div className="rounded-lg border bg-muted/20 p-4 space-y-4">
-            <h3 className="font-semibold">Save / Load preset</h3>
-            <div className="flex flex-wrap gap-2 items-end">
-              <div className="space-y-1">
-                <Label className="text-xs">Preset name</Label>
-                <Input
-                  className="h-8 w-48 text-sm"
-                  placeholder="Name"
-                  value={presetName}
-                  onChange={(e) => setPresetName(e.target.value)}
-                />
-              </div>
-              <Button size="sm" variant="secondary" onClick={handleSavePreset} disabled={!presetName.trim()}>
-                Save
-              </Button>
-            </div>
-            {presets.length > 0 && (
-              <div className="flex flex-wrap gap-2 items-end">
-                <Select value={selectedPreset} onValueChange={setSelectedPreset}>
-                  <SelectTrigger className="h-8 w-56">
-                    <SelectValue placeholder="Load preset…" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {presets.map((p) => (
-                      <SelectItem key={p.name} value={p.name}>
-                        {p.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Button size="sm" variant="outline" onClick={handleLoadPreset} disabled={!selectedPreset}>
-                  Load
-                </Button>
-              </div>
-            )}
-          </div>
+          <ScannerPresetSection />
         </main>
       </div>
+    </div>
+  );
+}
+
+function ScannerTimeframeAndLookback({
+  timeframe,
+  setTimeframe,
+  lookbackInput,
+  setLookbackInput,
+  lookbackDays,
+  setLookbackDays,
+}: {
+  timeframe: ScannerTimeframe;
+  setTimeframe: (v: ScannerTimeframe) => void;
+  lookbackInput: string;
+  setLookbackInput: (v: string) => void;
+  lookbackDays: number;
+  setLookbackDays: (v: number) => void;
+}) {
+  return (
+    <div className="flex flex-wrap items-end gap-4">
+      <div className="space-y-2">
+        <Label className="text-xs">Timeframe</Label>
+        <Select value={timeframe} onValueChange={(v) => setTimeframe(v as ScannerTimeframe)}>
+          <SelectTrigger className="h-8 w-32">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="1h">Hourly</SelectItem>
+            <SelectItem value="1d">Daily</SelectItem>
+            <SelectItem value="1wk">Weekly</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="space-y-2">
+        <Label className="text-xs">Lookback days</Label>
+        <Input
+          type="number"
+          min={0}
+          max={100}
+          className="h-7 w-24"
+          value={lookbackInput}
+          onChange={(e) => {
+            const raw = e.target.value;
+            setLookbackInput(raw);
+            const num = raw === "" ? 0 : Number(raw);
+            if (!Number.isNaN(num)) {
+              setLookbackDays(Math.max(0, Math.min(100, num)));
+            }
+          }}
+          onBlur={() => setLookbackInput(String(lookbackDays))}
+        />
+      </div>
+    </div>
+  );
+}
+
+function ScannerPresetSection() {
+  const presetName = useAtomValue(scannerPresetNameAtom);
+  const setPresetName = useSetAtom(scannerPresetNameAtom);
+  const presets = useAtomValue(scannerPresetsAtom);
+  const setPresets = useSetAtom(scannerPresetsAtom);
+  const selectedPreset = useAtomValue(scannerSelectedPresetAtom);
+  const setSelectedPreset = useSetAtom(scannerSelectedPresetAtom);
+  const conditions = useAtomValue(scannerConditionsAtom);
+  const combinationLogic = useAtomValue(scannerCombinationLogicAtom);
+  const timeframe = useAtomValue(scannerTimeframeAtom);
+  const filters = useAtomValue(scannerFiltersAtom);
+  const portfolioId = useAtomValue(scannerPortfolioIdAtom);
+  const lookbackDays = useAtomValue(scannerLookbackDaysAtom);
+  const setConditions = useSetAtom(scannerConditionsAtom);
+  const setCombinationLogic = useSetAtom(scannerCombinationLogicAtom);
+  const setTimeframe = useSetAtom(scannerTimeframeAtom);
+  const setFilters = useSetAtom(scannerFiltersAtom);
+  const setPortfolioId = useSetAtom(scannerPortfolioIdAtom);
+  const setLookbackDays = useSetAtom(scannerLookbackDaysAtom);
+  const setLookbackInput = useSetAtom(scannerLookbackInputAtom);
+
+  const handleSavePreset = () => {
+    if (!presetName.trim()) return;
+    const preset: SavedPreset = {
+      name: presetName.trim(),
+      conditions: [...conditions],
+      combinationLogic,
+      timeframe,
+      filters: { ...filters },
+      portfolioId,
+      lookbackDays,
+      savedAt: new Date().toISOString(),
+    };
+    setPresets((prev) => {
+      const next = prev.filter((p) => p.name !== preset.name);
+      next.push(preset);
+      return next;
+    });
+    setPresetName("");
+  };
+
+  const handleLoadPreset = () => {
+    const p = presets.find((x) => x.name === selectedPreset);
+    if (!p) return;
+    setConditions(p.conditions);
+    setCombinationLogic(p.combinationLogic);
+    setTimeframe(p.timeframe as ScannerTimeframe);
+    setFilters(p.filters);
+    setPortfolioId(p.portfolioId);
+    const days = p.lookbackDays ?? 0;
+    setLookbackDays(days);
+    setLookbackInput(String(days));
+    setSelectedPreset("");
+  };
+
+  return (
+    <div className="rounded-lg border bg-muted/20 p-4 space-y-4">
+      <h3 className="font-semibold">Save / Load preset</h3>
+      <div className="flex flex-wrap gap-2 items-end">
+        <div className="space-y-1">
+          <Label className="text-xs">Preset name</Label>
+          <Input
+            className="h-8 w-48 text-sm"
+            placeholder="Name"
+            value={presetName}
+            onChange={(e) => setPresetName(e.target.value)}
+          />
+        </div>
+        <Button size="sm" variant="secondary" onClick={handleSavePreset} disabled={!presetName.trim()}>
+          Save
+        </Button>
+      </div>
+      {presets.length > 0 && (
+        <div className="flex flex-wrap gap-2 items-end">
+          <Select value={selectedPreset} onValueChange={setSelectedPreset}>
+            <SelectTrigger className="h-8 w-56">
+              <SelectValue placeholder="Load preset…" />
+            </SelectTrigger>
+            <SelectContent>
+              {presets.map((p) => (
+                <SelectItem key={p.name} value={p.name}>
+                  {p.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button size="sm" variant="outline" onClick={handleLoadPreset} disabled={!selectedPreset}>
+            Load
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

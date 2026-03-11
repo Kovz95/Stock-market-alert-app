@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useAtomValue, useSetAtom } from "jotai";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -9,45 +10,37 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  StockDatabaseFilters,
-  defaultStockDatabaseFilters,
-  applyStockDatabaseFilters,
-  type StockDatabaseFiltersState,
-} from "@/app/database/stock/_components";
+import { StockDatabaseFilters } from "@/app/database/stock/_components";
 import type { FullStockMetadataRow } from "@/actions/stock-database-actions";
+import { scannerFiltersAtom, scannerPortfolioIdAtom } from "@/lib/store/scanner";
+
+export type PortfolioOption = {
+  portfolioId: string;
+  name: string;
+  tickers: string[];
+};
 
 type ScannerFiltersProps = {
   metadata: FullStockMetadataRow[];
-  filters: StockDatabaseFiltersState;
-  onFiltersChange: (f: StockDatabaseFiltersState) => void;
-  portfolioId: string;
-  onPortfolioIdChange: (id: string) => void;
-  portfolioOptions: { portfolioId: string; name: string; tickers: string[] }[];
+  portfolioOptions: PortfolioOption[];
+  filteredCount: number;
 };
 
-export function ScannerFilters({
+function ScannerFiltersComponent({
   metadata,
-  filters,
-  onFiltersChange,
-  portfolioId,
-  onPortfolioIdChange,
   portfolioOptions,
+  filteredCount,
 }: ScannerFiltersProps) {
-  const filteredCount = React.useMemo(() => {
-    const after = applyStockDatabaseFilters(metadata, filters);
-    if (portfolioId === "All") return after.length;
-    const p = portfolioOptions.find((o) => o.portfolioId === portfolioId);
-    if (!p) return after.length;
-    const set = new Set(p.tickers);
-    return after.filter((r) => set.has(r.symbol)).length;
-  }, [metadata, filters, portfolioId, portfolioOptions]);
+  const filters = useAtomValue(scannerFiltersAtom);
+  const setFilters = useSetAtom(scannerFiltersAtom);
+  const portfolioId = useAtomValue(scannerPortfolioIdAtom);
+  const setPortfolioId = useSetAtom(scannerPortfolioIdAtom);
 
   return (
     <div className="space-y-4">
       <div className="space-y-2">
         <Label className="text-xs">Portfolio</Label>
-        <Select value={portfolioId} onValueChange={onPortfolioIdChange}>
+        <Select value={portfolioId} onValueChange={setPortfolioId}>
           <SelectTrigger className="h-8 text-xs">
             <SelectValue />
           </SelectTrigger>
@@ -67,8 +60,10 @@ export function ScannerFilters({
       <StockDatabaseFilters
         data={metadata}
         filters={filters}
-        onFiltersChange={onFiltersChange}
+        onFiltersChange={setFilters}
       />
     </div>
   );
 }
+
+export const ScannerFilters = React.memo(ScannerFiltersComponent);

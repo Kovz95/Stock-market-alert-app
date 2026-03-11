@@ -849,6 +849,266 @@ func TestEvalAdvancedIndicatorConditions(t *testing.T) {
 	}
 }
 
+// TestDonchianConditionExpressions verifies that every Donchian condition type
+// built by the UI (ConditionBuilder / conditionEntryToExpression) that is a
+// single comparison can be parsed and evaluated by the Go expr and indicator
+// layers. Note: the UI also emits compound conditions like "(A) and (B)" for
+// breakouts; those require EvalConditionList with two separate conditions and
+// AND logic, or future support for compound parsing.
+func TestDonchianConditionExpressions(t *testing.T) {
+	data := testOHLCV(100)
+	reg := indicator.NewDefaultRegistry()
+	eval := NewEvaluator(reg)
+
+	// Single-comparison expressions only (ParseCondition supports one comparison per string).
+	// Compound forms (breakout, basis_cross_*, position_near_middle) are covered by
+	// splitting into two conditions and using EvalConditionList with AND.
+	tests := []struct {
+		name string
+		cond string
+	}{
+		// Channel Lines — price vs upper/lower/basis
+		{"price_vs_upper", "Close[-1] > donchian_upper(20)[-1]"},
+		{"price_vs_upper_offset", "Close[-1] > donchian_upper(20, 0)[-1]"},
+		{"price_vs_lower", "Close[-1] < donchian_lower(20)[-1]"},
+		{"price_vs_lower_offset", "Close[-1] < donchian_lower(20, 0)[-1]"},
+		{"price_vs_basis", "Close[-1] > donchian_basis(20)[-1]"},
+		{"price_vs_basis_offset", "Close[-1] > donchian_basis(20, 0)[-1]"},
+		// Channel Position
+		{"position_above", "donchian_position(20)[-1] >= 0.8"},
+		{"position_below", "donchian_position(20)[-1] <= 0.2"},
+		// Channel Width
+		{"width_expanding", "donchian_width(20)[-1] > donchian_width(20)[-2]"},
+		{"width_contracting", "donchian_width(20)[-1] < donchian_width(20)[-2]"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			comp, err := ParseCondition(tt.cond)
+			if err != nil {
+				t.Fatalf("ParseCondition(%q): %v", tt.cond, err)
+			}
+			if comp == nil {
+				t.Fatal("ParseCondition returned nil comparison")
+			}
+			_, err = eval.EvalCondition(data, tt.cond, nil)
+			if err != nil {
+				t.Errorf("EvalCondition(%q): %v", tt.cond, err)
+			}
+		})
+	}
+}
+
+// TestDonchianCompoundViaConditionList verifies that compound Donchian conditions
+// (e.g. breakout, basis cross, position near middle) can be evaluated by sending
+// two separate conditions and AND combination logic, matching how the backend
+// should handle UI-emitted compound expressions when split.
+func TestDonchianCompoundViaConditionList(t *testing.T) {
+	data := testOHLCV(100)
+	reg := indicator.NewDefaultRegistry()
+	eval := NewEvaluator(reg)
+
+	// Breakout upper: (Close[-1] > upper[-1]) and (Close[-2] <= upper[-2])
+	conds := []string{
+		"Close[-1] > donchian_upper(20)[-1]",
+		"Close[-2] <= donchian_upper(20)[-2]",
+	}
+	_, err := eval.EvalConditionList(data, conds, "AND", nil)
+	if err != nil {
+		t.Errorf("EvalConditionList(breakout_upper): %v", err)
+	}
+
+	// Position near middle: (position > 0.4) and (position < 0.6)
+	conds2 := []string{
+		"donchian_position(20)[-1] > 0.4",
+		"donchian_position(20)[-1] < 0.6",
+	}
+	_, err = eval.EvalConditionList(data, conds2, "AND", nil)
+	if err != nil {
+		t.Errorf("EvalConditionList(position_near_middle): %v", err)
+	}
+}
+
+// TestDonchianOperandParsing verifies that Donchian indicator operands (including
+// value-only forms like donchian_upper(20)[-1]) parse correctly and that
+// length/offset are passed to the indicator. Covers 1-arg and 2-arg forms.
+func TestDonchianOperandParsing(t *testing.T) {
+	data := testOHLCV(100)
+	reg := indicator.NewDefaultRegistry()
+	eval := NewEvaluator(reg)
+
+	operands := []string{
+		"donchian_upper(20)[-1]",
+		"donchian_upper(20, 0)[-1]",
+		"donchian_upper(14, 1)[-1]",
+		"donchian_lower(20)[-1]",
+		"donchian_lower(20, 0)[-1]",
+		"donchian_basis(20)[-1]",
+		"donchian_basis(20, 0)[-1]",
+		"donchian_position(20)[-1]",
+		"donchian_position(20, 0)[-1]",
+		"donchian_width(20)[-1]",
+		"donchian_width(20, 0)[-1]",
+	}
+
+	for _, input := range operands {
+		op, err := ParseOperand(input)
+		if err != nil {
+			t.Errorf("ParseOperand(%q): %v", input, err)
+			continue
+		}
+		_, err = eval.computeSeries(data, op, nil)
+		if err != nil {
+			t.Errorf("computeSeries(%q): %v", input, err)
+		}
+	}
+}
+
+// TestDonchianOffsetParamRemapping verifies that the parser maps the second
+// positional argument to "offset" for donchian_upper, donchian_lower, donchian_basis.
+func TestDonchianOffsetParamRemapping(t *testing.T) {
+	op, err := ParseOperand("donchian_upper(20, 3)[-1]")
+	if err != nil {
+		t.Fatalf("ParseOperand: %v", err)
+	}
+	if op.Indicator != "donchian_upper" {
+		t.Errorf("indicator = %q, want donchian_upper", op.Indicator)
+	}
+	if v, ok := op.Params["length"]; !ok {
+		t.Error("missing param length")
+	} else if n, ok := v.(int); !ok || n != 20 {
+		t.Errorf("length = %v (%T), want 20", v, v)
+	}
+	if v, ok := op.Params["offset"]; !ok {
+		t.Error("missing param offset (second positional should be remapped)")
+	} else {
+		switch n := v.(type) {
+		case int:
+			if n != 3 {
+				t.Errorf("offset = %d, want 3", n)
+			}
+		case float64:
+			if n != 3 {
+				t.Errorf("offset = %g, want 3", n)
+			}
+		default:
+			t.Errorf("offset = %v (%T), want 3", v, v)
+		}
+	}
+}
+
+// TestPivotSRConditionExpressions verifies that every Pivot S/R condition type
+// built by the UI (conditionEntryToExpression) that is a single comparison can be
+// parsed and evaluated. The UI uses keyword args: left_bars, right_bars,
+// proximity_threshold, buffer_percent. Note: pivot_sr_near_any and
+// pivot_sr_any_crossover use abs(pivot_sr(...)[-1]); the expr parser does not
+// support abs() yet, so those are evaluated by splitting into two conditions
+// (e.g. pivot_sr()[-1] == 1 or pivot_sr()[-1] == -1) with OR.
+func TestPivotSRConditionExpressions(t *testing.T) {
+	data := testOHLCV(100)
+	reg := indicator.NewDefaultRegistry()
+	eval := NewEvaluator(reg)
+
+	// Same keyword args the UI emits (types.ts pivot_sr case).
+	kw := "left_bars=5, right_bars=5, proximity_threshold=1.0, buffer_percent=0.5"
+	fn := "pivot_sr(" + kw + ")"
+
+	tests := []struct {
+		name string
+		cond string
+	}{
+		{"any_signal", fn + "[-1] != 0"},
+		{"near_support", fn + "[-1] == 1"},
+		{"near_resistance", fn + "[-1] == -1"},
+		{"crossover_bullish", fn + "[-1] == 2"},
+		{"crossover_bearish", fn + "[-1] == -2"},
+		{"broke_strong_support", fn + "[-1] == -3"},
+		{"broke_strong_resistance", fn + "[-1] == 3"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			comp, err := ParseCondition(tt.cond)
+			if err != nil {
+				t.Fatalf("ParseCondition(%q): %v", tt.cond, err)
+			}
+			if comp == nil {
+				t.Fatal("ParseCondition returned nil comparison")
+			}
+			_, err = eval.EvalCondition(data, tt.cond, nil)
+			if err != nil {
+				t.Errorf("EvalCondition(%q): %v", tt.cond, err)
+			}
+		})
+	}
+}
+
+// TestPivotSROperandParsing verifies that pivot_sr with keyword args (as emitted
+// by the UI) parses and that computeSeries runs without error.
+func TestPivotSROperandParsing(t *testing.T) {
+	data := testOHLCV(100)
+	reg := indicator.NewDefaultRegistry()
+	eval := NewEvaluator(reg)
+
+	operands := []string{
+		"pivot_sr(left_bars=5, right_bars=5, proximity_threshold=1.0, buffer_percent=0.5)[-1]",
+		"pivot_sr(left_bars=3, right_bars=3, proximity_threshold=0.5, buffer_percent=0.25)[-1]",
+		"pivot_sr()[-1]",
+		"pivot_sr_crossover(left_bars=5, right_bars=5, buffer_percent=0.5)[-1]",
+		"pivot_sr_proximity(left_bars=5, right_bars=5, proximity_threshold=1.0, buffer_percent=0.5)[-1]",
+	}
+
+	for _, input := range operands {
+		op, err := ParseOperand(input)
+		if err != nil {
+			t.Errorf("ParseOperand(%q): %v", input, err)
+			continue
+		}
+		_, err = eval.computeSeries(data, op, nil)
+		if err != nil {
+			t.Errorf("computeSeries(%q): %v", input, err)
+		}
+	}
+}
+
+// TestPivotSRKeywordParamsPassThrough verifies that keyword params for pivot_sr
+// are passed through to the indicator (no remapping; UI sends left_bars, etc.).
+func TestPivotSRKeywordParamsPassThrough(t *testing.T) {
+	op, err := ParseOperand("pivot_sr(left_bars=7, right_bars=9, proximity_threshold=1.5, buffer_percent=0.6)[-1]")
+	if err != nil {
+		t.Fatalf("ParseOperand: %v", err)
+	}
+	if op.Indicator != "pivot_sr" {
+		t.Errorf("indicator = %q, want pivot_sr", op.Indicator)
+	}
+	want := map[string]float64{
+		"left_bars":            7,
+		"right_bars":            9,
+		"proximity_threshold": 1.5,
+		"buffer_percent":      0.6,
+	}
+	for key, wantVal := range want {
+		v, ok := op.Params[key]
+		if !ok {
+			t.Errorf("missing param %q", key)
+			continue
+		}
+		var got float64
+		switch x := v.(type) {
+		case int:
+			got = float64(x)
+		case float64:
+			got = x
+		default:
+			t.Errorf("param %q = %v (%T)", key, v, v)
+			continue
+		}
+		if got != wantVal {
+			t.Errorf("param %q = %g, want %g", key, got, wantVal)
+		}
+	}
+}
+
 // TestEvalAllIndicators ensures every registered indicator can be evaluated with
 // default params and sufficient OHLCV data (no panic, no "unknown indicator").
 func TestEvalAllIndicators(t *testing.T) {

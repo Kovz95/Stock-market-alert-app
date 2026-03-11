@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useAtomValue, useSetAtom } from "jotai";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -14,30 +15,23 @@ import {
 import { ConditionBuilder } from "@/app/alerts/add/_components/ConditionBuilder";
 import { conditionEntryToExpression } from "@/app/alerts/add/_components/types";
 import type { ConditionEntry } from "@/app/alerts/add/_components/types";
+import { scannerConditionsAtom, scannerCombinationLogicAtom } from "@/lib/store/scanner";
 
-type ScannerConditionSectionProps = {
-  conditions: string[];
-  onConditionsChange: (c: string[]) => void;
-  combinationLogic: string;
-  onCombinationLogicChange: (s: string) => void;
-};
+export function ScannerConditionSection() {
+  const conditions = useAtomValue(scannerConditionsAtom);
+  const setConditions = useSetAtom(scannerConditionsAtom);
+  const combinationLogic = useAtomValue(scannerCombinationLogicAtom);
+  const setCombinationLogic = useSetAtom(scannerCombinationLogicAtom);
 
-export function ScannerConditionSection({
-  conditions,
-  onConditionsChange,
-  combinationLogic,
-  onCombinationLogicChange,
-}: ScannerConditionSectionProps) {
-  const handleAddEntry = React.useCallback(
-    (entry: ConditionEntry) => {
-      const expr = conditionEntryToExpression(entry);
-      if (expr) onConditionsChange([...conditions, expr]);
-    },
-    [conditions, onConditionsChange]
-  );
+  const handleAddEntry = React.useCallback((entry: ConditionEntry) => {
+    const expr = conditionEntryToExpression(entry);
+    if (expr) {
+      setConditions((prev) => [...prev, expr]);
+    }
+  }, [setConditions]);
 
   const removeAt = (i: number) => {
-    onConditionsChange(conditions.filter((_, j) => j !== i));
+    setConditions((prev) => prev.filter((_, j) => j !== i));
   };
 
   return (
@@ -73,9 +67,9 @@ export function ScannerConditionSection({
               <Select
                 value={combinationLogic === "AND" ? "AND" : combinationLogic === "OR" ? "OR" : "custom"}
                 onValueChange={(v) => {
-                  if (v === "AND") onCombinationLogicChange("AND");
-                  else if (v === "OR") onCombinationLogicChange("OR");
-                  else onCombinationLogicChange(combinationLogic || "1 AND 2");
+                  if (v === "AND") setCombinationLogic("AND");
+                  else if (v === "OR") setCombinationLogic("OR");
+                  else setCombinationLogic(combinationLogic || "1 AND 2");
                 }}
               >
                 <SelectTrigger className="h-8 w-48">
@@ -92,7 +86,7 @@ export function ScannerConditionSection({
                   className="h-8 w-full max-w-md font-mono text-xs"
                   placeholder="e.g. 1 AND (2 OR 3)"
                   value={combinationLogic}
-                  onChange={(e) => onCombinationLogicChange(e.target.value)}
+                  onChange={(e) => setCombinationLogic(e.target.value)}
                 />
               )}
             </div>

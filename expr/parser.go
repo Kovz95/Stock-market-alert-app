@@ -420,6 +420,11 @@ func remapPositionalParams(op *Operand) {
 			op.Params["nb_dev"] = v
 			delete(op.Params, "_pos_1")
 		}
+	case "donchian_upper", "donchian_lower", "donchian_basis":
+		if v, ok := op.Params["_pos_1"]; ok {
+			op.Params["offset"] = v
+			delete(op.Params, "_pos_1")
+		}
 	}
 
 	// Clean up remaining positional params

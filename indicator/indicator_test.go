@@ -226,6 +226,165 @@ func TestDonchianUpper(t *testing.T) {
 	}
 }
 
+// TestDonchianAllFunctions verifies all five Donchian indicator functions used by
+// the UI ConditionBuilder (donchian_upper, donchian_lower, donchian_basis,
+// donchian_width, donchian_position) with params matching expr parser output.
+func TestDonchianAllFunctions(t *testing.T) {
+	data := testOHLCV(100)
+
+	t.Run("upper_length_only", func(t *testing.T) {
+		out, err := DonchianUpper(data, map[string]interface{}{"length": 20})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(out) != data.Len() || math.IsNaN(out[99]) {
+			t.Fatalf("DonchianUpper(20): len=%d or last NaN", len(out))
+		}
+	})
+	t.Run("upper_length_and_offset", func(t *testing.T) {
+		out, err := DonchianUpper(data, map[string]interface{}{"length": 20, "offset": 1})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(out) != data.Len() {
+			t.Fatalf("DonchianUpper(20,1): len=%d", len(out))
+		}
+	})
+	t.Run("lower_length_only", func(t *testing.T) {
+		out, err := DonchianLower(data, map[string]interface{}{"length": 20})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(out) != data.Len() || math.IsNaN(out[99]) {
+			t.Fatalf("DonchianLower(20): len=%d or last NaN", len(out))
+		}
+	})
+	t.Run("lower_length_and_offset", func(t *testing.T) {
+		out, err := DonchianLower(data, map[string]interface{}{"length": 20, "offset": 0})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(out) != data.Len() {
+			t.Fatalf("DonchianLower(20,0): len=%d", len(out))
+		}
+	})
+	t.Run("basis_length_only", func(t *testing.T) {
+		out, err := DonchianBasis(data, map[string]interface{}{"length": 20})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(out) != data.Len() || math.IsNaN(out[99]) {
+			t.Fatalf("DonchianBasis(20): len=%d or last NaN", len(out))
+		}
+	})
+	t.Run("basis_length_and_offset", func(t *testing.T) {
+		out, err := DonchianBasis(data, map[string]interface{}{"length": 14, "offset": 2})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(out) != data.Len() {
+			t.Fatalf("DonchianBasis(14,2): len=%d", len(out))
+		}
+	})
+	t.Run("width_length_only", func(t *testing.T) {
+		out, err := DonchianWidth(data, map[string]interface{}{"length": 20})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(out) != data.Len() || math.IsNaN(out[99]) {
+			t.Fatalf("DonchianWidth(20): len=%d or last NaN", len(out))
+		}
+		// Width should be non-negative (upper - lower)
+		if out[99] < 0 {
+			t.Errorf("DonchianWidth[99] = %f, want >= 0", out[99])
+		}
+	})
+	t.Run("position_length_only", func(t *testing.T) {
+		out, err := DonchianPosition(data, map[string]interface{}{"length": 20})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(out) != data.Len() || math.IsNaN(out[99]) {
+			t.Fatalf("DonchianPosition(20): len=%d or last NaN", len(out))
+		}
+		// Position should be in [0, 1] (or 0.5 when width is 0)
+		if out[99] < 0 || out[99] > 1 {
+			t.Errorf("DonchianPosition[99] = %f, want in [0,1]", out[99])
+		}
+	})
+}
+
+// TestPivotSRAllFunctions verifies all three Pivot S/R indicators with params
+// matching what the UI sends (keyword: left_bars, right_bars, proximity_threshold, buffer_percent).
+func TestPivotSRAllFunctions(t *testing.T) {
+	data := testOHLCV(100)
+	uiParams := map[string]interface{}{
+		"left_bars":            5,
+		"right_bars":            5,
+		"proximity_threshold": 1.0,
+		"buffer_percent":      0.5,
+	}
+
+	t.Run("pivot_sr_ui_params", func(t *testing.T) {
+		out, err := PivotSR(data, uiParams)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(out) != data.Len() {
+			t.Fatalf("PivotSR len=%d, want %d", len(out), data.Len())
+		}
+		// Signal values: -3, -2, -1, 0, 1, 2, 3
+		for i, v := range out {
+			if !math.IsNaN(v) && (v < -3 || v > 3) {
+				t.Errorf("PivotSR[%d] = %f, want in [-3,3]", i, v)
+			}
+		}
+	})
+	t.Run("pivot_sr_defaults", func(t *testing.T) {
+		out, err := PivotSR(data, map[string]interface{}{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(out) != data.Len() {
+			t.Fatalf("PivotSR() len=%d", len(out))
+		}
+	})
+	t.Run("pivot_sr_crossover_ui_params", func(t *testing.T) {
+		params := map[string]interface{}{
+			"left_bars":      5,
+			"right_bars":    5,
+			"buffer_percent": 0.5,
+		}
+		out, err := PivotSRCrossover(data, params)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(out) != data.Len() {
+			t.Fatalf("PivotSRCrossover len=%d", len(out))
+		}
+		// -1, 0, 1
+		for i, v := range out {
+			if !math.IsNaN(v) && v != -1 && v != 0 && v != 1 {
+				t.Errorf("PivotSRCrossover[%d] = %f, want -1, 0, or 1", i, v)
+			}
+		}
+	})
+	t.Run("pivot_sr_proximity_ui_params", func(t *testing.T) {
+		out, err := PivotSRProximity(data, uiParams)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(out) != data.Len() {
+			t.Fatalf("PivotSRProximity len=%d", len(out))
+		}
+		for i, v := range out {
+			if !math.IsNaN(v) && v != -1 && v != 0 && v != 1 {
+				t.Errorf("PivotSRProximity[%d] = %f, want -1, 0, or 1", i, v)
+			}
+		}
+	})
+}
+
 func TestHMA(t *testing.T) {
 	data := testOHLCV(50)
 	result, err := HMA(data, map[string]interface{}{"timeperiod": 14})
