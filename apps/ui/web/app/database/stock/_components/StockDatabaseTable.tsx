@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useAtomValue, useSetAtom } from "jotai";
 import {
   flexRender,
   getCoreRowModel,
@@ -11,6 +12,7 @@ import {
   type SortingState,
 } from "@tanstack/react-table";
 import type { FullStockMetadataRow } from "@/actions/stock-database-actions";
+import { stockDatabaseSearchInputAtom } from "@/lib/store/stock-database";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -107,16 +109,22 @@ const etfColumns: ColumnDef<FullStockMetadataRow>[] = [
 type StockDatabaseTableProps = {
   data: FullStockMetadataRow[];
   assetTypeFilter: "All" | "Stocks" | "ETFs";
-  searchTerm: string;
-  onSearchChange: (v: string) => void;
+  /** When provided, use controlled search. When omitted, use stock database store (searchInputAtom). */
+  searchTerm?: string;
+  onSearchChange?: (v: string) => void;
 };
 
-export function StockDatabaseTable({
+function StockDatabaseTableComponent({
   data,
   assetTypeFilter,
-  searchTerm,
-  onSearchChange,
+  searchTerm: searchTermProp,
+  onSearchChange: onSearchChangeProp,
 }: StockDatabaseTableProps) {
+  const searchInputFromAtom = useAtomValue(stockDatabaseSearchInputAtom);
+  const setSearchInputAtom = useSetAtom(stockDatabaseSearchInputAtom);
+
+  const searchTerm = searchTermProp ?? searchInputFromAtom;
+  const onSearchChange = onSearchChangeProp ?? setSearchInputAtom;
   const [sorting, setSorting] = React.useState<SortingState>([{ id: "symbol", desc: false }]);
   const [pagination, setPagination] = React.useState({ pageIndex: 0, pageSize: 50 });
 
@@ -263,3 +271,5 @@ export function StockDatabaseTable({
     </div>
   );
 }
+
+export const StockDatabaseTable = React.memo(StockDatabaseTableComponent);

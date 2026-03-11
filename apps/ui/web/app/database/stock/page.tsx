@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useAtomValue, useSetAtom } from "jotai";
 import { useFullStockMetadata } from "@/lib/hooks/useStockDatabase";
 import {
   StockDatabaseFilters,
@@ -8,33 +9,71 @@ import {
   StockDatabaseTable,
   RbicsBreakdownSection,
   TopExchangesSection,
-  defaultStockDatabaseFilters,
   applyStockDatabaseFilters,
   searchRows,
-  type StockDatabaseFiltersState,
 } from "./_components";
+import {
+  stockDatabaseFiltersAtom,
+  stockDatabaseSearchTermAtom,
+  stockDatabaseSearchInputAtom,
+} from "@/lib/store/stock-database";
 import { Skeleton } from "@/components/ui/skeleton";
+import type { FullStockMetadataRow } from "@/actions/stock-database-actions";
 
 const SEARCH_DEBOUNCE_MS = 280;
 
-export default function StockDatabasePage() {
-  const { data: metadata, isLoading, error } = useFullStockMetadata();
-  const [filters, setFilters] = React.useState<StockDatabaseFiltersState>(
-    () => defaultStockDatabaseFilters
-  );
-  const [searchInput, setSearchInput] = React.useState("");
-  const [searchTerm, setSearchTerm] = React.useState("");
+/** Syncs searchInput atom to searchTerm atom with debounce so only the table section re-renders when searchTerm updates. */
+function DebouncedSearchTermSync() {
+  const searchInput = useAtomValue(stockDatabaseSearchInputAtom);
+  const setSearchTerm = useSetAtom(stockDatabaseSearchTermAtom);
 
   React.useEffect(() => {
     const t = setTimeout(() => setSearchTerm(searchInput), SEARCH_DEBOUNCE_MS);
     return () => clearTimeout(t);
-  }, [searchInput]);
+  }, [searchInput, setSearchTerm]);
+
+  return null;
+}
+
+/** Sidebar that subscribes to filters atom so only it re-renders on filter change. */
+const StockDatabaseSidebar = React.memo(function StockDatabaseSidebar({
+  metadata,
+}: {
+  metadata: FullStockMetadataRow[] | undefined;
+}) {
+  const filters = useAtomValue(stockDatabaseFiltersAtom);
+  const setFilters = useSetAtom(stockDatabaseFiltersAtom);
+
+  if (!metadata) {
+    return <Skeleton className="h-64 w-full rounded-lg" />;
+  }
+
+  return (
+    <StockDatabaseFilters
+      data={metadata}
+      filters={filters}
+      onFiltersChange={setFilters}
+    />
+  );
+});
+
+/** Main content: subscribes to filters (deferred) and searchTerm so filtered list updates don't block filter UI. */
+function StockDatabaseMain({
+  metadata,
+  isLoading,
+}: {
+  metadata: FullStockMetadataRow[] | null | undefined;
+  isLoading: boolean;
+}) {
+  const filters = useAtomValue(stockDatabaseFiltersAtom);
+  const searchTerm = useAtomValue(stockDatabaseSearchTermAtom);
+  const deferredFilters = React.useDeferredValue(filters);
 
   const filtered = React.useMemo(() => {
     if (!metadata) return [];
-    const afterFilters = applyStockDatabaseFilters(metadata, filters);
+    const afterFilters = applyStockDatabaseFilters(metadata, deferredFilters);
     return searchRows(afterFilters, searchTerm);
-  }, [metadata, filters, searchTerm]);
+  }, [metadata, deferredFilters, searchTerm]);
 
   const stats = React.useMemo(() => {
     if (!metadata) return null;
@@ -54,7 +93,57 @@ export default function StockDatabasePage() {
   }, [metadata]);
 
   return (
+    <main className="min-w-0 space-y-6">
+      <section>
+        <h2 className="text-lg font-semibold mb-3">Database overview</h2>
+        {stats ? (
+          <StockDatabaseStatsCards
+            totalSymbols={stats.totalSymbols}
+            uniqueExchanges={stats.uniqueExchanges}
+            uniqueCountries={stats.uniqueCountries}
+            stockCount={stats.stockCount}
+            etfCount={stats.etfCount}
+          />
+        ) : isLoading ? (
+          <Skeleton className="h-24 w-full rounded-lg" />
+        ) : (
+          <p className="text-muted-foreground text-sm">No data.</p>
+        )}
+      </section>
+
+      <section className="grid gap-4 md:grid-cols-2">
+        {stats && stats.stocks.length > 0 && (
+          <RbicsBreakdownSection stocks={stats.stocks} />
+        )}
+        {stats && metadata && (
+          <TopExchangesSection data={metadata} title="Top exchanges by symbol count" />
+        )}
+      </section>
+
+      <section>
+        <h2 className="text-lg font-semibold mb-3">
+          Symbol list ({filtered.length.toLocaleString()} symbols)
+        </h2>
+        {metadata ? (
+          <StockDatabaseTable
+            data={filtered}
+            assetTypeFilter={filters.assetType}
+          />
+        ) : isLoading ? (
+          <Skeleton className="h-96 w-full rounded-lg" />
+        ) : null}
+      </section>
+    </main>
+  );
+}
+
+export default function StockDatabasePage() {
+  const { data: metadata, isLoading, error } = useFullStockMetadata();
+
+  return (
     <div className="p-6 flex flex-col gap-6">
+      <DebouncedSearchTermSync />
+
       <div>
         <h1 className="text-2xl font-bold">Stock Database</h1>
         <p className="text-muted-foreground">
@@ -74,60 +163,9 @@ export default function StockDatabasePage() {
 
       <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
         <aside className="lg:min-w-0">
-          {metadata ? (
-            <StockDatabaseFilters
-              data={metadata}
-              filters={filters}
-              onFiltersChange={setFilters}
-            />
-          ) : (
-            <Skeleton className="h-64 w-full rounded-lg" />
-          )}
+          <StockDatabaseSidebar metadata={metadata ?? undefined} />
         </aside>
-
-        <main className="min-w-0 space-y-6">
-          <section>
-            <h2 className="text-lg font-semibold mb-3">Database overview</h2>
-            {stats ? (
-              <StockDatabaseStatsCards
-                totalSymbols={stats.totalSymbols}
-                uniqueExchanges={stats.uniqueExchanges}
-                uniqueCountries={stats.uniqueCountries}
-                stockCount={stats.stockCount}
-                etfCount={stats.etfCount}
-              />
-            ) : isLoading ? (
-              <Skeleton className="h-24 w-full rounded-lg" />
-            ) : (
-              <p className="text-muted-foreground text-sm">No data.</p>
-            )}
-          </section>
-
-          <section className="grid gap-4 md:grid-cols-2">
-            {stats && stats.stocks.length > 0 && (
-              <RbicsBreakdownSection stocks={stats.stocks} />
-            )}
-            {stats && metadata && (
-              <TopExchangesSection data={metadata} title="Top exchanges by symbol count" />
-            )}
-          </section>
-
-          <section>
-            <h2 className="text-lg font-semibold mb-3">
-              Symbol list ({filtered.length.toLocaleString()} symbols)
-            </h2>
-            {metadata ? (
-              <StockDatabaseTable
-                data={filtered}
-                assetTypeFilter={filters.assetType}
-                searchTerm={searchInput}
-                onSearchChange={setSearchInput}
-              />
-            ) : isLoading ? (
-              <Skeleton className="h-96 w-full rounded-lg" />
-            ) : null}
-          </section>
-        </main>
+        <StockDatabaseMain metadata={metadata} isLoading={isLoading} />
       </div>
     </div>
   );
