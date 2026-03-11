@@ -81,12 +81,15 @@ export type DonchianConditionType =
   | "donchian_width_expanding"
   | "donchian_width_contracting";
 export type PivotSRConditionType =
-  | "pivot_sr_bullish"
-  | "pivot_sr_bearish"
+  | "pivot_sr_any_signal"
   | "pivot_sr_near_support"
   | "pivot_sr_near_resistance"
+  | "pivot_sr_near_any"
   | "pivot_sr_crossover_bullish"
-  | "pivot_sr_crossover_bearish";
+  | "pivot_sr_crossover_bearish"
+  | "pivot_sr_any_crossover"
+  | "pivot_sr_broke_strong_support"
+  | "pivot_sr_broke_strong_resistance";
 export type IchimokuConditionType =
   // Price vs Cloud
   | "ichimoku_price_above_cloud"
@@ -121,26 +124,96 @@ export type IchimokuConditionType =
   | "ichimoku_lagging_below_price"
   | "ichimoku_lagging_crossed_above"
   | "ichimoku_lagging_crossed_below";
-export type TrendMagicConditionType = "trend_magic_bullish" | "trend_magic_bearish";
-export type SupertrendConditionType = "supertrend_uptrend" | "supertrend_downtrend";
+export type TrendMagicConditionType =
+  // Trend Direction
+  | "tm_bullish"
+  | "tm_bearish"
+  // Price vs Trend Magic
+  | "tm_price_above"
+  | "tm_price_below"
+  | "tm_price_crossed"
+  // Trend Crossover
+  | "tm_buy_signal"
+  | "tm_sell_signal"
+  | "tm_any_cross";
+export type SupertrendConditionType =
+  // Trend Direction
+  | "st_uptrend"
+  | "st_downtrend"
+  // Price vs SuperTrend
+  | "st_price_above"
+  | "st_price_below"
+  // Trend Change
+  | "st_changed_uptrend"
+  | "st_changed_downtrend"
+  | "st_any_change";
 export type SARConditionType =
   | "sar_value"
   | "sar_price_above"
   | "sar_price_below"
   | "sar_cross_above"
   | "sar_cross_below";
-export type OBVMACDConditionType = "obv_macd_positive" | "obv_macd_above_signal";
-export type HARSIConditionType = "harsi_bullish" | "harsi_bearish";
-export type MAZScoreConditionType = "ma_zscore_above" | "ma_zscore_below";
-export type EWOConditionType = "ewo_positive" | "ewo_negative";
-export type ROCConditionType = "roc_above" | "roc_below";
+export type OBVMACDConditionType =
+  // Value
+  | "obv_macd_value"
+  | "obv_macd_positive"
+  | "obv_macd_negative"
+  // Signal Direction
+  | "obv_macd_signal_bullish"
+  | "obv_macd_signal_bearish";
+export type HARSIConditionType =
+  // HARSI Value
+  | "harsi_value"
+  | "harsi_bullish"
+  | "harsi_bearish"
+  // HARSI Flip
+  | "harsi_flip_buy"
+  | "harsi_flip_sell"
+  | "harsi_flip_any";
+export type MAZScoreConditionType =
+  | "ma_zscore_compare"
+  | "ma_zscore_value";
+export type EWOConditionType =
+  // Levels
+  | "ewo_above_zero"
+  | "ewo_below_zero"
+  | "ewo_cross_above_zero"
+  | "ewo_cross_below_zero"
+  // Value
+  | "ewo_compare"
+  | "ewo_value";
+export type ROCConditionType =
+  // Levels
+  | "roc_above_zero"
+  | "roc_below_zero"
+  | "roc_cross_above_zero"
+  | "roc_cross_below_zero"
+  // Value
+  | "roc_compare"
+  | "roc_value";
 export type WillRConditionType = "willr_oversold" | "willr_overbought";
-export type CCIConditionType = "cci_above" | "cci_below";
-export type ATRConditionType = "atr_above" | "atr_below";
+export type CCIConditionType =
+  | "cci_compare"
+  | "cci_value";
+export type ATRConditionType =
+  | "atr_compare"
+  | "atr_value";
 export type KalmanROCConditionType =
-  | "kalman_roc_stoch_positive"
-  | "kalman_roc_stoch_signal_bullish"
-  | "kalman_roc_stoch_crossover_bullish";
+  // Direction
+  | "krs_uptrend"
+  | "krs_downtrend"
+  // Crossovers
+  | "krs_cross_bullish"
+  | "krs_cross_bearish"
+  | "krs_cross_any"
+  // Levels
+  | "krs_above_60"
+  | "krs_below_10"
+  | "krs_above_50"
+  | "krs_below_50"
+  | "krs_between_10_60"
+  // Value
+  | "krs_value";
 
 export type ConditionParams = {
   // Price
@@ -182,6 +255,10 @@ export type ConditionParams = {
   indicatorValue?: number;
   // Custom
   customExpression?: string;
+  // Trend Magic
+  tmCciPeriod?: number;
+  tmAtrMult?: number;
+  tmAtrPeriod?: number;
   // Donchian
   donchianLength?: number;
   donchianOffset?: number;
@@ -193,27 +270,66 @@ export type ConditionParams = {
   // Pivot S/R
   pivotLeftBars?: number;
   pivotRightBars?: number;
+  pivotProximity?: number;
+  pivotBuffer?: number;
   // Supertrend
   supertrendPeriod?: number;
   supertrendMultiplier?: number;
+  supertrendUseHl2?: boolean;
+  supertrendUseAtr?: boolean;
+  // OBV MACD
+  obvWindowLen?: number;
+  obvVLen?: number;
+  obvLen?: number;
+  obvMaType?: string;
+  obvMaLen?: number;
+  obvSlowLen?: number;
+  obvSlopeLen?: number;
+  obvP?: number;
   // SAR
   sarAcceleration?: number;
   sarMaxAcceleration?: number;
   // HARSI
   harsiPeriod?: number;
+  harsiSmoothing?: number;
   // MA Z-Score
   maZScoreThreshold?: number;
   maZScoreMaLength?: number;
+  maZScoreMaType?: string;
+  maZScoreMeanWindow?: number;
+  maZScoreStdWindow?: number;
+  maZScorePriceCol?: string;
+  maZScoreUsePercent?: boolean;
+  maZScoreOperator?: string;
   // EWO
   ewoSma1Length?: number;
   ewoSma2Length?: number;
+  ewoSource?: string;
+  ewoUsePercent?: boolean;
+  ewoOperator?: string;
+  ewoValue?: number;
   // ROC / Williams %R / CCI / ATR
   rocPeriod?: number;
   rocLevel?: number;
+  rocOperator?: string;
   willrPeriod?: number;
   cciPeriod?: number;
+  cciOperator?: string;
+  cciLevel?: number;
   atrPeriod?: number;
   atrValue?: number;
+  atrOperator?: string;
+  // Kalman ROC Stoch
+  krsMaType?: string;
+  krsSmoothLen?: number;
+  krsLsmaOff?: number;
+  krsKalSrc?: string;
+  krsSharp?: number;
+  krsKPeriod?: number;
+  krsRocLen?: number;
+  krsStochLen?: number;
+  krsSmoothK?: number;
+  krsSmoothD?: number;
 };
 
 export interface ConditionEntry {
@@ -375,21 +491,29 @@ export function conditionEntryToExpression(entry: ConditionEntry): string {
     case "pivot_sr": {
       const left = params.pivotLeftBars ?? 5;
       const right = params.pivotRightBars ?? 5;
-      const p = left !== 5 || right !== 5 ? `left_bars=${left}, right_bars=${right}` : "";
-      const fn = p ? `pivot_sr(${p})` : "pivot_sr()";
+      const prox = params.pivotProximity ?? 1.0;
+      const buf = params.pivotBuffer ?? 0.5;
+      const pivotArgs = `left_bars=${left}, right_bars=${right}, proximity_threshold=${prox}, buffer_percent=${buf}`;
+      const fn = `pivot_sr(${pivotArgs})`;
       switch (type) {
-        case "pivot_sr_bullish":
-          return `${fn}[-1] >= 2`;
-        case "pivot_sr_bearish":
-          return `${fn}[-1] <= -2`;
+        case "pivot_sr_any_signal":
+          return `${fn}[-1] != 0`;
         case "pivot_sr_near_support":
-          return "pivot_sr_proximity()[-1] == 1";
+          return `${fn}[-1] == 1`;
         case "pivot_sr_near_resistance":
-          return "pivot_sr_proximity()[-1] == -1";
+          return `${fn}[-1] == -1`;
+        case "pivot_sr_near_any":
+          return `abs(${fn}[-1]) == 1`;
         case "pivot_sr_crossover_bullish":
-          return "pivot_sr_crossover()[-1] == 1";
+          return `${fn}[-1] == 2`;
         case "pivot_sr_crossover_bearish":
-          return "pivot_sr_crossover()[-1] == -1";
+          return `${fn}[-1] == -2`;
+        case "pivot_sr_any_crossover":
+          return `abs(${fn}[-1]) == 2`;
+        case "pivot_sr_broke_strong_support":
+          return `${fn}[-1] == -3`;
+        case "pivot_sr_broke_strong_resistance":
+          return `${fn}[-1] == 3`;
         default:
           return "";
       }
@@ -473,11 +597,32 @@ export function conditionEntryToExpression(entry: ConditionEntry): string {
       }
     }
     case "trend_magic": {
+      const cciP = params.tmCciPeriod ?? 20;
+      const atrM = params.tmAtrMult ?? 1.0;
+      const atrP = params.tmAtrPeriod ?? 5;
+      const tmArgs = `cci_period=${cciP}, atr_multiplier=${atrM}, atr_period=${atrP}`;
+      const tm = `trend_magic(${tmArgs})`;
+      const tmSig = `trend_magic_signal(${tmArgs})`;
       switch (type) {
-        case "trend_magic_bullish":
-          return "trend_magic_signal()[-1] == 1";
-        case "trend_magic_bearish":
-          return "trend_magic_signal()[-1] == -1";
+        // Trend Direction
+        case "tm_bullish":
+          return `${tmSig}[-1] == 1`;
+        case "tm_bearish":
+          return `${tmSig}[-1] == -1`;
+        // Price vs Trend Magic
+        case "tm_price_above":
+          return `Close[-1] > ${tm}[-1]`;
+        case "tm_price_below":
+          return `Close[-1] < ${tm}[-1]`;
+        case "tm_price_crossed":
+          return `(Close[-1] > ${tm}[-1] and Close[-2] <= ${tm}[-2]) or (Close[-1] < ${tm}[-1] and Close[-2] >= ${tm}[-2])`;
+        // Trend Crossover
+        case "tm_buy_signal":
+          return `Low[-1] > ${tm}[-1] and Low[-2] <= ${tm}[-2]`;
+        case "tm_sell_signal":
+          return `High[-1] < ${tm}[-1] and High[-2] >= ${tm}[-2]`;
+        case "tm_any_cross":
+          return `((Close[-1] > ${tm}[-1]) != (Close[-2] > ${tm}[-2]))`;
         default:
           return "";
       }
@@ -485,11 +630,30 @@ export function conditionEntryToExpression(entry: ConditionEntry): string {
     case "supertrend": {
       const period = params.supertrendPeriod ?? 10;
       const mult = params.supertrendMultiplier ?? 3;
+      const useHl2 = params.supertrendUseHl2 ?? true;
+      const useAtr = params.supertrendUseAtr ?? true;
+      const stArgs = `period=${period}, multiplier=${mult}, use_hl2=${useHl2 ? "True" : "False"}, use_builtin_atr=${useAtr ? "True" : "False"}`;
+      const st = `supertrend(${stArgs})`;
+      const stUpper = `supertrend_upper(${stArgs})`;
+      const stLower = `supertrend_lower(${stArgs})`;
       switch (type) {
-        case "supertrend_uptrend":
-          return `supertrend(${period}, ${mult})[-1] == 1`;
-        case "supertrend_downtrend":
-          return `supertrend(${period}, ${mult})[-1] == -1`;
+        // Trend Direction
+        case "st_uptrend":
+          return `${st}[-1] == 1`;
+        case "st_downtrend":
+          return `${st}[-1] == -1`;
+        // Price vs SuperTrend
+        case "st_price_above":
+          return `Close[-1] > ${stUpper}[-1]`;
+        case "st_price_below":
+          return `Close[-1] < ${stLower}[-1]`;
+        // Trend Change
+        case "st_changed_uptrend":
+          return `${st}[-1] == 1 and ${st}[-2] == -1`;
+        case "st_changed_downtrend":
+          return `${st}[-1] == -1 and ${st}[-2] == 1`;
+        case "st_any_change":
+          return `${st}[-1] != ${st}[-2]`;
         default:
           return "";
       }
@@ -514,22 +678,55 @@ export function conditionEntryToExpression(entry: ConditionEntry): string {
       }
     }
     case "obv_macd": {
+      const wLen = params.obvWindowLen ?? 28;
+      const vLen = params.obvVLen ?? 14;
+      const oLen = params.obvLen ?? 1;
+      const maT = params.obvMaType ?? "DEMA";
+      const maL = params.obvMaLen ?? 9;
+      const sLen = params.obvSlowLen ?? 26;
+      const slLen = params.obvSlopeLen ?? 2;
+      const pVal = params.obvP ?? 1.0;
+      const obvArgs = `window_len=${wLen}, v_len=${vLen}, obv_len=${oLen}, ma_type='${maT}', ma_len=${maL}, slow_len=${sLen}, slope_len=${slLen}`;
+      const obv = `obv_macd(${obvArgs})`;
+      const obvSig = `obv_macd_signal(${obvArgs}, p=${pVal})`;
       switch (type) {
+        // Value
+        case "obv_macd_value":
+          return `${obv}[-1]`;
         case "obv_macd_positive":
-          return "obv_macd()[-1] > 0";
-        case "obv_macd_above_signal":
-          return "obv_macd()[-1] > obv_macd_signal()[-1]";
+          return `${obv}[-1] > 0`;
+        case "obv_macd_negative":
+          return `${obv}[-1] < 0`;
+        // Signal Direction
+        case "obv_macd_signal_bullish":
+          return `${obvSig}[-1] == 1`;
+        case "obv_macd_signal_bearish":
+          return `${obvSig}[-1] == -1`;
         default:
           return "";
       }
     }
     case "harsi": {
       const period = params.harsiPeriod ?? 14;
+      const smooth = params.harsiSmoothing ?? 1;
+      const hArgs = `period=${period}, smoothing=${smooth}`;
+      const h = `harsi(${hArgs})`;
+      const hFlip = `harsi_flip(${hArgs})`;
       switch (type) {
+        // Value
+        case "harsi_value":
+          return `${h}[-1]`;
         case "harsi_bullish":
-          return `harsi(${period})[-1] > 0`;
+          return `${h}[-1] > 0`;
         case "harsi_bearish":
-          return `harsi(${period})[-1] < 0`;
+          return `${h}[-1] < 0`;
+        // Flip
+        case "harsi_flip_buy":
+          return `${hFlip}[-1] == 2`;
+        case "harsi_flip_sell":
+          return `${hFlip}[-1] == 1`;
+        case "harsi_flip_any":
+          return `${hFlip}[-1] > 0`;
         default:
           return "";
       }
@@ -537,11 +734,19 @@ export function conditionEntryToExpression(entry: ConditionEntry): string {
     case "ma_zscore": {
       const threshold = params.maZScoreThreshold ?? 2;
       const maLen = params.maZScoreMaLength ?? 20;
+      const maT = params.maZScoreMaType ?? "SMA";
+      const meanW = params.maZScoreMeanWindow ?? maLen;
+      const stdW = params.maZScoreStdWindow ?? meanW;
+      const priceCol = params.maZScorePriceCol ?? "Close";
+      const usePct = params.maZScoreUsePercent ?? true;
+      const op = params.maZScoreOperator ?? ">";
+      const zsArgs = `price_col='${priceCol}', ma_length=${maLen}, spread_mean_window=${meanW}, spread_std_window=${stdW}, ma_type='${maT}', use_percent=${usePct ? "True" : "False"}, output='zscore'`;
+      const zs = `ma_spread_zscore(${zsArgs})`;
       switch (type) {
-        case "ma_zscore_above":
-          return `ma_spread_zscore(ma_length=${maLen})[-1] > ${threshold}`;
-        case "ma_zscore_below":
-          return `ma_spread_zscore(ma_length=${maLen})[-1] < -${threshold}`;
+        case "ma_zscore_compare":
+          return `${zs}[-1] ${op} ${threshold}`;
+        case "ma_zscore_value":
+          return `${zs}[-1]`;
         default:
           return "";
       }
@@ -549,23 +754,53 @@ export function conditionEntryToExpression(entry: ConditionEntry): string {
     case "ewo": {
       const sma1 = params.ewoSma1Length ?? 5;
       const sma2 = params.ewoSma2Length ?? 35;
+      const src = params.ewoSource ?? "Close";
+      const usePct = params.ewoUsePercent ?? true;
+      const ewoArgs = `sma1_length=${sma1}, sma2_length=${sma2}, source='${src}', use_percent=${usePct ? "True" : "False"}`;
+      const ewo = `ewo(${ewoArgs})`;
       switch (type) {
-        case "ewo_positive":
-          return `EWO(sma1_length=${sma1}, sma2_length=${sma2})[-1] > 0`;
-        case "ewo_negative":
-          return `EWO(sma1_length=${sma1}, sma2_length=${sma2})[-1] < 0`;
+        // Levels
+        case "ewo_above_zero":
+          return `${ewo}[-1] > 0`;
+        case "ewo_below_zero":
+          return `${ewo}[-1] < 0`;
+        case "ewo_cross_above_zero":
+          return `(${ewo}[-1] > 0) and (${ewo}[-2] <= 0)`;
+        case "ewo_cross_below_zero":
+          return `(${ewo}[-1] < 0) and (${ewo}[-2] >= 0)`;
+        // Value
+        case "ewo_compare": {
+          const op = params.ewoOperator ?? ">";
+          const val = params.ewoValue ?? 0;
+          return `${ewo}[-1] ${op} ${val}`;
+        }
+        case "ewo_value":
+          return `${ewo}[-1]`;
         default:
           return "";
       }
     }
     case "roc": {
-      const period = params.rocPeriod ?? 14;
-      const level = params.rocLevel ?? 0;
+      const period = params.rocPeriod ?? 12;
+      const r = `roc(${period})`;
       switch (type) {
-        case "roc_above":
-          return `roc(${period})[-1] > ${level}`;
-        case "roc_below":
-          return `roc(${period})[-1] < ${level}`;
+        // Levels
+        case "roc_above_zero":
+          return `${r}[-1] > 0`;
+        case "roc_below_zero":
+          return `${r}[-1] < 0`;
+        case "roc_cross_above_zero":
+          return `(${r}[-1] > 0) and (${r}[-2] <= 0)`;
+        case "roc_cross_below_zero":
+          return `(${r}[-1] < 0) and (${r}[-2] >= 0)`;
+        // Value
+        case "roc_compare": {
+          const op = params.rocOperator ?? ">";
+          const level = params.rocLevel ?? 0;
+          return `${r}[-1] ${op} ${level}`;
+        }
+        case "roc_value":
+          return `${r}[-1]`;
         default:
           return "";
       }
@@ -583,35 +818,76 @@ export function conditionEntryToExpression(entry: ConditionEntry): string {
     }
     case "cci": {
       const period = params.cciPeriod ?? 20;
+      const c = `cci(${period})`;
       switch (type) {
-        case "cci_above":
-          return `cci(${period})[-1] > 100`;
-        case "cci_below":
-          return `cci(${period})[-1] < -100`;
+        case "cci_compare": {
+          const op = params.cciOperator ?? ">";
+          const level = params.cciLevel ?? 100;
+          return `${c}[-1] ${op} ${level}`;
+        }
+        case "cci_value":
+          return `${c}[-1]`;
         default:
           return "";
       }
     }
     case "atr": {
       const period = params.atrPeriod ?? 14;
-      const val = params.atrValue ?? 2;
+      const a = `atr(${period})`;
       switch (type) {
-        case "atr_above":
-          return `atr(${period})[-1] > ${val}`;
-        case "atr_below":
-          return `atr(${period})[-1] < ${val}`;
+        case "atr_compare": {
+          const op = params.atrOperator ?? ">";
+          const val = params.atrValue ?? 2;
+          return `${a}[-1] ${op} ${val}`;
+        }
+        case "atr_value":
+          return `${a}[-1]`;
         default:
           return "";
       }
     }
     case "kalman_roc_stoch": {
+      const maType = params.krsMaType ?? "TEMA";
+      const smoothLen = params.krsSmoothLen ?? 12;
+      const lsmaOff = params.krsLsmaOff ?? 0;
+      const kalSrc = params.krsKalSrc ?? "Close";
+      const sharp = params.krsSharp ?? 25.0;
+      const kPeriod = params.krsKPeriod ?? 1.0;
+      const rocLen = params.krsRocLen ?? 9;
+      const stochLen = params.krsStochLen ?? 14;
+      const smoothK = params.krsSmoothK ?? 1;
+      const smoothD = params.krsSmoothD ?? 3;
+      const krsArgs = `ma_type='${maType}', lsma_off=${lsmaOff}, smooth_len=${smoothLen}, kal_src='${kalSrc}', sharp=${sharp}, k_period=${kPeriod}, roc_len=${rocLen}, stoch_len=${stochLen}, smooth_k=${smoothK}, smooth_d=${smoothD}`;
+      const krs = `kalman_roc_stoch(${krsArgs})`;
+      const krsSig = `kalman_roc_stoch_signal(${krsArgs})`;
+      const krsCross = `kalman_roc_stoch_crossover(${krsArgs})`;
       switch (type) {
-        case "kalman_roc_stoch_positive":
-          return "kalman_roc_stoch()[-1] > 0";
-        case "kalman_roc_stoch_signal_bullish":
-          return "kalman_roc_stoch_signal()[-1] == 1";
-        case "kalman_roc_stoch_crossover_bullish":
-          return "kalman_roc_stoch_crossover()[-1] == 1";
+        // Direction
+        case "krs_uptrend":
+          return `${krsSig}[-1] == 1`;
+        case "krs_downtrend":
+          return `${krsSig}[-1] == -1`;
+        // Crossovers
+        case "krs_cross_bullish":
+          return `${krsCross}[-1] == 1`;
+        case "krs_cross_bearish":
+          return `${krsCross}[-1] == -1`;
+        case "krs_cross_any":
+          return `${krsCross}[-1] != 0`;
+        // Levels
+        case "krs_above_60":
+          return `${krs}[-1] > 60`;
+        case "krs_below_10":
+          return `${krs}[-1] < 10`;
+        case "krs_above_50":
+          return `${krs}[-1] > 50`;
+        case "krs_below_50":
+          return `${krs}[-1] < 50`;
+        case "krs_between_10_60":
+          return `(${krs}[-1] > 10) and (${krs}[-1] < 60)`;
+        // Value
+        case "krs_value":
+          return `${krs}[-1]`;
         default:
           return "";
       }
