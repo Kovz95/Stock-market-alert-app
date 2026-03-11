@@ -88,14 +88,47 @@ export type PivotSRConditionType =
   | "pivot_sr_crossover_bullish"
   | "pivot_sr_crossover_bearish";
 export type IchimokuConditionType =
+  // Price vs Cloud
   | "ichimoku_price_above_cloud"
   | "ichimoku_price_below_cloud"
+  | "ichimoku_price_in_cloud"
+  | "ichimoku_price_entered_cloud_above"
+  | "ichimoku_price_entered_cloud_below"
+  | "ichimoku_price_entered_cloud_any"
+  | "ichimoku_price_crossed_above_cloud"
+  | "ichimoku_price_crossed_below_cloud"
+  // Line Crossovers
+  | "ichimoku_tk_cross_bull"
+  | "ichimoku_tk_cross_bear"
+  | "ichimoku_price_cross_above_conversion"
+  | "ichimoku_price_cross_below_conversion"
+  | "ichimoku_price_cross_above_base"
+  | "ichimoku_price_cross_below_base"
+  // Cloud Color
   | "ichimoku_cloud_bullish"
   | "ichimoku_cloud_bearish"
-  | "ichimoku_price_above_base";
+  | "ichimoku_cloud_turned_bullish"
+  | "ichimoku_cloud_turned_bearish"
+  // Individual Lines
+  | "ichimoku_price_above_conversion"
+  | "ichimoku_price_below_conversion"
+  | "ichimoku_price_above_base"
+  | "ichimoku_price_below_base"
+  | "ichimoku_conversion_above_base"
+  | "ichimoku_conversion_below_base"
+  // Lagging Span
+  | "ichimoku_lagging_above_price"
+  | "ichimoku_lagging_below_price"
+  | "ichimoku_lagging_crossed_above"
+  | "ichimoku_lagging_crossed_below";
 export type TrendMagicConditionType = "trend_magic_bullish" | "trend_magic_bearish";
 export type SupertrendConditionType = "supertrend_uptrend" | "supertrend_downtrend";
-export type SARConditionType = "sar_price_above" | "sar_price_below";
+export type SARConditionType =
+  | "sar_value"
+  | "sar_price_above"
+  | "sar_price_below"
+  | "sar_cross_above"
+  | "sar_cross_below";
 export type OBVMACDConditionType = "obv_macd_positive" | "obv_macd_above_signal";
 export type HARSIConditionType = "harsi_bullish" | "harsi_bearish";
 export type MAZScoreConditionType = "ma_zscore_above" | "ma_zscore_below";
@@ -152,6 +185,11 @@ export type ConditionParams = {
   // Donchian
   donchianLength?: number;
   donchianOffset?: number;
+  // Ichimoku
+  ichConversion?: number;
+  ichBase?: number;
+  ichSpanB?: number;
+  ichDisplacement?: number;
   // Pivot S/R
   pivotLeftBars?: number;
   pivotRightBars?: number;
@@ -357,17 +395,79 @@ export function conditionEntryToExpression(entry: ConditionEntry): string {
       }
     }
     case "ichimoku": {
+      const conv = params.ichConversion ?? 9;
+      const base = params.ichBase ?? 26;
+      const spanB = params.ichSpanB ?? 52;
+      const disp = params.ichDisplacement ?? 26;
+      const cloudArgs = `conversion_periods=${conv}, base_periods=${base}, span_b_periods=${spanB}, displacement=${disp}, visual=True`;
+      const cloudTop = `ichimoku_cloud_top(${cloudArgs})`;
+      const cloudBot = `ichimoku_cloud_bottom(${cloudArgs})`;
+      const cloudSig = `ichimoku_cloud_signal(${cloudArgs})`;
+      const convLine = `ichimoku_conversion(periods=${conv})`;
+      const baseLine = `ichimoku_base(periods=${base})`;
+      const lagging = `ichimoku_lagging(displacement=${disp}, visual=True)`;
       switch (type) {
+        // Price vs Cloud
         case "ichimoku_price_above_cloud":
-          return "Close[-1] > ichimoku_cloud_top()[-1]";
+          return `Close[-1] > ${cloudTop}[-1]`;
         case "ichimoku_price_below_cloud":
-          return "Close[-1] < ichimoku_cloud_bottom()[-1]";
+          return `Close[-1] < ${cloudBot}[-1]`;
+        case "ichimoku_price_in_cloud":
+          return `(Close[-1] <= ${cloudTop}[-1]) and (Close[-1] >= ${cloudBot}[-1])`;
+        case "ichimoku_price_entered_cloud_above":
+          return `(Close[-2] > ${cloudTop}[-2]) and (Close[-1] <= ${cloudTop}[-1]) and (Close[-1] >= ${cloudBot}[-1])`;
+        case "ichimoku_price_entered_cloud_below":
+          return `(Close[-2] < ${cloudBot}[-2]) and (Close[-1] >= ${cloudBot}[-1]) and (Close[-1] <= ${cloudTop}[-1])`;
+        case "ichimoku_price_entered_cloud_any":
+          return `((Close[-2] > ${cloudTop}[-2]) or (Close[-2] < ${cloudBot}[-2])) and (Close[-1] <= ${cloudTop}[-1]) and (Close[-1] >= ${cloudBot}[-1])`;
+        case "ichimoku_price_crossed_above_cloud":
+          return `(Close[-1] > ${cloudTop}[-1]) and (Close[-2] <= ${cloudTop}[-2])`;
+        case "ichimoku_price_crossed_below_cloud":
+          return `(Close[-1] < ${cloudBot}[-1]) and (Close[-2] >= ${cloudBot}[-2])`;
+        // Line Crossovers
+        case "ichimoku_tk_cross_bull":
+          return `(${convLine}[-1] > ${baseLine}[-1]) and (${convLine}[-2] <= ${baseLine}[-2])`;
+        case "ichimoku_tk_cross_bear":
+          return `(${convLine}[-1] < ${baseLine}[-1]) and (${convLine}[-2] >= ${baseLine}[-2])`;
+        case "ichimoku_price_cross_above_conversion":
+          return `(Close[-1] > ${convLine}[-1]) and (Close[-2] <= ${convLine}[-2])`;
+        case "ichimoku_price_cross_below_conversion":
+          return `(Close[-1] < ${convLine}[-1]) and (Close[-2] >= ${convLine}[-2])`;
+        case "ichimoku_price_cross_above_base":
+          return `(Close[-1] > ${baseLine}[-1]) and (Close[-2] <= ${baseLine}[-2])`;
+        case "ichimoku_price_cross_below_base":
+          return `(Close[-1] < ${baseLine}[-1]) and (Close[-2] >= ${baseLine}[-2])`;
+        // Cloud Color
         case "ichimoku_cloud_bullish":
-          return "ichimoku_cloud_signal()[-1] == 1";
+          return `${cloudSig}[-1] == 1`;
         case "ichimoku_cloud_bearish":
-          return "ichimoku_cloud_signal()[-1] == -1";
+          return `${cloudSig}[-1] == -1`;
+        case "ichimoku_cloud_turned_bullish":
+          return `(${cloudSig}[-1] == 1) and (${cloudSig}[-2] != 1)`;
+        case "ichimoku_cloud_turned_bearish":
+          return `(${cloudSig}[-1] == -1) and (${cloudSig}[-2] != -1)`;
+        // Individual Lines
+        case "ichimoku_price_above_conversion":
+          return `Close[-1] > ${convLine}[-1]`;
+        case "ichimoku_price_below_conversion":
+          return `Close[-1] < ${convLine}[-1]`;
         case "ichimoku_price_above_base":
-          return "Close[-1] > ichimoku_base(26)[-1]";
+          return `Close[-1] > ${baseLine}[-1]`;
+        case "ichimoku_price_below_base":
+          return `Close[-1] < ${baseLine}[-1]`;
+        case "ichimoku_conversion_above_base":
+          return `${convLine}[-1] > ${baseLine}[-1]`;
+        case "ichimoku_conversion_below_base":
+          return `${convLine}[-1] < ${baseLine}[-1]`;
+        // Lagging Span
+        case "ichimoku_lagging_above_price":
+          return `${lagging}[-1] > Close[-${disp + 1}]`;
+        case "ichimoku_lagging_below_price":
+          return `${lagging}[-1] < Close[-${disp + 1}]`;
+        case "ichimoku_lagging_crossed_above":
+          return `(${lagging}[-1] > Close[-${disp + 1}]) and (${lagging}[-2] <= Close[-${disp + 2}])`;
+        case "ichimoku_lagging_crossed_below":
+          return `(${lagging}[-1] < Close[-${disp + 1}]) and (${lagging}[-2] >= Close[-${disp + 2}])`;
         default:
           return "";
       }
@@ -397,11 +497,18 @@ export function conditionEntryToExpression(entry: ConditionEntry): string {
     case "sar": {
       const acc = params.sarAcceleration ?? 0.02;
       const maxAcc = params.sarMaxAcceleration ?? 0.2;
+      const sarFn = `sar(${acc}, ${maxAcc})`;
       switch (type) {
+        case "sar_value":
+          return `${sarFn}[-1]`;
         case "sar_price_above":
-          return `Close[-1] > sar(${acc}, ${maxAcc})[-1]`;
+          return `Close[-1] > ${sarFn}[-1]`;
         case "sar_price_below":
-          return `Close[-1] < sar(${acc}, ${maxAcc})[-1]`;
+          return `Close[-1] < ${sarFn}[-1]`;
+        case "sar_cross_above":
+          return `(Close[-1] > ${sarFn}[-1]) and (Close[-2] <= ${sarFn}[-2])`;
+        case "sar_cross_below":
+          return `(Close[-1] < ${sarFn}[-1]) and (Close[-2] >= ${sarFn}[-2])`;
         default:
           return "";
       }

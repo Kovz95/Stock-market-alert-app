@@ -160,12 +160,40 @@ const PIVOT_SR_TYPES: { value: PivotSRConditionType; label: string }[] = [
   { value: "pivot_sr_crossover_bullish", label: "Bullish crossover" },
   { value: "pivot_sr_crossover_bearish", label: "Bearish crossover" },
 ];
-const ICHIMOKU_TYPES: { value: IchimokuConditionType; label: string }[] = [
-  { value: "ichimoku_price_above_cloud", label: "Price above cloud" },
-  { value: "ichimoku_price_below_cloud", label: "Price below cloud" },
-  { value: "ichimoku_cloud_bullish", label: "Cloud bullish" },
-  { value: "ichimoku_cloud_bearish", label: "Cloud bearish" },
-  { value: "ichimoku_price_above_base", label: "Price above base line" },
+const ICHIMOKU_TYPES: { value: IchimokuConditionType; label: string; group: string }[] = [
+  // Price vs Cloud
+  { value: "ichimoku_price_above_cloud", label: "Price above cloud", group: "Price vs Cloud" },
+  { value: "ichimoku_price_below_cloud", label: "Price below cloud", group: "Price vs Cloud" },
+  { value: "ichimoku_price_in_cloud", label: "Price in cloud", group: "Price vs Cloud" },
+  { value: "ichimoku_price_entered_cloud_above", label: "Entered cloud (from above)", group: "Price vs Cloud" },
+  { value: "ichimoku_price_entered_cloud_below", label: "Entered cloud (from below)", group: "Price vs Cloud" },
+  { value: "ichimoku_price_entered_cloud_any", label: "Entered cloud (any direction)", group: "Price vs Cloud" },
+  { value: "ichimoku_price_crossed_above_cloud", label: "Crossed above cloud", group: "Price vs Cloud" },
+  { value: "ichimoku_price_crossed_below_cloud", label: "Crossed below cloud", group: "Price vs Cloud" },
+  // Line Crossovers
+  { value: "ichimoku_tk_cross_bull", label: "TK cross bullish", group: "Line Crossovers" },
+  { value: "ichimoku_tk_cross_bear", label: "TK cross bearish", group: "Line Crossovers" },
+  { value: "ichimoku_price_cross_above_conversion", label: "Price crosses above conversion", group: "Line Crossovers" },
+  { value: "ichimoku_price_cross_below_conversion", label: "Price crosses below conversion", group: "Line Crossovers" },
+  { value: "ichimoku_price_cross_above_base", label: "Price crosses above base", group: "Line Crossovers" },
+  { value: "ichimoku_price_cross_below_base", label: "Price crosses below base", group: "Line Crossovers" },
+  // Cloud Color
+  { value: "ichimoku_cloud_bullish", label: "Bullish cloud (green)", group: "Cloud Color" },
+  { value: "ichimoku_cloud_bearish", label: "Bearish cloud (red)", group: "Cloud Color" },
+  { value: "ichimoku_cloud_turned_bullish", label: "Cloud turned bullish", group: "Cloud Color" },
+  { value: "ichimoku_cloud_turned_bearish", label: "Cloud turned bearish", group: "Cloud Color" },
+  // Individual Lines
+  { value: "ichimoku_price_above_conversion", label: "Price above conversion line", group: "Individual Lines" },
+  { value: "ichimoku_price_below_conversion", label: "Price below conversion line", group: "Individual Lines" },
+  { value: "ichimoku_price_above_base", label: "Price above base line", group: "Individual Lines" },
+  { value: "ichimoku_price_below_base", label: "Price below base line", group: "Individual Lines" },
+  { value: "ichimoku_conversion_above_base", label: "Conversion above base", group: "Individual Lines" },
+  { value: "ichimoku_conversion_below_base", label: "Conversion below base", group: "Individual Lines" },
+  // Lagging Span
+  { value: "ichimoku_lagging_above_price", label: "Lagging span above price", group: "Lagging Span" },
+  { value: "ichimoku_lagging_below_price", label: "Lagging span below price", group: "Lagging Span" },
+  { value: "ichimoku_lagging_crossed_above", label: "Lagging span crossed above", group: "Lagging Span" },
+  { value: "ichimoku_lagging_crossed_below", label: "Lagging span crossed below", group: "Lagging Span" },
 ];
 const TREND_MAGIC_TYPES: { value: TrendMagicConditionType; label: string }[] = [
   { value: "trend_magic_bullish", label: "Bullish" },
@@ -176,8 +204,11 @@ const SUPERTREND_TYPES: { value: SupertrendConditionType; label: string }[] = [
   { value: "supertrend_downtrend", label: "Downtrend" },
 ];
 const SAR_TYPES: { value: SARConditionType; label: string }[] = [
+  { value: "sar_value", label: "SAR value" },
   { value: "sar_price_above", label: "Price above SAR" },
   { value: "sar_price_below", label: "Price below SAR" },
+  { value: "sar_cross_above", label: "Price crossed above SAR" },
+  { value: "sar_cross_below", label: "Price crossed below SAR" },
 ];
 const OBV_MACD_TYPES: { value: OBVMACDConditionType; label: string }[] = [
   { value: "obv_macd_positive", label: "OBV MACD > 0" },
@@ -272,6 +303,12 @@ function resolveParamsForAdd(
   if (category === "donchian") {
     p.donchianLength = p.donchianLength ?? 20;
     p.donchianOffset = p.donchianOffset ?? 0;
+  }
+  if (category === "ichimoku") {
+    p.ichConversion = p.ichConversion ?? 9;
+    p.ichBase = p.ichBase ?? 26;
+    p.ichSpanB = p.ichSpanB ?? 52;
+    p.ichDisplacement = p.ichDisplacement ?? 26;
   }
   if (category === "pivot_sr") {
     p.pivotLeftBars = p.pivotLeftBars ?? 5;
@@ -735,6 +772,79 @@ export function ConditionBuilder({ onAdd }: ConditionBuilderProps) {
                     setParams({
                       ...params,
                       donchianOffset: e.target.value !== "" ? Number(e.target.value) : undefined,
+                    })
+                  }
+                />
+              </FieldContent>
+            </Field>
+          </>
+        )}
+
+        {category === "ichimoku" && (
+          <>
+            <Field>
+              <FieldLabel>Conversion line period</FieldLabel>
+              <FieldContent>
+                <Input
+                  type="number"
+                  min={1}
+                  max={100}
+                  value={params.ichConversion ?? 9}
+                  onChange={(e) =>
+                    setParams({
+                      ...params,
+                      ichConversion: e.target.value ? Number(e.target.value) : undefined,
+                    })
+                  }
+                />
+              </FieldContent>
+            </Field>
+            <Field>
+              <FieldLabel>Base line period</FieldLabel>
+              <FieldContent>
+                <Input
+                  type="number"
+                  min={1}
+                  max={100}
+                  value={params.ichBase ?? 26}
+                  onChange={(e) =>
+                    setParams({
+                      ...params,
+                      ichBase: e.target.value ? Number(e.target.value) : undefined,
+                    })
+                  }
+                />
+              </FieldContent>
+            </Field>
+            <Field>
+              <FieldLabel>Span B period</FieldLabel>
+              <FieldContent>
+                <Input
+                  type="number"
+                  min={1}
+                  max={200}
+                  value={params.ichSpanB ?? 52}
+                  onChange={(e) =>
+                    setParams({
+                      ...params,
+                      ichSpanB: e.target.value ? Number(e.target.value) : undefined,
+                    })
+                  }
+                />
+              </FieldContent>
+            </Field>
+            <Field>
+              <FieldLabel>Displacement</FieldLabel>
+              <FieldContent>
+                <Input
+                  type="number"
+                  min={1}
+                  max={100}
+                  value={params.ichDisplacement ?? 26}
+                  onChange={(e) =>
+                    setParams({
+                      ...params,
+                      ichDisplacement: e.target.value ? Number(e.target.value) : undefined,
                     })
                   }
                 />
