@@ -21,7 +21,7 @@ import (
 const (
 	cycleInterval = 15 * time.Minute
 	dailyUnique   = 12 * time.Hour
-	hourlyUnique  = 30 * time.Minute
+	hourlyUnique  = 1 * time.Hour
 )
 
 // Scheduler runs scheduleAll on startup and every 15 minutes, enqueueing
@@ -89,21 +89,21 @@ func (s *Scheduler) Stop() {
 
 // isUniqueConflict returns true if err is asynq's "task already exists" from
 // the Unique option. That is expected when we re-run every 15 min and the
-// same task was already enqueued within the uniqueness window (12h daily, 30m hourly).
+// same task was already enqueued within the uniqueness window (12h daily, 1h hourly).
 func isUniqueConflict(err error) bool {
 	return err != nil && strings.Contains(err.Error(), "task already exists")
 }
 
 // scheduleAll iterates all exchanges (in deterministic order), and for each
 // exchange attempts to enqueue: (1) daily, (2) weekly if next daily run is
-// Friday, (3) hourly if the exchange is currently open. Each task type uses
-// Unique so duplicates within the window are skipped; failures for one type
-// do not skip the others. Tasks use ProcessAt and appear in Redis as
-// "scheduled" until run time.
+// Friday, (3) hourly at :05 past the next hour if the exchange is currently
+// open. Each task type uses Unique so duplicates within the window are skipped;
+// failures for one type do not skip the others. Tasks use ProcessAt and appear
+// in Redis as "scheduled" until run time.
 //
 // Hourly: scheduled_hourly can be 0 even when markets are open because we use
-// Unique(30min)—only one task per exchange per 30 min. Check open_exchanges in
-// the log: if > 0, hourly was considered and either newly enqueued or already enqueued.
+// Unique(1h)—only one task per exchange per hour. Check open_exchanges in the
+// log: if > 0, hourly was considered and either newly enqueued or already enqueued.
 func (s *Scheduler) scheduleAll(ctx context.Context) {
 	now := time.Now().UTC()
 	exchanges := make([]string, 0, len(calendar.ExchangeSchedules))
@@ -182,8 +182,7 @@ func (s *Scheduler) scheduleAll(ctx context.Context) {
 			openExchangeCount++
 			payloadHourly, _ := json.Marshal(tasks.Payload{Exchange: exchange, Timeframe: "hourly"})
 			taskHourly := asynq.NewTask(tasks.TypeHourly, payloadHourly)
-			// Schedule for 30 min from now so the task stays visible in "scheduled" until run time.
-			nextHourly := now.Add(hourlyUnique)
+			nextHourly := now.Truncate(time.Hour).Add(time.Hour + 5*time.Minute)
 			_, err = s.client.EnqueueContext(ctx, taskHourly, asynq.ProcessAt(nextHourly), asynq.Unique(hourlyUnique))
 			if err != nil {
 				if isUniqueConflict(err) {
