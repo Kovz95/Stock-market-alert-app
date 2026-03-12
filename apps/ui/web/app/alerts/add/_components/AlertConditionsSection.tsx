@@ -1,5 +1,6 @@
 "use client";
 
+import { useAtomValue, useSetAtom } from "jotai";
 import {
   Field,
   FieldGroup,
@@ -17,26 +18,23 @@ import {
 import { type ConditionEntry } from "./types";
 import { ConditionBuilder } from "./ConditionBuilder";
 import { ConditionRow } from "./ConditionRow";
+import {
+  addAlertConditionsAtom,
+  addAlertCombinationLogicAtom,
+} from "@/lib/store/add-alert";
 
-export interface AlertConditionsSectionProps {
-  conditions: ConditionEntry[];
-  onConditionsChange: (conditions: ConditionEntry[]) => void;
-  combinationLogic: "AND" | "OR";
-  onCombinationLogicChange: (v: "AND" | "OR") => void;
-}
+export function AlertConditionsSection() {
+  const conditions = useAtomValue(addAlertConditionsAtom);
+  const setConditions = useSetAtom(addAlertConditionsAtom);
+  const combinationLogic = useAtomValue(addAlertCombinationLogicAtom);
+  const setCombinationLogic = useSetAtom(addAlertCombinationLogicAtom);
 
-export function AlertConditionsSection({
-  conditions,
-  onConditionsChange,
-  combinationLogic,
-  onCombinationLogicChange,
-}: AlertConditionsSectionProps) {
   const handleAdd = (entry: ConditionEntry) => {
-    onConditionsChange([...conditions, entry]);
+    setConditions([...conditions, entry]);
   };
 
   const handleRemove = (id: string) => {
-    onConditionsChange(conditions.filter((c) => c.id !== id));
+    setConditions(conditions.filter((c) => c.id !== id));
   };
 
   return (
@@ -46,7 +44,7 @@ export function AlertConditionsSection({
         <FieldContent>
           <Select
             value={combinationLogic}
-            onValueChange={(v) => onCombinationLogicChange(v as "AND" | "OR")}
+            onValueChange={(v) => setCombinationLogic(v as "AND" | "OR")}
           >
             <SelectTrigger className="w-full max-w-[120px]">
               <SelectValue />

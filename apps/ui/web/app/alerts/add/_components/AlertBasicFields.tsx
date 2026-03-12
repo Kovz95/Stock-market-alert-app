@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useAtomValue, useSetAtom } from "jotai";
 import {
   Field,
   FieldGroup,
@@ -35,43 +36,38 @@ import {
 } from "./constants";
 import { countSymbolsByFilters } from "@/actions/stock-database-actions";
 import { Badge } from "@/components/ui/badge";
-import type { IndustryFilters, AssetType, EtfFilters } from "./types";
+import type { AssetType } from "./types";
+import {
+  addAlertNameAtom,
+  addAlertTimeframeAtom,
+  addAlertExchangesAtom,
+  addAlertCountryAtom,
+  addAlertAssetTypeAtom,
+  addAlertIndustryFiltersAtom,
+  addAlertEtfFiltersAtom,
+  addAlertFilteredSymbolCountAtom,
+} from "@/lib/store/add-alert";
 
-export interface AlertBasicFieldsProps {
-  name: string;
-  onNameChange: (v: string) => void;
-  timeframe: string;
-  onTimeframeChange: (v: string) => void;
-  exchanges: string[];
-  onExchangesChange: (v: string[]) => void;
-  country: string;
-  onCountryChange: (v: string) => void;
-  assetType: AssetType;
-  onAssetTypeChange: (v: AssetType) => void;
-  industryFilters: IndustryFilters;
-  etfFilters: EtfFilters;
-  onSymbolCountChange?: (count: number) => void;
-}
+export function AlertBasicFields() {
+  const name = useAtomValue(addAlertNameAtom);
+  const setName = useSetAtom(addAlertNameAtom);
+  const timeframe = useAtomValue(addAlertTimeframeAtom);
+  const setTimeframe = useSetAtom(addAlertTimeframeAtom);
+  const exchanges = useAtomValue(addAlertExchangesAtom);
+  const setExchanges = useSetAtom(addAlertExchangesAtom);
+  const country = useAtomValue(addAlertCountryAtom);
+  const setCountry = useSetAtom(addAlertCountryAtom);
+  const assetType = useAtomValue(addAlertAssetTypeAtom);
+  const setAssetType = useSetAtom(addAlertAssetTypeAtom);
+  const industryFilters = useAtomValue(addAlertIndustryFiltersAtom);
+  const etfFilters = useAtomValue(addAlertEtfFiltersAtom);
+  const setFilteredSymbolCount = useSetAtom(addAlertFilteredSymbolCountAtom);
 
-export function AlertBasicFields({
-  name,
-  onNameChange,
-  timeframe,
-  onTimeframeChange,
-  exchanges,
-  onExchangesChange,
-  country,
-  onCountryChange,
-  assetType,
-  onAssetTypeChange,
-  industryFilters,
-  etfFilters,
-  onSymbolCountChange,
-}: AlertBasicFieldsProps) {
   const [symbolCount, setSymbolCount] = useState<number | null>(null);
   const [isCountingSymbols, setIsCountingSymbols] = useState(false);
 
   useEffect(() => {
+    let cancelled = false;
     const fetchCount = async () => {
       setIsCountingSymbols(true);
       try {
@@ -80,37 +76,42 @@ export function AlertBasicFields({
           country,
           assetType,
           industry: industryFilters,
-          etf: assetType !== "Stocks" ? {
-            etfIssuers: etfFilters.etfIssuers,
-            assetClasses: etfFilters.assetClasses,
-            etfFocuses: etfFilters.etfFocuses,
-            etfNiches: etfFilters.etfNiches,
-          } : undefined,
+          etf:
+            assetType !== "Stocks"
+              ? {
+                  etfIssuers: etfFilters.etfIssuers,
+                  assetClasses: etfFilters.assetClasses,
+                  etfFocuses: etfFilters.etfFocuses,
+                  etfNiches: etfFilters.etfNiches,
+                }
+              : undefined,
         });
-        if (!result.error) {
+        if (!cancelled && !result.error) {
           setSymbolCount(result.count);
-          onSymbolCountChange?.(result.count);
+          setFilteredSymbolCount(result.count);
         }
       } catch (err) {
         console.error("Failed to count symbols:", err);
       } finally {
-        setIsCountingSymbols(false);
+        if (!cancelled) setIsCountingSymbols(false);
       }
     };
-
     fetchCount();
-  }, [exchanges, country, assetType, industryFilters, etfFilters, onSymbolCountChange]);
+    return () => {
+      cancelled = true;
+    };
+  }, [exchanges, country, assetType, industryFilters, etfFilters, setFilteredSymbolCount]);
 
   const showSymbolCount = symbolCount !== null;
   const exchangeAnchor = useComboboxAnchor();
 
   const handleExchangeChange = (value: string | string[] | null) => {
     if (Array.isArray(value)) {
-      onExchangesChange(value);
+      setExchanges(value);
     } else if (value) {
-      onExchangesChange([value]);
+      setExchanges([value]);
     } else {
-      onExchangesChange([]);
+      setExchanges([]);
     }
   };
 
@@ -122,14 +123,14 @@ export function AlertBasicFields({
           <Input
             placeholder="e.g. AAPL Price Alert"
             value={name}
-            onChange={(e) => onNameChange(e.target.value)}
+            onChange={(e) => setName(e.target.value)}
           />
         </FieldContent>
       </Field>
       <Field>
         <FieldLegend>Timeframe</FieldLegend>
         <FieldContent>
-          <Select value={timeframe} onValueChange={onTimeframeChange}>
+          <Select value={timeframe} onValueChange={setTimeframe}>
             <SelectTrigger className="w-full">
               <SelectValue />
             </SelectTrigger>
@@ -149,14 +150,12 @@ export function AlertBasicFields({
           <Combobox
             value={exchanges}
             onValueChange={handleExchangeChange}
-            items={EXCHANGES.map(ex => ({ value: ex, label: ex }))}
+            items={EXCHANGES.map((ex) => ({ value: ex, label: ex }))}
             multiple
           >
             <ComboboxChips ref={exchangeAnchor}>
               {exchanges.map((ex) => (
-                <ComboboxChip key={ex}>
-                  {ex}
-                </ComboboxChip>
+                <ComboboxChip key={ex}>{ex}</ComboboxChip>
               ))}
               <ComboboxChipsInput placeholder="Select exchanges..." />
             </ComboboxChips>
@@ -176,7 +175,7 @@ export function AlertBasicFields({
       <Field>
         <FieldLegend>Country</FieldLegend>
         <FieldContent>
-          <Select value={country} onValueChange={onCountryChange}>
+          <Select value={country} onValueChange={setCountry}>
             <SelectTrigger className="w-full">
               <SelectValue />
             </SelectTrigger>
@@ -193,7 +192,10 @@ export function AlertBasicFields({
       <Field>
         <FieldLegend>Asset type</FieldLegend>
         <FieldContent>
-          <Select value={assetType} onValueChange={(v) => onAssetTypeChange(v as AssetType)}>
+          <Select
+            value={assetType}
+            onValueChange={(v) => setAssetType(v as AssetType)}
+          >
             <SelectTrigger className="w-full">
               <SelectValue />
             </SelectTrigger>
@@ -220,19 +222,21 @@ export function AlertBasicFields({
           </div>
           <p className="mt-1 text-xs text-muted-foreground">
             {(() => {
-              const validExchanges = exchanges.filter(e => e !== "All");
+              const validExchanges = exchanges.filter((e) => e !== "All");
               const hasExchangeFilter = validExchanges.length > 0;
               const hasCountryFilter = country !== "All";
 
               if (hasExchangeFilter && hasCountryFilter) {
-                const exchangeText = validExchanges.length === 1
-                  ? validExchanges[0]
-                  : `${validExchanges.length} exchanges (${validExchanges.join(", ")})`;
+                const exchangeText =
+                  validExchanges.length === 1
+                    ? validExchanges[0]
+                    : `${validExchanges.length} exchanges (${validExchanges.join(", ")})`;
                 return `Showing symbols from ${exchangeText} in ${COUNTRY_CODE_TO_NAME[country] ?? country}`;
               } else if (hasExchangeFilter) {
-                const exchangeText = validExchanges.length === 1
-                  ? validExchanges[0]
-                  : `${validExchanges.length} exchanges (${validExchanges.join(", ")})`;
+                const exchangeText =
+                  validExchanges.length === 1
+                    ? validExchanges[0]
+                    : `${validExchanges.length} exchanges (${validExchanges.join(", ")})`;
                 return `Showing symbols from ${exchangeText}`;
               } else if (hasCountryFilter) {
                 return `Showing symbols in ${COUNTRY_CODE_TO_NAME[country] ?? country}`;

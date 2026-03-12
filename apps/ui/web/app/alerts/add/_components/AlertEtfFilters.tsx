@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
+import { useAtomValue, useSetAtom } from "jotai";
 import {
   Field,
   FieldGroup,
@@ -24,13 +25,11 @@ import {
   type EtfFilterValues,
 } from "@/actions/stock-database-actions";
 import type { EtfFilters } from "./types";
-
-export interface AlertEtfFiltersProps {
-  exchanges: string[];
-  country: string;
-  filters: EtfFilters;
-  onFiltersChange: (filters: EtfFilters) => void;
-}
+import {
+  addAlertExchangesAtom,
+  addAlertCountryAtom,
+  addAlertEtfFiltersAtom,
+} from "@/lib/store/add-alert";
 
 type EtfFilterLevel = keyof EtfFilters;
 
@@ -48,12 +47,12 @@ const EMPTY_OPTIONS: EtfFilterOptions = {
   etfNiches: [],
 };
 
-export function AlertEtfFilters({
-  exchanges,
-  country,
-  filters,
-  onFiltersChange,
-}: AlertEtfFiltersProps) {
+export function AlertEtfFilters() {
+  const exchanges = useAtomValue(addAlertExchangesAtom);
+  const country = useAtomValue(addAlertCountryAtom);
+  const filters = useAtomValue(addAlertEtfFiltersAtom);
+  const setFilters = useSetAtom(addAlertEtfFiltersAtom);
+
   const [options, setOptions] = useState<EtfFilterOptions>(EMPTY_OPTIONS);
   const [loading, setLoading] = useState(false);
   const fetchIdRef = useRef(0);
@@ -109,7 +108,7 @@ export function AlertEtfFilters({
       updated[FILTER_LEVELS[i].key] = [];
     }
 
-    onFiltersChange(updated);
+    setFilters(updated);
   };
 
   const hasAnyFilter = FILTER_LEVELS.some((l) => filters[l.key].length > 0);
@@ -123,7 +122,7 @@ export function AlertEtfFilters({
             type="button"
             className="text-xs text-muted-foreground hover:text-foreground underline"
             onClick={() =>
-              onFiltersChange({
+              setFilters({
                 etfIssuers: [],
                 assetClasses: [],
                 etfFocuses: [],

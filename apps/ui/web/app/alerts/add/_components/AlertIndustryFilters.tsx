@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
+import { useAtomValue, useSetAtom } from "jotai";
 import {
   Field,
   FieldGroup,
@@ -24,13 +25,11 @@ import {
   type IndustryFilterValues,
 } from "@/actions/stock-database-actions";
 import type { IndustryFilters } from "./types";
-
-export interface AlertIndustryFiltersProps {
-  exchanges: string[];
-  country: string;
-  filters: IndustryFilters;
-  onFiltersChange: (filters: IndustryFilters) => void;
-}
+import {
+  addAlertExchangesAtom,
+  addAlertCountryAtom,
+  addAlertIndustryFiltersAtom,
+} from "@/lib/store/add-alert";
 
 type FilterLevel = keyof IndustryFilters;
 
@@ -52,12 +51,12 @@ const EMPTY_OPTIONS: IndustryFilterOptions = {
   subindustries: [],
 };
 
-export function AlertIndustryFilters({
-  exchanges,
-  country,
-  filters,
-  onFiltersChange,
-}: AlertIndustryFiltersProps) {
+export function AlertIndustryFilters() {
+  const exchanges = useAtomValue(addAlertExchangesAtom);
+  const country = useAtomValue(addAlertCountryAtom);
+  const filters = useAtomValue(addAlertIndustryFiltersAtom);
+  const setFilters = useSetAtom(addAlertIndustryFiltersAtom);
+
   const [options, setOptions] = useState<IndustryFilterOptions>(EMPTY_OPTIONS);
   const [loading, setLoading] = useState(false);
   const fetchIdRef = useRef(0);
@@ -119,7 +118,7 @@ export function AlertIndustryFilters({
       updated[FILTER_LEVELS[i].key] = [];
     }
 
-    onFiltersChange(updated);
+    setFilters(updated);
   };
 
   const hasAnyFilter = FILTER_LEVELS.some((l) => filters[l.key].length > 0);
@@ -133,7 +132,7 @@ export function AlertIndustryFilters({
             type="button"
             className="text-xs text-muted-foreground hover:text-foreground underline"
             onClick={() =>
-              onFiltersChange({
+              setFilters({
                 economies: [],
                 sectors: [],
                 subsectors: [],

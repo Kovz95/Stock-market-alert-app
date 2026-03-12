@@ -1,5 +1,6 @@
 "use client";
 
+import { useAtomValue, useSetAtom } from "jotai";
 import {
   Field,
   FieldGroup,
@@ -15,46 +16,37 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  addAlertIsRatioAtom,
+  addAlertTickerAtom,
+  addAlertStockNameAtom,
+  addAlertTicker1Atom,
+  addAlertTicker2Atom,
+  addAlertStockName1Atom,
+  addAlertStockName2Atom,
+  addAlertAdjustmentMethodAtom,
+} from "@/lib/store/add-alert";
 
 const ADJUSTMENT_METHODS = ["None", "split", "dividend"] as const;
 
-export interface AlertTickerSectionProps {
-  isRatio: boolean;
-  onRatioChange: (v: boolean) => void;
-  ticker: string;
-  onTickerChange: (v: string) => void;
-  stockName: string;
-  onStockNameChange: (v: string) => void;
-  ticker1: string;
-  onTicker1Change: (v: string) => void;
-  ticker2: string;
-  onTicker2Change: (v: string) => void;
-  stockName1: string;
-  onStockName1Change: (v: string) => void;
-  stockName2: string;
-  onStockName2Change: (v: string) => void;
-  adjustmentMethod: string;
-  onAdjustmentMethodChange: (v: string) => void;
-}
+export function AlertTickerSection() {
+  const isRatio = useAtomValue(addAlertIsRatioAtom);
+  const setIsRatio = useSetAtom(addAlertIsRatioAtom);
+  const ticker = useAtomValue(addAlertTickerAtom);
+  const setTicker = useSetAtom(addAlertTickerAtom);
+  const stockName = useAtomValue(addAlertStockNameAtom);
+  const setStockName = useSetAtom(addAlertStockNameAtom);
+  const ticker1 = useAtomValue(addAlertTicker1Atom);
+  const setTicker1 = useSetAtom(addAlertTicker1Atom);
+  const ticker2 = useAtomValue(addAlertTicker2Atom);
+  const setTicker2 = useSetAtom(addAlertTicker2Atom);
+  const stockName1 = useAtomValue(addAlertStockName1Atom);
+  const setStockName1 = useSetAtom(addAlertStockName1Atom);
+  const stockName2 = useAtomValue(addAlertStockName2Atom);
+  const setStockName2 = useSetAtom(addAlertStockName2Atom);
+  const adjustmentMethod = useAtomValue(addAlertAdjustmentMethodAtom);
+  const setAdjustmentMethod = useSetAtom(addAlertAdjustmentMethodAtom);
 
-export function AlertTickerSection({
-  isRatio,
-  onRatioChange,
-  ticker,
-  onTickerChange,
-  stockName,
-  onStockNameChange,
-  ticker1,
-  onTicker1Change,
-  ticker2,
-  onTicker2Change,
-  stockName1,
-  onStockName1Change,
-  stockName2,
-  onStockName2Change,
-  adjustmentMethod,
-  onAdjustmentMethodChange,
-}: AlertTickerSectionProps) {
   return (
     <FieldGroup>
       <Field>
@@ -62,7 +54,7 @@ export function AlertTickerSection({
         <FieldContent>
           <Select
             value={isRatio ? "Yes" : "No"}
-            onValueChange={(v) => onRatioChange(v === "Yes")}
+            onValueChange={(v) => setIsRatio(v === "Yes")}
           >
             <SelectTrigger className="w-full">
               <SelectValue />
@@ -83,7 +75,7 @@ export function AlertTickerSection({
               <Input
                 placeholder="e.g. Apple Inc."
                 value={stockName}
-                onChange={(e) => onStockNameChange(e.target.value)}
+                onChange={(e) => setStockName(e.target.value)}
               />
             </FieldContent>
           </Field>
@@ -93,7 +85,7 @@ export function AlertTickerSection({
               <Input
                 placeholder="e.g. AAPL"
                 value={ticker}
-                onChange={(e) => onTickerChange(e.target.value)}
+                onChange={(e) => setTicker(e.target.value)}
               />
             </FieldContent>
           </Field>
@@ -106,7 +98,7 @@ export function AlertTickerSection({
               <Input
                 placeholder="e.g. SPY"
                 value={stockName1}
-                onChange={(e) => onStockName1Change(e.target.value)}
+                onChange={(e) => setStockName1(e.target.value)}
               />
             </FieldContent>
           </Field>
@@ -116,7 +108,7 @@ export function AlertTickerSection({
               <Input
                 placeholder="e.g. SPY"
                 value={ticker1}
-                onChange={(e) => onTicker1Change(e.target.value)}
+                onChange={(e) => setTicker1(e.target.value)}
               />
             </FieldContent>
           </Field>
@@ -126,7 +118,7 @@ export function AlertTickerSection({
               <Input
                 placeholder="e.g. QQQ"
                 value={stockName2}
-                onChange={(e) => onStockName2Change(e.target.value)}
+                onChange={(e) => setStockName2(e.target.value)}
               />
             </FieldContent>
           </Field>
@@ -136,7 +128,7 @@ export function AlertTickerSection({
               <Input
                 placeholder="e.g. QQQ"
                 value={ticker2}
-                onChange={(e) => onTicker2Change(e.target.value)}
+                onChange={(e) => setTicker2(e.target.value)}
               />
             </FieldContent>
           </Field>
@@ -145,7 +137,7 @@ export function AlertTickerSection({
             <FieldContent>
               <Select
                 value={adjustmentMethod || "None"}
-                onValueChange={onAdjustmentMethodChange}
+                onValueChange={setAdjustmentMethod}
               >
                 <SelectTrigger className="w-full">
                   <SelectValue />
