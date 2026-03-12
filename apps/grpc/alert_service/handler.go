@@ -320,6 +320,34 @@ func (s *Server) DeleteAlert(ctx context.Context, req *alertv1.DeleteAlertReques
 	return &alertv1.DeleteAlertResponse{}, nil
 }
 
+func (s *Server) BulkDeleteAlerts(ctx context.Context, req *alertv1.BulkDeleteAlertsRequest) (*alertv1.BulkDeleteAlertsResponse, error) {
+	if len(req.GetAlertIds()) == 0 {
+		return &alertv1.BulkDeleteAlertsResponse{DeletedCount: 0}, nil
+	}
+
+	uuids := make([]pgtype.UUID, 0, len(req.GetAlertIds()))
+	for _, id := range req.GetAlertIds() {
+		u, err := parseUUID(id)
+		if err != nil {
+			return nil, status.Errorf(codes.InvalidArgument, "invalid alert_id %q: %v", id, err)
+		}
+		uuids = append(uuids, u)
+	}
+
+	conn, err := s.pool.Acquire(ctx)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to acquire connection: %v", err)
+	}
+	defer conn.Release()
+
+	deleted, err := db.New(conn).BulkDeleteAlerts(ctx, uuids)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to bulk delete alerts: %v", err)
+	}
+
+	return &alertv1.BulkDeleteAlertsResponse{DeletedCount: int32(deleted)}, nil
+}
+
 func (s *Server) BulkUpdateLastTriggered(ctx context.Context, req *alertv1.BulkUpdateLastTriggeredRequest) (*alertv1.BulkUpdateLastTriggeredResponse, error) {
 	conn, err := s.pool.Acquire(ctx)
 	if err != nil {

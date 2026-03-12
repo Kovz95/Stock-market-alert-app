@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useAtomValue, useSetAtom } from "jotai";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,33 +12,28 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { FullStockMetadataRow } from "@/actions/stock-database-actions";
 import type { AssetTypeFilter } from "@/app/database/stock/_components/types";
 import type { DeleteAlertsFiltersState } from "./types";
 import {
   CONDITION_TYPE_OPTIONS,
   TIMEFRAME_OPTIONS,
   TRIGGERED_FILTER_OPTIONS,
+  defaultDeleteAlertsFilters,
 } from "./types";
 import { Trash2Icon } from "lucide-react";
-import { defaultDeleteAlertsFilters } from "./types";
-
-type DeleteAlertsFiltersProps = {
-  stockData: FullStockMetadataRow[];
-  filters: DeleteAlertsFiltersState;
-  onFiltersChange: (f: DeleteAlertsFiltersState) => void;
-};
+import { useFullStockMetadata } from "@/lib/hooks/useStockDatabase";
+import { deleteAlertsFiltersAtom } from "@/lib/store/delete-alerts";
 
 function uniqueSorted(arr: (string | undefined)[]): string[] {
   const set = new Set(arr.filter((x): x is string => !!x));
   return Array.from(set).sort();
 }
 
-export function DeleteAlertsFilters({
-  stockData,
-  filters,
-  onFiltersChange,
-}: DeleteAlertsFiltersProps) {
+export function DeleteAlertsFilters() {
+  const { data: stockData = [] } = useFullStockMetadata();
+  const filters = useAtomValue(deleteAlertsFiltersAtom);
+  const setFilters = useSetAtom(deleteAlertsFiltersAtom);
+
   const stocksOnly = React.useMemo(
     () => stockData.filter((r) => r.assetType === "Stock" || (r.rbicsEconomy && !r.etfIssuer)),
     [stockData]
@@ -123,11 +119,11 @@ export function DeleteAlertsFilters({
   }, [etfsOnly, filters.focuses, filters.assetClasses, filters.issuers]);
 
   const update = (patch: Partial<DeleteAlertsFiltersState>) => {
-    onFiltersChange({ ...filters, ...patch });
+    setFilters({ ...filters, ...patch });
   };
 
   const clearAll = () => {
-    onFiltersChange({ ...defaultDeleteAlertsFilters });
+    setFilters({ ...defaultDeleteAlertsFilters });
   };
 
   const multi = (

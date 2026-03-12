@@ -152,6 +152,15 @@ message DeleteAlertRequest {
 
 message DeleteAlertResponse {}
 
+// BulkDeleteAlerts
+message BulkDeleteAlertsRequest {
+  repeated string alert_ids = 1;
+}
+
+message BulkDeleteAlertsResponse {
+  int32 deleted_count = 1;
+}
+
 // BulkUpdateLastTriggered
 message BulkUpdateLastTriggeredRequest {
   message AlertTrigger {
@@ -453,6 +462,7 @@ service AlertService {
   rpc CreateAlert(CreateAlertRequest) returns (CreateAlertResponse);
   rpc UpdateAlert(UpdateAlertRequest) returns (UpdateAlertResponse);
   rpc DeleteAlert(DeleteAlertRequest) returns (DeleteAlertResponse);
+  rpc BulkDeleteAlerts(BulkDeleteAlertsRequest) returns (BulkDeleteAlertsResponse);
   rpc BulkUpdateLastTriggered(BulkUpdateLastTriggeredRequest) returns (BulkUpdateLastTriggeredResponse);
 
   // Audit logs

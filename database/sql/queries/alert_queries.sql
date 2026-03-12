@@ -75,6 +75,9 @@ RETURNING *;
 -- name: DeleteAlert :exec
 DELETE FROM alerts WHERE alert_id = $1;
 
+-- name: BulkDeleteAlerts :execrows
+DELETE FROM alerts WHERE alert_id = ANY($1::uuid[]);
+
 -- name: BulkUpdateLastTriggered :exec
 UPDATE alerts SET
     last_triggered = $2,

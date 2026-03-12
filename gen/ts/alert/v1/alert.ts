@@ -164,6 +164,15 @@ export interface DeleteAlertRequest {
 export interface DeleteAlertResponse {
 }
 
+/** BulkDeleteAlerts */
+export interface BulkDeleteAlertsRequest {
+  alertIds: string[];
+}
+
+export interface BulkDeleteAlertsResponse {
+  deletedCount: number;
+}
+
 /** BulkUpdateLastTriggered */
 export interface BulkUpdateLastTriggeredRequest {
   triggers: BulkUpdateLastTriggeredRequest_AlertTrigger[];
@@ -2830,6 +2839,134 @@ export const DeleteAlertResponse: MessageFns<DeleteAlertResponse> = {
   },
   fromPartial<I extends Exact<DeepPartial<DeleteAlertResponse>, I>>(_: I): DeleteAlertResponse {
     const message = createBaseDeleteAlertResponse();
+    return message;
+  },
+};
+
+function createBaseBulkDeleteAlertsRequest(): BulkDeleteAlertsRequest {
+  return { alertIds: [] };
+}
+
+export const BulkDeleteAlertsRequest: MessageFns<BulkDeleteAlertsRequest> = {
+  encode(message: BulkDeleteAlertsRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    for (const v of message.alertIds) {
+      writer.uint32(10).string(v!);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): BulkDeleteAlertsRequest {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseBulkDeleteAlertsRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.alertIds.push(reader.string());
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): BulkDeleteAlertsRequest {
+    return {
+      alertIds: globalThis.Array.isArray(object?.alertIds)
+        ? object.alertIds.map((e: any) => globalThis.String(e))
+        : globalThis.Array.isArray(object?.alert_ids)
+        ? object.alert_ids.map((e: any) => globalThis.String(e))
+        : [],
+    };
+  },
+
+  toJSON(message: BulkDeleteAlertsRequest): unknown {
+    const obj: any = {};
+    if (message.alertIds?.length) {
+      obj.alertIds = message.alertIds;
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<BulkDeleteAlertsRequest>, I>>(base?: I): BulkDeleteAlertsRequest {
+    return BulkDeleteAlertsRequest.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<BulkDeleteAlertsRequest>, I>>(object: I): BulkDeleteAlertsRequest {
+    const message = createBaseBulkDeleteAlertsRequest();
+    message.alertIds = object.alertIds?.map((e) => e) || [];
+    return message;
+  },
+};
+
+function createBaseBulkDeleteAlertsResponse(): BulkDeleteAlertsResponse {
+  return { deletedCount: 0 };
+}
+
+export const BulkDeleteAlertsResponse: MessageFns<BulkDeleteAlertsResponse> = {
+  encode(message: BulkDeleteAlertsResponse, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.deletedCount !== 0) {
+      writer.uint32(8).int32(message.deletedCount);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): BulkDeleteAlertsResponse {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseBulkDeleteAlertsResponse();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 8) {
+            break;
+          }
+
+          message.deletedCount = reader.int32();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): BulkDeleteAlertsResponse {
+    return {
+      deletedCount: isSet(object.deletedCount)
+        ? globalThis.Number(object.deletedCount)
+        : isSet(object.deleted_count)
+        ? globalThis.Number(object.deleted_count)
+        : 0,
+    };
+  },
+
+  toJSON(message: BulkDeleteAlertsResponse): unknown {
+    const obj: any = {};
+    if (message.deletedCount !== 0) {
+      obj.deletedCount = Math.round(message.deletedCount);
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<BulkDeleteAlertsResponse>, I>>(base?: I): BulkDeleteAlertsResponse {
+    return BulkDeleteAlertsResponse.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<BulkDeleteAlertsResponse>, I>>(object: I): BulkDeleteAlertsResponse {
+    const message = createBaseBulkDeleteAlertsResponse();
+    message.deletedCount = object.deletedCount ?? 0;
     return message;
   },
 };
@@ -7499,6 +7636,14 @@ export const AlertServiceDefinition = {
       responseStream: false,
       options: {},
     },
+    bulkDeleteAlerts: {
+      name: "BulkDeleteAlerts",
+      requestType: BulkDeleteAlertsRequest,
+      requestStream: false,
+      responseType: BulkDeleteAlertsResponse,
+      responseStream: false,
+      options: {},
+    },
     bulkUpdateLastTriggered: {
       name: "BulkUpdateLastTriggered",
       requestType: BulkUpdateLastTriggeredRequest,
@@ -7676,6 +7821,10 @@ export interface AlertServiceImplementation<CallContextExt = {}> {
     request: DeleteAlertRequest,
     context: CallContext & CallContextExt,
   ): Promise<DeepPartial<DeleteAlertResponse>>;
+  bulkDeleteAlerts(
+    request: BulkDeleteAlertsRequest,
+    context: CallContext & CallContextExt,
+  ): Promise<DeepPartial<BulkDeleteAlertsResponse>>;
   bulkUpdateLastTriggered(
     request: BulkUpdateLastTriggeredRequest,
     context: CallContext & CallContextExt,
@@ -7780,6 +7929,10 @@ export interface AlertServiceClient<CallOptionsExt = {}> {
     request: DeepPartial<DeleteAlertRequest>,
     options?: CallOptions & CallOptionsExt,
   ): Promise<DeleteAlertResponse>;
+  bulkDeleteAlerts(
+    request: DeepPartial<BulkDeleteAlertsRequest>,
+    options?: CallOptions & CallOptionsExt,
+  ): Promise<BulkDeleteAlertsResponse>;
   bulkUpdateLastTriggered(
     request: DeepPartial<BulkUpdateLastTriggeredRequest>,
     options?: CallOptions & CallOptionsExt,

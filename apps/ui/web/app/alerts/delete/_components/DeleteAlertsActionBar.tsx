@@ -1,27 +1,31 @@
 "use client";
 
+import { useAtomValue, useSetAtom } from "jotai";
 import { Button } from "@/components/ui/button";
 import { Trash2Icon } from "lucide-react";
+import {
+  deleteAlertsSelectedAtom,
+  deleteAlertsIsSelectingAllAtom,
+  deleteAlertsConfirmOpenAtom,
+} from "@/lib/store/delete-alerts";
 
 type DeleteAlertsActionBarProps = {
-  selectedCount: number;
   totalFiltered: number;
   pageCount: number;
-  isSelectingAll?: boolean;
   onSelectAllFiltered: () => void | Promise<void>;
-  onClearSelection: () => void;
-  onDelete: () => void;
 };
 
 export function DeleteAlertsActionBar({
-  selectedCount,
   totalFiltered,
   pageCount,
-  isSelectingAll = false,
   onSelectAllFiltered,
-  onClearSelection,
-  onDelete,
 }: DeleteAlertsActionBarProps) {
+  const selected = useAtomValue(deleteAlertsSelectedAtom);
+  const selectedCount = selected.size;
+  const isSelectingAll = useAtomValue(deleteAlertsIsSelectingAllAtom);
+  const setSelected = useSetAtom(deleteAlertsSelectedAtom);
+  const setConfirmOpen = useSetAtom(deleteAlertsConfirmOpenAtom);
+
   if (totalFiltered === 0) return null;
 
   return (
@@ -44,7 +48,7 @@ export function DeleteAlertsActionBar({
         <Button
           variant="outline"
           size="sm"
-          onClick={onClearSelection}
+          onClick={() => setSelected(new Set())}
           disabled={selectedCount === 0}
         >
           Clear selection
@@ -52,7 +56,7 @@ export function DeleteAlertsActionBar({
         <Button
           variant="destructive"
           size="sm"
-          onClick={onDelete}
+          onClick={() => setConfirmOpen(true)}
           disabled={selectedCount === 0}
         >
           <Trash2Icon className="size-4 mr-1" />

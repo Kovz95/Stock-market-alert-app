@@ -11,6 +11,18 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const bulkDeleteAlerts = `-- name: BulkDeleteAlerts :execrows
+DELETE FROM alerts WHERE alert_id = ANY($1::uuid[])
+`
+
+func (q *Queries) BulkDeleteAlerts(ctx context.Context, dollar_1 []pgtype.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, bulkDeleteAlerts, dollar_1)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const bulkUpdateLastTriggered = `-- name: BulkUpdateLastTriggered :exec
 UPDATE alerts SET
     last_triggered = $2,

@@ -8,6 +8,7 @@ import {
   createAlertsBulk,
   updateAlert,
   deleteAlert,
+  bulkDeleteAlerts,
   searchAlerts,
 } from "@/actions/alert-actions";
 import type { SearchAlertsFilters } from "@/actions/alert-actions";
@@ -97,6 +98,16 @@ export function useDeleteAlert() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: deleteAlert,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ALERTS_KEY });
+    },
+  });
+}
+
+export function useBulkDeleteAlerts() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (alertIds: string[]) => bulkDeleteAlerts(alertIds),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ALERTS_KEY });
     },

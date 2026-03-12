@@ -26,6 +26,7 @@ const (
 	AlertService_CreateAlert_FullMethodName               = "/stockalert.alert.v1.AlertService/CreateAlert"
 	AlertService_UpdateAlert_FullMethodName               = "/stockalert.alert.v1.AlertService/UpdateAlert"
 	AlertService_DeleteAlert_FullMethodName               = "/stockalert.alert.v1.AlertService/DeleteAlert"
+	AlertService_BulkDeleteAlerts_FullMethodName          = "/stockalert.alert.v1.AlertService/BulkDeleteAlerts"
 	AlertService_BulkUpdateLastTriggered_FullMethodName   = "/stockalert.alert.v1.AlertService/BulkUpdateLastTriggered"
 	AlertService_GetDashboardStats_FullMethodName         = "/stockalert.alert.v1.AlertService/GetDashboardStats"
 	AlertService_GetTriggerCountByDay_FullMethodName      = "/stockalert.alert.v1.AlertService/GetTriggerCountByDay"
@@ -59,6 +60,7 @@ type AlertServiceClient interface {
 	CreateAlert(ctx context.Context, in *CreateAlertRequest, opts ...grpc.CallOption) (*CreateAlertResponse, error)
 	UpdateAlert(ctx context.Context, in *UpdateAlertRequest, opts ...grpc.CallOption) (*UpdateAlertResponse, error)
 	DeleteAlert(ctx context.Context, in *DeleteAlertRequest, opts ...grpc.CallOption) (*DeleteAlertResponse, error)
+	BulkDeleteAlerts(ctx context.Context, in *BulkDeleteAlertsRequest, opts ...grpc.CallOption) (*BulkDeleteAlertsResponse, error)
 	BulkUpdateLastTriggered(ctx context.Context, in *BulkUpdateLastTriggeredRequest, opts ...grpc.CallOption) (*BulkUpdateLastTriggeredResponse, error)
 	// Audit logs
 	GetDashboardStats(ctx context.Context, in *GetDashboardStatsRequest, opts ...grpc.CallOption) (*GetDashboardStatsResponse, error)
@@ -164,6 +166,16 @@ func (c *alertServiceClient) DeleteAlert(ctx context.Context, in *DeleteAlertReq
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(DeleteAlertResponse)
 	err := c.cc.Invoke(ctx, AlertService_DeleteAlert_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *alertServiceClient) BulkDeleteAlerts(ctx context.Context, in *BulkDeleteAlertsRequest, opts ...grpc.CallOption) (*BulkDeleteAlertsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(BulkDeleteAlertsResponse)
+	err := c.cc.Invoke(ctx, AlertService_BulkDeleteAlerts_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -363,6 +375,7 @@ type AlertServiceServer interface {
 	CreateAlert(context.Context, *CreateAlertRequest) (*CreateAlertResponse, error)
 	UpdateAlert(context.Context, *UpdateAlertRequest) (*UpdateAlertResponse, error)
 	DeleteAlert(context.Context, *DeleteAlertRequest) (*DeleteAlertResponse, error)
+	BulkDeleteAlerts(context.Context, *BulkDeleteAlertsRequest) (*BulkDeleteAlertsResponse, error)
 	BulkUpdateLastTriggered(context.Context, *BulkUpdateLastTriggeredRequest) (*BulkUpdateLastTriggeredResponse, error)
 	// Audit logs
 	GetDashboardStats(context.Context, *GetDashboardStatsRequest) (*GetDashboardStatsResponse, error)
@@ -415,6 +428,9 @@ func (UnimplementedAlertServiceServer) UpdateAlert(context.Context, *UpdateAlert
 }
 func (UnimplementedAlertServiceServer) DeleteAlert(context.Context, *DeleteAlertRequest) (*DeleteAlertResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method DeleteAlert not implemented")
+}
+func (UnimplementedAlertServiceServer) BulkDeleteAlerts(context.Context, *BulkDeleteAlertsRequest) (*BulkDeleteAlertsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method BulkDeleteAlerts not implemented")
 }
 func (UnimplementedAlertServiceServer) BulkUpdateLastTriggered(context.Context, *BulkUpdateLastTriggeredRequest) (*BulkUpdateLastTriggeredResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method BulkUpdateLastTriggered not implemented")
@@ -606,6 +622,24 @@ func _AlertService_DeleteAlert_Handler(srv interface{}, ctx context.Context, dec
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(AlertServiceServer).DeleteAlert(ctx, req.(*DeleteAlertRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AlertService_BulkDeleteAlerts_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(BulkDeleteAlertsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AlertServiceServer).BulkDeleteAlerts(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AlertService_BulkDeleteAlerts_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AlertServiceServer).BulkDeleteAlerts(ctx, req.(*BulkDeleteAlertsRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -964,6 +998,10 @@ var AlertService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "DeleteAlert",
 			Handler:    _AlertService_DeleteAlert_Handler,
+		},
+		{
+			MethodName: "BulkDeleteAlerts",
+			Handler:    _AlertService_BulkDeleteAlerts_Handler,
 		},
 		{
 			MethodName: "BulkUpdateLastTriggered",

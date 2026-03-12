@@ -1,8 +1,10 @@
 "use client";
 
+import { useAtomValue, useSetAtom } from "jotai";
 import type { AlertData } from "@/actions/alert-actions";
 import { Checkbox } from "@/components/ui/checkbox";
 import { formatAlertDate } from "@/app/alerts/_components/formatDate";
+import { deleteAlertsSelectedAtom } from "@/lib/store/delete-alerts";
 
 function extractConditionText(conditions: unknown): string {
   if (!Array.isArray(conditions)) return "";
@@ -17,19 +19,34 @@ function extractConditionText(conditions: unknown): string {
 
 type DeleteAlertsTableProps = {
   alerts: AlertData[];
-  selected: Set<string>;
-  onToggle: (alertId: string) => void;
-  onToggleAll: (checked: boolean) => void;
 };
 
-export function DeleteAlertsTable({
-  alerts,
-  selected,
-  onToggle,
-  onToggleAll,
-}: DeleteAlertsTableProps) {
+export function DeleteAlertsTable({ alerts }: DeleteAlertsTableProps) {
+  const selected = useAtomValue(deleteAlertsSelectedAtom);
+  const setSelected = useSetAtom(deleteAlertsSelectedAtom);
+
   const allSelected = alerts.length > 0 && alerts.every((a) => selected.has(a.alertId));
   const someSelected = alerts.some((a) => selected.has(a.alertId)) && !allSelected;
+
+  const toggleOne = (alertId: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(alertId)) next.delete(alertId);
+      else next.add(alertId);
+      return next;
+    });
+  };
+
+  const toggleAll = (checked: boolean) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      for (const a of alerts) {
+        if (checked) next.add(a.alertId);
+        else next.delete(a.alertId);
+      }
+      return next;
+    });
+  };
 
   return (
     <div className="border rounded-lg overflow-hidden">
@@ -39,7 +56,7 @@ export function DeleteAlertsTable({
             <th className="p-3 w-10">
               <Checkbox
                 checked={allSelected ? true : someSelected ? "indeterminate" : false}
-                onCheckedChange={(checked) => onToggleAll(!!checked)}
+                onCheckedChange={(checked) => toggleAll(!!checked)}
                 aria-label="Select all on page"
               />
             </th>
@@ -64,12 +81,12 @@ export function DeleteAlertsTable({
               <tr
                 key={alert.alertId}
                 className="border-b hover:bg-muted/25 cursor-pointer"
-                onClick={() => onToggle(alert.alertId)}
+                onClick={() => toggleOne(alert.alertId)}
               >
                 <td className="p-3">
                   <Checkbox
                     checked={selected.has(alert.alertId)}
-                    onCheckedChange={() => onToggle(alert.alertId)}
+                    onCheckedChange={() => toggleOne(alert.alertId)}
                     onClick={(e) => e.stopPropagation()}
                     aria-label={`Select ${alert.name}`}
                   />

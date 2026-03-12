@@ -278,3 +278,8 @@ export async function updateAlert(
 export async function deleteAlert(alertId: string): Promise<void> {
   await alertClient.deleteAlert({ alertId });
 }
+
+export async function bulkDeleteAlerts(alertIds: string[]): Promise<number> {
+  const response = await alertClient.bulkDeleteAlerts({ alertIds });
+  return response.deletedCount;
+}

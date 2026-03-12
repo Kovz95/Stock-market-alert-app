@@ -1,5 +1,6 @@
 "use client";
 
+import { useAtomValue, useSetAtom } from "jotai";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -10,24 +11,31 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  deleteAlertsConfirmOpenAtom,
+  deleteAlertsIsDeletingAtom,
+  deleteAlertsSelectedAtom,
+  deleteAlertsProgressAtom,
+} from "@/lib/store/delete-alerts";
 
 type DeleteConfirmDialogProps = {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  count: number;
-  isDeleting: boolean;
   onConfirm: () => void;
 };
 
-export function DeleteConfirmDialog({
-  open,
-  onOpenChange,
-  count,
-  isDeleting,
-  onConfirm,
-}: DeleteConfirmDialogProps) {
+export function DeleteConfirmDialog({ onConfirm }: DeleteConfirmDialogProps) {
+  const open = useAtomValue(deleteAlertsConfirmOpenAtom);
+  const setOpen = useSetAtom(deleteAlertsConfirmOpenAtom);
+  const isDeleting = useAtomValue(deleteAlertsIsDeletingAtom);
+  const selected = useAtomValue(deleteAlertsSelectedAtom);
+  const progress = useAtomValue(deleteAlertsProgressAtom);
+  const count = selected.size;
+
+  const progressPct = progress
+    ? Math.round((progress.completed / progress.total) * 100)
+    : 0;
+
   return (
-    <AlertDialog open={open} onOpenChange={onOpenChange}>
+    <AlertDialog open={open} onOpenChange={setOpen}>
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>Delete {count} alert{count !== 1 ? "s" : ""}?</AlertDialogTitle>
@@ -36,6 +44,22 @@ export function DeleteConfirmDialog({
             permanently deleted.
           </AlertDialogDescription>
         </AlertDialogHeader>
+
+        {isDeleting && progress && (
+          <div className="space-y-2">
+            <div className="flex justify-between text-sm text-muted-foreground">
+              <span>Deleting alerts...</span>
+              <span>{progress.completed} / {progress.total}</span>
+            </div>
+            <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
+              <div
+                className="h-full bg-primary transition-all duration-200"
+                style={{ width: `${progressPct}%` }}
+              />
+            </div>
+          </div>
+        )}
+
         <AlertDialogFooter>
           <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
           <AlertDialogAction
@@ -46,7 +70,9 @@ export function DeleteConfirmDialog({
               onConfirm();
             }}
           >
-            {isDeleting ? "Deleting..." : `Delete ${count} alert${count !== 1 ? "s" : ""}`}
+            {isDeleting
+              ? `Deleting... ${progressPct}%`
+              : `Delete ${count} alert${count !== 1 ? "s" : ""}`}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
