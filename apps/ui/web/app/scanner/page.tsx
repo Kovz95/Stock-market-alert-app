@@ -11,10 +11,9 @@ import {
   ScannerConditionSection,
   ScannerResults,
   scanMatchesToCsv,
+  type PortfolioOption,
 } from "./_components";
-import {
-  applyStockDatabaseFilters,
-} from "@/app/database/stock/_components";
+import { applyStockDatabaseFilters } from "@/app/database/stock/_components";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -47,7 +46,6 @@ import {
 } from "@/lib/store/scanner";
 
 const MAX_TICKERS = 20000;
-/** Chunk size for RunScan to avoid "request too large" (Envoy/gRPC limits). */
 const SCAN_BATCH_SIZE = 200;
 
 function chunk<T>(arr: T[], size: number): T[][] {
@@ -69,47 +67,20 @@ function timeframeToEnum(timeframe: ScannerTimeframe): Timeframe {
   }
 }
 
-export default function ScannerPage() {
-  const { data: metadata, isLoading: metaLoading, error: metaError } = useFullStockMetadata();
-  const { data: portfolios } = usePortfolios();
-
+/** Sidebar: subscribes only to filters and portfolioId; deferred count so filter UI stays responsive. */
+const ScannerSidebar = React.memo(function ScannerSidebar({
+  metadata,
+  portfolioOptions,
+}: {
+  metadata: import("@/actions/stock-database-actions").FullStockMetadataRow[];
+  portfolioOptions: PortfolioOption[];
+}) {
   const filters = useAtomValue(scannerFiltersAtom);
   const portfolioId = useAtomValue(scannerPortfolioIdAtom);
-  const conditions = useAtomValue(scannerConditionsAtom);
-  const combinationLogic = useAtomValue(scannerCombinationLogicAtom);
-  const timeframe = useAtomValue(scannerTimeframeAtom);
-  const lookbackDays = useAtomValue(scannerLookbackDaysAtom);
-  const lookbackInput = useAtomValue(scannerLookbackInputAtom);
-  const results = useAtomValue(scannerResultsAtom);
-  const scanning = useAtomValue(scannerScanningAtom);
-  const scanError = useAtomValue(scannerScanErrorAtom);
-  const scanProgress = useAtomValue(scannerScanProgressAtom);
-  const setFilters = useSetAtom(scannerFiltersAtom);
-  const setPortfolioId = useSetAtom(scannerPortfolioIdAtom);
-  const setConditions = useSetAtom(scannerConditionsAtom);
-  const setCombinationLogic = useSetAtom(scannerCombinationLogicAtom);
-  const setTimeframe = useSetAtom(scannerTimeframeAtom);
-  const setLookbackDays = useSetAtom(scannerLookbackDaysAtom);
-  const setLookbackInput = useSetAtom(scannerLookbackInputAtom);
-  const setResults = useSetAtom(scannerResultsAtom);
-  const setScanning = useSetAtom(scannerScanningAtom);
-  const setScanError = useSetAtom(scannerScanErrorAtom);
-  const setScanProgress = useSetAtom(scannerScanProgressAtom);
-
   const deferredFilters = React.useDeferredValue(filters);
   const deferredPortfolioId = React.useDeferredValue(portfolioId);
 
-  const portfolioOptions = React.useMemo(() => {
-    if (!portfolios) return [];
-    return portfolios.map((p) => ({
-      portfolioId: p.portfolioId,
-      name: p.name ?? p.portfolioId,
-      tickers: p.tickers ?? [],
-    }));
-  }, [portfolios]);
-
   const filteredCount = React.useMemo(() => {
-    if (!metadata) return 0;
     let rows = applyStockDatabaseFilters(metadata, deferredFilters);
     if (deferredPortfolioId !== "All") {
       const p = portfolioOptions.find((o) => o.portfolioId === deferredPortfolioId);
@@ -121,8 +92,84 @@ export default function ScannerPage() {
     return Math.min(rows.length, MAX_TICKERS);
   }, [metadata, deferredFilters, deferredPortfolioId, portfolioOptions]);
 
+  return (
+    <ScannerFilters
+      metadata={metadata}
+      portfolioOptions={portfolioOptions}
+      filteredCount={filteredCount}
+    />
+  );
+});
+
+/** Timeframe and lookback: subscribe to atoms only. */
+function ScannerTimeframeAndLookback() {
+  const timeframe = useAtomValue(scannerTimeframeAtom);
+  const setTimeframe = useSetAtom(scannerTimeframeAtom);
+  const lookbackInput = useAtomValue(scannerLookbackInputAtom);
+  const setLookbackInput = useSetAtom(scannerLookbackInputAtom);
+  const lookbackDays = useAtomValue(scannerLookbackDaysAtom);
+  const setLookbackDays = useSetAtom(scannerLookbackDaysAtom);
+
+  return (
+    <div className="flex flex-wrap items-end gap-4">
+      <div className="space-y-2">
+        <Label className="text-xs">Timeframe</Label>
+        <Select value={timeframe} onValueChange={(v) => setTimeframe(v as ScannerTimeframe)}>
+          <SelectTrigger className="h-8 w-32">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="1h">Hourly</SelectItem>
+            <SelectItem value="1d">Daily</SelectItem>
+            <SelectItem value="1wk">Weekly</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="space-y-2">
+        <Label className="text-xs">Lookback days</Label>
+        <Input
+          type="number"
+          min={0}
+          max={100}
+          className="h-7 w-24"
+          value={lookbackInput}
+          onChange={(e) => {
+            const raw = e.target.value;
+            setLookbackInput(raw);
+            const num = raw === "" ? 0 : Number(raw);
+            if (!Number.isNaN(num)) {
+              setLookbackDays(Math.max(0, Math.min(100, num)));
+            }
+          }}
+          onBlur={() => setLookbackInput(String(lookbackDays))}
+        />
+      </div>
+    </div>
+  );
+}
+
+/** Run Scan button, progress, and scan error. Subscribes to filters/portfolioId for symbol list; rest from atoms. */
+function RunScanSection({
+  metadata,
+  portfolioOptions,
+}: {
+  metadata: import("@/actions/stock-database-actions").FullStockMetadataRow[];
+  portfolioOptions: PortfolioOption[];
+}) {
+  const filters = useAtomValue(scannerFiltersAtom);
+  const portfolioId = useAtomValue(scannerPortfolioIdAtom);
+  const conditions = useAtomValue(scannerConditionsAtom);
+  const combinationLogic = useAtomValue(scannerCombinationLogicAtom);
+  const timeframe = useAtomValue(scannerTimeframeAtom);
+  const lookbackDays = useAtomValue(scannerLookbackDaysAtom);
+  const scanning = useAtomValue(scannerScanningAtom);
+  const scanProgress = useAtomValue(scannerScanProgressAtom);
+  const setScanning = useSetAtom(scannerScanningAtom);
+  const setScanError = useSetAtom(scannerScanErrorAtom);
+  const setResults = useSetAtom(scannerResultsAtom);
+  const setScanProgress = useSetAtom(scannerScanProgressAtom);
+
   const filteredSymbolsForScan = React.useMemo(() => {
-    if (!metadata) return [];
     let rows = applyStockDatabaseFilters(metadata, filters);
     if (portfolioId !== "All") {
       const p = portfolioOptions.find((o) => o.portfolioId === portfolioId);
@@ -180,10 +227,51 @@ export default function ScannerPage() {
     setScanProgress,
   ]);
 
+  const conditionsLength = conditions.length;
+  const canRun = scanning === false && conditionsLength > 0 && filteredSymbolsForScan.length > 0;
+
+  return (
+    <>
+      <div className="flex flex-wrap items-center gap-4">
+        <Button
+          onClick={handleRunScan}
+          disabled={!canRun}
+        >
+          {scanning ? "Scanning…" : "Run Scan"}
+        </Button>
+        {scanning && scanProgress && (
+          <span className="text-sm text-muted-foreground">
+            Scanning batch {scanProgress.batch}/{scanProgress.totalBatches} ({filteredSymbolsForScan.length.toLocaleString()} symbols)…
+          </span>
+        )}
+        {scanning && !scanProgress && (
+          <span className="text-sm text-muted-foreground">Starting scan…</span>
+        )}
+      </div>
+      <ScanErrorDisplay />
+    </>
+  );
+}
+
+function ScanErrorDisplay() {
+  const scanError = useAtomValue(scannerScanErrorAtom);
+  if (!scanError) return null;
+  return (
+    <div className="rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-3 text-destructive text-sm">
+      {scanError}
+    </div>
+  );
+}
+
+/** Results table and CSV download. Subscribes to results/scanning/progress only. */
+function ScannerResultsSection() {
+  const results = useAtomValue(scannerResultsAtom);
+  const scanning = useAtomValue(scannerScanningAtom);
+  const scanProgress = useAtomValue(scannerScanProgressAtom);
+
   const handleDownloadCsv = React.useCallback(() => {
-    const currentResults = results;
-    if (!currentResults || currentResults.length === 0) return;
-    const csv = scanMatchesToCsv(currentResults);
+    if (!results || results.length === 0) return;
+    const csv = scanMatchesToCsv(results);
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -193,143 +281,15 @@ export default function ScannerPage() {
     URL.revokeObjectURL(url);
   }, [results]);
 
-  if (metaLoading || !metadata) {
-    return (
-      <div className="p-6 space-y-6">
-        <Skeleton className="h-8 w-64" />
-        <Skeleton className="h-64 w-full" />
-      </div>
-    );
-  }
+  if (results === null) return null;
 
   return (
-    <div className="p-6 flex flex-col gap-6">
-      <div>
-        <h1 className="text-2xl font-bold">Market Scanner</h1>
-        <p className="text-muted-foreground">
-          Scan symbols that meet your technical conditions. Use filters to narrow the universe, then run the scan.
-        </p>
-      </div>
-
-      {metaError && (
-        <div className="rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-3 text-destructive text-sm">
-          <p className="font-medium">Failed to load stock data.</p>
-          <p className="mt-1 opacity-90">{metaError.message}</p>
-        </div>
-      )}
-
-      <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
-        <aside className="space-y-4">
-          <ScannerFilters
-            metadata={metadata}
-            portfolioOptions={portfolioOptions}
-            filteredCount={filteredCount}
-          />
-        </aside>
-
-        <main className="space-y-6">
-          <ScannerTimeframeAndLookback
-            timeframe={timeframe}
-            setTimeframe={setTimeframe}
-            lookbackInput={lookbackInput}
-            setLookbackInput={setLookbackInput}
-            lookbackDays={lookbackDays}
-            setLookbackDays={setLookbackDays}
-          />
-
-          <ScannerConditionSection />
-
-          <div className="flex flex-wrap items-center gap-4">
-            <Button
-              onClick={handleRunScan}
-              disabled={scanning || conditions.length === 0 || filteredSymbolsForScan.length === 0}
-            >
-              {scanning ? "Scanning…" : "Run Scan"}
-            </Button>
-            {scanning && scanProgress && (
-              <span className="text-sm text-muted-foreground">
-                Scanning batch {scanProgress.batch}/{scanProgress.totalBatches} ({filteredSymbolsForScan.length.toLocaleString()} symbols)…
-              </span>
-            )}
-            {scanning && !scanProgress && (
-              <span className="text-sm text-muted-foreground">
-                Starting scan…
-              </span>
-            )}
-          </div>
-
-          {scanError && (
-            <div className="rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-3 text-destructive text-sm">
-              {scanError}
-            </div>
-          )}
-
-          {results !== null && (
-            <ScannerResults
-              matches={results}
-              onDownloadCsv={handleDownloadCsv}
-              scanning={scanning}
-              scanProgress={scanProgress}
-            />
-          )}
-
-          <ScannerPresetSection />
-        </main>
-      </div>
-    </div>
-  );
-}
-
-function ScannerTimeframeAndLookback({
-  timeframe,
-  setTimeframe,
-  lookbackInput,
-  setLookbackInput,
-  lookbackDays,
-  setLookbackDays,
-}: {
-  timeframe: ScannerTimeframe;
-  setTimeframe: (v: ScannerTimeframe) => void;
-  lookbackInput: string;
-  setLookbackInput: (v: string) => void;
-  lookbackDays: number;
-  setLookbackDays: (v: number) => void;
-}) {
-  return (
-    <div className="flex flex-wrap items-end gap-4">
-      <div className="space-y-2">
-        <Label className="text-xs">Timeframe</Label>
-        <Select value={timeframe} onValueChange={(v) => setTimeframe(v as ScannerTimeframe)}>
-          <SelectTrigger className="h-8 w-32">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="1h">Hourly</SelectItem>
-            <SelectItem value="1d">Daily</SelectItem>
-            <SelectItem value="1wk">Weekly</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-      <div className="space-y-2">
-        <Label className="text-xs">Lookback days</Label>
-        <Input
-          type="number"
-          min={0}
-          max={100}
-          className="h-7 w-24"
-          value={lookbackInput}
-          onChange={(e) => {
-            const raw = e.target.value;
-            setLookbackInput(raw);
-            const num = raw === "" ? 0 : Number(raw);
-            if (!Number.isNaN(num)) {
-              setLookbackDays(Math.max(0, Math.min(100, num)));
-            }
-          }}
-          onBlur={() => setLookbackInput(String(lookbackDays))}
-        />
-      </div>
-    </div>
+    <ScannerResults
+      matches={results}
+      onDownloadCsv={handleDownloadCsv}
+      scanning={scanning}
+      scanProgress={scanProgress}
+    />
   );
 }
 
@@ -424,6 +384,73 @@ function ScannerPresetSection() {
           </Button>
         </div>
       )}
+    </div>
+  );
+}
+
+/** Main column: only needs metadata and portfolioOptions for RunScanSection. */
+function ScannerMain({
+  metadata,
+  portfolioOptions,
+}: {
+  metadata: import("@/actions/stock-database-actions").FullStockMetadataRow[];
+  portfolioOptions: PortfolioOption[];
+}) {
+  return (
+    <main className="space-y-6">
+      <ScannerTimeframeAndLookback />
+      <ScannerConditionSection />
+      <RunScanSection metadata={metadata} portfolioOptions={portfolioOptions} />
+      <ScannerResultsSection />
+      <ScannerPresetSection />
+    </main>
+  );
+}
+
+export default function ScannerPage() {
+  const { data: metadata, isLoading: metaLoading, error: metaError } = useFullStockMetadata();
+  const { data: portfolios } = usePortfolios();
+
+  const portfolioOptions = React.useMemo(() => {
+    if (!portfolios) return [];
+    return portfolios.map((p) => ({
+      portfolioId: p.portfolioId,
+      name: p.name ?? p.portfolioId,
+      tickers: p.tickers ?? [],
+    }));
+  }, [portfolios]);
+
+  if (metaLoading || !metadata) {
+    return (
+      <div className="p-6 space-y-6">
+        <Skeleton className="h-8 w-64" />
+        <Skeleton className="h-64 w-full" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-6 flex flex-col gap-6">
+      <div>
+        <h1 className="text-2xl font-bold">Market Scanner</h1>
+        <p className="text-muted-foreground">
+          Scan symbols that meet your technical conditions. Use filters to narrow the universe, then run the scan.
+        </p>
+      </div>
+
+      {metaError && (
+        <div className="rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-3 text-destructive text-sm">
+          <p className="font-medium">Failed to load stock data.</p>
+          <p className="mt-1 opacity-90">{metaError.message}</p>
+        </div>
+      )}
+
+      <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
+        <aside className="space-y-4">
+          <ScannerSidebar metadata={metadata} portfolioOptions={portfolioOptions} />
+        </aside>
+        <ScannerMain metadata={metadata} portfolioOptions={portfolioOptions} />
+      </div>
     </div>
   );
 }

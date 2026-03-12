@@ -88,6 +88,9 @@ func NewDefaultRegistry() *Registry {
 
 	// Multi-output indicators
 	r.Register("macd", MACD)
+	r.Register("macd_line", MACDLine)
+	r.Register("macd_signal", MACDSignal)
+	r.Register("macd_histogram", MACDHistogram)
 	r.Register("bbands", BBANDS)
 	r.Register("sar", SAR)
 
@@ -97,6 +100,7 @@ func NewDefaultRegistry() *Registry {
 	r.Register("kama", KAMA)
 	r.Register("ewo", EWO)
 	r.Register("ma_spread_zscore", MASpreadZscore)
+	r.Register("zscore", ZScore)
 	r.Register("harsi_flip", HARSIFlip)
 
 	// Slope indicators
@@ -214,9 +218,15 @@ func paramBool(params map[string]interface{}, key string, def bool) bool {
 }
 
 // resolveInput returns the price series to use based on the "input" parameter.
-// If "input" is a column name (Close, Open, High, Low, Volume), returns that column.
-// Otherwise returns Close by default.
+// If a pre-computed series was injected under "_computed_input" (from a nested
+// indicator expression like sma(period=20, input=rsi(14))), that is returned first.
+// Otherwise "input" is treated as a column name (Close, Open, High, Low, Volume).
 func resolveInput(data *OHLCV, params map[string]interface{}) []float64 {
+	if computed, ok := params["_computed_input"]; ok {
+		if s, ok := computed.([]float64); ok {
+			return s
+		}
+	}
 	input := paramString(params, "input", "Close")
 	col, err := data.Column(input)
 	if err != nil {

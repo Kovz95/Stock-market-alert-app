@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useAtomValue, useSetAtom } from "jotai";
 import {
   useDatabaseStats,
   useLoadPriceData,
@@ -16,36 +17,42 @@ import {
   ExportSection,
   PriceChartsSection,
   AnalysisSection,
-  defaultFilters,
   getLoadParams,
 } from "./_components";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
+import {
+  priceDatabaseFiltersAtom,
+  priceDatabaseLoadedDataAtom,
+} from "@/lib/store/price-database";
 
-export default function PriceDatabasePage() {
-  const { data: metadata, isLoading: metadataLoading } = useStockMetadata();
+/** When stats load, sync default start/end dates into the filters atom. */
+function SyncStatsToFilters() {
   const { data: stats } = useDatabaseStats();
-  const loadMutation = useLoadPriceData();
-  const updateMutation = useUpdatePrices();
+  const setFilters = useSetAtom(priceDatabaseFiltersAtom);
 
-  const [filters, setFilters] = React.useState<ReturnType<typeof defaultFilters>>(
-    () => defaultFilters(null, null)
-  );
-  const [loadedData, setLoadedData] = React.useState<
-    import("@/actions/price-database-actions").PriceRowData[]
-  >([]);
-
-  // Sync date defaults when stats load
   React.useEffect(() => {
-    if (!stats) return;
+    if (!stats?.dailyMin || !stats?.dailyMax) return;
     setFilters((prev) => ({
       ...prev,
       startDate: prev.startDate || (stats.dailyMin?.slice(0, 10) ?? ""),
       endDate: prev.endDate || (stats.dailyMax?.slice(0, 10) ?? ""),
     }));
-  }, [stats?.dailyMin, stats?.dailyMax]);
+  }, [stats?.dailyMin, stats?.dailyMax, setFilters]);
 
-  const handleLoad = React.useCallback(() => {
+  return null;
+}
+
+/** Sidebar: subscribes to filters atom and load mutation, writes loaded data to store. */
+const PriceDatabaseSidebar = React.memo(function PriceDatabaseSidebar() {
+  const { data: metadata, isLoading: metadataLoading } = useStockMetadata();
+  const { data: stats } = useDatabaseStats();
+  const filters = useAtomValue(priceDatabaseFiltersAtom);
+  const setFilters = useSetAtom(priceDatabaseFiltersAtom);
+  const setLoadedData = useSetAtom(priceDatabaseLoadedDataAtom);
+  const loadMutation = useLoadPriceData();
+
+  const onLoad = React.useCallback(() => {
     const params = getLoadParams(
       filters,
       stats?.dailyMin ?? null,
@@ -61,18 +68,46 @@ export default function PriceDatabasePage() {
         toast.error(err.message ?? "Failed to load price data");
       },
     });
-  }, [filters, stats?.dailyMin, stats?.dailyMax, metadata, loadMutation]);
+  }, [
+    filters,
+    stats?.dailyMin,
+    stats?.dailyMax,
+    metadata,
+    loadMutation,
+    setLoadedData,
+  ]);
 
-  const timeframeToEnum = (k: TimeframeKind): number => {
-    switch (k) {
-      case "hourly":
-        return Timeframe.HOURLY;
-      case "daily":
-        return Timeframe.DAILY;
-      case "weekly":
-        return Timeframe.WEEKLY;
-    }
-  };
+  return (
+    <PriceDatabaseFilters
+      filters={filters}
+      onFiltersChange={setFilters}
+      metadata={metadata}
+      metadataLoading={metadataLoading}
+      statsDailyMin={stats?.dailyMin ?? null}
+      statsDailyMax={stats?.dailyMax ?? null}
+      onLoad={onLoad}
+      loadPending={loadMutation.isPending}
+    />
+  );
+});
+
+function timeframeToEnum(k: TimeframeKind): number {
+  switch (k) {
+    case "hourly":
+      return Timeframe.HOURLY;
+    case "daily":
+      return Timeframe.DAILY;
+    case "weekly":
+      return Timeframe.WEEKLY;
+  }
+}
+
+/** Main content: subscribes to filters and loadedData, handles update mutation. */
+function PriceDatabaseMain() {
+  const { data: stats } = useDatabaseStats();
+  const updateMutation = useUpdatePrices();
+  const filters = useAtomValue(priceDatabaseFiltersAtom);
+  const loadedData = useAtomValue(priceDatabaseLoadedDataAtom);
 
   const handleUpdate = React.useCallback(
     (timeframe: TimeframeKind) => {
@@ -132,7 +167,66 @@ export default function PriceDatabasePage() {
   }, [loadedData]);
 
   return (
+    <main className="min-w-0 space-y-6">
+      <section>
+        <h2 className="text-lg font-semibold mb-3">Database statistics</h2>
+        {stats ? (
+          <DatabaseStatsCards
+            stats={stats}
+            exchanges={filters.exchanges}
+            selectedTickers={filters.selectedTickers}
+            onUpdate={handleUpdate}
+            updatePending={updatePending}
+          />
+        ) : (
+          <p className="text-muted-foreground text-sm">
+            Loading database stats…
+          </p>
+        )}
+      </section>
+
+      {loadedData.length > 0 && (
+        <Tabs defaultValue="table" className="w-full">
+          <TabsList>
+            <TabsTrigger value="table">Data table</TabsTrigger>
+            <TabsTrigger value="charts">Charts</TabsTrigger>
+            <TabsTrigger value="analysis">Analysis</TabsTrigger>
+            <TabsTrigger value="export">Export</TabsTrigger>
+          </TabsList>
+          <TabsContent value="table" className="mt-4">
+            <PriceDataTable data={loadedData} />
+          </TabsContent>
+          <TabsContent value="charts" className="mt-4">
+            <PriceChartsSection data={loadedData} />
+          </TabsContent>
+          <TabsContent value="analysis" className="mt-4">
+            <AnalysisSection data={loadedData} />
+          </TabsContent>
+          <TabsContent value="export" className="mt-4">
+            <ExportSection
+              data={loadedData}
+              tickerCount={tickerCount}
+              dateRange={dateRange}
+            />
+          </TabsContent>
+        </Tabs>
+      )}
+
+      {loadedData.length === 0 && (
+        <p className="text-muted-foreground text-sm">
+          Set filters and click <strong>Load Data</strong> to fetch price
+          data.
+        </p>
+      )}
+    </main>
+  );
+}
+
+export default function PriceDatabasePage() {
+  return (
     <div className="p-6 flex flex-col gap-6">
+      <SyncStatsToFilters />
+
       <div>
         <h1 className="text-2xl font-bold">Price Database</h1>
         <p className="text-muted-foreground">
@@ -143,70 +237,9 @@ export default function PriceDatabasePage() {
 
       <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
         <aside className="lg:min-w-0">
-          <PriceDatabaseFilters
-            filters={filters}
-            onFiltersChange={setFilters}
-            metadata={metadata}
-            metadataLoading={metadataLoading}
-            statsDailyMin={stats?.dailyMin ?? null}
-            statsDailyMax={stats?.dailyMax ?? null}
-            onLoad={handleLoad}
-            loadPending={loadMutation.isPending}
-          />
+          <PriceDatabaseSidebar />
         </aside>
-
-        <main className="min-w-0 space-y-6">
-          <section>
-            <h2 className="text-lg font-semibold mb-3">Database statistics</h2>
-            {stats ? (
-              <DatabaseStatsCards
-                stats={stats}
-                exchanges={filters.exchanges}
-                selectedTickers={filters.selectedTickers}
-                onUpdate={handleUpdate}
-                updatePending={updatePending}
-              />
-            ) : (
-              <p className="text-muted-foreground text-sm">
-                Loading database stats…
-              </p>
-            )}
-          </section>
-
-          {loadedData.length > 0 && (
-            <Tabs defaultValue="table" className="w-full">
-              <TabsList>
-                <TabsTrigger value="table">Data table</TabsTrigger>
-                <TabsTrigger value="charts">Charts</TabsTrigger>
-                <TabsTrigger value="analysis">Analysis</TabsTrigger>
-                <TabsTrigger value="export">Export</TabsTrigger>
-              </TabsList>
-              <TabsContent value="table" className="mt-4">
-                <PriceDataTable data={loadedData} />
-              </TabsContent>
-              <TabsContent value="charts" className="mt-4">
-                <PriceChartsSection data={loadedData} />
-              </TabsContent>
-              <TabsContent value="analysis" className="mt-4">
-                <AnalysisSection data={loadedData} />
-              </TabsContent>
-              <TabsContent value="export" className="mt-4">
-                <ExportSection
-                  data={loadedData}
-                  tickerCount={tickerCount}
-                  dateRange={dateRange}
-                />
-              </TabsContent>
-            </Tabs>
-          )}
-
-          {loadedData.length === 0 && (
-            <p className="text-muted-foreground text-sm">
-              Set filters and click <strong>Load Data</strong> to fetch price
-              data.
-            </p>
-          )}
-        </main>
+        <PriceDatabaseMain />
       </div>
     </div>
   );

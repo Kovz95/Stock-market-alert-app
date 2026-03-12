@@ -643,6 +643,8 @@ export function ConditionBuilder({ onAdd }: ConditionBuilderProps) {
                   <SelectContent>
                     <SelectItem value="SMA">SMA</SelectItem>
                     <SelectItem value="EMA">EMA</SelectItem>
+                    <SelectItem value="FRAMA">FRAMA</SelectItem>
+                    <SelectItem value="KAMA">KAMA</SelectItem>
                   </SelectContent>
                 </Select>
               </FieldContent>
@@ -663,6 +665,228 @@ export function ConditionBuilder({ onAdd }: ConditionBuilderProps) {
                 />
               </FieldContent>
             </Field>
+            {/* FRAMA-specific params (Task 8) */}
+            {(params.maType === "FRAMA") && (
+              <>
+                <Field>
+                  <FieldLabel>FC (fast constant)</FieldLabel>
+                  <FieldContent>
+                    <Input
+                      type="number"
+                      min={1}
+                      max={300}
+                      value={params.framaFc ?? 1}
+                      onChange={(e) =>
+                        setParams({
+                          ...params,
+                          framaFc: e.target.value ? Number(e.target.value) : undefined,
+                        })
+                      }
+                    />
+                  </FieldContent>
+                </Field>
+                <Field>
+                  <FieldLabel>SC (slow constant)</FieldLabel>
+                  <FieldContent>
+                    <Input
+                      type="number"
+                      min={1}
+                      max={500}
+                      value={params.framaSc ?? 198}
+                      onChange={(e) =>
+                        setParams({
+                          ...params,
+                          framaSc: e.target.value ? Number(e.target.value) : undefined,
+                        })
+                      }
+                    />
+                  </FieldContent>
+                </Field>
+              </>
+            )}
+            {/* KAMA-specific params (Task 8) */}
+            {(params.maType === "KAMA") && (
+              <>
+                <Field>
+                  <FieldLabel>Fast end</FieldLabel>
+                  <FieldContent>
+                    <Input
+                      type="number"
+                      step="0.001"
+                      min={0.001}
+                      max={1}
+                      value={params.kamaFastEnd ?? 0.666}
+                      onChange={(e) =>
+                        setParams({
+                          ...params,
+                          kamaFastEnd: e.target.value ? Number(e.target.value) : undefined,
+                        })
+                      }
+                    />
+                  </FieldContent>
+                </Field>
+                <Field>
+                  <FieldLabel>Slow end</FieldLabel>
+                  <FieldContent>
+                    <Input
+                      type="number"
+                      step="0.0001"
+                      min={0.001}
+                      max={1}
+                      value={params.kamaSlowEnd ?? 0.0645}
+                      onChange={(e) =>
+                        setParams({
+                          ...params,
+                          kamaSlowEnd: e.target.value ? Number(e.target.value) : undefined,
+                        })
+                      }
+                    />
+                  </FieldContent>
+                </Field>
+              </>
+            )}
+            {/* MA Input Source (Task 7) */}
+            <Field>
+              <FieldLabel>Input source</FieldLabel>
+              <FieldContent>
+                <Select
+                  value={params.maInputSource ?? "Close"}
+                  onValueChange={(v) => setParams({ ...params, maInputSource: v })}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Close">Close</SelectItem>
+                    <SelectItem value="Open">Open</SelectItem>
+                    <SelectItem value="High">High</SelectItem>
+                    <SelectItem value="Low">Low</SelectItem>
+                    <SelectItem value="RSI">RSI</SelectItem>
+                    <SelectItem value="EWO">EWO</SelectItem>
+                    <SelectItem value="MACD_Line">MACD (Line)</SelectItem>
+                    <SelectItem value="MACD_Signal">MACD (Signal)</SelectItem>
+                    <SelectItem value="MACD_Histogram">MACD (Histogram)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </FieldContent>
+            </Field>
+            {/* RSI input params */}
+            {params.maInputSource === "RSI" && (
+              <Field>
+                <FieldLabel>RSI period</FieldLabel>
+                <FieldContent>
+                  <Input
+                    type="number"
+                    min={2}
+                    max={100}
+                    value={params.maInputRsiPeriod ?? 14}
+                    onChange={(e) =>
+                      setParams({
+                        ...params,
+                        maInputRsiPeriod: e.target.value ? Number(e.target.value) : undefined,
+                      })
+                    }
+                  />
+                </FieldContent>
+              </Field>
+            )}
+            {/* EWO input params */}
+            {params.maInputSource === "EWO" && (
+              <>
+                <Field>
+                  <FieldLabel>EWO fast SMA</FieldLabel>
+                  <FieldContent>
+                    <Input
+                      type="number"
+                      min={1}
+                      max={100}
+                      value={params.maInputEwoSma1 ?? 5}
+                      onChange={(e) =>
+                        setParams({
+                          ...params,
+                          maInputEwoSma1: e.target.value ? Number(e.target.value) : undefined,
+                        })
+                      }
+                    />
+                  </FieldContent>
+                </Field>
+                <Field>
+                  <FieldLabel>EWO slow SMA</FieldLabel>
+                  <FieldContent>
+                    <Input
+                      type="number"
+                      min={1}
+                      max={200}
+                      value={params.maInputEwoSma2 ?? 35}
+                      onChange={(e) =>
+                        setParams({
+                          ...params,
+                          maInputEwoSma2: e.target.value ? Number(e.target.value) : undefined,
+                        })
+                      }
+                    />
+                  </FieldContent>
+                </Field>
+              </>
+            )}
+            {/* MACD input params */}
+            {(params.maInputSource === "MACD_Line" ||
+              params.maInputSource === "MACD_Signal" ||
+              params.maInputSource === "MACD_Histogram") && (
+              <>
+                <Field>
+                  <FieldLabel>MACD fast</FieldLabel>
+                  <FieldContent>
+                    <Input
+                      type="number"
+                      min={1}
+                      max={100}
+                      value={params.maInputMacdFast ?? 12}
+                      onChange={(e) =>
+                        setParams({
+                          ...params,
+                          maInputMacdFast: e.target.value ? Number(e.target.value) : undefined,
+                        })
+                      }
+                    />
+                  </FieldContent>
+                </Field>
+                <Field>
+                  <FieldLabel>MACD slow</FieldLabel>
+                  <FieldContent>
+                    <Input
+                      type="number"
+                      min={1}
+                      max={200}
+                      value={params.maInputMacdSlow ?? 26}
+                      onChange={(e) =>
+                        setParams({
+                          ...params,
+                          maInputMacdSlow: e.target.value ? Number(e.target.value) : undefined,
+                        })
+                      }
+                    />
+                  </FieldContent>
+                </Field>
+                <Field>
+                  <FieldLabel>MACD signal</FieldLabel>
+                  <FieldContent>
+                    <Input
+                      type="number"
+                      min={1}
+                      max={100}
+                      value={params.maInputMacdSignal ?? 9}
+                      onChange={(e) =>
+                        setParams({
+                          ...params,
+                          maInputMacdSignal: e.target.value ? Number(e.target.value) : undefined,
+                        })
+                      }
+                    />
+                  </FieldContent>
+                </Field>
+              </>
+            )}
           </>
         )}
 
@@ -2277,6 +2501,41 @@ export function ConditionBuilder({ onAdd }: ConditionBuilderProps) {
                 }
               />
             </FieldContent>
+          </Field>
+        )}
+
+        {/* Z-Score transformation toggle (Task 5) */}
+        {category !== "price" && category !== "custom" && (
+          <Field>
+            <FieldContent>
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="use-zscore"
+                  checked={params.useZScore ?? false}
+                  onCheckedChange={(checked) =>
+                    setParams({ ...params, useZScore: !!checked })
+                  }
+                />
+                <Label htmlFor="use-zscore">Transform to Z-score (rolling)</Label>
+              </div>
+            </FieldContent>
+            {params.useZScore && (
+              <FieldContent className="mt-2">
+                <FieldLabel>Lookback period</FieldLabel>
+                <Input
+                  type="number"
+                  min={5}
+                  max={500}
+                  value={params.zScoreLookback ?? 20}
+                  onChange={(e) =>
+                    setParams({
+                      ...params,
+                      zScoreLookback: e.target.value ? Number(e.target.value) : undefined,
+                    })
+                  }
+                />
+              </FieldContent>
+            )}
           </Field>
         )}
       </FieldGroup>

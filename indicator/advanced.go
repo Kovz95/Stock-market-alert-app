@@ -375,6 +375,55 @@ func HARSIFlip(data *OHLCV, params map[string]interface{}) ([]float64, error) {
 	return out, nil
 }
 
+// ZScore computes a rolling z-score of the input series.
+// The input series is typically a nested indicator expression (e.g. zscore(rsi(14), lookback=20))
+// which the evaluator resolves into a pre-computed series passed as "_computed_input".
+// Falls back to a price column (default "Close") when no nested series is provided.
+// Params: lookback (int, default 20).
+func ZScore(data *OHLCV, params map[string]interface{}) ([]float64, error) {
+	lookback := paramInt(params, "lookback", 20)
+	if lookback < 2 {
+		lookback = 2
+	}
+	input := resolveInput(data, params)
+	n := len(input)
+	out := make([]float64, n)
+	for i := range out {
+		out[i] = math.NaN()
+	}
+	for i := lookback - 1; i < n; i++ {
+		window := input[i-lookback+1 : i+1]
+		// Compute mean
+		sum := 0.0
+		valid := 0
+		for _, v := range window {
+			if !math.IsNaN(v) {
+				sum += v
+				valid++
+			}
+		}
+		if valid < 2 {
+			continue
+		}
+		mean := sum / float64(valid)
+		// Compute population std dev
+		variance := 0.0
+		for _, v := range window {
+			if !math.IsNaN(v) {
+				d := v - mean
+				variance += d * d
+			}
+		}
+		std := math.Sqrt(variance / float64(valid))
+		if std == 0 {
+			out[i] = 0
+		} else {
+			out[i] = (input[i] - mean) / std
+		}
+	}
+	return out, nil
+}
+
 // SlopeSMA computes the gradient of SMA.
 // Params: timeperiod (int, required), input (string, default "Close").
 func SlopeSMA(data *OHLCV, params map[string]interface{}) ([]float64, error) {

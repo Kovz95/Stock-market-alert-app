@@ -330,6 +330,23 @@ export type ConditionParams = {
   krsStochLen?: number;
   krsSmoothK?: number;
   krsSmoothD?: number;
+  // Z-Score transformation (Task 5)
+  useZScore?: boolean;
+  zScoreLookback?: number;
+  // MA input source (Task 7)
+  maInputSource?: string; // "Close" | "Open" | "High" | "Low" | "EWO" | "RSI" | "MACD_Line" | "MACD_Signal" | "MACD_Histogram"
+  maInputRsiPeriod?: number;
+  maInputEwoSma1?: number;
+  maInputEwoSma2?: number;
+  maInputMacdFast?: number;
+  maInputMacdSlow?: number;
+  maInputMacdSignal?: number;
+  // FRAMA params (Task 8)
+  framaFc?: number;
+  framaSc?: number;
+  // KAMA params (Task 8)
+  kamaFastEnd?: number;
+  kamaSlowEnd?: number;
 };
 
 export interface ConditionEntry {
@@ -343,7 +360,56 @@ export interface ConditionEntry {
  * Serialize a condition entry to the backend condition string format
  * (e.g. "price_above: 150", "rsi(14)[-1] < 30").
  */
+/**
+ * Build the inner expression for MA input source (Task 7).
+ * Returns empty string for standard price columns (Close, Open, etc.).
+ */
+function buildMaInputExpr(source: string, params: ConditionParams): string {
+  switch (source) {
+    case "RSI":
+      return `rsi(${params.maInputRsiPeriod ?? 14})`;
+    case "EWO":
+      return `ewo(sma1_length=${params.maInputEwoSma1 ?? 5}, sma2_length=${params.maInputEwoSma2 ?? 35})`;
+    case "MACD_Line":
+      return `macd_line(fast=${params.maInputMacdFast ?? 12}, slow=${params.maInputMacdSlow ?? 26}, signal=${params.maInputMacdSignal ?? 9})`;
+    case "MACD_Signal":
+      return `macd_signal(fast=${params.maInputMacdFast ?? 12}, slow=${params.maInputMacdSlow ?? 26}, signal=${params.maInputMacdSignal ?? 9})`;
+    case "MACD_Histogram":
+      return `macd_histogram(fast=${params.maInputMacdFast ?? 12}, slow=${params.maInputMacdSlow ?? 26}, signal=${params.maInputMacdSignal ?? 9})`;
+    default:
+      // Close, Open, High, Low - handled by default input param
+      return "";
+  }
+}
+
+/**
+ * Wrap a simple indicator expression with zscore() if the z-score flag is set.
+ * Skips wrapping for boolean expressions (containing "and", "or", "==", "!=").
+ */
+function maybeWrapZScore(expr: string, params: ConditionParams): string {
+  if (!params.useZScore || !expr) return expr;
+  const lookback = params.zScoreLookback ?? 20;
+  // Don't wrap boolean / comparison / multi-part expressions
+  if (/\b(and|or)\b/i.test(expr) || /[!=]=/.test(expr)) return expr;
+  // Match pattern like `indicator(...)[-1] > value`
+  const m = expr.match(/^(.+?\))\[-1\]\s*([><=!]+)\s*(.+)$/);
+  if (m) {
+    return `zscore(${m[1]}, lookback=${lookback})[-1] ${m[2]} ${m[3]}`;
+  }
+  // Match pattern like `indicator(...)[-1]` (value only)
+  const m2 = expr.match(/^(.+?\))\[-1\]$/);
+  if (m2) {
+    return `zscore(${m2[1]}, lookback=${lookback})[-1]`;
+  }
+  return expr;
+}
+
 export function conditionEntryToExpression(entry: ConditionEntry): string {
+  const raw = conditionEntryToExpressionRaw(entry);
+  return maybeWrapZScore(raw, entry.params);
+}
+
+function conditionEntryToExpressionRaw(entry: ConditionEntry): string {
   const { category, type, params } = entry;
   switch (category) {
     case "price":
@@ -354,11 +420,45 @@ export function conditionEntryToExpression(entry: ConditionEntry): string {
       if (type === "price_equals" && params.priceValue != null)
         return `price_equals: ${params.priceValue}`;
       break;
-    case "moving_average":
-      if (type === "price_above_ma" && params.maPeriod != null)
-        return `price_above_ma: ${params.maPeriod} (${params.maType ?? "SMA"})`;
-      if (type === "price_below_ma" && params.maPeriod != null)
-        return `price_below_ma: ${params.maPeriod} (${params.maType ?? "SMA"})`;
+    case "moving_average": {
+      const maType = params.maType ?? "SMA";
+      const period = params.maPeriod ?? 20;
+      // Build input source string for MA (Task 7)
+      const inputSrc = params.maInputSource ?? "Close";
+      const inputExpr = buildMaInputExpr(inputSrc, params);
+      if (type === "price_above_ma" && params.maPeriod != null) {
+        if (inputExpr) {
+          return `${maType.toLowerCase()}(period=${period}, input=${inputExpr})[-1] < Close[-1]`;
+        }
+        // FRAMA/KAMA special params (Task 8)
+        if (maType === "FRAMA") {
+          const fc = params.framaFc ?? 1;
+          const sc = params.framaSc ?? 198;
+          return `FRAMA(df, length=${period}, FC=${fc}, SC=${sc})[-1] < Close[-1]`;
+        }
+        if (maType === "KAMA") {
+          const fe = params.kamaFastEnd ?? 0.666;
+          const se = params.kamaSlowEnd ?? 0.0645;
+          return `KAMA(df, length=${period}, fast_end=${fe}, slow_end=${se})[-1] < Close[-1]`;
+        }
+        return `price_above_ma: ${period} (${maType})`;
+      }
+      if (type === "price_below_ma" && params.maPeriod != null) {
+        if (inputExpr) {
+          return `${maType.toLowerCase()}(period=${period}, input=${inputExpr})[-1] > Close[-1]`;
+        }
+        if (maType === "FRAMA") {
+          const fc = params.framaFc ?? 1;
+          const sc = params.framaSc ?? 198;
+          return `FRAMA(df, length=${period}, FC=${fc}, SC=${sc})[-1] > Close[-1]`;
+        }
+        if (maType === "KAMA") {
+          const fe = params.kamaFastEnd ?? 0.666;
+          const se = params.kamaSlowEnd ?? 0.0645;
+          return `KAMA(df, length=${period}, fast_end=${fe}, slow_end=${se})[-1] > Close[-1]`;
+        }
+        return `price_below_ma: ${period} (${maType})`;
+      }
       if (
         type === "ma_crossover" &&
         params.fastPeriod != null &&
@@ -366,6 +466,7 @@ export function conditionEntryToExpression(entry: ConditionEntry): string {
       )
         return `ma_crossover: ${params.fastPeriod} > ${params.slowPeriod}`;
       break;
+    }
     case "rsi":
       if (type === "rsi_oversold" && params.rsiPeriod != null)
         return `rsi(${params.rsiPeriod})[-1] < ${params.oversoldLevel ?? 30}`;
@@ -945,14 +1046,51 @@ export function conditionEntryLabel(entry: ConditionEntry): string {
   return `${entry.category} – ${entry.type}`;
 }
 
+export interface IndustryFilters {
+  economies: string[];
+  sectors: string[];
+  subsectors: string[];
+  industryGroups: string[];
+  industries: string[];
+  subindustries: string[];
+}
+
+export const emptyIndustryFilters: IndustryFilters = {
+  economies: [],
+  sectors: [],
+  subsectors: [],
+  industryGroups: [],
+  industries: [],
+  subindustries: [],
+};
+
+export interface EtfFilters {
+  etfIssuers: string[];
+  assetClasses: string[];
+  etfFocuses: string[];
+  etfNiches: string[];
+}
+
+export const emptyEtfFilters: EtfFilters = {
+  etfIssuers: [],
+  assetClasses: [],
+  etfFocuses: [],
+  etfNiches: [],
+};
+
+export type AssetType = "All" | "Stocks" | "ETFs";
+
 export interface AddAlertFormState {
   name: string;
   action: "Buy" | "Sell";
   isRatio: boolean;
   ticker: string;
   stockName: string;
-  exchanges: string[]; // Changed from single exchange to array
+  exchanges: string[];
   country: string;
+  assetType: AssetType;
+  industryFilters: IndustryFilters;
+  etfFilters: EtfFilters;
   ticker1: string;
   ticker2: string;
   stockName1: string;
@@ -961,10 +1099,51 @@ export interface AddAlertFormState {
   conditions: ConditionEntry[];
   combinationLogic: "AND" | "OR";
   timeframe: string;
+  // Multi-timeframe (Task 3)
+  enableMultiTimeframe: boolean;
+  comparisonTimeframe: string;
+  // Mixed timeframe (Task 4)
+  enableMixedTimeframe: boolean;
 }
 
 /** One item for bulk create: same conditions, different ticker. */
 export interface BulkTickerItem {
   ticker: string;
   stockName: string;
+}
+
+/**
+ * Generate an alert name from conditions (Task 6).
+ * Extracts indicator names from condition expressions.
+ */
+export function generateAlertNameFromConditions(
+  entries: ConditionEntry[],
+  combinationLogic: "AND" | "OR"
+): string {
+  if (entries.length === 0) return "";
+  const names = entries.map((e) => {
+    const { category, type, params } = e;
+    switch (category) {
+      case "price":
+        return type.replace(/_/g, " ");
+      case "moving_average":
+        return `${params.maType ?? "SMA"}(${params.maPeriod ?? 20})`;
+      case "rsi":
+        return `RSI(${params.rsiPeriod ?? 14})`;
+      case "macd":
+        return "MACD";
+      case "bollinger":
+        return "BBands";
+      case "volume":
+        return "Volume";
+      case "indicator":
+        return params.indicatorName ?? "indicator";
+      case "custom":
+        return "Custom";
+      default:
+        return category.replace(/_/g, " ");
+    }
+  });
+  const joined = names.join(combinationLogic === "AND" ? " + " : " | ");
+  return joined.length > 60 ? joined.slice(0, 57) + "..." : joined;
 }

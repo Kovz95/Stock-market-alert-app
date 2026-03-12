@@ -18,22 +18,37 @@ import {
   Field,
   FieldSet,
   FieldContent,
+  FieldLegend,
 } from "@/components/ui/field";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
 import { AlertBasicFields } from "./AlertBasicFields";
 import { AlertTickerSection } from "./AlertTickerSection";
 import { AlertConditionsSection } from "./AlertConditionsSection";
 import { IndicatorGuide } from "./IndicatorGuide";
+import { AlertIndustryFilters } from "./AlertIndustryFilters";
+import { AlertEtfFilters } from "./AlertEtfFilters";
 import {
   buildConditionsStruct,
+  emptyIndustryFilters,
+  emptyEtfFilters,
+  generateAlertNameFromConditions,
   type AddAlertFormState,
   type BulkTickerItem,
 } from "./types";
 import {
   DEFAULT_TIMEFRAME,
   DEFAULT_COUNTRY,
+  TIMEFRAMES,
 } from "./constants";
 
 const defaultFormState: AddAlertFormState = {
@@ -44,6 +59,9 @@ const defaultFormState: AddAlertFormState = {
   stockName: "",
   exchanges: [],
   country: DEFAULT_COUNTRY,
+  assetType: "All",
+  industryFilters: emptyIndustryFilters,
+  etfFilters: emptyEtfFilters,
   ticker1: "",
   ticker2: "",
   stockName1: "",
@@ -52,6 +70,9 @@ const defaultFormState: AddAlertFormState = {
   conditions: [],
   combinationLogic: "AND",
   timeframe: DEFAULT_TIMEFRAME,
+  enableMultiTimeframe: false,
+  comparisonTimeframe: "1wk",
+  enableMixedTimeframe: false,
 };
 
 function parseBulkTickers(text: string): BulkTickerItem[] {
@@ -78,8 +99,21 @@ export function AddAlertForm() {
   const [bulkTickersText, setBulkTickersText] = useState("");
   const [applyToFiltered, setApplyToFiltered] = useState(false);
   const [filteredSymbolCount, setFilteredSymbolCount] = useState(0);
+  const [bulkProgress, setBulkProgress] = useState<{
+    creating: boolean;
+    created: number;
+    skipped: number;
+    failed: number;
+    total: number;
+  } | null>(null);
 
   const isPending = createAlert.isPending || createAlertsBulk.isPending;
+
+  // Alert name preview (Task 6)
+  const namePreview =
+    !form.name.trim() && form.conditions.length > 0
+      ? generateAlertNameFromConditions(form.conditions, form.combinationLogic)
+      : "";
 
   const buildSharedPayload = (): Omit<
     CreateAlertInput,
@@ -89,8 +123,6 @@ export function AddAlertForm() {
       form.conditions,
       form.combinationLogic
     );
-    // For single alert creation, use the first exchange or empty string
-    // Filter out "All" and take the first valid exchange
     const validExchanges = form.exchanges.filter(e => e !== "All");
     const exchange = validExchanges.length > 0 ? validExchanges[0] : "";
 
@@ -130,7 +162,18 @@ export function AddAlertForm() {
 
     // Handle "Apply to all filtered symbols" mode
     if (applyToFiltered && !form.isRatio) {
-      const result = await getSymbolsByFilters({ exchanges: form.exchanges, country: form.country });
+      const result = await getSymbolsByFilters({
+        exchanges: form.exchanges,
+        country: form.country,
+        assetType: form.assetType,
+        industry: form.industryFilters,
+        etf: form.assetType !== "Stocks" ? {
+          etfIssuers: form.etfFilters.etfIssuers,
+          assetClasses: form.etfFilters.assetClasses,
+          etfFocuses: form.etfFilters.etfFocuses,
+          etfNiches: form.etfFilters.etfNiches,
+        } : undefined,
+      });
       if (result.error || result.symbols.length === 0) {
         toast.error(result.error || "No symbols found matching the filters.");
         return;
@@ -142,10 +185,19 @@ export function AddAlertForm() {
         name: form.name.trim() ? `${sym.name} - ${form.name.trim()}` : undefined,
       }));
 
+      setBulkProgress({ creating: true, created: 0, skipped: 0, failed: 0, total: items.length });
+
       createAlertsBulk.mutate(
         { shared, items },
         {
           onSuccess: (result) => {
+            setBulkProgress({
+              creating: false,
+              created: result.created,
+              skipped: items.length - result.created - result.failed,
+              failed: result.failed,
+              total: items.length,
+            });
             if (result.created > 0)
               toast.success(`Created ${result.created} alert(s).`);
             if (result.failed > 0)
@@ -155,6 +207,7 @@ export function AddAlertForm() {
             if (result.created > 0) router.push("/alerts");
           },
           onError: (err) => {
+            setBulkProgress(null);
             toast.error(err.message ?? "Bulk create failed.");
           },
         }
@@ -169,6 +222,9 @@ export function AddAlertForm() {
         return;
       }
       const nameTemplate = form.name.trim() || undefined;
+
+      setBulkProgress({ creating: true, created: 0, skipped: 0, failed: 0, total: items.length });
+
       createAlertsBulk.mutate(
         {
           shared,
@@ -180,6 +236,13 @@ export function AddAlertForm() {
         },
         {
           onSuccess: (result) => {
+            setBulkProgress({
+              creating: false,
+              created: result.created,
+              skipped: items.length - result.created - result.failed,
+              failed: result.failed,
+              total: items.length,
+            });
             if (result.created > 0)
               toast.success(`Created ${result.created} alert(s).`);
             if (result.failed > 0)
@@ -189,6 +252,7 @@ export function AddAlertForm() {
             if (result.created > 0) router.push("/alerts");
           },
           onError: (err) => {
+            setBulkProgress(null);
             toast.error(err.message ?? "Bulk create failed.");
           },
         }
@@ -251,15 +315,17 @@ export function AddAlertForm() {
     }
   };
 
+  const showEtfFilters = form.assetType === "ETFs" || form.assetType === "All";
+
   return (
     <div className="space-y-8">
       <form onSubmit={handleSubmit}>
-        <FieldSet className="flex flex-col lg:flex-row">
-          <Card className="lg:flex-1">
+        <FieldSet className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <Card>
             <CardHeader>
               <CardTitle>Basic settings</CardTitle>
               <CardDescription>
-                Name, timeframe, exchange, and country.
+                Name, timeframe, exchange, country, and asset type.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -272,12 +338,65 @@ export function AddAlertForm() {
                 onExchangesChange={(v) => setForm((f) => ({ ...f, exchanges: v }))}
                 country={form.country}
                 onCountryChange={(v) => setForm((f) => ({ ...f, country: v }))}
+                assetType={form.assetType}
+                onAssetTypeChange={(v) => setForm((f) => ({ ...f, assetType: v }))}
+                industryFilters={form.industryFilters}
+                etfFilters={form.etfFilters}
                 onSymbolCountChange={setFilteredSymbolCount}
+              />
+
+              {/* Alert name preview (Task 6) */}
+              {namePreview && (
+                <div className="mt-3 rounded-lg border bg-muted/30 p-3">
+                  <p className="text-xs text-muted-foreground">Auto-generated name preview:</p>
+                  <p className="text-sm font-medium">{namePreview}</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Industry Filters</CardTitle>
+              <CardDescription>
+                Narrow symbols by RBICS classification (cascading).
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <AlertIndustryFilters
+                exchanges={form.exchanges}
+                country={form.country}
+                filters={form.industryFilters}
+                onFiltersChange={(v) =>
+                  setForm((f) => ({ ...f, industryFilters: v }))
+                }
               />
             </CardContent>
           </Card>
 
-          <Card className="lg:flex-1">
+          {/* ETF Filters card (Task 2) */}
+          {showEtfFilters && (
+            <Card>
+              <CardHeader>
+                <CardTitle>ETF Filters</CardTitle>
+                <CardDescription>
+                  Narrow ETFs by issuer, asset class, focus, and niche.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <AlertEtfFilters
+                  exchanges={form.exchanges}
+                  country={form.country}
+                  filters={form.etfFilters}
+                  onFiltersChange={(v) =>
+                    setForm((f) => ({ ...f, etfFilters: v }))
+                  }
+                />
+              </CardContent>
+            </Card>
+          )}
+
+          <Card>
             <CardHeader>
               <CardTitle>Ticker / assets</CardTitle>
               <CardDescription>
@@ -331,12 +450,12 @@ export function AddAlertForm() {
                     </div>
                     {applyToFiltered && filteredSymbolCount > 100 && (
                       <p className="mt-2 text-sm text-muted-foreground">
-                        ⚠️ Creating alerts for {filteredSymbolCount.toLocaleString()} symbols may take some time.
+                        Creating alerts for {filteredSymbolCount.toLocaleString()} symbols may take some time.
                       </p>
                     )}
                     {applyToFiltered && filteredSymbolCount > 500 && (
                       <p className="mt-1 text-sm text-destructive">
-                        ⚠️ WARNING: Creating {filteredSymbolCount.toLocaleString()} alerts may fail. Consider using more specific filters.
+                        WARNING: Creating {filteredSymbolCount.toLocaleString()} alerts may fail. Consider using more specific filters.
                       </p>
                     )}
                   </Field>
@@ -368,10 +487,17 @@ export function AddAlertForm() {
                   )}
                 </div>
               )}
+
+              {/* Duplicate detection info (Task 9) */}
+              <div className="mt-4 rounded-lg border bg-muted/30 p-3">
+                <p className="text-xs text-muted-foreground">
+                  Smart duplicate detection: allows multiple alerts for the same stock with the same conditions if they have different names.
+                </p>
+              </div>
             </CardContent>
           </Card>
 
-          <Card className="lg:flex-1">
+          <Card>
             <CardHeader>
               <CardTitle>Conditions</CardTitle>
               <CardDescription>
@@ -391,11 +517,148 @@ export function AddAlertForm() {
               />
             </CardContent>
           </Card>
+
+          {/* Multi-Timeframe & Mixed Timeframe card (Tasks 3 & 4) */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Timeframe Options</CardTitle>
+              <CardDescription>
+                Multi-timeframe comparison and mixed timeframe conditions.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Multi-Timeframe Comparison (Task 3) */}
+              <Field>
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="multi-timeframe"
+                    checked={form.enableMultiTimeframe}
+                    onCheckedChange={(c) =>
+                      setForm((f) => ({ ...f, enableMultiTimeframe: !!c }))
+                    }
+                  />
+                  <Label htmlFor="multi-timeframe">
+                    Enable Multi-Timeframe Comparison
+                  </Label>
+                </div>
+              </Field>
+
+              {form.enableMultiTimeframe && (
+                <div className="space-y-3 ml-6">
+                  <Field>
+                    <FieldLegend>Primary timeframe</FieldLegend>
+                    <FieldContent>
+                      <Select value={form.timeframe} onValueChange={(v) => setForm((f) => ({ ...f, timeframe: v }))}>
+                        <SelectTrigger className="w-full">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {TIMEFRAMES.map((tf) => (
+                            <SelectItem key={tf.value} value={tf.value}>
+                              {tf.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </FieldContent>
+                  </Field>
+                  <Field>
+                    <FieldLegend>Comparison timeframe</FieldLegend>
+                    <FieldContent>
+                      <Select value={form.comparisonTimeframe} onValueChange={(v) => setForm((f) => ({ ...f, comparisonTimeframe: v }))}>
+                        <SelectTrigger className="w-full">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {TIMEFRAMES.map((tf) => (
+                            <SelectItem key={tf.value} value={tf.value}>
+                              {tf.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </FieldContent>
+                  </Field>
+                  {form.timeframe === form.comparisonTimeframe && (
+                    <p className="text-sm text-destructive">
+                      Primary and comparison timeframes are the same. Select different timeframes for meaningful comparison.
+                    </p>
+                  )}
+                  <div className="rounded-lg border bg-muted/30 p-3">
+                    <p className="text-xs text-muted-foreground">
+                      Use <code className="text-xs">Close[-1]</code> for primary timeframe and{" "}
+                      <code className="text-xs">Close_{form.comparisonTimeframe}[-1]</code> for comparison timeframe in your conditions.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Mixed Timeframe Conditions (Task 4) */}
+              <Field>
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="mixed-timeframe"
+                    checked={form.enableMixedTimeframe}
+                    onCheckedChange={(c) =>
+                      setForm((f) => ({ ...f, enableMixedTimeframe: !!c }))
+                    }
+                  />
+                  <Label htmlFor="mixed-timeframe">
+                    Enable Mixed Timeframe Conditions
+                  </Label>
+                </div>
+              </Field>
+
+              {form.enableMixedTimeframe && (
+                <div className="ml-6 rounded-lg border bg-muted/30 p-3 space-y-2">
+                  <p className="text-xs text-muted-foreground">
+                    Mix indicators from different timeframes in your conditions. Examples:
+                  </p>
+                  <ul className="text-xs text-muted-foreground list-disc ml-4 space-y-1">
+                    <li><code>rsi(14)[-1] &lt; 30</code> (daily RSI)</li>
+                    <li><code>sma(50)_weekly[-1] &gt; sma(200)_weekly[-1]</code> (weekly MA cross)</li>
+                    <li><code>Close[-1] &gt; sma(20)[-1] AND Close_weekly[-1] &gt; sma(50)_weekly[-1]</code></li>
+                  </ul>
+                  <p className="text-xs text-muted-foreground">
+                    Enter mixed timeframe expressions in the condition builder using the &quot;Custom expression&quot; category.
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </FieldSet>
+
+        {/* Bulk progress indicator (Task 10) */}
+        {bulkProgress && (
+          <div className="mt-3 rounded-lg border p-4">
+            <div className="flex items-center gap-3">
+              <span className="text-sm font-medium">
+                {bulkProgress.creating ? "Creating alerts..." : "Bulk creation complete"}
+              </span>
+              {bulkProgress.creating && (
+                <Badge variant="secondary">Processing {bulkProgress.total} alerts</Badge>
+              )}
+            </div>
+            {!bulkProgress.creating && (
+              <div className="mt-2 flex gap-3">
+                {bulkProgress.created > 0 && (
+                  <Badge variant="default">{bulkProgress.created} created</Badge>
+                )}
+                {bulkProgress.skipped > 0 && (
+                  <Badge variant="secondary">{bulkProgress.skipped} skipped</Badge>
+                )}
+                {bulkProgress.failed > 0 && (
+                  <Badge variant="destructive">{bulkProgress.failed} failed</Badge>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
         <div className="flex flex-wrap gap-3 mt-3">
           <Button type="submit" disabled={isPending}>
             {isPending
-              ? "Creating…"
+              ? "Creating..."
               : bulkMode && bulkTickersText.trim()
                 ? "Create alerts"
                 : "Add alert"}

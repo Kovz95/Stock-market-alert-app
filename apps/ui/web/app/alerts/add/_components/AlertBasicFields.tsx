@@ -35,6 +35,7 @@ import {
 } from "./constants";
 import { countSymbolsByFilters } from "@/actions/stock-database-actions";
 import { Badge } from "@/components/ui/badge";
+import type { IndustryFilters, AssetType, EtfFilters } from "./types";
 
 export interface AlertBasicFieldsProps {
   name: string;
@@ -45,6 +46,10 @@ export interface AlertBasicFieldsProps {
   onExchangesChange: (v: string[]) => void;
   country: string;
   onCountryChange: (v: string) => void;
+  assetType: AssetType;
+  onAssetTypeChange: (v: AssetType) => void;
+  industryFilters: IndustryFilters;
+  etfFilters: EtfFilters;
   onSymbolCountChange?: (count: number) => void;
 }
 
@@ -57,18 +62,31 @@ export function AlertBasicFields({
   onExchangesChange,
   country,
   onCountryChange,
+  assetType,
+  onAssetTypeChange,
+  industryFilters,
+  etfFilters,
   onSymbolCountChange,
 }: AlertBasicFieldsProps) {
   const [symbolCount, setSymbolCount] = useState<number | null>(null);
   const [isCountingSymbols, setIsCountingSymbols] = useState(false);
 
-  // Fetch symbol count when exchanges or country changes
   useEffect(() => {
     const fetchCount = async () => {
       setIsCountingSymbols(true);
       try {
-        // Count symbols across all selected exchanges
-        const result = await countSymbolsByFilters({ exchanges, country });
+        const result = await countSymbolsByFilters({
+          exchanges,
+          country,
+          assetType,
+          industry: industryFilters,
+          etf: assetType !== "Stocks" ? {
+            etfIssuers: etfFilters.etfIssuers,
+            assetClasses: etfFilters.assetClasses,
+            etfFocuses: etfFilters.etfFocuses,
+            etfNiches: etfFilters.etfNiches,
+          } : undefined,
+        });
         if (!result.error) {
           setSymbolCount(result.count);
           onSymbolCountChange?.(result.count);
@@ -81,7 +99,7 @@ export function AlertBasicFields({
     };
 
     fetchCount();
-  }, [exchanges, country, onSymbolCountChange]);
+  }, [exchanges, country, assetType, industryFilters, etfFilters, onSymbolCountChange]);
 
   const showSymbolCount = symbolCount !== null;
   const exchangeAnchor = useComboboxAnchor();
@@ -168,6 +186,21 @@ export function AlertBasicFields({
                   {COUNTRY_CODE_TO_NAME[code] ?? code} ({code})
                 </SelectItem>
               ))}
+            </SelectContent>
+          </Select>
+        </FieldContent>
+      </Field>
+      <Field>
+        <FieldLegend>Asset type</FieldLegend>
+        <FieldContent>
+          <Select value={assetType} onValueChange={(v) => onAssetTypeChange(v as AssetType)}>
+            <SelectTrigger className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="All">All</SelectItem>
+              <SelectItem value="Stocks">Stocks</SelectItem>
+              <SelectItem value="ETFs">ETFs</SelectItem>
             </SelectContent>
           </Select>
         </FieldContent>

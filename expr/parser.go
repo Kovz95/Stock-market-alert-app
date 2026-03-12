@@ -283,7 +283,8 @@ func (p *parser) parseParams(op *Operand) error {
 	return nil
 }
 
-// parseParamValue parses a single parameter value (number, string, or identifier).
+// parseParamValue parses a single parameter value (number, string, identifier,
+// or nested indicator call like rsi(14) or ewo(sma1_length=5, sma2_length=35)).
 func (p *parser) parseParamValue() (interface{}, error) {
 	t := p.peek()
 	switch t.Type {
@@ -294,6 +295,10 @@ func (p *parser) parseParamValue() (interface{}, error) {
 		p.advance()
 		return t.Value, nil
 	case TokenIdent:
+		// Check if this is a nested indicator call like rsi(14) or ewo(sma1_length=5)
+		if p.lookAhead(1).Type == TokenLParen {
+			return p.parseIndicator()
+		}
 		p.advance()
 		// Check for boolean literals
 		lower := strings.ToLower(t.Value)
@@ -424,6 +429,16 @@ func remapPositionalParams(op *Operand) {
 		if v, ok := op.Params["_pos_1"]; ok {
 			op.Params["offset"] = v
 			delete(op.Params, "_pos_1")
+		}
+	case "frama", "kama":
+		// Discard the Python 'df' dataframe positional arg that the frontend emits
+		delete(op.Params, "period")
+	case "zscore":
+		// First positional arg is the inner indicator (already parsed as *Operand);
+		// remap it to the "input" key so resolveInput can find it.
+		if v, ok := op.Params["period"]; ok {
+			op.Params["input"] = v
+			delete(op.Params, "period")
 		}
 	}
 

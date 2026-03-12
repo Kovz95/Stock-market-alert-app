@@ -1,6 +1,7 @@
 "use server";
 
 import { priceClient } from "@/lib/grpc/channel";
+import type { FullStockMetadata } from "../../../../gen/ts/price/v1/price";
 
 /**
  * One row of full stock metadata (table columns + flattened ETF fields from raw_payload).
@@ -85,9 +86,28 @@ export async function getFullStockMetadata(): Promise<GetFullStockMetadataResult
   }
 }
 
+export type IndustryFilterValues = {
+  economies?: string[];
+  sectors?: string[];
+  subsectors?: string[];
+  industryGroups?: string[];
+  industries?: string[];
+  subindustries?: string[];
+};
+
+export type EtfFilterValues = {
+  etfIssuers?: string[];
+  assetClasses?: string[];
+  etfFocuses?: string[];
+  etfNiches?: string[];
+};
+
 export type CountSymbolsFilters = {
   exchanges?: string[];
   country?: string;
+  assetType?: "All" | "Stocks" | "ETFs";
+  industry?: IndustryFilterValues;
+  etf?: EtfFilterValues;
 };
 
 export type CountSymbolsResult = {
@@ -135,10 +155,96 @@ const COUNTRY_CODE_TO_NAME: Record<string, string> = {
   VN: "Vietnam",
 };
 
+function applyBaseFilters(
+  items: FullStockMetadata[],
+  filters: CountSymbolsFilters
+): FullStockMetadata[] {
+  let filtered = items;
+
+  if (filters.exchanges && filters.exchanges.length > 0) {
+    const validExchanges = filters.exchanges.filter(e => e !== "All");
+    if (validExchanges.length > 0) {
+      filtered = filtered.filter((item) => validExchanges.includes(item.exchange));
+    }
+  }
+
+  if (filters.country && filters.country !== "All") {
+    const code = filters.country;
+    const name = COUNTRY_CODE_TO_NAME[code];
+    filtered = filtered.filter((item) =>
+      item.country === code || (name != null && item.country === name)
+    );
+  }
+
+  // Asset type filter
+  if (filters.assetType && filters.assetType !== "All") {
+    if (filters.assetType === "Stocks") {
+      filtered = filtered.filter(
+        (item) => !item.assetType || item.assetType.toLowerCase() !== "etf"
+      );
+    } else if (filters.assetType === "ETFs") {
+      filtered = filtered.filter(
+        (item) => item.assetType && item.assetType.toLowerCase() === "etf"
+      );
+    }
+  }
+
+  return filtered;
+}
+
+function applyEtfFilters(
+  items: FullStockMetadata[],
+  etf?: EtfFilterValues
+): FullStockMetadata[] {
+  if (!etf) return items;
+  let filtered = items;
+
+  if (etf.etfIssuers && etf.etfIssuers.length > 0) {
+    filtered = filtered.filter((item) => etf.etfIssuers!.includes(item.etfIssuer));
+  }
+  if (etf.assetClasses && etf.assetClasses.length > 0) {
+    filtered = filtered.filter((item) => etf.assetClasses!.includes(item.etfAssetClass));
+  }
+  if (etf.etfFocuses && etf.etfFocuses.length > 0) {
+    filtered = filtered.filter((item) => etf.etfFocuses!.includes(item.etfFocus));
+  }
+  if (etf.etfNiches && etf.etfNiches.length > 0) {
+    filtered = filtered.filter((item) => etf.etfNiches!.includes(item.etfNiche));
+  }
+
+  return filtered;
+}
+
+type RbicsGetter = (item: FullStockMetadata) => string;
+
+const INDUSTRY_FIELD_MAP: [keyof IndustryFilterValues, RbicsGetter][] = [
+  ["economies", (i) => i.rbicsEconomy],
+  ["sectors", (i) => i.rbicsSector],
+  ["subsectors", (i) => i.rbicsSubsector],
+  ["industryGroups", (i) => i.rbicsIndustryGroup],
+  ["industries", (i) => i.rbicsIndustry],
+  ["subindustries", (i) => i.rbicsSubindustry],
+];
+
+function applyIndustryFilters(
+  items: FullStockMetadata[],
+  industry?: IndustryFilterValues
+): FullStockMetadata[] {
+  if (!industry) return items;
+  let filtered = items;
+
+  for (const [key, getter] of INDUSTRY_FIELD_MAP) {
+    const vals = industry[key];
+    if (vals && vals.length > 0) {
+      filtered = filtered.filter((item) => vals.includes(getter(item)));
+    }
+  }
+
+  return filtered;
+}
+
 /**
- * Count symbols that match the given exchanges and country filters.
- * "All" in exchanges array means no filter for exchanges.
- * Country filter matches both code (e.g. "US") and display name (e.g. "United States") since the backend may store either.
+ * Count symbols that match the given exchanges, country, and industry filters.
  */
 export async function countSymbolsByFilters(
   filters: CountSymbolsFilters
@@ -146,30 +252,9 @@ export async function countSymbolsByFilters(
   try {
     const res = await priceClient.getFullStockMetadata({});
     const items = res.items ?? [];
-
-    let filtered = items;
-
-    // Filter by exchanges if not "All" and array is not empty
-    if (filters.exchanges && filters.exchanges.length > 0) {
-      const validExchanges = filters.exchanges.filter(e => e !== "All");
-      if (validExchanges.length > 0) {
-        filtered = filtered.filter((item) => {
-          const exchange = item.exchange || item["exchange"] as string;
-          return validExchanges.includes(exchange);
-        });
-      }
-    }
-
-    // Filter by country if not "All" (match both code and display name; backend may store either)
-    if (filters.country && filters.country !== "All") {
-      const code = filters.country;
-      const name = COUNTRY_CODE_TO_NAME[code];
-      filtered = filtered.filter((item) => {
-        const itemCountry = (item.country ?? item["country"] ?? "") as string;
-        return itemCountry === code || (name != null && itemCountry === name);
-      });
-    }
-
+    const base = applyBaseFilters(items, filters);
+    const withIndustry = applyIndustryFilters(base, filters.industry);
+    const filtered = applyEtfFilters(withIndustry, filters.etf);
     return { count: filtered.length };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
@@ -190,7 +275,7 @@ export type GetSymbolsByFiltersResult = {
 };
 
 /**
- * Get actual symbols that match the given exchanges and country filters.
+ * Get actual symbols that match the given exchanges, country, and industry filters.
  */
 export async function getSymbolsByFilters(
   filters: CountSymbolsFilters
@@ -198,29 +283,9 @@ export async function getSymbolsByFilters(
   try {
     const res = await priceClient.getFullStockMetadata({});
     const items = res.items ?? [];
-
-    let filtered = items;
-
-    // Filter by exchanges if not "All" and array is not empty
-    if (filters.exchanges && filters.exchanges.length > 0) {
-      const validExchanges = filters.exchanges.filter(e => e !== "All");
-      if (validExchanges.length > 0) {
-        filtered = filtered.filter((item) => {
-          const exchange = item.exchange || item["exchange"] as string;
-          return validExchanges.includes(exchange);
-        });
-      }
-    }
-
-    // Filter by country if not "All" (match both code and display name; backend may store either)
-    if (filters.country && filters.country !== "All") {
-      const code = filters.country;
-      const name = COUNTRY_CODE_TO_NAME[code];
-      filtered = filtered.filter((item) => {
-        const itemCountry = (item.country ?? item["country"] ?? "") as string;
-        return itemCountry === code || (name != null && itemCountry === name);
-      });
-    }
+    const base = applyBaseFilters(items, filters);
+    const withIndustry = applyIndustryFilters(base, filters.industry);
+    const filtered = applyEtfFilters(withIndustry, filters.etf);
 
     const symbols: SymbolInfo[] = filtered.map((item) => ({
       symbol: String(item.symbol || item["symbol"] || ""),
@@ -233,5 +298,118 @@ export async function getSymbolsByFilters(
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     return { symbols: [], error: message };
+  }
+}
+
+/**
+ * RBICS filter options returned by getIndustryFilterOptions.
+ * Each level contains the distinct values available given the parent selections.
+ */
+export type IndustryFilterOptions = {
+  economies: string[];
+  sectors: string[];
+  subsectors: string[];
+  industryGroups: string[];
+  industries: string[];
+  subindustries: string[];
+  error?: string;
+};
+
+/**
+ * Get available RBICS industry filter options with cascading logic.
+ * Selecting a parent level narrows the available options for child levels.
+ */
+export async function getIndustryFilterOptions(
+  baseFilters: { exchanges?: string[]; country?: string },
+  selected: IndustryFilterValues
+): Promise<IndustryFilterOptions> {
+  try {
+    const res = await priceClient.getFullStockMetadata({});
+    const allItems = res.items ?? [];
+    let items = applyBaseFilters(allItems, baseFilters);
+
+    const unique = (arr: string[]) => [...new Set(arr.filter(Boolean))].sort();
+
+    const economies = unique(items.map(i => i.rbicsEconomy));
+
+    if (selected.economies && selected.economies.length > 0) {
+      items = items.filter(i => selected.economies!.includes(i.rbicsEconomy));
+    }
+    const sectors = unique(items.map(i => i.rbicsSector));
+
+    if (selected.sectors && selected.sectors.length > 0) {
+      items = items.filter(i => selected.sectors!.includes(i.rbicsSector));
+    }
+    const subsectors = unique(items.map(i => i.rbicsSubsector));
+
+    if (selected.subsectors && selected.subsectors.length > 0) {
+      items = items.filter(i => selected.subsectors!.includes(i.rbicsSubsector));
+    }
+    const industryGroups = unique(items.map(i => i.rbicsIndustryGroup));
+
+    if (selected.industryGroups && selected.industryGroups.length > 0) {
+      items = items.filter(i => selected.industryGroups!.includes(i.rbicsIndustryGroup));
+    }
+    const industries = unique(items.map(i => i.rbicsIndustry));
+
+    if (selected.industries && selected.industries.length > 0) {
+      items = items.filter(i => selected.industries!.includes(i.rbicsIndustry));
+    }
+    const subindustries = unique(items.map(i => i.rbicsSubindustry));
+
+    return { economies, sectors, subsectors, industryGroups, industries, subindustries };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return { economies: [], sectors: [], subsectors: [], industryGroups: [], industries: [], subindustries: [], error: message };
+  }
+}
+
+/**
+ * ETF filter options returned by getEtfFilterOptions.
+ */
+export type EtfFilterOptions = {
+  etfIssuers: string[];
+  assetClasses: string[];
+  etfFocuses: string[];
+  etfNiches: string[];
+  error?: string;
+};
+
+/**
+ * Get available ETF filter options with cascading logic.
+ */
+export async function getEtfFilterOptions(
+  baseFilters: { exchanges?: string[]; country?: string },
+  selected: EtfFilterValues
+): Promise<EtfFilterOptions> {
+  try {
+    const res = await priceClient.getFullStockMetadata({});
+    const allItems = res.items ?? [];
+    // Only include ETFs
+    let items = applyBaseFilters(allItems, { ...baseFilters, assetType: "ETFs" });
+
+    const unique = (arr: string[]) => [...new Set(arr.filter(Boolean))].sort();
+
+    const etfIssuers = unique(items.map(i => i.etfIssuer));
+
+    if (selected.etfIssuers && selected.etfIssuers.length > 0) {
+      items = items.filter(i => selected.etfIssuers!.includes(i.etfIssuer));
+    }
+    const assetClasses = unique(items.map(i => i.etfAssetClass));
+
+    if (selected.assetClasses && selected.assetClasses.length > 0) {
+      items = items.filter(i => selected.assetClasses!.includes(i.etfAssetClass));
+    }
+    const etfFocuses = unique(items.map(i => i.etfFocus));
+
+    if (selected.etfFocuses && selected.etfFocuses.length > 0) {
+      items = items.filter(i => selected.etfFocuses!.includes(i.etfFocus));
+    }
+    const etfNiches = unique(items.map(i => i.etfNiche));
+
+    return { etfIssuers, assetClasses, etfFocuses, etfNiches };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return { etfIssuers: [], assetClasses: [], etfFocuses: [], etfNiches: [], error: message };
   }
 }

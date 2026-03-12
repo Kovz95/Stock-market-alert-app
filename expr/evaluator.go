@@ -161,6 +161,20 @@ func (e *Evaluator) computeSeries(data *indicator.OHLCV, op *Operand, ctx map[st
 		}
 	}
 
+	// Resolve any nested *Operand param values to computed series.
+	// e.g. zscore(rsi(14), lookback=20) stores rsi operand under "input";
+	// sma(period=20, input=rsi(14)) stores rsi operand under "input".
+	for key, val := range params {
+		if nestedOp, ok := val.(*Operand); ok {
+			nestedSeries, err := e.computeSeries(data, nestedOp, ctx)
+			if err != nil {
+				return nil, fmt.Errorf("nested indicator param %q: %w", key, err)
+			}
+			params["_computed_"+key] = nestedSeries
+			delete(params, key)
+		}
+	}
+
 	// Catch panics from go-talib when data is too short for the period
 	var (
 		series  []float64
