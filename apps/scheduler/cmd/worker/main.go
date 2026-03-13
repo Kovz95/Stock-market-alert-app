@@ -172,7 +172,7 @@ func main() {
 		}
 	}()
 
-	sched := schedule.New(asynqClient, logger, cfg.FMPAPIKey)
+	sched := schedule.New(asynqClient, logger, cfg.FMPAPIKey, fmpClient)
 	sched.Start(ctx)
 
 	jobTypes := []string{"daily", "weekly", "hourly"}

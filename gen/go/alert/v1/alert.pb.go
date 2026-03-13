@@ -2857,6 +2857,183 @@ func (x *GetFailedPriceDataResponse) GetExchangeBreakdown() []*ExchangeBreakdown
 	return nil
 }
 
+// GetAuditLog: paginated, filtered, sorted access to individual audit rows.
+type GetAuditLogRequest struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	Days           int32                  `protobuf:"varint,1,opt,name=days,proto3" json:"days,omitempty"`                                          // how many days back (default 7, max 90)
+	Page           int32                  `protobuf:"varint,2,opt,name=page,proto3" json:"page,omitempty"`                                          // 1-based page number
+	PageSize       int32                  `protobuf:"varint,3,opt,name=page_size,json=pageSize,proto3" json:"page_size,omitempty"`                  // default 50, max 200
+	SortField      string                 `protobuf:"bytes,4,opt,name=sort_field,json=sortField,proto3" json:"sort_field,omitempty"`                // timestamp, ticker, execution_time_ms, etc.
+	SortDirection  string                 `protobuf:"bytes,5,opt,name=sort_direction,json=sortDirection,proto3" json:"sort_direction,omitempty"`    // "asc" or "desc"
+	AlertId        string                 `protobuf:"bytes,6,opt,name=alert_id,json=alertId,proto3" json:"alert_id,omitempty"`                      // substring filter
+	Ticker         string                 `protobuf:"bytes,7,opt,name=ticker,proto3" json:"ticker,omitempty"`                                       // case-insensitive contains
+	EvaluationType string                 `protobuf:"bytes,8,opt,name=evaluation_type,json=evaluationType,proto3" json:"evaluation_type,omitempty"` // exact match filter
+	StatusFilter   string                 `protobuf:"bytes,9,opt,name=status_filter,json=statusFilter,proto3" json:"status_filter,omitempty"`       // "success", "error", "triggered", "not_triggered"
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *GetAuditLogRequest) Reset() {
+	*x = GetAuditLogRequest{}
+	mi := &file_alert_v1_alert_proto_msgTypes[39]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetAuditLogRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetAuditLogRequest) ProtoMessage() {}
+
+func (x *GetAuditLogRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_alert_v1_alert_proto_msgTypes[39]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetAuditLogRequest.ProtoReflect.Descriptor instead.
+func (*GetAuditLogRequest) Descriptor() ([]byte, []int) {
+	return file_alert_v1_alert_proto_rawDescGZIP(), []int{39}
+}
+
+func (x *GetAuditLogRequest) GetDays() int32 {
+	if x != nil {
+		return x.Days
+	}
+	return 0
+}
+
+func (x *GetAuditLogRequest) GetPage() int32 {
+	if x != nil {
+		return x.Page
+	}
+	return 0
+}
+
+func (x *GetAuditLogRequest) GetPageSize() int32 {
+	if x != nil {
+		return x.PageSize
+	}
+	return 0
+}
+
+func (x *GetAuditLogRequest) GetSortField() string {
+	if x != nil {
+		return x.SortField
+	}
+	return ""
+}
+
+func (x *GetAuditLogRequest) GetSortDirection() string {
+	if x != nil {
+		return x.SortDirection
+	}
+	return ""
+}
+
+func (x *GetAuditLogRequest) GetAlertId() string {
+	if x != nil {
+		return x.AlertId
+	}
+	return ""
+}
+
+func (x *GetAuditLogRequest) GetTicker() string {
+	if x != nil {
+		return x.Ticker
+	}
+	return ""
+}
+
+func (x *GetAuditLogRequest) GetEvaluationType() string {
+	if x != nil {
+		return x.EvaluationType
+	}
+	return ""
+}
+
+func (x *GetAuditLogRequest) GetStatusFilter() string {
+	if x != nil {
+		return x.StatusFilter
+	}
+	return ""
+}
+
+type GetAuditLogResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Rows          []*AuditHistoryRow     `protobuf:"bytes,1,rep,name=rows,proto3" json:"rows,omitempty"`
+	TotalCount    int64                  `protobuf:"varint,2,opt,name=total_count,json=totalCount,proto3" json:"total_count,omitempty"`
+	Page          int32                  `protobuf:"varint,3,opt,name=page,proto3" json:"page,omitempty"`
+	PageSize      int32                  `protobuf:"varint,4,opt,name=page_size,json=pageSize,proto3" json:"page_size,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetAuditLogResponse) Reset() {
+	*x = GetAuditLogResponse{}
+	mi := &file_alert_v1_alert_proto_msgTypes[40]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetAuditLogResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetAuditLogResponse) ProtoMessage() {}
+
+func (x *GetAuditLogResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_alert_v1_alert_proto_msgTypes[40]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetAuditLogResponse.ProtoReflect.Descriptor instead.
+func (*GetAuditLogResponse) Descriptor() ([]byte, []int) {
+	return file_alert_v1_alert_proto_rawDescGZIP(), []int{40}
+}
+
+func (x *GetAuditLogResponse) GetRows() []*AuditHistoryRow {
+	if x != nil {
+		return x.Rows
+	}
+	return nil
+}
+
+func (x *GetAuditLogResponse) GetTotalCount() int64 {
+	if x != nil {
+		return x.TotalCount
+	}
+	return 0
+}
+
+func (x *GetAuditLogResponse) GetPage() int32 {
+	if x != nil {
+		return x.Page
+	}
+	return 0
+}
+
+func (x *GetAuditLogResponse) GetPageSize() int32 {
+	if x != nil {
+		return x.PageSize
+	}
+	return 0
+}
+
 type ClearAuditDataRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	unknownFields protoimpl.UnknownFields
@@ -2865,7 +3042,7 @@ type ClearAuditDataRequest struct {
 
 func (x *ClearAuditDataRequest) Reset() {
 	*x = ClearAuditDataRequest{}
-	mi := &file_alert_v1_alert_proto_msgTypes[39]
+	mi := &file_alert_v1_alert_proto_msgTypes[41]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2877,7 +3054,7 @@ func (x *ClearAuditDataRequest) String() string {
 func (*ClearAuditDataRequest) ProtoMessage() {}
 
 func (x *ClearAuditDataRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_alert_v1_alert_proto_msgTypes[39]
+	mi := &file_alert_v1_alert_proto_msgTypes[41]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2890,7 +3067,7 @@ func (x *ClearAuditDataRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ClearAuditDataRequest.ProtoReflect.Descriptor instead.
 func (*ClearAuditDataRequest) Descriptor() ([]byte, []int) {
-	return file_alert_v1_alert_proto_rawDescGZIP(), []int{39}
+	return file_alert_v1_alert_proto_rawDescGZIP(), []int{41}
 }
 
 type ClearAuditDataResponse struct {
@@ -2902,7 +3079,7 @@ type ClearAuditDataResponse struct {
 
 func (x *ClearAuditDataResponse) Reset() {
 	*x = ClearAuditDataResponse{}
-	mi := &file_alert_v1_alert_proto_msgTypes[40]
+	mi := &file_alert_v1_alert_proto_msgTypes[42]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2914,7 +3091,7 @@ func (x *ClearAuditDataResponse) String() string {
 func (*ClearAuditDataResponse) ProtoMessage() {}
 
 func (x *ClearAuditDataResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_alert_v1_alert_proto_msgTypes[40]
+	mi := &file_alert_v1_alert_proto_msgTypes[42]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2927,7 +3104,7 @@ func (x *ClearAuditDataResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ClearAuditDataResponse.ProtoReflect.Descriptor instead.
 func (*ClearAuditDataResponse) Descriptor() ([]byte, []int) {
-	return file_alert_v1_alert_proto_rawDescGZIP(), []int{40}
+	return file_alert_v1_alert_proto_rawDescGZIP(), []int{42}
 }
 
 func (x *ClearAuditDataResponse) GetDeletedCount() int64 {
@@ -2949,7 +3126,7 @@ type GetTriggerHistoryByTickerRequest struct {
 
 func (x *GetTriggerHistoryByTickerRequest) Reset() {
 	*x = GetTriggerHistoryByTickerRequest{}
-	mi := &file_alert_v1_alert_proto_msgTypes[41]
+	mi := &file_alert_v1_alert_proto_msgTypes[43]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2961,7 +3138,7 @@ func (x *GetTriggerHistoryByTickerRequest) String() string {
 func (*GetTriggerHistoryByTickerRequest) ProtoMessage() {}
 
 func (x *GetTriggerHistoryByTickerRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_alert_v1_alert_proto_msgTypes[41]
+	mi := &file_alert_v1_alert_proto_msgTypes[43]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2974,7 +3151,7 @@ func (x *GetTriggerHistoryByTickerRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetTriggerHistoryByTickerRequest.ProtoReflect.Descriptor instead.
 func (*GetTriggerHistoryByTickerRequest) Descriptor() ([]byte, []int) {
-	return file_alert_v1_alert_proto_rawDescGZIP(), []int{41}
+	return file_alert_v1_alert_proto_rawDescGZIP(), []int{43}
 }
 
 func (x *GetTriggerHistoryByTickerRequest) GetTicker() string {
@@ -3014,7 +3191,7 @@ type GetTriggerHistoryByTickerResponse struct {
 
 func (x *GetTriggerHistoryByTickerResponse) Reset() {
 	*x = GetTriggerHistoryByTickerResponse{}
-	mi := &file_alert_v1_alert_proto_msgTypes[42]
+	mi := &file_alert_v1_alert_proto_msgTypes[44]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3026,7 +3203,7 @@ func (x *GetTriggerHistoryByTickerResponse) String() string {
 func (*GetTriggerHistoryByTickerResponse) ProtoMessage() {}
 
 func (x *GetTriggerHistoryByTickerResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_alert_v1_alert_proto_msgTypes[42]
+	mi := &file_alert_v1_alert_proto_msgTypes[44]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3039,7 +3216,7 @@ func (x *GetTriggerHistoryByTickerResponse) ProtoReflect() protoreflect.Message 
 
 // Deprecated: Use GetTriggerHistoryByTickerResponse.ProtoReflect.Descriptor instead.
 func (*GetTriggerHistoryByTickerResponse) Descriptor() ([]byte, []int) {
-	return file_alert_v1_alert_proto_rawDescGZIP(), []int{42}
+	return file_alert_v1_alert_proto_rawDescGZIP(), []int{44}
 }
 
 func (x *GetTriggerHistoryByTickerResponse) GetRows() []*AuditHistoryRow {
@@ -3059,7 +3236,7 @@ type SearchStocksRequest struct {
 
 func (x *SearchStocksRequest) Reset() {
 	*x = SearchStocksRequest{}
-	mi := &file_alert_v1_alert_proto_msgTypes[43]
+	mi := &file_alert_v1_alert_proto_msgTypes[45]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3071,7 +3248,7 @@ func (x *SearchStocksRequest) String() string {
 func (*SearchStocksRequest) ProtoMessage() {}
 
 func (x *SearchStocksRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_alert_v1_alert_proto_msgTypes[43]
+	mi := &file_alert_v1_alert_proto_msgTypes[45]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3084,7 +3261,7 @@ func (x *SearchStocksRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SearchStocksRequest.ProtoReflect.Descriptor instead.
 func (*SearchStocksRequest) Descriptor() ([]byte, []int) {
-	return file_alert_v1_alert_proto_rawDescGZIP(), []int{43}
+	return file_alert_v1_alert_proto_rawDescGZIP(), []int{45}
 }
 
 func (x *SearchStocksRequest) GetQuery() string {
@@ -3114,7 +3291,7 @@ type StockSearchResult struct {
 
 func (x *StockSearchResult) Reset() {
 	*x = StockSearchResult{}
-	mi := &file_alert_v1_alert_proto_msgTypes[44]
+	mi := &file_alert_v1_alert_proto_msgTypes[46]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3126,7 +3303,7 @@ func (x *StockSearchResult) String() string {
 func (*StockSearchResult) ProtoMessage() {}
 
 func (x *StockSearchResult) ProtoReflect() protoreflect.Message {
-	mi := &file_alert_v1_alert_proto_msgTypes[44]
+	mi := &file_alert_v1_alert_proto_msgTypes[46]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3139,7 +3316,7 @@ func (x *StockSearchResult) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StockSearchResult.ProtoReflect.Descriptor instead.
 func (*StockSearchResult) Descriptor() ([]byte, []int) {
-	return file_alert_v1_alert_proto_rawDescGZIP(), []int{44}
+	return file_alert_v1_alert_proto_rawDescGZIP(), []int{46}
 }
 
 func (x *StockSearchResult) GetTicker() string {
@@ -3186,7 +3363,7 @@ type SearchStocksResponse struct {
 
 func (x *SearchStocksResponse) Reset() {
 	*x = SearchStocksResponse{}
-	mi := &file_alert_v1_alert_proto_msgTypes[45]
+	mi := &file_alert_v1_alert_proto_msgTypes[47]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3198,7 +3375,7 @@ func (x *SearchStocksResponse) String() string {
 func (*SearchStocksResponse) ProtoMessage() {}
 
 func (x *SearchStocksResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_alert_v1_alert_proto_msgTypes[45]
+	mi := &file_alert_v1_alert_proto_msgTypes[47]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3211,7 +3388,7 @@ func (x *SearchStocksResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SearchStocksResponse.ProtoReflect.Descriptor instead.
 func (*SearchStocksResponse) Descriptor() ([]byte, []int) {
-	return file_alert_v1_alert_proto_rawDescGZIP(), []int{45}
+	return file_alert_v1_alert_proto_rawDescGZIP(), []int{47}
 }
 
 func (x *SearchStocksResponse) GetResults() []*StockSearchResult {
@@ -3229,7 +3406,7 @@ type ListPortfoliosRequest struct {
 
 func (x *ListPortfoliosRequest) Reset() {
 	*x = ListPortfoliosRequest{}
-	mi := &file_alert_v1_alert_proto_msgTypes[46]
+	mi := &file_alert_v1_alert_proto_msgTypes[48]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3241,7 +3418,7 @@ func (x *ListPortfoliosRequest) String() string {
 func (*ListPortfoliosRequest) ProtoMessage() {}
 
 func (x *ListPortfoliosRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_alert_v1_alert_proto_msgTypes[46]
+	mi := &file_alert_v1_alert_proto_msgTypes[48]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3254,7 +3431,7 @@ func (x *ListPortfoliosRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListPortfoliosRequest.ProtoReflect.Descriptor instead.
 func (*ListPortfoliosRequest) Descriptor() ([]byte, []int) {
-	return file_alert_v1_alert_proto_rawDescGZIP(), []int{46}
+	return file_alert_v1_alert_proto_rawDescGZIP(), []int{48}
 }
 
 type Portfolio struct {
@@ -3272,7 +3449,7 @@ type Portfolio struct {
 
 func (x *Portfolio) Reset() {
 	*x = Portfolio{}
-	mi := &file_alert_v1_alert_proto_msgTypes[47]
+	mi := &file_alert_v1_alert_proto_msgTypes[49]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3284,7 +3461,7 @@ func (x *Portfolio) String() string {
 func (*Portfolio) ProtoMessage() {}
 
 func (x *Portfolio) ProtoReflect() protoreflect.Message {
-	mi := &file_alert_v1_alert_proto_msgTypes[47]
+	mi := &file_alert_v1_alert_proto_msgTypes[49]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3297,7 +3474,7 @@ func (x *Portfolio) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Portfolio.ProtoReflect.Descriptor instead.
 func (*Portfolio) Descriptor() ([]byte, []int) {
-	return file_alert_v1_alert_proto_rawDescGZIP(), []int{47}
+	return file_alert_v1_alert_proto_rawDescGZIP(), []int{49}
 }
 
 func (x *Portfolio) GetPortfolioId() string {
@@ -3358,7 +3535,7 @@ type ListPortfoliosResponse struct {
 
 func (x *ListPortfoliosResponse) Reset() {
 	*x = ListPortfoliosResponse{}
-	mi := &file_alert_v1_alert_proto_msgTypes[48]
+	mi := &file_alert_v1_alert_proto_msgTypes[50]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3370,7 +3547,7 @@ func (x *ListPortfoliosResponse) String() string {
 func (*ListPortfoliosResponse) ProtoMessage() {}
 
 func (x *ListPortfoliosResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_alert_v1_alert_proto_msgTypes[48]
+	mi := &file_alert_v1_alert_proto_msgTypes[50]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3383,7 +3560,7 @@ func (x *ListPortfoliosResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListPortfoliosResponse.ProtoReflect.Descriptor instead.
 func (*ListPortfoliosResponse) Descriptor() ([]byte, []int) {
-	return file_alert_v1_alert_proto_rawDescGZIP(), []int{48}
+	return file_alert_v1_alert_proto_rawDescGZIP(), []int{50}
 }
 
 func (x *ListPortfoliosResponse) GetPortfolios() []*Portfolio {
@@ -3403,7 +3580,7 @@ type GetPortfolioRequest struct {
 
 func (x *GetPortfolioRequest) Reset() {
 	*x = GetPortfolioRequest{}
-	mi := &file_alert_v1_alert_proto_msgTypes[49]
+	mi := &file_alert_v1_alert_proto_msgTypes[51]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3415,7 +3592,7 @@ func (x *GetPortfolioRequest) String() string {
 func (*GetPortfolioRequest) ProtoMessage() {}
 
 func (x *GetPortfolioRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_alert_v1_alert_proto_msgTypes[49]
+	mi := &file_alert_v1_alert_proto_msgTypes[51]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3428,7 +3605,7 @@ func (x *GetPortfolioRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetPortfolioRequest.ProtoReflect.Descriptor instead.
 func (*GetPortfolioRequest) Descriptor() ([]byte, []int) {
-	return file_alert_v1_alert_proto_rawDescGZIP(), []int{49}
+	return file_alert_v1_alert_proto_rawDescGZIP(), []int{51}
 }
 
 func (x *GetPortfolioRequest) GetPortfolioId() string {
@@ -3447,7 +3624,7 @@ type GetPortfolioResponse struct {
 
 func (x *GetPortfolioResponse) Reset() {
 	*x = GetPortfolioResponse{}
-	mi := &file_alert_v1_alert_proto_msgTypes[50]
+	mi := &file_alert_v1_alert_proto_msgTypes[52]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3459,7 +3636,7 @@ func (x *GetPortfolioResponse) String() string {
 func (*GetPortfolioResponse) ProtoMessage() {}
 
 func (x *GetPortfolioResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_alert_v1_alert_proto_msgTypes[50]
+	mi := &file_alert_v1_alert_proto_msgTypes[52]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3472,7 +3649,7 @@ func (x *GetPortfolioResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetPortfolioResponse.ProtoReflect.Descriptor instead.
 func (*GetPortfolioResponse) Descriptor() ([]byte, []int) {
-	return file_alert_v1_alert_proto_rawDescGZIP(), []int{50}
+	return file_alert_v1_alert_proto_rawDescGZIP(), []int{52}
 }
 
 func (x *GetPortfolioResponse) GetPortfolio() *Portfolio {
@@ -3493,7 +3670,7 @@ type CreatePortfolioRequest struct {
 
 func (x *CreatePortfolioRequest) Reset() {
 	*x = CreatePortfolioRequest{}
-	mi := &file_alert_v1_alert_proto_msgTypes[51]
+	mi := &file_alert_v1_alert_proto_msgTypes[53]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3505,7 +3682,7 @@ func (x *CreatePortfolioRequest) String() string {
 func (*CreatePortfolioRequest) ProtoMessage() {}
 
 func (x *CreatePortfolioRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_alert_v1_alert_proto_msgTypes[51]
+	mi := &file_alert_v1_alert_proto_msgTypes[53]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3518,7 +3695,7 @@ func (x *CreatePortfolioRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreatePortfolioRequest.ProtoReflect.Descriptor instead.
 func (*CreatePortfolioRequest) Descriptor() ([]byte, []int) {
-	return file_alert_v1_alert_proto_rawDescGZIP(), []int{51}
+	return file_alert_v1_alert_proto_rawDescGZIP(), []int{53}
 }
 
 func (x *CreatePortfolioRequest) GetName() string {
@@ -3544,7 +3721,7 @@ type CreatePortfolioResponse struct {
 
 func (x *CreatePortfolioResponse) Reset() {
 	*x = CreatePortfolioResponse{}
-	mi := &file_alert_v1_alert_proto_msgTypes[52]
+	mi := &file_alert_v1_alert_proto_msgTypes[54]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3556,7 +3733,7 @@ func (x *CreatePortfolioResponse) String() string {
 func (*CreatePortfolioResponse) ProtoMessage() {}
 
 func (x *CreatePortfolioResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_alert_v1_alert_proto_msgTypes[52]
+	mi := &file_alert_v1_alert_proto_msgTypes[54]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3569,7 +3746,7 @@ func (x *CreatePortfolioResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreatePortfolioResponse.ProtoReflect.Descriptor instead.
 func (*CreatePortfolioResponse) Descriptor() ([]byte, []int) {
-	return file_alert_v1_alert_proto_rawDescGZIP(), []int{52}
+	return file_alert_v1_alert_proto_rawDescGZIP(), []int{54}
 }
 
 func (x *CreatePortfolioResponse) GetPortfolio() *Portfolio {
@@ -3592,7 +3769,7 @@ type UpdatePortfolioRequest struct {
 
 func (x *UpdatePortfolioRequest) Reset() {
 	*x = UpdatePortfolioRequest{}
-	mi := &file_alert_v1_alert_proto_msgTypes[53]
+	mi := &file_alert_v1_alert_proto_msgTypes[55]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3604,7 +3781,7 @@ func (x *UpdatePortfolioRequest) String() string {
 func (*UpdatePortfolioRequest) ProtoMessage() {}
 
 func (x *UpdatePortfolioRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_alert_v1_alert_proto_msgTypes[53]
+	mi := &file_alert_v1_alert_proto_msgTypes[55]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3617,7 +3794,7 @@ func (x *UpdatePortfolioRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdatePortfolioRequest.ProtoReflect.Descriptor instead.
 func (*UpdatePortfolioRequest) Descriptor() ([]byte, []int) {
-	return file_alert_v1_alert_proto_rawDescGZIP(), []int{53}
+	return file_alert_v1_alert_proto_rawDescGZIP(), []int{55}
 }
 
 func (x *UpdatePortfolioRequest) GetPortfolioId() string {
@@ -3657,7 +3834,7 @@ type UpdatePortfolioResponse struct {
 
 func (x *UpdatePortfolioResponse) Reset() {
 	*x = UpdatePortfolioResponse{}
-	mi := &file_alert_v1_alert_proto_msgTypes[54]
+	mi := &file_alert_v1_alert_proto_msgTypes[56]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3669,7 +3846,7 @@ func (x *UpdatePortfolioResponse) String() string {
 func (*UpdatePortfolioResponse) ProtoMessage() {}
 
 func (x *UpdatePortfolioResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_alert_v1_alert_proto_msgTypes[54]
+	mi := &file_alert_v1_alert_proto_msgTypes[56]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3682,7 +3859,7 @@ func (x *UpdatePortfolioResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdatePortfolioResponse.ProtoReflect.Descriptor instead.
 func (*UpdatePortfolioResponse) Descriptor() ([]byte, []int) {
-	return file_alert_v1_alert_proto_rawDescGZIP(), []int{54}
+	return file_alert_v1_alert_proto_rawDescGZIP(), []int{56}
 }
 
 func (x *UpdatePortfolioResponse) GetPortfolio() *Portfolio {
@@ -3702,7 +3879,7 @@ type DeletePortfolioRequest struct {
 
 func (x *DeletePortfolioRequest) Reset() {
 	*x = DeletePortfolioRequest{}
-	mi := &file_alert_v1_alert_proto_msgTypes[55]
+	mi := &file_alert_v1_alert_proto_msgTypes[57]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3714,7 +3891,7 @@ func (x *DeletePortfolioRequest) String() string {
 func (*DeletePortfolioRequest) ProtoMessage() {}
 
 func (x *DeletePortfolioRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_alert_v1_alert_proto_msgTypes[55]
+	mi := &file_alert_v1_alert_proto_msgTypes[57]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3727,7 +3904,7 @@ func (x *DeletePortfolioRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeletePortfolioRequest.ProtoReflect.Descriptor instead.
 func (*DeletePortfolioRequest) Descriptor() ([]byte, []int) {
-	return file_alert_v1_alert_proto_rawDescGZIP(), []int{55}
+	return file_alert_v1_alert_proto_rawDescGZIP(), []int{57}
 }
 
 func (x *DeletePortfolioRequest) GetPortfolioId() string {
@@ -3745,7 +3922,7 @@ type DeletePortfolioResponse struct {
 
 func (x *DeletePortfolioResponse) Reset() {
 	*x = DeletePortfolioResponse{}
-	mi := &file_alert_v1_alert_proto_msgTypes[56]
+	mi := &file_alert_v1_alert_proto_msgTypes[58]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3757,7 +3934,7 @@ func (x *DeletePortfolioResponse) String() string {
 func (*DeletePortfolioResponse) ProtoMessage() {}
 
 func (x *DeletePortfolioResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_alert_v1_alert_proto_msgTypes[56]
+	mi := &file_alert_v1_alert_proto_msgTypes[58]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3770,7 +3947,7 @@ func (x *DeletePortfolioResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeletePortfolioResponse.ProtoReflect.Descriptor instead.
 func (*DeletePortfolioResponse) Descriptor() ([]byte, []int) {
-	return file_alert_v1_alert_proto_rawDescGZIP(), []int{56}
+	return file_alert_v1_alert_proto_rawDescGZIP(), []int{58}
 }
 
 // AddStocksToPortfolio
@@ -3784,7 +3961,7 @@ type AddStocksToPortfolioRequest struct {
 
 func (x *AddStocksToPortfolioRequest) Reset() {
 	*x = AddStocksToPortfolioRequest{}
-	mi := &file_alert_v1_alert_proto_msgTypes[57]
+	mi := &file_alert_v1_alert_proto_msgTypes[59]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3796,7 +3973,7 @@ func (x *AddStocksToPortfolioRequest) String() string {
 func (*AddStocksToPortfolioRequest) ProtoMessage() {}
 
 func (x *AddStocksToPortfolioRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_alert_v1_alert_proto_msgTypes[57]
+	mi := &file_alert_v1_alert_proto_msgTypes[59]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3809,7 +3986,7 @@ func (x *AddStocksToPortfolioRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AddStocksToPortfolioRequest.ProtoReflect.Descriptor instead.
 func (*AddStocksToPortfolioRequest) Descriptor() ([]byte, []int) {
-	return file_alert_v1_alert_proto_rawDescGZIP(), []int{57}
+	return file_alert_v1_alert_proto_rawDescGZIP(), []int{59}
 }
 
 func (x *AddStocksToPortfolioRequest) GetPortfolioId() string {
@@ -3835,7 +4012,7 @@ type AddStocksToPortfolioResponse struct {
 
 func (x *AddStocksToPortfolioResponse) Reset() {
 	*x = AddStocksToPortfolioResponse{}
-	mi := &file_alert_v1_alert_proto_msgTypes[58]
+	mi := &file_alert_v1_alert_proto_msgTypes[60]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3847,7 +4024,7 @@ func (x *AddStocksToPortfolioResponse) String() string {
 func (*AddStocksToPortfolioResponse) ProtoMessage() {}
 
 func (x *AddStocksToPortfolioResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_alert_v1_alert_proto_msgTypes[58]
+	mi := &file_alert_v1_alert_proto_msgTypes[60]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3860,7 +4037,7 @@ func (x *AddStocksToPortfolioResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AddStocksToPortfolioResponse.ProtoReflect.Descriptor instead.
 func (*AddStocksToPortfolioResponse) Descriptor() ([]byte, []int) {
-	return file_alert_v1_alert_proto_rawDescGZIP(), []int{58}
+	return file_alert_v1_alert_proto_rawDescGZIP(), []int{60}
 }
 
 func (x *AddStocksToPortfolioResponse) GetPortfolio() *Portfolio {
@@ -3881,7 +4058,7 @@ type RemoveStocksFromPortfolioRequest struct {
 
 func (x *RemoveStocksFromPortfolioRequest) Reset() {
 	*x = RemoveStocksFromPortfolioRequest{}
-	mi := &file_alert_v1_alert_proto_msgTypes[59]
+	mi := &file_alert_v1_alert_proto_msgTypes[61]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3893,7 +4070,7 @@ func (x *RemoveStocksFromPortfolioRequest) String() string {
 func (*RemoveStocksFromPortfolioRequest) ProtoMessage() {}
 
 func (x *RemoveStocksFromPortfolioRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_alert_v1_alert_proto_msgTypes[59]
+	mi := &file_alert_v1_alert_proto_msgTypes[61]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3906,7 +4083,7 @@ func (x *RemoveStocksFromPortfolioRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RemoveStocksFromPortfolioRequest.ProtoReflect.Descriptor instead.
 func (*RemoveStocksFromPortfolioRequest) Descriptor() ([]byte, []int) {
-	return file_alert_v1_alert_proto_rawDescGZIP(), []int{59}
+	return file_alert_v1_alert_proto_rawDescGZIP(), []int{61}
 }
 
 func (x *RemoveStocksFromPortfolioRequest) GetPortfolioId() string {
@@ -3932,7 +4109,7 @@ type RemoveStocksFromPortfolioResponse struct {
 
 func (x *RemoveStocksFromPortfolioResponse) Reset() {
 	*x = RemoveStocksFromPortfolioResponse{}
-	mi := &file_alert_v1_alert_proto_msgTypes[60]
+	mi := &file_alert_v1_alert_proto_msgTypes[62]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3944,7 +4121,7 @@ func (x *RemoveStocksFromPortfolioResponse) String() string {
 func (*RemoveStocksFromPortfolioResponse) ProtoMessage() {}
 
 func (x *RemoveStocksFromPortfolioResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_alert_v1_alert_proto_msgTypes[60]
+	mi := &file_alert_v1_alert_proto_msgTypes[62]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3957,7 +4134,7 @@ func (x *RemoveStocksFromPortfolioResponse) ProtoReflect() protoreflect.Message 
 
 // Deprecated: Use RemoveStocksFromPortfolioResponse.ProtoReflect.Descriptor instead.
 func (*RemoveStocksFromPortfolioResponse) Descriptor() ([]byte, []int) {
-	return file_alert_v1_alert_proto_rawDescGZIP(), []int{60}
+	return file_alert_v1_alert_proto_rawDescGZIP(), []int{62}
 }
 
 func (x *RemoveStocksFromPortfolioResponse) GetPortfolio() *Portfolio {
@@ -3979,7 +4156,7 @@ type EvaluateExchangeRequest struct {
 
 func (x *EvaluateExchangeRequest) Reset() {
 	*x = EvaluateExchangeRequest{}
-	mi := &file_alert_v1_alert_proto_msgTypes[61]
+	mi := &file_alert_v1_alert_proto_msgTypes[63]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3991,7 +4168,7 @@ func (x *EvaluateExchangeRequest) String() string {
 func (*EvaluateExchangeRequest) ProtoMessage() {}
 
 func (x *EvaluateExchangeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_alert_v1_alert_proto_msgTypes[61]
+	mi := &file_alert_v1_alert_proto_msgTypes[63]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4004,7 +4181,7 @@ func (x *EvaluateExchangeRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EvaluateExchangeRequest.ProtoReflect.Descriptor instead.
 func (*EvaluateExchangeRequest) Descriptor() ([]byte, []int) {
-	return file_alert_v1_alert_proto_rawDescGZIP(), []int{61}
+	return file_alert_v1_alert_proto_rawDescGZIP(), []int{63}
 }
 
 func (x *EvaluateExchangeRequest) GetExchange() string {
@@ -4035,7 +4212,7 @@ type EvaluateExchangeResponse struct {
 
 func (x *EvaluateExchangeResponse) Reset() {
 	*x = EvaluateExchangeResponse{}
-	mi := &file_alert_v1_alert_proto_msgTypes[62]
+	mi := &file_alert_v1_alert_proto_msgTypes[64]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4047,7 +4224,7 @@ func (x *EvaluateExchangeResponse) String() string {
 func (*EvaluateExchangeResponse) ProtoMessage() {}
 
 func (x *EvaluateExchangeResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_alert_v1_alert_proto_msgTypes[62]
+	mi := &file_alert_v1_alert_proto_msgTypes[64]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4060,7 +4237,7 @@ func (x *EvaluateExchangeResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EvaluateExchangeResponse.ProtoReflect.Descriptor instead.
 func (*EvaluateExchangeResponse) Descriptor() ([]byte, []int) {
-	return file_alert_v1_alert_proto_rawDescGZIP(), []int{62}
+	return file_alert_v1_alert_proto_rawDescGZIP(), []int{64}
 }
 
 func (x *EvaluateExchangeResponse) GetSuccess() bool {
@@ -4115,7 +4292,7 @@ type BulkUpdateLastTriggeredRequest_AlertTrigger struct {
 
 func (x *BulkUpdateLastTriggeredRequest_AlertTrigger) Reset() {
 	*x = BulkUpdateLastTriggeredRequest_AlertTrigger{}
-	mi := &file_alert_v1_alert_proto_msgTypes[63]
+	mi := &file_alert_v1_alert_proto_msgTypes[65]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4127,7 +4304,7 @@ func (x *BulkUpdateLastTriggeredRequest_AlertTrigger) String() string {
 func (*BulkUpdateLastTriggeredRequest_AlertTrigger) ProtoMessage() {}
 
 func (x *BulkUpdateLastTriggeredRequest_AlertTrigger) ProtoReflect() protoreflect.Message {
-	mi := &file_alert_v1_alert_proto_msgTypes[63]
+	mi := &file_alert_v1_alert_proto_msgTypes[65]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4418,7 +4595,24 @@ const file_alert_v1_alert_proto_rawDesc = "" +
 	"\x0etotal_failures\x18\x03 \x01(\x03R\rtotalFailures\x12!\n" +
 	"\ffailure_rate\x18\x04 \x01(\x01R\vfailureRate\x12\\\n" +
 	"\x14asset_type_breakdown\x18\x05 \x03(\v2*.stockalert.alert.v1.AssetTypeBreakdownRowR\x12assetTypeBreakdown\x12X\n" +
-	"\x12exchange_breakdown\x18\x06 \x03(\v2).stockalert.alert.v1.ExchangeBreakdownRowR\x11exchangeBreakdown\"\x17\n" +
+	"\x12exchange_breakdown\x18\x06 \x03(\v2).stockalert.alert.v1.ExchangeBreakdownRowR\x11exchangeBreakdown\"\xa0\x02\n" +
+	"\x12GetAuditLogRequest\x12\x12\n" +
+	"\x04days\x18\x01 \x01(\x05R\x04days\x12\x12\n" +
+	"\x04page\x18\x02 \x01(\x05R\x04page\x12\x1b\n" +
+	"\tpage_size\x18\x03 \x01(\x05R\bpageSize\x12\x1d\n" +
+	"\n" +
+	"sort_field\x18\x04 \x01(\tR\tsortField\x12%\n" +
+	"\x0esort_direction\x18\x05 \x01(\tR\rsortDirection\x12\x19\n" +
+	"\balert_id\x18\x06 \x01(\tR\aalertId\x12\x16\n" +
+	"\x06ticker\x18\a \x01(\tR\x06ticker\x12'\n" +
+	"\x0fevaluation_type\x18\b \x01(\tR\x0eevaluationType\x12#\n" +
+	"\rstatus_filter\x18\t \x01(\tR\fstatusFilter\"\xa1\x01\n" +
+	"\x13GetAuditLogResponse\x128\n" +
+	"\x04rows\x18\x01 \x03(\v2$.stockalert.alert.v1.AuditHistoryRowR\x04rows\x12\x1f\n" +
+	"\vtotal_count\x18\x02 \x01(\x03R\n" +
+	"totalCount\x12\x12\n" +
+	"\x04page\x18\x03 \x01(\x05R\x04page\x12\x1b\n" +
+	"\tpage_size\x18\x04 \x01(\x05R\bpageSize\"\x17\n" +
 	"\x15ClearAuditDataRequest\"=\n" +
 	"\x16ClearAuditDataResponse\x12#\n" +
 	"\rdeleted_count\x18\x01 \x01(\x03R\fdeletedCount\"\xa5\x01\n" +
@@ -4491,7 +4685,7 @@ const file_alert_v1_alert_proto_rawDesc = "" +
 	"\falerts_total\x18\x03 \x01(\x05R\valertsTotal\x12)\n" +
 	"\x10alerts_triggered\x18\x04 \x01(\x05R\x0falertsTriggered\x12%\n" +
 	"\x0eprices_updated\x18\x05 \x01(\x05R\rpricesUpdated\x12)\n" +
-	"\x10duration_seconds\x18\x06 \x01(\x01R\x0fdurationSeconds2\x90\x17\n" +
+	"\x10duration_seconds\x18\x06 \x01(\x01R\x0fdurationSeconds2\xf2\x17\n" +
 	"\fAlertService\x12]\n" +
 	"\n" +
 	"ListAlerts\x12&.stockalert.alert.v1.ListAlertsRequest\x1a'.stockalert.alert.v1.ListAlertsResponse\x12t\n" +
@@ -4508,7 +4702,8 @@ const file_alert_v1_alert_proto_rawDesc = "" +
 	"\x0fGetAuditSummary\x12+.stockalert.alert.v1.GetAuditSummaryRequest\x1a,.stockalert.alert.v1.GetAuditSummaryResponse\x12~\n" +
 	"\x15GetPerformanceMetrics\x121.stockalert.alert.v1.GetPerformanceMetricsRequest\x1a2.stockalert.alert.v1.GetPerformanceMetricsResponse\x12l\n" +
 	"\x0fGetAlertHistory\x12+.stockalert.alert.v1.GetAlertHistoryRequest\x1a,.stockalert.alert.v1.GetAlertHistoryResponse\x12u\n" +
-	"\x12GetFailedPriceData\x12..stockalert.alert.v1.GetFailedPriceDataRequest\x1a/.stockalert.alert.v1.GetFailedPriceDataResponse\x12i\n" +
+	"\x12GetFailedPriceData\x12..stockalert.alert.v1.GetFailedPriceDataRequest\x1a/.stockalert.alert.v1.GetFailedPriceDataResponse\x12`\n" +
+	"\vGetAuditLog\x12'.stockalert.alert.v1.GetAuditLogRequest\x1a(.stockalert.alert.v1.GetAuditLogResponse\x12i\n" +
 	"\x0eClearAuditData\x12*.stockalert.alert.v1.ClearAuditDataRequest\x1a+.stockalert.alert.v1.ClearAuditDataResponse\x12\x8a\x01\n" +
 	"\x19GetTriggerHistoryByTicker\x125.stockalert.alert.v1.GetTriggerHistoryByTickerRequest\x1a6.stockalert.alert.v1.GetTriggerHistoryByTickerResponse\x12c\n" +
 	"\fSearchStocks\x12(.stockalert.alert.v1.SearchStocksRequest\x1a).stockalert.alert.v1.SearchStocksResponse\x12i\n" +
@@ -4535,7 +4730,7 @@ func file_alert_v1_alert_proto_rawDescGZIP() []byte {
 	return file_alert_v1_alert_proto_rawDescData
 }
 
-var file_alert_v1_alert_proto_msgTypes = make([]protoimpl.MessageInfo, 64)
+var file_alert_v1_alert_proto_msgTypes = make([]protoimpl.MessageInfo, 66)
 var file_alert_v1_alert_proto_goTypes = []any{
 	(*Alert)(nil),                                       // 0: stockalert.alert.v1.Alert
 	(*ListAlertsRequest)(nil),                           // 1: stockalert.alert.v1.ListAlertsRequest
@@ -4576,141 +4771,146 @@ var file_alert_v1_alert_proto_goTypes = []any{
 	(*AssetTypeBreakdownRow)(nil),                       // 36: stockalert.alert.v1.AssetTypeBreakdownRow
 	(*ExchangeBreakdownRow)(nil),                        // 37: stockalert.alert.v1.ExchangeBreakdownRow
 	(*GetFailedPriceDataResponse)(nil),                  // 38: stockalert.alert.v1.GetFailedPriceDataResponse
-	(*ClearAuditDataRequest)(nil),                       // 39: stockalert.alert.v1.ClearAuditDataRequest
-	(*ClearAuditDataResponse)(nil),                      // 40: stockalert.alert.v1.ClearAuditDataResponse
-	(*GetTriggerHistoryByTickerRequest)(nil),            // 41: stockalert.alert.v1.GetTriggerHistoryByTickerRequest
-	(*GetTriggerHistoryByTickerResponse)(nil),           // 42: stockalert.alert.v1.GetTriggerHistoryByTickerResponse
-	(*SearchStocksRequest)(nil),                         // 43: stockalert.alert.v1.SearchStocksRequest
-	(*StockSearchResult)(nil),                           // 44: stockalert.alert.v1.StockSearchResult
-	(*SearchStocksResponse)(nil),                        // 45: stockalert.alert.v1.SearchStocksResponse
-	(*ListPortfoliosRequest)(nil),                       // 46: stockalert.alert.v1.ListPortfoliosRequest
-	(*Portfolio)(nil),                                   // 47: stockalert.alert.v1.Portfolio
-	(*ListPortfoliosResponse)(nil),                      // 48: stockalert.alert.v1.ListPortfoliosResponse
-	(*GetPortfolioRequest)(nil),                         // 49: stockalert.alert.v1.GetPortfolioRequest
-	(*GetPortfolioResponse)(nil),                        // 50: stockalert.alert.v1.GetPortfolioResponse
-	(*CreatePortfolioRequest)(nil),                      // 51: stockalert.alert.v1.CreatePortfolioRequest
-	(*CreatePortfolioResponse)(nil),                     // 52: stockalert.alert.v1.CreatePortfolioResponse
-	(*UpdatePortfolioRequest)(nil),                      // 53: stockalert.alert.v1.UpdatePortfolioRequest
-	(*UpdatePortfolioResponse)(nil),                     // 54: stockalert.alert.v1.UpdatePortfolioResponse
-	(*DeletePortfolioRequest)(nil),                      // 55: stockalert.alert.v1.DeletePortfolioRequest
-	(*DeletePortfolioResponse)(nil),                     // 56: stockalert.alert.v1.DeletePortfolioResponse
-	(*AddStocksToPortfolioRequest)(nil),                 // 57: stockalert.alert.v1.AddStocksToPortfolioRequest
-	(*AddStocksToPortfolioResponse)(nil),                // 58: stockalert.alert.v1.AddStocksToPortfolioResponse
-	(*RemoveStocksFromPortfolioRequest)(nil),            // 59: stockalert.alert.v1.RemoveStocksFromPortfolioRequest
-	(*RemoveStocksFromPortfolioResponse)(nil),           // 60: stockalert.alert.v1.RemoveStocksFromPortfolioResponse
-	(*EvaluateExchangeRequest)(nil),                     // 61: stockalert.alert.v1.EvaluateExchangeRequest
-	(*EvaluateExchangeResponse)(nil),                    // 62: stockalert.alert.v1.EvaluateExchangeResponse
-	(*BulkUpdateLastTriggeredRequest_AlertTrigger)(nil), // 63: stockalert.alert.v1.BulkUpdateLastTriggeredRequest.AlertTrigger
-	(*structpb.Struct)(nil),                             // 64: google.protobuf.Struct
-	(*timestamppb.Timestamp)(nil),                       // 65: google.protobuf.Timestamp
+	(*GetAuditLogRequest)(nil),                          // 39: stockalert.alert.v1.GetAuditLogRequest
+	(*GetAuditLogResponse)(nil),                         // 40: stockalert.alert.v1.GetAuditLogResponse
+	(*ClearAuditDataRequest)(nil),                       // 41: stockalert.alert.v1.ClearAuditDataRequest
+	(*ClearAuditDataResponse)(nil),                      // 42: stockalert.alert.v1.ClearAuditDataResponse
+	(*GetTriggerHistoryByTickerRequest)(nil),            // 43: stockalert.alert.v1.GetTriggerHistoryByTickerRequest
+	(*GetTriggerHistoryByTickerResponse)(nil),           // 44: stockalert.alert.v1.GetTriggerHistoryByTickerResponse
+	(*SearchStocksRequest)(nil),                         // 45: stockalert.alert.v1.SearchStocksRequest
+	(*StockSearchResult)(nil),                           // 46: stockalert.alert.v1.StockSearchResult
+	(*SearchStocksResponse)(nil),                        // 47: stockalert.alert.v1.SearchStocksResponse
+	(*ListPortfoliosRequest)(nil),                       // 48: stockalert.alert.v1.ListPortfoliosRequest
+	(*Portfolio)(nil),                                   // 49: stockalert.alert.v1.Portfolio
+	(*ListPortfoliosResponse)(nil),                      // 50: stockalert.alert.v1.ListPortfoliosResponse
+	(*GetPortfolioRequest)(nil),                         // 51: stockalert.alert.v1.GetPortfolioRequest
+	(*GetPortfolioResponse)(nil),                        // 52: stockalert.alert.v1.GetPortfolioResponse
+	(*CreatePortfolioRequest)(nil),                      // 53: stockalert.alert.v1.CreatePortfolioRequest
+	(*CreatePortfolioResponse)(nil),                     // 54: stockalert.alert.v1.CreatePortfolioResponse
+	(*UpdatePortfolioRequest)(nil),                      // 55: stockalert.alert.v1.UpdatePortfolioRequest
+	(*UpdatePortfolioResponse)(nil),                     // 56: stockalert.alert.v1.UpdatePortfolioResponse
+	(*DeletePortfolioRequest)(nil),                      // 57: stockalert.alert.v1.DeletePortfolioRequest
+	(*DeletePortfolioResponse)(nil),                     // 58: stockalert.alert.v1.DeletePortfolioResponse
+	(*AddStocksToPortfolioRequest)(nil),                 // 59: stockalert.alert.v1.AddStocksToPortfolioRequest
+	(*AddStocksToPortfolioResponse)(nil),                // 60: stockalert.alert.v1.AddStocksToPortfolioResponse
+	(*RemoveStocksFromPortfolioRequest)(nil),            // 61: stockalert.alert.v1.RemoveStocksFromPortfolioRequest
+	(*RemoveStocksFromPortfolioResponse)(nil),           // 62: stockalert.alert.v1.RemoveStocksFromPortfolioResponse
+	(*EvaluateExchangeRequest)(nil),                     // 63: stockalert.alert.v1.EvaluateExchangeRequest
+	(*EvaluateExchangeResponse)(nil),                    // 64: stockalert.alert.v1.EvaluateExchangeResponse
+	(*BulkUpdateLastTriggeredRequest_AlertTrigger)(nil), // 65: stockalert.alert.v1.BulkUpdateLastTriggeredRequest.AlertTrigger
+	(*structpb.Struct)(nil),                             // 66: google.protobuf.Struct
+	(*timestamppb.Timestamp)(nil),                       // 67: google.protobuf.Timestamp
 }
 var file_alert_v1_alert_proto_depIdxs = []int32{
-	64, // 0: stockalert.alert.v1.Alert.conditions:type_name -> google.protobuf.Struct
-	65, // 1: stockalert.alert.v1.Alert.last_triggered:type_name -> google.protobuf.Timestamp
-	64, // 2: stockalert.alert.v1.Alert.dtp_params:type_name -> google.protobuf.Struct
-	64, // 3: stockalert.alert.v1.Alert.multi_timeframe_params:type_name -> google.protobuf.Struct
-	64, // 4: stockalert.alert.v1.Alert.mixed_timeframe_params:type_name -> google.protobuf.Struct
-	64, // 5: stockalert.alert.v1.Alert.raw_payload:type_name -> google.protobuf.Struct
-	65, // 6: stockalert.alert.v1.Alert.created_at:type_name -> google.protobuf.Timestamp
-	65, // 7: stockalert.alert.v1.Alert.updated_at:type_name -> google.protobuf.Timestamp
+	66, // 0: stockalert.alert.v1.Alert.conditions:type_name -> google.protobuf.Struct
+	67, // 1: stockalert.alert.v1.Alert.last_triggered:type_name -> google.protobuf.Timestamp
+	66, // 2: stockalert.alert.v1.Alert.dtp_params:type_name -> google.protobuf.Struct
+	66, // 3: stockalert.alert.v1.Alert.multi_timeframe_params:type_name -> google.protobuf.Struct
+	66, // 4: stockalert.alert.v1.Alert.mixed_timeframe_params:type_name -> google.protobuf.Struct
+	66, // 5: stockalert.alert.v1.Alert.raw_payload:type_name -> google.protobuf.Struct
+	67, // 6: stockalert.alert.v1.Alert.created_at:type_name -> google.protobuf.Timestamp
+	67, // 7: stockalert.alert.v1.Alert.updated_at:type_name -> google.protobuf.Timestamp
 	0,  // 8: stockalert.alert.v1.ListAlertsResponse.alerts:type_name -> stockalert.alert.v1.Alert
 	0,  // 9: stockalert.alert.v1.SearchAlertsStreamChunk.alerts:type_name -> stockalert.alert.v1.Alert
 	0,  // 10: stockalert.alert.v1.GetAlertResponse.alert:type_name -> stockalert.alert.v1.Alert
 	0,  // 11: stockalert.alert.v1.TopTriggeredAlert.alert:type_name -> stockalert.alert.v1.Alert
 	8,  // 12: stockalert.alert.v1.GetTopTriggeredAlertsResponse.alerts:type_name -> stockalert.alert.v1.TopTriggeredAlert
-	64, // 13: stockalert.alert.v1.CreateAlertRequest.conditions:type_name -> google.protobuf.Struct
-	64, // 14: stockalert.alert.v1.CreateAlertRequest.dtp_params:type_name -> google.protobuf.Struct
-	64, // 15: stockalert.alert.v1.CreateAlertRequest.multi_timeframe_params:type_name -> google.protobuf.Struct
-	64, // 16: stockalert.alert.v1.CreateAlertRequest.mixed_timeframe_params:type_name -> google.protobuf.Struct
-	64, // 17: stockalert.alert.v1.CreateAlertRequest.raw_payload:type_name -> google.protobuf.Struct
+	66, // 13: stockalert.alert.v1.CreateAlertRequest.conditions:type_name -> google.protobuf.Struct
+	66, // 14: stockalert.alert.v1.CreateAlertRequest.dtp_params:type_name -> google.protobuf.Struct
+	66, // 15: stockalert.alert.v1.CreateAlertRequest.multi_timeframe_params:type_name -> google.protobuf.Struct
+	66, // 16: stockalert.alert.v1.CreateAlertRequest.mixed_timeframe_params:type_name -> google.protobuf.Struct
+	66, // 17: stockalert.alert.v1.CreateAlertRequest.raw_payload:type_name -> google.protobuf.Struct
 	0,  // 18: stockalert.alert.v1.CreateAlertResponse.alert:type_name -> stockalert.alert.v1.Alert
-	64, // 19: stockalert.alert.v1.UpdateAlertRequest.conditions:type_name -> google.protobuf.Struct
-	64, // 20: stockalert.alert.v1.UpdateAlertRequest.dtp_params:type_name -> google.protobuf.Struct
-	64, // 21: stockalert.alert.v1.UpdateAlertRequest.multi_timeframe_params:type_name -> google.protobuf.Struct
-	64, // 22: stockalert.alert.v1.UpdateAlertRequest.mixed_timeframe_params:type_name -> google.protobuf.Struct
-	64, // 23: stockalert.alert.v1.UpdateAlertRequest.raw_payload:type_name -> google.protobuf.Struct
+	66, // 19: stockalert.alert.v1.UpdateAlertRequest.conditions:type_name -> google.protobuf.Struct
+	66, // 20: stockalert.alert.v1.UpdateAlertRequest.dtp_params:type_name -> google.protobuf.Struct
+	66, // 21: stockalert.alert.v1.UpdateAlertRequest.multi_timeframe_params:type_name -> google.protobuf.Struct
+	66, // 22: stockalert.alert.v1.UpdateAlertRequest.mixed_timeframe_params:type_name -> google.protobuf.Struct
+	66, // 23: stockalert.alert.v1.UpdateAlertRequest.raw_payload:type_name -> google.protobuf.Struct
 	0,  // 24: stockalert.alert.v1.UpdateAlertResponse.alert:type_name -> stockalert.alert.v1.Alert
-	63, // 25: stockalert.alert.v1.BulkUpdateLastTriggeredRequest.triggers:type_name -> stockalert.alert.v1.BulkUpdateLastTriggeredRequest.AlertTrigger
+	65, // 25: stockalert.alert.v1.BulkUpdateLastTriggeredRequest.triggers:type_name -> stockalert.alert.v1.BulkUpdateLastTriggeredRequest.AlertTrigger
 	21, // 26: stockalert.alert.v1.GetDashboardStatsResponse.active_alerts_by_timeframe:type_name -> stockalert.alert.v1.DashboardTimeframeBreakdown
 	21, // 27: stockalert.alert.v1.GetDashboardStatsResponse.triggered_today_by_timeframe:type_name -> stockalert.alert.v1.DashboardTimeframeBreakdown
 	21, // 28: stockalert.alert.v1.GetDashboardStatsResponse.triggers_last_7d_by_timeframe:type_name -> stockalert.alert.v1.DashboardTimeframeBreakdown
 	24, // 29: stockalert.alert.v1.GetTriggerCountByDayResponse.rows:type_name -> stockalert.alert.v1.TriggerCountRow
-	65, // 30: stockalert.alert.v1.AuditSummaryRow.last_check:type_name -> google.protobuf.Timestamp
-	65, // 31: stockalert.alert.v1.AuditSummaryRow.first_check:type_name -> google.protobuf.Timestamp
+	67, // 30: stockalert.alert.v1.AuditSummaryRow.last_check:type_name -> google.protobuf.Timestamp
+	67, // 31: stockalert.alert.v1.AuditSummaryRow.first_check:type_name -> google.protobuf.Timestamp
 	27, // 32: stockalert.alert.v1.GetAuditSummaryResponse.rows:type_name -> stockalert.alert.v1.AuditSummaryRow
-	65, // 33: stockalert.alert.v1.AuditHistoryRow.timestamp:type_name -> google.protobuf.Timestamp
+	67, // 33: stockalert.alert.v1.AuditHistoryRow.timestamp:type_name -> google.protobuf.Timestamp
 	32, // 34: stockalert.alert.v1.GetAlertHistoryResponse.rows:type_name -> stockalert.alert.v1.AuditHistoryRow
-	65, // 35: stockalert.alert.v1.FailedAlertRow.last_failure:type_name -> google.protobuf.Timestamp
-	65, // 36: stockalert.alert.v1.FailedAlertRow.first_failure:type_name -> google.protobuf.Timestamp
+	67, // 35: stockalert.alert.v1.FailedAlertRow.last_failure:type_name -> google.protobuf.Timestamp
+	67, // 36: stockalert.alert.v1.FailedAlertRow.first_failure:type_name -> google.protobuf.Timestamp
 	35, // 37: stockalert.alert.v1.GetFailedPriceDataResponse.rows:type_name -> stockalert.alert.v1.FailedAlertRow
 	36, // 38: stockalert.alert.v1.GetFailedPriceDataResponse.asset_type_breakdown:type_name -> stockalert.alert.v1.AssetTypeBreakdownRow
 	37, // 39: stockalert.alert.v1.GetFailedPriceDataResponse.exchange_breakdown:type_name -> stockalert.alert.v1.ExchangeBreakdownRow
-	32, // 40: stockalert.alert.v1.GetTriggerHistoryByTickerResponse.rows:type_name -> stockalert.alert.v1.AuditHistoryRow
-	44, // 41: stockalert.alert.v1.SearchStocksResponse.results:type_name -> stockalert.alert.v1.StockSearchResult
-	47, // 42: stockalert.alert.v1.ListPortfoliosResponse.portfolios:type_name -> stockalert.alert.v1.Portfolio
-	47, // 43: stockalert.alert.v1.GetPortfolioResponse.portfolio:type_name -> stockalert.alert.v1.Portfolio
-	47, // 44: stockalert.alert.v1.CreatePortfolioResponse.portfolio:type_name -> stockalert.alert.v1.Portfolio
-	47, // 45: stockalert.alert.v1.UpdatePortfolioResponse.portfolio:type_name -> stockalert.alert.v1.Portfolio
-	47, // 46: stockalert.alert.v1.AddStocksToPortfolioResponse.portfolio:type_name -> stockalert.alert.v1.Portfolio
-	47, // 47: stockalert.alert.v1.RemoveStocksFromPortfolioResponse.portfolio:type_name -> stockalert.alert.v1.Portfolio
-	65, // 48: stockalert.alert.v1.BulkUpdateLastTriggeredRequest.AlertTrigger.last_triggered:type_name -> google.protobuf.Timestamp
-	1,  // 49: stockalert.alert.v1.AlertService.ListAlerts:input_type -> stockalert.alert.v1.ListAlertsRequest
-	3,  // 50: stockalert.alert.v1.AlertService.SearchAlertsStream:input_type -> stockalert.alert.v1.SearchAlertsStreamRequest
-	5,  // 51: stockalert.alert.v1.AlertService.GetAlert:input_type -> stockalert.alert.v1.GetAlertRequest
-	7,  // 52: stockalert.alert.v1.AlertService.GetTopTriggeredAlerts:input_type -> stockalert.alert.v1.GetTopTriggeredAlertsRequest
-	10, // 53: stockalert.alert.v1.AlertService.CreateAlert:input_type -> stockalert.alert.v1.CreateAlertRequest
-	12, // 54: stockalert.alert.v1.AlertService.UpdateAlert:input_type -> stockalert.alert.v1.UpdateAlertRequest
-	14, // 55: stockalert.alert.v1.AlertService.DeleteAlert:input_type -> stockalert.alert.v1.DeleteAlertRequest
-	16, // 56: stockalert.alert.v1.AlertService.BulkDeleteAlerts:input_type -> stockalert.alert.v1.BulkDeleteAlertsRequest
-	18, // 57: stockalert.alert.v1.AlertService.BulkUpdateLastTriggered:input_type -> stockalert.alert.v1.BulkUpdateLastTriggeredRequest
-	20, // 58: stockalert.alert.v1.AlertService.GetDashboardStats:input_type -> stockalert.alert.v1.GetDashboardStatsRequest
-	23, // 59: stockalert.alert.v1.AlertService.GetTriggerCountByDay:input_type -> stockalert.alert.v1.GetTriggerCountByDayRequest
-	26, // 60: stockalert.alert.v1.AlertService.GetAuditSummary:input_type -> stockalert.alert.v1.GetAuditSummaryRequest
-	29, // 61: stockalert.alert.v1.AlertService.GetPerformanceMetrics:input_type -> stockalert.alert.v1.GetPerformanceMetricsRequest
-	31, // 62: stockalert.alert.v1.AlertService.GetAlertHistory:input_type -> stockalert.alert.v1.GetAlertHistoryRequest
-	34, // 63: stockalert.alert.v1.AlertService.GetFailedPriceData:input_type -> stockalert.alert.v1.GetFailedPriceDataRequest
-	39, // 64: stockalert.alert.v1.AlertService.ClearAuditData:input_type -> stockalert.alert.v1.ClearAuditDataRequest
-	41, // 65: stockalert.alert.v1.AlertService.GetTriggerHistoryByTicker:input_type -> stockalert.alert.v1.GetTriggerHistoryByTickerRequest
-	43, // 66: stockalert.alert.v1.AlertService.SearchStocks:input_type -> stockalert.alert.v1.SearchStocksRequest
-	46, // 67: stockalert.alert.v1.AlertService.ListPortfolios:input_type -> stockalert.alert.v1.ListPortfoliosRequest
-	49, // 68: stockalert.alert.v1.AlertService.GetPortfolio:input_type -> stockalert.alert.v1.GetPortfolioRequest
-	51, // 69: stockalert.alert.v1.AlertService.CreatePortfolio:input_type -> stockalert.alert.v1.CreatePortfolioRequest
-	53, // 70: stockalert.alert.v1.AlertService.UpdatePortfolio:input_type -> stockalert.alert.v1.UpdatePortfolioRequest
-	55, // 71: stockalert.alert.v1.AlertService.DeletePortfolio:input_type -> stockalert.alert.v1.DeletePortfolioRequest
-	57, // 72: stockalert.alert.v1.AlertService.AddStocksToPortfolio:input_type -> stockalert.alert.v1.AddStocksToPortfolioRequest
-	59, // 73: stockalert.alert.v1.AlertService.RemoveStocksFromPortfolio:input_type -> stockalert.alert.v1.RemoveStocksFromPortfolioRequest
-	61, // 74: stockalert.alert.v1.AlertService.EvaluateExchange:input_type -> stockalert.alert.v1.EvaluateExchangeRequest
-	2,  // 75: stockalert.alert.v1.AlertService.ListAlerts:output_type -> stockalert.alert.v1.ListAlertsResponse
-	4,  // 76: stockalert.alert.v1.AlertService.SearchAlertsStream:output_type -> stockalert.alert.v1.SearchAlertsStreamChunk
-	6,  // 77: stockalert.alert.v1.AlertService.GetAlert:output_type -> stockalert.alert.v1.GetAlertResponse
-	9,  // 78: stockalert.alert.v1.AlertService.GetTopTriggeredAlerts:output_type -> stockalert.alert.v1.GetTopTriggeredAlertsResponse
-	11, // 79: stockalert.alert.v1.AlertService.CreateAlert:output_type -> stockalert.alert.v1.CreateAlertResponse
-	13, // 80: stockalert.alert.v1.AlertService.UpdateAlert:output_type -> stockalert.alert.v1.UpdateAlertResponse
-	15, // 81: stockalert.alert.v1.AlertService.DeleteAlert:output_type -> stockalert.alert.v1.DeleteAlertResponse
-	17, // 82: stockalert.alert.v1.AlertService.BulkDeleteAlerts:output_type -> stockalert.alert.v1.BulkDeleteAlertsResponse
-	19, // 83: stockalert.alert.v1.AlertService.BulkUpdateLastTriggered:output_type -> stockalert.alert.v1.BulkUpdateLastTriggeredResponse
-	22, // 84: stockalert.alert.v1.AlertService.GetDashboardStats:output_type -> stockalert.alert.v1.GetDashboardStatsResponse
-	25, // 85: stockalert.alert.v1.AlertService.GetTriggerCountByDay:output_type -> stockalert.alert.v1.GetTriggerCountByDayResponse
-	28, // 86: stockalert.alert.v1.AlertService.GetAuditSummary:output_type -> stockalert.alert.v1.GetAuditSummaryResponse
-	30, // 87: stockalert.alert.v1.AlertService.GetPerformanceMetrics:output_type -> stockalert.alert.v1.GetPerformanceMetricsResponse
-	33, // 88: stockalert.alert.v1.AlertService.GetAlertHistory:output_type -> stockalert.alert.v1.GetAlertHistoryResponse
-	38, // 89: stockalert.alert.v1.AlertService.GetFailedPriceData:output_type -> stockalert.alert.v1.GetFailedPriceDataResponse
-	40, // 90: stockalert.alert.v1.AlertService.ClearAuditData:output_type -> stockalert.alert.v1.ClearAuditDataResponse
-	42, // 91: stockalert.alert.v1.AlertService.GetTriggerHistoryByTicker:output_type -> stockalert.alert.v1.GetTriggerHistoryByTickerResponse
-	45, // 92: stockalert.alert.v1.AlertService.SearchStocks:output_type -> stockalert.alert.v1.SearchStocksResponse
-	48, // 93: stockalert.alert.v1.AlertService.ListPortfolios:output_type -> stockalert.alert.v1.ListPortfoliosResponse
-	50, // 94: stockalert.alert.v1.AlertService.GetPortfolio:output_type -> stockalert.alert.v1.GetPortfolioResponse
-	52, // 95: stockalert.alert.v1.AlertService.CreatePortfolio:output_type -> stockalert.alert.v1.CreatePortfolioResponse
-	54, // 96: stockalert.alert.v1.AlertService.UpdatePortfolio:output_type -> stockalert.alert.v1.UpdatePortfolioResponse
-	56, // 97: stockalert.alert.v1.AlertService.DeletePortfolio:output_type -> stockalert.alert.v1.DeletePortfolioResponse
-	58, // 98: stockalert.alert.v1.AlertService.AddStocksToPortfolio:output_type -> stockalert.alert.v1.AddStocksToPortfolioResponse
-	60, // 99: stockalert.alert.v1.AlertService.RemoveStocksFromPortfolio:output_type -> stockalert.alert.v1.RemoveStocksFromPortfolioResponse
-	62, // 100: stockalert.alert.v1.AlertService.EvaluateExchange:output_type -> stockalert.alert.v1.EvaluateExchangeResponse
-	75, // [75:101] is the sub-list for method output_type
-	49, // [49:75] is the sub-list for method input_type
-	49, // [49:49] is the sub-list for extension type_name
-	49, // [49:49] is the sub-list for extension extendee
-	0,  // [0:49] is the sub-list for field type_name
+	32, // 40: stockalert.alert.v1.GetAuditLogResponse.rows:type_name -> stockalert.alert.v1.AuditHistoryRow
+	32, // 41: stockalert.alert.v1.GetTriggerHistoryByTickerResponse.rows:type_name -> stockalert.alert.v1.AuditHistoryRow
+	46, // 42: stockalert.alert.v1.SearchStocksResponse.results:type_name -> stockalert.alert.v1.StockSearchResult
+	49, // 43: stockalert.alert.v1.ListPortfoliosResponse.portfolios:type_name -> stockalert.alert.v1.Portfolio
+	49, // 44: stockalert.alert.v1.GetPortfolioResponse.portfolio:type_name -> stockalert.alert.v1.Portfolio
+	49, // 45: stockalert.alert.v1.CreatePortfolioResponse.portfolio:type_name -> stockalert.alert.v1.Portfolio
+	49, // 46: stockalert.alert.v1.UpdatePortfolioResponse.portfolio:type_name -> stockalert.alert.v1.Portfolio
+	49, // 47: stockalert.alert.v1.AddStocksToPortfolioResponse.portfolio:type_name -> stockalert.alert.v1.Portfolio
+	49, // 48: stockalert.alert.v1.RemoveStocksFromPortfolioResponse.portfolio:type_name -> stockalert.alert.v1.Portfolio
+	67, // 49: stockalert.alert.v1.BulkUpdateLastTriggeredRequest.AlertTrigger.last_triggered:type_name -> google.protobuf.Timestamp
+	1,  // 50: stockalert.alert.v1.AlertService.ListAlerts:input_type -> stockalert.alert.v1.ListAlertsRequest
+	3,  // 51: stockalert.alert.v1.AlertService.SearchAlertsStream:input_type -> stockalert.alert.v1.SearchAlertsStreamRequest
+	5,  // 52: stockalert.alert.v1.AlertService.GetAlert:input_type -> stockalert.alert.v1.GetAlertRequest
+	7,  // 53: stockalert.alert.v1.AlertService.GetTopTriggeredAlerts:input_type -> stockalert.alert.v1.GetTopTriggeredAlertsRequest
+	10, // 54: stockalert.alert.v1.AlertService.CreateAlert:input_type -> stockalert.alert.v1.CreateAlertRequest
+	12, // 55: stockalert.alert.v1.AlertService.UpdateAlert:input_type -> stockalert.alert.v1.UpdateAlertRequest
+	14, // 56: stockalert.alert.v1.AlertService.DeleteAlert:input_type -> stockalert.alert.v1.DeleteAlertRequest
+	16, // 57: stockalert.alert.v1.AlertService.BulkDeleteAlerts:input_type -> stockalert.alert.v1.BulkDeleteAlertsRequest
+	18, // 58: stockalert.alert.v1.AlertService.BulkUpdateLastTriggered:input_type -> stockalert.alert.v1.BulkUpdateLastTriggeredRequest
+	20, // 59: stockalert.alert.v1.AlertService.GetDashboardStats:input_type -> stockalert.alert.v1.GetDashboardStatsRequest
+	23, // 60: stockalert.alert.v1.AlertService.GetTriggerCountByDay:input_type -> stockalert.alert.v1.GetTriggerCountByDayRequest
+	26, // 61: stockalert.alert.v1.AlertService.GetAuditSummary:input_type -> stockalert.alert.v1.GetAuditSummaryRequest
+	29, // 62: stockalert.alert.v1.AlertService.GetPerformanceMetrics:input_type -> stockalert.alert.v1.GetPerformanceMetricsRequest
+	31, // 63: stockalert.alert.v1.AlertService.GetAlertHistory:input_type -> stockalert.alert.v1.GetAlertHistoryRequest
+	34, // 64: stockalert.alert.v1.AlertService.GetFailedPriceData:input_type -> stockalert.alert.v1.GetFailedPriceDataRequest
+	39, // 65: stockalert.alert.v1.AlertService.GetAuditLog:input_type -> stockalert.alert.v1.GetAuditLogRequest
+	41, // 66: stockalert.alert.v1.AlertService.ClearAuditData:input_type -> stockalert.alert.v1.ClearAuditDataRequest
+	43, // 67: stockalert.alert.v1.AlertService.GetTriggerHistoryByTicker:input_type -> stockalert.alert.v1.GetTriggerHistoryByTickerRequest
+	45, // 68: stockalert.alert.v1.AlertService.SearchStocks:input_type -> stockalert.alert.v1.SearchStocksRequest
+	48, // 69: stockalert.alert.v1.AlertService.ListPortfolios:input_type -> stockalert.alert.v1.ListPortfoliosRequest
+	51, // 70: stockalert.alert.v1.AlertService.GetPortfolio:input_type -> stockalert.alert.v1.GetPortfolioRequest
+	53, // 71: stockalert.alert.v1.AlertService.CreatePortfolio:input_type -> stockalert.alert.v1.CreatePortfolioRequest
+	55, // 72: stockalert.alert.v1.AlertService.UpdatePortfolio:input_type -> stockalert.alert.v1.UpdatePortfolioRequest
+	57, // 73: stockalert.alert.v1.AlertService.DeletePortfolio:input_type -> stockalert.alert.v1.DeletePortfolioRequest
+	59, // 74: stockalert.alert.v1.AlertService.AddStocksToPortfolio:input_type -> stockalert.alert.v1.AddStocksToPortfolioRequest
+	61, // 75: stockalert.alert.v1.AlertService.RemoveStocksFromPortfolio:input_type -> stockalert.alert.v1.RemoveStocksFromPortfolioRequest
+	63, // 76: stockalert.alert.v1.AlertService.EvaluateExchange:input_type -> stockalert.alert.v1.EvaluateExchangeRequest
+	2,  // 77: stockalert.alert.v1.AlertService.ListAlerts:output_type -> stockalert.alert.v1.ListAlertsResponse
+	4,  // 78: stockalert.alert.v1.AlertService.SearchAlertsStream:output_type -> stockalert.alert.v1.SearchAlertsStreamChunk
+	6,  // 79: stockalert.alert.v1.AlertService.GetAlert:output_type -> stockalert.alert.v1.GetAlertResponse
+	9,  // 80: stockalert.alert.v1.AlertService.GetTopTriggeredAlerts:output_type -> stockalert.alert.v1.GetTopTriggeredAlertsResponse
+	11, // 81: stockalert.alert.v1.AlertService.CreateAlert:output_type -> stockalert.alert.v1.CreateAlertResponse
+	13, // 82: stockalert.alert.v1.AlertService.UpdateAlert:output_type -> stockalert.alert.v1.UpdateAlertResponse
+	15, // 83: stockalert.alert.v1.AlertService.DeleteAlert:output_type -> stockalert.alert.v1.DeleteAlertResponse
+	17, // 84: stockalert.alert.v1.AlertService.BulkDeleteAlerts:output_type -> stockalert.alert.v1.BulkDeleteAlertsResponse
+	19, // 85: stockalert.alert.v1.AlertService.BulkUpdateLastTriggered:output_type -> stockalert.alert.v1.BulkUpdateLastTriggeredResponse
+	22, // 86: stockalert.alert.v1.AlertService.GetDashboardStats:output_type -> stockalert.alert.v1.GetDashboardStatsResponse
+	25, // 87: stockalert.alert.v1.AlertService.GetTriggerCountByDay:output_type -> stockalert.alert.v1.GetTriggerCountByDayResponse
+	28, // 88: stockalert.alert.v1.AlertService.GetAuditSummary:output_type -> stockalert.alert.v1.GetAuditSummaryResponse
+	30, // 89: stockalert.alert.v1.AlertService.GetPerformanceMetrics:output_type -> stockalert.alert.v1.GetPerformanceMetricsResponse
+	33, // 90: stockalert.alert.v1.AlertService.GetAlertHistory:output_type -> stockalert.alert.v1.GetAlertHistoryResponse
+	38, // 91: stockalert.alert.v1.AlertService.GetFailedPriceData:output_type -> stockalert.alert.v1.GetFailedPriceDataResponse
+	40, // 92: stockalert.alert.v1.AlertService.GetAuditLog:output_type -> stockalert.alert.v1.GetAuditLogResponse
+	42, // 93: stockalert.alert.v1.AlertService.ClearAuditData:output_type -> stockalert.alert.v1.ClearAuditDataResponse
+	44, // 94: stockalert.alert.v1.AlertService.GetTriggerHistoryByTicker:output_type -> stockalert.alert.v1.GetTriggerHistoryByTickerResponse
+	47, // 95: stockalert.alert.v1.AlertService.SearchStocks:output_type -> stockalert.alert.v1.SearchStocksResponse
+	50, // 96: stockalert.alert.v1.AlertService.ListPortfolios:output_type -> stockalert.alert.v1.ListPortfoliosResponse
+	52, // 97: stockalert.alert.v1.AlertService.GetPortfolio:output_type -> stockalert.alert.v1.GetPortfolioResponse
+	54, // 98: stockalert.alert.v1.AlertService.CreatePortfolio:output_type -> stockalert.alert.v1.CreatePortfolioResponse
+	56, // 99: stockalert.alert.v1.AlertService.UpdatePortfolio:output_type -> stockalert.alert.v1.UpdatePortfolioResponse
+	58, // 100: stockalert.alert.v1.AlertService.DeletePortfolio:output_type -> stockalert.alert.v1.DeletePortfolioResponse
+	60, // 101: stockalert.alert.v1.AlertService.AddStocksToPortfolio:output_type -> stockalert.alert.v1.AddStocksToPortfolioResponse
+	62, // 102: stockalert.alert.v1.AlertService.RemoveStocksFromPortfolio:output_type -> stockalert.alert.v1.RemoveStocksFromPortfolioResponse
+	64, // 103: stockalert.alert.v1.AlertService.EvaluateExchange:output_type -> stockalert.alert.v1.EvaluateExchangeResponse
+	77, // [77:104] is the sub-list for method output_type
+	50, // [50:77] is the sub-list for method input_type
+	50, // [50:50] is the sub-list for extension type_name
+	50, // [50:50] is the sub-list for extension extendee
+	0,  // [0:50] is the sub-list for field type_name
 }
 
 func init() { file_alert_v1_alert_proto_init() }
@@ -4724,7 +4924,7 @@ func file_alert_v1_alert_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_alert_v1_alert_proto_rawDesc), len(file_alert_v1_alert_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   64,
+			NumMessages:   66,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

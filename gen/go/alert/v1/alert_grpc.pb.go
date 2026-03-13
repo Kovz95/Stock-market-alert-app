@@ -34,6 +34,7 @@ const (
 	AlertService_GetPerformanceMetrics_FullMethodName     = "/stockalert.alert.v1.AlertService/GetPerformanceMetrics"
 	AlertService_GetAlertHistory_FullMethodName           = "/stockalert.alert.v1.AlertService/GetAlertHistory"
 	AlertService_GetFailedPriceData_FullMethodName        = "/stockalert.alert.v1.AlertService/GetFailedPriceData"
+	AlertService_GetAuditLog_FullMethodName               = "/stockalert.alert.v1.AlertService/GetAuditLog"
 	AlertService_ClearAuditData_FullMethodName            = "/stockalert.alert.v1.AlertService/ClearAuditData"
 	AlertService_GetTriggerHistoryByTicker_FullMethodName = "/stockalert.alert.v1.AlertService/GetTriggerHistoryByTicker"
 	AlertService_SearchStocks_FullMethodName              = "/stockalert.alert.v1.AlertService/SearchStocks"
@@ -69,6 +70,7 @@ type AlertServiceClient interface {
 	GetPerformanceMetrics(ctx context.Context, in *GetPerformanceMetricsRequest, opts ...grpc.CallOption) (*GetPerformanceMetricsResponse, error)
 	GetAlertHistory(ctx context.Context, in *GetAlertHistoryRequest, opts ...grpc.CallOption) (*GetAlertHistoryResponse, error)
 	GetFailedPriceData(ctx context.Context, in *GetFailedPriceDataRequest, opts ...grpc.CallOption) (*GetFailedPriceDataResponse, error)
+	GetAuditLog(ctx context.Context, in *GetAuditLogRequest, opts ...grpc.CallOption) (*GetAuditLogResponse, error)
 	ClearAuditData(ctx context.Context, in *ClearAuditDataRequest, opts ...grpc.CallOption) (*ClearAuditDataResponse, error)
 	// Alert History Lookup
 	GetTriggerHistoryByTicker(ctx context.Context, in *GetTriggerHistoryByTickerRequest, opts ...grpc.CallOption) (*GetTriggerHistoryByTickerResponse, error)
@@ -252,6 +254,16 @@ func (c *alertServiceClient) GetFailedPriceData(ctx context.Context, in *GetFail
 	return out, nil
 }
 
+func (c *alertServiceClient) GetAuditLog(ctx context.Context, in *GetAuditLogRequest, opts ...grpc.CallOption) (*GetAuditLogResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetAuditLogResponse)
+	err := c.cc.Invoke(ctx, AlertService_GetAuditLog_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *alertServiceClient) ClearAuditData(ctx context.Context, in *ClearAuditDataRequest, opts ...grpc.CallOption) (*ClearAuditDataResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ClearAuditDataResponse)
@@ -384,6 +396,7 @@ type AlertServiceServer interface {
 	GetPerformanceMetrics(context.Context, *GetPerformanceMetricsRequest) (*GetPerformanceMetricsResponse, error)
 	GetAlertHistory(context.Context, *GetAlertHistoryRequest) (*GetAlertHistoryResponse, error)
 	GetFailedPriceData(context.Context, *GetFailedPriceDataRequest) (*GetFailedPriceDataResponse, error)
+	GetAuditLog(context.Context, *GetAuditLogRequest) (*GetAuditLogResponse, error)
 	ClearAuditData(context.Context, *ClearAuditDataRequest) (*ClearAuditDataResponse, error)
 	// Alert History Lookup
 	GetTriggerHistoryByTicker(context.Context, *GetTriggerHistoryByTickerRequest) (*GetTriggerHistoryByTickerResponse, error)
@@ -452,6 +465,9 @@ func (UnimplementedAlertServiceServer) GetAlertHistory(context.Context, *GetAler
 }
 func (UnimplementedAlertServiceServer) GetFailedPriceData(context.Context, *GetFailedPriceDataRequest) (*GetFailedPriceDataResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetFailedPriceData not implemented")
+}
+func (UnimplementedAlertServiceServer) GetAuditLog(context.Context, *GetAuditLogRequest) (*GetAuditLogResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetAuditLog not implemented")
 }
 func (UnimplementedAlertServiceServer) ClearAuditData(context.Context, *ClearAuditDataRequest) (*ClearAuditDataResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ClearAuditData not implemented")
@@ -770,6 +786,24 @@ func _AlertService_GetFailedPriceData_Handler(srv interface{}, ctx context.Conte
 	return interceptor(ctx, in, info, handler)
 }
 
+func _AlertService_GetAuditLog_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetAuditLogRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AlertServiceServer).GetAuditLog(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AlertService_GetAuditLog_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AlertServiceServer).GetAuditLog(ctx, req.(*GetAuditLogRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _AlertService_ClearAuditData_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ClearAuditDataRequest)
 	if err := dec(in); err != nil {
@@ -1030,6 +1064,10 @@ var AlertService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetFailedPriceData",
 			Handler:    _AlertService_GetFailedPriceData_Handler,
+		},
+		{
+			MethodName: "GetAuditLog",
+			Handler:    _AlertService_GetAuditLog_Handler,
 		},
 		{
 			MethodName: "ClearAuditData",

@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"strconv"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -12,6 +13,9 @@ import (
 	alertv1 "stockalert/gen/go/alert/v1"
 	db "stockalert/database/generated"
 )
+
+// itoa converts an int to a string (shorthand for strconv.Itoa).
+func itoa(i int) string { return strconv.Itoa(i) }
 
 // GetDashboardStats returns lightweight aggregates for dashboard KPI cards (no large payloads).
 func (s *Server) GetDashboardStats(ctx context.Context, _ *alertv1.GetDashboardStatsRequest) (*alertv1.GetDashboardStatsResponse, error) {
@@ -705,6 +709,175 @@ func (s *Server) GetFailedPriceData(ctx context.Context, req *alertv1.GetFailedP
 		FailureRate:         failureRate,
 		AssetTypeBreakdown:  assetBreakdown,
 		ExchangeBreakdown:   exchangeBreakdown,
+	}, nil
+}
+
+// GetAuditLog returns a paginated, filtered, sorted list of individual audit rows.
+func (s *Server) GetAuditLog(ctx context.Context, req *alertv1.GetAuditLogRequest) (*alertv1.GetAuditLogResponse, error) {
+	days := req.GetDays()
+	if days <= 0 {
+		days = 7
+	}
+	if days > 90 {
+		days = 90
+	}
+	page := req.GetPage()
+	if page <= 0 {
+		page = 1
+	}
+	pageSize := req.GetPageSize()
+	if pageSize <= 0 {
+		pageSize = 50
+	}
+	if pageSize > 200 {
+		pageSize = 200
+	}
+
+	// Whitelist sort columns to prevent SQL injection
+	sortFieldMap := map[string]string{
+		"timestamp":         "timestamp",
+		"ticker":            "ticker",
+		"execution_time_ms": "execution_time_ms",
+		"alert_id":          "alert_id",
+		"evaluation_type":   "evaluation_type",
+		"exchange":          "exchange",
+		"timeframe":         "timeframe",
+	}
+	sortCol := "timestamp"
+	if col, ok := sortFieldMap[req.GetSortField()]; ok {
+		sortCol = col
+	}
+	sortDir := "DESC"
+	if req.GetSortDirection() == "asc" {
+		sortDir = "ASC"
+	}
+
+	cutoff := time.Now().UTC().AddDate(0, 0, -int(days))
+
+	conn, err := s.pool.Acquire(ctx)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to acquire connection: %v", err)
+	}
+	defer conn.Release()
+
+	// Build dynamic WHERE clauses
+	conditions := []string{"timestamp >= $1"}
+	args := []interface{}{cutoff}
+	argIdx := 2
+
+	if v := req.GetAlertId(); v != "" {
+		conditions = append(conditions, "alert_id ILIKE $"+itoa(argIdx))
+		args = append(args, "%"+v+"%")
+		argIdx++
+	}
+	if v := req.GetTicker(); v != "" {
+		conditions = append(conditions, "ticker ILIKE $"+itoa(argIdx))
+		args = append(args, "%"+v+"%")
+		argIdx++
+	}
+	if v := req.GetEvaluationType(); v != "" {
+		conditions = append(conditions, "evaluation_type = $"+itoa(argIdx))
+		args = append(args, v)
+		argIdx++
+	}
+	if v := req.GetStatusFilter(); v != "" {
+		switch v {
+		case "success":
+			conditions = append(conditions, "price_data_pulled = true AND conditions_evaluated = true")
+		case "error":
+			conditions = append(conditions, "(price_data_pulled = false OR error_message != '')")
+		case "triggered":
+			conditions = append(conditions, "alert_triggered = true")
+		case "not_triggered":
+			conditions = append(conditions, "alert_triggered = false")
+		}
+	}
+
+	whereClause := "WHERE " + conditions[0]
+	for _, c := range conditions[1:] {
+		whereClause += " AND " + c
+	}
+
+	// Count query (parallel-safe: same filters)
+	countQuery := "SELECT COUNT(*) FROM alert_audits " + whereClause
+	var totalCount int64
+	if err := conn.QueryRow(ctx, countQuery, args...).Scan(&totalCount); err != nil {
+		return nil, status.Errorf(codes.Internal, "audit log count: %v", err)
+	}
+
+	offset := (int(page) - 1) * int(pageSize)
+
+	dataQuery := `
+		SELECT id, timestamp, alert_id, ticker, COALESCE(stock_name,''), COALESCE(exchange,''), COALESCE(timeframe,''),
+			COALESCE(action,''), evaluation_type, COALESCE(price_data_pulled, false), COALESCE(price_data_source,''),
+			COALESCE(conditions_evaluated, false), COALESCE(alert_triggered, false), COALESCE(trigger_reason,''),
+			execution_time_ms, COALESCE(cache_hit, false), COALESCE(error_message,'')
+		FROM alert_audits
+		` + whereClause + `
+		ORDER BY ` + sortCol + ` ` + sortDir + `
+		LIMIT $` + itoa(argIdx) + ` OFFSET $` + itoa(argIdx+1)
+
+	args = append(args, pageSize, offset)
+
+	rows, err := conn.Query(ctx, dataQuery, args...)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "audit log query: %v", err)
+	}
+	defer rows.Close()
+
+	var out []*alertv1.AuditHistoryRow
+	for rows.Next() {
+		var (
+			id                                                                  int64
+			ts                                                                  time.Time
+			aid, ticker, stockName, exchange, timeframe, action, evalType       string
+			pricePulled, conditionsEval, triggered                              bool
+			priceSource, triggerReason                                          string
+			execMs                                                              *int32
+			cacheHit                                                            bool
+			errorMsg                                                            string
+		)
+		err := rows.Scan(
+			&id, &ts, &aid, &ticker, &stockName, &exchange, &timeframe, &action, &evalType,
+			&pricePulled, &priceSource, &conditionsEval, &triggered, &triggerReason,
+			&execMs, &cacheHit, &errorMsg,
+		)
+		if err != nil {
+			return nil, status.Errorf(codes.Internal, "scan audit log row: %v", err)
+		}
+		execVal := int32(0)
+		if execMs != nil {
+			execVal = *execMs
+		}
+		out = append(out, &alertv1.AuditHistoryRow{
+			Id:                  id,
+			Timestamp:           timestamppb.New(ts),
+			AlertId:             aid,
+			Ticker:              ticker,
+			StockName:           stockName,
+			Exchange:            exchange,
+			Timeframe:           timeframe,
+			Action:              action,
+			EvaluationType:      evalType,
+			PriceDataPulled:     pricePulled,
+			PriceDataSource:     priceSource,
+			ConditionsEvaluated: conditionsEval,
+			AlertTriggered:      triggered,
+			TriggerReason:       triggerReason,
+			ExecutionTimeMs:     execVal,
+			CacheHit:            cacheHit,
+			ErrorMessage:        errorMsg,
+		})
+	}
+	if err := rows.Err(); err != nil {
+		return nil, status.Errorf(codes.Internal, "audit log rows: %v", err)
+	}
+
+	return &alertv1.GetAuditLogResponse{
+		Rows:       out,
+		TotalCount: totalCount,
+		Page:       page,
+		PageSize:   pageSize,
 	}, nil
 }
 

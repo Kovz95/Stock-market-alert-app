@@ -51,11 +51,11 @@ func Load() *Config {
 		DiscordWebhookWeekly: os.Getenv("DISCORD_WEBHOOK_WEEKLY"),
 		DiscordWebhookHourly: os.Getenv("DISCORD_WEBHOOK_HOURLY"),
 
-		JobTimeoutSec:           900,
-		Concurrency:             1,  // one job at a time per process by default
-		FMPDailyConcurrency:     10, // parallel FMP fetches; client rate limit (FMP_MIN_INTERVAL_MS) caps throughput
-		FMPWeeklyConcurrency:    10,
-		FMPHourlyConcurrency:    10,
+		JobTimeoutSec:        900,
+		Concurrency:          2,  // one job at a time per process by default
+		FMPDailyConcurrency:  10, // parallel FMP fetches; client rate limit (FMP_MIN_INTERVAL_MS) caps throughput
+		FMPWeeklyConcurrency: 10,
+		FMPHourlyConcurrency: 10,
 
 		ShadowMode:      os.Getenv("SCHEDULER_SHADOW_MODE") == "true" || os.Getenv("SCHEDULER_SHADOW_MODE") == "1",
 		ShadowOutputDir: os.Getenv("SCHEDULER_SHADOW_OUTPUT_DIR"),

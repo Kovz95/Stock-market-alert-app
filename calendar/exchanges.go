@@ -420,6 +420,25 @@ var ExchangeTimezones = map[string]string{
 	ExchangeColombia:           "America/Bogota",
 }
 
+// HourlyOpenMinute maps exchange name to the minute-of-hour at which its
+// session opens, which is also the minute at which 1-hour candles close.
+// Exchanges that open at :30 (e.g. NYSE at 9:30 ET) have candles closing at
+// :30 past each hour; exchanges that open on the hour close on the hour.
+// Only relevant for "hour"-aligned exchanges; "half" and "quarter" exchanges
+// always use :00/:30 or :00/:15/:30/:45 boundaries regardless of open time.
+var HourlyOpenMinute = map[string]int{
+	ExchangeNYSE:         30, // 9:30 ET
+	ExchangeNASDAQ:       30, // 9:30 ET
+	ExchangeNYSEAmerican: 30, // 9:30 ET
+	ExchangeNYSEArca:     30, // 9:30 ET
+	ExchangeCBOEBZX:      30, // 9:30 ET
+	ExchangeToronto:      30, // 9:30 ET
+	ExchangeSantiago:     30, // 9:30 CLT
+	ExchangeMexico:       30, // 8:30 CT
+	ExchangeColombia:     30, // 9:30 COT
+	// All other exchanges open on the hour and default to 0.
+}
+
 // HourlyAlignment maps exchange name to alignment: "hour", "quarter", or "half".
 // "hour" = :00 candles (most), "quarter" = :15 (BSE/NSE India), "half" = :30 (Hong Kong, Euronext Paris, Athens, Iceland).
 var HourlyAlignment = map[string]string{

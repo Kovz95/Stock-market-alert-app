@@ -141,6 +141,45 @@ export async function getFailedPriceData(
   return response;
 }
 
+export interface AuditLogParams {
+  days: number;
+  page: number;
+  pageSize: number;
+  sortField: string;
+  sortDirection: "asc" | "desc";
+  alertId?: string;
+  ticker?: string;
+  evaluationType?: string;
+  statusFilter?: string;
+}
+
+export interface AuditLogResponse {
+  rows: AuditHistoryRow[];
+  totalCount: number;
+  page: number;
+  pageSize: number;
+}
+
+export async function getAuditLog(params: AuditLogParams): Promise<AuditLogResponse> {
+  const response = await alertClient.getAuditLog({
+    days: Math.min(90, Math.max(1, params.days)),
+    page: Math.max(1, params.page),
+    pageSize: Math.min(200, Math.max(1, params.pageSize)),
+    sortField: params.sortField,
+    sortDirection: params.sortDirection,
+    alertId: params.alertId ?? "",
+    ticker: params.ticker ?? "",
+    evaluationType: params.evaluationType ?? "",
+    statusFilter: params.statusFilter ?? "",
+  });
+  return {
+    rows: response.rows ?? [],
+    totalCount: Number(response.totalCount ?? 0),
+    page: response.page ?? params.page,
+    pageSize: response.pageSize ?? params.pageSize,
+  };
+}
+
 export async function clearAuditData(): Promise<number> {
   const response = await alertClient.clearAuditData({});
   return Number(response.deletedCount ?? 0);

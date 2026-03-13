@@ -342,6 +342,35 @@ export interface GetFailedPriceDataResponse {
   exchangeBreakdown: ExchangeBreakdownRow[];
 }
 
+/** GetAuditLog: paginated, filtered, sorted access to individual audit rows. */
+export interface GetAuditLogRequest {
+  /** how many days back (default 7, max 90) */
+  days: number;
+  /** 1-based page number */
+  page: number;
+  /** default 50, max 200 */
+  pageSize: number;
+  /** timestamp, ticker, execution_time_ms, etc. */
+  sortField: string;
+  /** "asc" or "desc" */
+  sortDirection: string;
+  /** substring filter */
+  alertId: string;
+  /** case-insensitive contains */
+  ticker: string;
+  /** exact match filter */
+  evaluationType: string;
+  /** "success", "error", "triggered", "not_triggered" */
+  statusFilter: string;
+}
+
+export interface GetAuditLogResponse {
+  rows: AuditHistoryRow[];
+  totalCount: number;
+  page: number;
+  pageSize: number;
+}
+
 export interface ClearAuditDataRequest {
 }
 
@@ -5665,6 +5694,344 @@ export const GetFailedPriceDataResponse: MessageFns<GetFailedPriceDataResponse> 
   },
 };
 
+function createBaseGetAuditLogRequest(): GetAuditLogRequest {
+  return {
+    days: 0,
+    page: 0,
+    pageSize: 0,
+    sortField: "",
+    sortDirection: "",
+    alertId: "",
+    ticker: "",
+    evaluationType: "",
+    statusFilter: "",
+  };
+}
+
+export const GetAuditLogRequest: MessageFns<GetAuditLogRequest> = {
+  encode(message: GetAuditLogRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.days !== 0) {
+      writer.uint32(8).int32(message.days);
+    }
+    if (message.page !== 0) {
+      writer.uint32(16).int32(message.page);
+    }
+    if (message.pageSize !== 0) {
+      writer.uint32(24).int32(message.pageSize);
+    }
+    if (message.sortField !== "") {
+      writer.uint32(34).string(message.sortField);
+    }
+    if (message.sortDirection !== "") {
+      writer.uint32(42).string(message.sortDirection);
+    }
+    if (message.alertId !== "") {
+      writer.uint32(50).string(message.alertId);
+    }
+    if (message.ticker !== "") {
+      writer.uint32(58).string(message.ticker);
+    }
+    if (message.evaluationType !== "") {
+      writer.uint32(66).string(message.evaluationType);
+    }
+    if (message.statusFilter !== "") {
+      writer.uint32(74).string(message.statusFilter);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): GetAuditLogRequest {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseGetAuditLogRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 8) {
+            break;
+          }
+
+          message.days = reader.int32();
+          continue;
+        }
+        case 2: {
+          if (tag !== 16) {
+            break;
+          }
+
+          message.page = reader.int32();
+          continue;
+        }
+        case 3: {
+          if (tag !== 24) {
+            break;
+          }
+
+          message.pageSize = reader.int32();
+          continue;
+        }
+        case 4: {
+          if (tag !== 34) {
+            break;
+          }
+
+          message.sortField = reader.string();
+          continue;
+        }
+        case 5: {
+          if (tag !== 42) {
+            break;
+          }
+
+          message.sortDirection = reader.string();
+          continue;
+        }
+        case 6: {
+          if (tag !== 50) {
+            break;
+          }
+
+          message.alertId = reader.string();
+          continue;
+        }
+        case 7: {
+          if (tag !== 58) {
+            break;
+          }
+
+          message.ticker = reader.string();
+          continue;
+        }
+        case 8: {
+          if (tag !== 66) {
+            break;
+          }
+
+          message.evaluationType = reader.string();
+          continue;
+        }
+        case 9: {
+          if (tag !== 74) {
+            break;
+          }
+
+          message.statusFilter = reader.string();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): GetAuditLogRequest {
+    return {
+      days: isSet(object.days) ? globalThis.Number(object.days) : 0,
+      page: isSet(object.page) ? globalThis.Number(object.page) : 0,
+      pageSize: isSet(object.pageSize)
+        ? globalThis.Number(object.pageSize)
+        : isSet(object.page_size)
+        ? globalThis.Number(object.page_size)
+        : 0,
+      sortField: isSet(object.sortField)
+        ? globalThis.String(object.sortField)
+        : isSet(object.sort_field)
+        ? globalThis.String(object.sort_field)
+        : "",
+      sortDirection: isSet(object.sortDirection)
+        ? globalThis.String(object.sortDirection)
+        : isSet(object.sort_direction)
+        ? globalThis.String(object.sort_direction)
+        : "",
+      alertId: isSet(object.alertId)
+        ? globalThis.String(object.alertId)
+        : isSet(object.alert_id)
+        ? globalThis.String(object.alert_id)
+        : "",
+      ticker: isSet(object.ticker) ? globalThis.String(object.ticker) : "",
+      evaluationType: isSet(object.evaluationType)
+        ? globalThis.String(object.evaluationType)
+        : isSet(object.evaluation_type)
+        ? globalThis.String(object.evaluation_type)
+        : "",
+      statusFilter: isSet(object.statusFilter)
+        ? globalThis.String(object.statusFilter)
+        : isSet(object.status_filter)
+        ? globalThis.String(object.status_filter)
+        : "",
+    };
+  },
+
+  toJSON(message: GetAuditLogRequest): unknown {
+    const obj: any = {};
+    if (message.days !== 0) {
+      obj.days = Math.round(message.days);
+    }
+    if (message.page !== 0) {
+      obj.page = Math.round(message.page);
+    }
+    if (message.pageSize !== 0) {
+      obj.pageSize = Math.round(message.pageSize);
+    }
+    if (message.sortField !== "") {
+      obj.sortField = message.sortField;
+    }
+    if (message.sortDirection !== "") {
+      obj.sortDirection = message.sortDirection;
+    }
+    if (message.alertId !== "") {
+      obj.alertId = message.alertId;
+    }
+    if (message.ticker !== "") {
+      obj.ticker = message.ticker;
+    }
+    if (message.evaluationType !== "") {
+      obj.evaluationType = message.evaluationType;
+    }
+    if (message.statusFilter !== "") {
+      obj.statusFilter = message.statusFilter;
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<GetAuditLogRequest>, I>>(base?: I): GetAuditLogRequest {
+    return GetAuditLogRequest.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<GetAuditLogRequest>, I>>(object: I): GetAuditLogRequest {
+    const message = createBaseGetAuditLogRequest();
+    message.days = object.days ?? 0;
+    message.page = object.page ?? 0;
+    message.pageSize = object.pageSize ?? 0;
+    message.sortField = object.sortField ?? "";
+    message.sortDirection = object.sortDirection ?? "";
+    message.alertId = object.alertId ?? "";
+    message.ticker = object.ticker ?? "";
+    message.evaluationType = object.evaluationType ?? "";
+    message.statusFilter = object.statusFilter ?? "";
+    return message;
+  },
+};
+
+function createBaseGetAuditLogResponse(): GetAuditLogResponse {
+  return { rows: [], totalCount: 0, page: 0, pageSize: 0 };
+}
+
+export const GetAuditLogResponse: MessageFns<GetAuditLogResponse> = {
+  encode(message: GetAuditLogResponse, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    for (const v of message.rows) {
+      AuditHistoryRow.encode(v!, writer.uint32(10).fork()).join();
+    }
+    if (message.totalCount !== 0) {
+      writer.uint32(16).int64(message.totalCount);
+    }
+    if (message.page !== 0) {
+      writer.uint32(24).int32(message.page);
+    }
+    if (message.pageSize !== 0) {
+      writer.uint32(32).int32(message.pageSize);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): GetAuditLogResponse {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseGetAuditLogResponse();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.rows.push(AuditHistoryRow.decode(reader, reader.uint32()));
+          continue;
+        }
+        case 2: {
+          if (tag !== 16) {
+            break;
+          }
+
+          message.totalCount = longToNumber(reader.int64());
+          continue;
+        }
+        case 3: {
+          if (tag !== 24) {
+            break;
+          }
+
+          message.page = reader.int32();
+          continue;
+        }
+        case 4: {
+          if (tag !== 32) {
+            break;
+          }
+
+          message.pageSize = reader.int32();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): GetAuditLogResponse {
+    return {
+      rows: globalThis.Array.isArray(object?.rows) ? object.rows.map((e: any) => AuditHistoryRow.fromJSON(e)) : [],
+      totalCount: isSet(object.totalCount)
+        ? globalThis.Number(object.totalCount)
+        : isSet(object.total_count)
+        ? globalThis.Number(object.total_count)
+        : 0,
+      page: isSet(object.page) ? globalThis.Number(object.page) : 0,
+      pageSize: isSet(object.pageSize)
+        ? globalThis.Number(object.pageSize)
+        : isSet(object.page_size)
+        ? globalThis.Number(object.page_size)
+        : 0,
+    };
+  },
+
+  toJSON(message: GetAuditLogResponse): unknown {
+    const obj: any = {};
+    if (message.rows?.length) {
+      obj.rows = message.rows.map((e) => AuditHistoryRow.toJSON(e));
+    }
+    if (message.totalCount !== 0) {
+      obj.totalCount = Math.round(message.totalCount);
+    }
+    if (message.page !== 0) {
+      obj.page = Math.round(message.page);
+    }
+    if (message.pageSize !== 0) {
+      obj.pageSize = Math.round(message.pageSize);
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<GetAuditLogResponse>, I>>(base?: I): GetAuditLogResponse {
+    return GetAuditLogResponse.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<GetAuditLogResponse>, I>>(object: I): GetAuditLogResponse {
+    const message = createBaseGetAuditLogResponse();
+    message.rows = object.rows?.map((e) => AuditHistoryRow.fromPartial(e)) || [];
+    message.totalCount = object.totalCount ?? 0;
+    message.page = object.page ?? 0;
+    message.pageSize = object.pageSize ?? 0;
+    return message;
+  },
+};
+
 function createBaseClearAuditDataRequest(): ClearAuditDataRequest {
   return {};
 }
@@ -7701,6 +8068,14 @@ export const AlertServiceDefinition = {
       responseStream: false,
       options: {},
     },
+    getAuditLog: {
+      name: "GetAuditLog",
+      requestType: GetAuditLogRequest,
+      requestStream: false,
+      responseType: GetAuditLogResponse,
+      responseStream: false,
+      options: {},
+    },
     clearAuditData: {
       name: "ClearAuditData",
       requestType: ClearAuditDataRequest,
@@ -7854,6 +8229,10 @@ export interface AlertServiceImplementation<CallContextExt = {}> {
     request: GetFailedPriceDataRequest,
     context: CallContext & CallContextExt,
   ): Promise<DeepPartial<GetFailedPriceDataResponse>>;
+  getAuditLog(
+    request: GetAuditLogRequest,
+    context: CallContext & CallContextExt,
+  ): Promise<DeepPartial<GetAuditLogResponse>>;
   clearAuditData(
     request: ClearAuditDataRequest,
     context: CallContext & CallContextExt,
@@ -7962,6 +8341,10 @@ export interface AlertServiceClient<CallOptionsExt = {}> {
     request: DeepPartial<GetFailedPriceDataRequest>,
     options?: CallOptions & CallOptionsExt,
   ): Promise<GetFailedPriceDataResponse>;
+  getAuditLog(
+    request: DeepPartial<GetAuditLogRequest>,
+    options?: CallOptions & CallOptionsExt,
+  ): Promise<GetAuditLogResponse>;
   clearAuditData(
     request: DeepPartial<ClearAuditDataRequest>,
     options?: CallOptions & CallOptionsExt,

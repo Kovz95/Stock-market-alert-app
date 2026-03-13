@@ -6,8 +6,11 @@ import {
   getPerformanceMetrics,
   getAlertHistory,
   getFailedPriceData,
+  getAuditLog,
+  getTriggerCountByDayFromServer,
   clearAuditData,
 } from "@/actions/audit-actions";
+import type { AuditLogParams } from "@/actions/audit-actions";
 
 export const AUDIT_KEY = ["audit"] as const;
 
@@ -37,6 +40,20 @@ export function useFailedPriceData(days: number) {
   return useQuery({
     queryKey: [...AUDIT_KEY, "failed", days],
     queryFn: () => getFailedPriceData(days),
+  });
+}
+
+export function useAuditLog(params: AuditLogParams) {
+  return useQuery({
+    queryKey: [...AUDIT_KEY, "log", params],
+    queryFn: () => getAuditLog(params),
+  });
+}
+
+export function useTriggerCountByDay(days: number) {
+  return useQuery({
+    queryKey: [...AUDIT_KEY, "trigger-count-by-day", days],
+    queryFn: () => getTriggerCountByDayFromServer(days),
   });
 }
 

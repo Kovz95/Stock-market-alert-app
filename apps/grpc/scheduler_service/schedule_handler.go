@@ -169,9 +169,9 @@ func nextWeeklyRunTime(exchange string, now time.Time, eastern *time.Location) t
 	return runTime.UTC()
 }
 
-// buildHourlyRows computes the hourly schedule: next aligned candle time while exchange is open.
-// LocalClose shows Close (ET): exchange session close time in Eastern.
-// RunTimeEt shows the next candle time; TimeRemaining counts down to it.
+// buildHourlyRows computes the hourly schedule: next aligned candle close time
+// while the exchange is open. LocalClose shows the session close in Eastern.
+// RunTimeEt/RunTimeUtc show the next candle close; TimeRemaining counts to it.
 // Exchanges that are currently closed show TimeRemaining = 0.
 func buildHourlyRows(nowET, now time.Time, eastern *time.Location, lastRuns map[string]lastRunInfo) []*schedulerv1.ExchangeScheduleRow {
 	rows := make([]*schedulerv1.ExchangeScheduleRow, 0, len(calendar.ExchangeSchedules))
@@ -179,14 +179,24 @@ func buildHourlyRows(nowET, now time.Time, eastern *time.Location, lastRuns map[
 		tz := calendar.GetCalendarTimezone(sym)
 		region := regionFromTZ(tz)
 
+		// Resolve the exchange's own timezone so candle boundaries are computed
+		// in local time (not Eastern). Fall back to Eastern only if unavailable.
+		loc := eastern
+		if tz != "" {
+			if l, err := time.LoadLocation(tz); err == nil {
+				loc = l
+			}
+		}
+
 		isOpen := calendar.IsExchangeOpen(sym, now)
-		var nextCandleET time.Time
+		var nextCandleClose time.Time
 		var remaining int64
 		alignment := calendar.GetHourlyAlignment(sym)
 
 		if isOpen {
-			nextCandleET = nextHourlyCandle(now, eastern, alignment)
-			remaining = int64(nextCandleET.Sub(now).Seconds())
+			openMinute := calendar.GetHourlyOpenMinute(sym)
+			nextCandleClose = nextHourlyCandle(now, loc, alignment, openMinute)
+			remaining = int64(nextCandleClose.Sub(now).Seconds())
 			if remaining < 0 {
 				remaining = 0
 			}
@@ -195,8 +205,8 @@ func buildHourlyRows(nowET, now time.Time, eastern *time.Location, lastRuns map[
 		runTimeEt := ""
 		runTimeUtc := ""
 		if isOpen {
-			runTimeEt = nextCandleET.In(eastern).Format("3:04 PM")
-			runTimeUtc = nextCandleET.UTC().Format("3:04 PM")
+			runTimeEt = nextCandleClose.In(eastern).Format("3:04 PM")
+			runTimeUtc = nextCandleClose.UTC().Format("3:04 PM")
 		}
 
 		// Close (ET): exchange session close time in Eastern
@@ -224,28 +234,40 @@ func buildHourlyRows(nowET, now time.Time, eastern *time.Location, lastRuns map[
 	return rows
 }
 
-// nextHourlyCandle returns the next candle boundary (in eastern) after now,
-// based on alignment: "hour" → next :00, "quarter" → next :15, "half" → next :30.
-func nextHourlyCandle(now time.Time, eastern *time.Location, alignment string) time.Time {
-	et := now.In(eastern)
-	y, mo, d := et.Date()
-	h, m := et.Hour(), et.Minute()
-
+// nextHourlyCandle returns the next candle close time after now.
+//
+// For "half" (30-min) and "quarter" (15-min) exchanges the boundaries always
+// fall on UTC-aligned multiples (:00/:30 or :00/:15/:30/:45), so we use
+// time.Truncate which is timezone-independent for those durations.
+//
+// For "hour" exchanges we must respect the exchange's local timezone (loc) and
+// open-minute offset (openMinute). NYSE opens at 9:30 ET so its candles close
+// at 10:30, 11:30, etc. — not on the clock hour. The candidate is the :MM of
+// the current local hour; if that's already past we advance by one hour.
+func nextHourlyCandle(now time.Time, loc *time.Location, alignment string, openMinute int) time.Time {
 	switch alignment {
 	case "quarter":
-		// Next multiple of 15 minutes after current minute
-		nextM := ((m / 15) + 1) * 15
-		extraH := nextM / 60
-		nextM = nextM % 60
-		return time.Date(y, mo, d, h+extraH, nextM, 0, 0, eastern)
-	case "half":
-		// Next :00 or :30
-		if m < 30 {
-			return time.Date(y, mo, d, h, 30, 0, 0, eastern)
+		const d = 15 * time.Minute
+		t := now.Truncate(d).Add(d)
+		if !t.After(now) {
+			t = t.Add(d)
 		}
-		return time.Date(y, mo, d, h+1, 0, 0, 0, eastern)
+		return t
+	case "half":
+		const d = 30 * time.Minute
+		t := now.Truncate(d).Add(d)
+		if !t.After(now) {
+			t = t.Add(d)
+		}
+		return t
 	default: // "hour"
-		return time.Date(y, mo, d, h+1, 0, 0, 0, eastern)
+		local := now.In(loc)
+		y, mo, d, h := local.Year(), local.Month(), local.Day(), local.Hour()
+		candidate := time.Date(y, mo, d, h, openMinute, 0, 0, loc)
+		if !candidate.After(now) {
+			candidate = candidate.Add(time.Hour)
+		}
+		return candidate
 	}
 }
 

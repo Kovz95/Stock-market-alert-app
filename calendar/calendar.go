@@ -158,6 +158,16 @@ func GetHourlyAlignment(exchange string) string {
 	return "hour"
 }
 
+// GetHourlyOpenMinute returns the minute-of-hour at which the exchange opens
+// (and thus at which 1-hour candles close). Returns 0 for exchanges that open
+// on the hour; returns 30 for exchanges like NYSE that open at :30.
+func GetHourlyOpenMinute(exchange string) int {
+	if m, ok := HourlyOpenMinute[exchange]; ok {
+		return m
+	}
+	return 0
+}
+
 // GetCalendarTimezone returns the IANA timezone for the exchange, or empty string if unknown.
 func GetCalendarTimezone(exchange string) string {
 	if sched, ok := ExchangeSchedules[exchange]; ok && sched.Timezone != "" {
