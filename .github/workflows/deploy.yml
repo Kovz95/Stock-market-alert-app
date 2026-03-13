@@ -107,6 +107,12 @@ jobs:
             ${{ secrets.SSH_USER }}@${{ secrets.SERVER_HOST }} \
             "cd ${{ secrets.DEPLOY_PATH }} && tar -xzf stockalert-deploy.tar.gz && rm stockalert-deploy.tar.gz"
 
+      - name: Clean up Docker resources on server
+        run: |
+          sshpass -e ssh -o StrictHostKeyChecking=no \
+            ${{ secrets.SSH_USER }}@${{ secrets.SERVER_HOST }} \
+            "docker system prune -af 2>/dev/null || true"
+
       - name: Build and start Docker containers
         run: |
           sshpass -e ssh -o StrictHostKeyChecking=no \
