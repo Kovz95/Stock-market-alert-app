@@ -643,6 +643,7 @@ export function ConditionBuilder({ onAdd }: ConditionBuilderProps) {
                   <SelectContent>
                     <SelectItem value="SMA">SMA</SelectItem>
                     <SelectItem value="EMA">EMA</SelectItem>
+                    <SelectItem value="HMA">HMA</SelectItem>
                     <SelectItem value="FRAMA">FRAMA</SelectItem>
                     <SelectItem value="KAMA">KAMA</SelectItem>
                   </SelectContent>
