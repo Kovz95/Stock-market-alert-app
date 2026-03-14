@@ -20,7 +20,7 @@ const (
 	scanMinBars         = 50
 	scanMaxConcurrency  = 20
 	scanMaxTickersCap   = 20000
-	scanMaxLookback     = 100
+	scanMaxLookback     = 250
 	scanMaxTotalMatches = 50000
 )
 
