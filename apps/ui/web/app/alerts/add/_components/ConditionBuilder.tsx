@@ -93,6 +93,8 @@ const PRICE_TYPES: { value: PriceConditionType; label: string }[] = [
 const MA_TYPES: { value: MAConditionType; label: string }[] = [
   { value: "price_above_ma", label: "Price above MA" },
   { value: "price_below_ma", label: "Price below MA" },
+  { value: "price_cross_above_ma", label: "Price crossing above MA" },
+  { value: "price_cross_below_ma", label: "Price crossing below MA" },
   { value: "ma_crossover", label: "MA crossover" },
 ];
 
@@ -326,7 +328,7 @@ function resolveParamsForAdd(
     }
   }
   if (category === "moving_average") {
-    if (type === "price_above_ma" || type === "price_below_ma") {
+    if (type === "price_above_ma" || type === "price_below_ma" || type === "price_cross_above_ma" || type === "price_cross_below_ma") {
       p.maPeriod = p.maPeriod ?? 20;
       p.maType = p.maType ?? "SMA";
     }
@@ -628,7 +630,7 @@ export function ConditionBuilder({ onAdd }: ConditionBuilderProps) {
         )}
 
         {(category === "moving_average" &&
-          (type === "price_above_ma" || type === "price_below_ma")) && (
+          (type === "price_above_ma" || type === "price_below_ma" || type === "price_cross_above_ma" || type === "price_cross_below_ma")) && (
           <>
             <Field>
               <FieldLabel>MA type</FieldLabel>

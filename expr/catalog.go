@@ -130,6 +130,14 @@ func ExpandCatalogCondition(condition string) string {
 		fast, slow, maType := parseMACrossoverValue(valueStr)
 		ind := maIndicator(maType)
 		return fmt.Sprintf("%s(%d)[-1] < %s(%d)[-1]", ind, fast, ind, slow)
+	case "price_cross_above_ma":
+		period, maType := parseMAValue(valueStr)
+		ind := maIndicator(maType)
+		return fmt.Sprintf("(close[-1] > %s(%d)[-1]) and (close[-2] <= %s(%d)[-2])", ind, period, ind, period)
+	case "price_cross_below_ma":
+		period, maType := parseMAValue(valueStr)
+		ind := maIndicator(maType)
+		return fmt.Sprintf("(close[-1] < %s(%d)[-1]) and (close[-2] >= %s(%d)[-2])", ind, period, ind, period)
 
 	// --- RSI (default period 14) ---
 	case "rsi_oversold":

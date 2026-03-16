@@ -16,7 +16,7 @@ import (
 )
 
 const (
-	scanLookbackDays    = 250
+	scanLookbackDays    = 400 // ~280 trading days; enough for SMA(200) + buffer
 	scanMinBars         = 50
 	scanMaxConcurrency  = 20
 	scanMaxTickersCap   = 20000

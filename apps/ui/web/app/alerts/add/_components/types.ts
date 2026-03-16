@@ -33,6 +33,8 @@ export type PriceConditionType = "price_above" | "price_below" | "price_equals";
 export type MAConditionType =
   | "price_above_ma"
   | "price_below_ma"
+  | "price_cross_above_ma"
+  | "price_cross_below_ma"
   | "ma_crossover";
 export type RSIConditionType = "rsi_oversold" | "rsi_overbought" | "rsi_level";
 export type MACDConditionType =
@@ -458,6 +460,44 @@ function conditionEntryToExpressionRaw(entry: ConditionEntry): string {
           return `KAMA(df, length=${period}, fast_end=${fe}, slow_end=${se})[-1] > Close[-1]`;
         }
         return `price_below_ma: ${period} (${maType})`;
+      }
+      if (type === "price_cross_above_ma" && params.maPeriod != null) {
+        if (inputExpr) {
+          const maFn = `${maType.toLowerCase()}(period=${period}, input=${inputExpr})`;
+          return `(${maFn}[-1] < Close[-1]) and (${maFn}[-2] >= Close[-2])`;
+        }
+        if (maType === "FRAMA") {
+          const fc = params.framaFc ?? 1;
+          const sc = params.framaSc ?? 198;
+          const maFn = `FRAMA(df, length=${period}, FC=${fc}, SC=${sc})`;
+          return `(${maFn}[-1] < Close[-1]) and (${maFn}[-2] >= Close[-2])`;
+        }
+        if (maType === "KAMA") {
+          const fe = params.kamaFastEnd ?? 0.666;
+          const se = params.kamaSlowEnd ?? 0.0645;
+          const maFn = `KAMA(df, length=${period}, fast_end=${fe}, slow_end=${se})`;
+          return `(${maFn}[-1] < Close[-1]) and (${maFn}[-2] >= Close[-2])`;
+        }
+        return `price_cross_above_ma: ${period} (${maType})`;
+      }
+      if (type === "price_cross_below_ma" && params.maPeriod != null) {
+        if (inputExpr) {
+          const maFn = `${maType.toLowerCase()}(period=${period}, input=${inputExpr})`;
+          return `(${maFn}[-1] > Close[-1]) and (${maFn}[-2] <= Close[-2])`;
+        }
+        if (maType === "FRAMA") {
+          const fc = params.framaFc ?? 1;
+          const sc = params.framaSc ?? 198;
+          const maFn = `FRAMA(df, length=${period}, FC=${fc}, SC=${sc})`;
+          return `(${maFn}[-1] > Close[-1]) and (${maFn}[-2] <= Close[-2])`;
+        }
+        if (maType === "KAMA") {
+          const fe = params.kamaFastEnd ?? 0.666;
+          const se = params.kamaSlowEnd ?? 0.0645;
+          const maFn = `KAMA(df, length=${period}, fast_end=${fe}, slow_end=${se})`;
+          return `(${maFn}[-1] > Close[-1]) and (${maFn}[-2] <= Close[-2])`;
+        }
+        return `price_cross_below_ma: ${period} (${maType})`;
       }
       if (
         type === "ma_crossover" &&
