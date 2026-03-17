@@ -52,7 +52,7 @@ func Load() *Config {
 		DiscordWebhookHourly: os.Getenv("DISCORD_WEBHOOK_HOURLY"),
 
 		JobTimeoutSec:        900,
-		Concurrency:          2,  // one job at a time per process by default
+		Concurrency:          2,  // two jobs at a time per process by default
 		FMPDailyConcurrency:  10, // parallel FMP fetches; client rate limit (FMP_MIN_INTERVAL_MS) caps throughput
 		FMPWeeklyConcurrency: 10,
 		FMPHourlyConcurrency: 10,

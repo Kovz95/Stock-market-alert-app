@@ -18,7 +18,10 @@ import {
 
 const GRPC_ENDPOINT = process.env.GRPC_ENDPOINT || "127.0.0.1:8081";
 
-const channel = createChannel(GRPC_ENDPOINT);
+const channel = createChannel(GRPC_ENDPOINT, undefined, {
+  "grpc.max_receive_message_length": 16 * 1024 * 1024,
+  "grpc.max_send_message_length": 16 * 1024 * 1024,
+});
 
 const clientFactory = createClientFactory();
 

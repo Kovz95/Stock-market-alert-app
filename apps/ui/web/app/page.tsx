@@ -1,6 +1,5 @@
 import { DashboardSectionCards } from "@/components/dashboard-section-cards";
 import { AlertActivityChart } from "@/components/alert-activity-chart";
-import { DashboardActiveAlerts } from "@/components/dashboard-active-alerts";
 
 export default function Page() {
   return (
@@ -10,7 +9,6 @@ export default function Page() {
         <div className="px-4 lg:px-6">
           <AlertActivityChart />
         </div>
-        <DashboardActiveAlerts />
       </div>
     </div>
   );

@@ -53,7 +53,10 @@ func main() {
 	updater := newPriceUpdater(fmp, pool, logger)
 	logger.Info("price updater initialized")
 
-	grpcServer := grpc.NewServer()
+	grpcServer := grpc.NewServer(
+		grpc.MaxRecvMsgSize(16*1024*1024),
+		grpc.MaxSendMsgSize(16*1024*1024),
+	)
 
 	pricev1.RegisterPriceServiceServer(grpcServer, NewServer(pool, updater, logger))
 

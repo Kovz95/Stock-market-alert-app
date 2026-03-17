@@ -16,16 +16,23 @@ export const alertsPageSizeAtom = atom(DEFAULT_ALERTS_PAGE_SIZE);
 /** Server-side search query (name, ticker, etc.). Empty string = no filter. */
 export const alertsSearchAtom = atom("");
 
+/** Timeframe filter: "" = all, "1h" | "1d" | "1wk" */
+export const alertsTimeframeFilterAtom = atom("");
+
 /** Paginated alerts query; server-side search + pagination. */
 export const alertsPaginatedQueryAtom = atomWithQuery((get) => {
   const page = get(alertsPageAtom);
   const pageSize = get(alertsPageSizeAtom);
   const search = get(alertsSearchAtom);
+  const timeframe = get(alertsTimeframeFilterAtom);
   return {
-    queryKey: [...ALERTS_KEY, "paginated", search, page, pageSize],
+    queryKey: [...ALERTS_KEY, "paginated", search, timeframe, page, pageSize],
     queryFn: () =>
       searchAlerts(
-        { search: search.trim() },
+        {
+          search: search.trim(),
+          timeframes: timeframe ? [timeframe] : [],
+        },
         page,
         pageSize
       ),
