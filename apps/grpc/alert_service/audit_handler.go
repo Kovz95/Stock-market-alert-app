@@ -310,7 +310,7 @@ func (s *Server) GetTopTriggeredAlerts(ctx context.Context, req *alertv1.GetTopT
 			a.adjustment_method, a.dtp_params, a.multi_timeframe_params,
 			a.mixed_timeframe_params, a.raw_payload, a.created_at, a.updated_at
 		FROM alerts a
-		INNER JOIN top ON top.alert_id = a.alert_id::text
+		INNER JOIN top ON top.alert_id::uuid = a.alert_id
 		ORDER BY top.trigger_count DESC
 	`
 	rows, err := conn.Query(ctx, query, cutoff, limit)
