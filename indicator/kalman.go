@@ -65,8 +65,10 @@ func KalmanROCStoch(data *OHLCV, params map[string]interface{}) ([]float64, erro
 			kRaw[i] = math.NaN()
 		}
 	}
-	kSma := talib.Sma(kRaw, smoothK)
-	dSma := talib.Sma(kSma, smoothD)
+	// kRaw has leading NaN from stochastic warmup; talib.Sma running sums
+	// would be permanently poisoned. Use NaN-aware per-window versions.
+	kSma := nanAwareSMA(kRaw, smoothK)
+	dSma := nanAwareSMA(kSma, smoothD)
 
 	// Blend ROC and Stochastic D
 	blendRaw := make([]float64, n)
@@ -79,22 +81,24 @@ func KalmanROCStoch(data *OHLCV, params map[string]interface{}) ([]float64, erro
 }
 
 // applyMASmoothing applies the selected MA type to the input series.
+// All TA-Lib-based paths use NaN-aware implementations so that blendRaw's
+// leading NaN values (from stochastic/ROC warmup) do not poison the output.
 func applyMASmoothing(data []float64, maType string, length int) []float64 {
 	switch maType {
 	case "SMA":
-		return talib.Sma(data, length)
+		return nanAwareSMA(data, length)
 	case "EMA":
-		return talib.Ema(data, length)
+		return nanAwareEWM(data, length)
 	case "DEMA":
-		return dema(data, length)
+		return nanAwareDEMA(data, length)
 	case "TEMA":
-		return tema(data, length)
+		return nanAwareTEMA(data, length)
 	case "WMA":
 		return WMA(data, length)
 	case "HMA":
 		return computeHMA(data, length)
 	default:
-		return talib.Sma(data, length)
+		return nanAwareSMA(data, length)
 	}
 }
 

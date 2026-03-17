@@ -289,8 +289,11 @@ func MASpreadZscore(data *OHLCV, params map[string]interface{}) ([]float64, erro
 		}
 	}
 
-	spreadMean := talib.Sma(spread, spreadMeanWindow)
-	spreadStd := talib.StdDev(spread, spreadStdWindow, 1.0)
+	// talib.Sma and talib.StdDev use a running-sum that is permanently
+	// poisoned by the leading NaN values in spread (from MA warmup).
+	// Use NaN-aware per-window implementations instead.
+	spreadMean := nanAwareSMA(spread, spreadMeanWindow)
+	spreadStd := nanAwareRollingStdDev(spread, spreadStdWindow, 1.0)
 
 	zscore := make([]float64, n)
 	for i := range zscore {

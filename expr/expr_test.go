@@ -1158,6 +1158,80 @@ func TestPivotSRKeywordParamsPassThrough(t *testing.T) {
 	}
 }
 
+// TestDiagMySmoothedRSI verifies that MySmoothedRSI produces a non-NaN value.
+// talib.Ema applied to RSI's NaN-prefixed output was permanently NaN-poisoned.
+func TestDiagMySmoothedRSI(t *testing.T) {
+	data := testOHLCV(100)
+	reg := indicator.NewDefaultRegistry()
+	eval := NewEvaluator(reg)
+
+	op, err := ParseOperand("my_smoothed_rsi(timeperiod=14, smooth=7)[-1]")
+	if err != nil {
+		t.Fatalf("ParseOperand: %v", err)
+	}
+	series, err := eval.computeSeries(data, op, nil)
+	if err != nil {
+		t.Fatalf("computeSeries: %v", err)
+	}
+	last := series[len(series)-1]
+	if math.IsNaN(last) {
+		t.Fatalf("my_smoothed_rsi[-1] is NaN with 100 bars")
+	}
+	if last <= 0 || last > 100 {
+		t.Errorf("my_smoothed_rsi[-1] = %f, expected in (0, 100]", last)
+	}
+}
+
+// TestDiagKalmanROCStoch verifies that KalmanROCStoch produces a non-NaN value.
+// talib.Sma applied to kRaw/kSma and talib.Sma/Ema in applyMASmoothing were
+// all permanently NaN-poisoned by the stochastic warmup NaN prefix.
+func TestDiagKalmanROCStoch(t *testing.T) {
+	data := testOHLCV(100)
+	reg := indicator.NewDefaultRegistry()
+	eval := NewEvaluator(reg)
+
+	for _, maType := range []string{"SMA", "EMA", "DEMA", "TEMA"} {
+		cond := "kalman_roc_stoch(ma_type='" + maType + "', smooth_len=12)[-1] == kalman_roc_stoch(ma_type='" + maType + "', smooth_len=12)[-1]"
+		result, err := eval.EvalCondition(data, cond, nil)
+		if err != nil {
+			t.Errorf("kalman_roc_stoch ma_type=%s: %v", maType, err)
+			continue
+		}
+		if !result {
+			t.Errorf("kalman_roc_stoch ma_type=%s: x == x should be true (got NaN)", maType)
+		}
+	}
+}
+
+// TestDiagMASpreadZscore verifies the ma_spread_zscore condition produces a
+// non-NaN value and evaluates without error when there is sufficient data.
+func TestDiagMASpreadZscore(t *testing.T) {
+	const cond = "ma_spread_zscore(price_col='Close', ma_length=20, spread_mean_window=20, spread_std_window=20, ma_type='SMA', use_percent=True, output='zscore')[-1] > 2"
+
+	data := testOHLCV(100)
+	reg := indicator.NewDefaultRegistry()
+	eval := NewEvaluator(reg)
+
+	op, err := ParseOperand("ma_spread_zscore(price_col='Close', ma_length=20, spread_mean_window=20, spread_std_window=20, ma_type='SMA', use_percent=True, output='zscore')[-1]")
+	if err != nil {
+		t.Fatalf("ParseOperand: %v", err)
+	}
+
+	series, err := eval.computeSeries(data, op, nil)
+	if err != nil {
+		t.Fatalf("computeSeries: %v", err)
+	}
+	last := series[len(series)-1]
+	if math.IsNaN(last) {
+		t.Fatalf("ma_spread_zscore[-1] is NaN with 100 bars")
+	}
+
+	_, evalErr := eval.EvalCondition(data, cond, nil)
+	if evalErr != nil {
+		t.Fatalf("EvalCondition returned error: %v", evalErr)
+	}
+}
+
 // TestDiagMaSlopeCurveSlope verifies the exact user-reported condition parses
 // and evaluates without error, and that the params survive remapping correctly.
 func TestDiagMaSlopeCurveSlope(t *testing.T) {

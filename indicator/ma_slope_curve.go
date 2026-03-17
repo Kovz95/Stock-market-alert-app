@@ -125,6 +125,67 @@ func nanAwareEWM(x []float64, span int) []float64 {
 	return out
 }
 
+// nanAwareRollingStdDev computes a rolling population standard deviation
+// (ddof=0) with the same NaN semantics as nanAwareSMA: any window that
+// contains at least one NaN produces NaN; once the window is fully valid the
+// standard per-window std dev is returned. nbdev is a scalar multiplier
+// matching talib.StdDev's inNbDev convention (1.0 = plain std dev).
+func nanAwareRollingStdDev(x []float64, period int, nbdev float64) []float64 {
+	n := len(x)
+	out := make([]float64, n)
+	for i := 0; i < n; i++ {
+		if i < period-1 {
+			out[i] = math.NaN()
+			continue
+		}
+		sum := 0.0
+		bad := false
+		for j := i - period + 1; j <= i; j++ {
+			if math.IsNaN(x[j]) {
+				bad = true
+				break
+			}
+			sum += x[j]
+		}
+		if bad {
+			out[i] = math.NaN()
+			continue
+		}
+		mean := sum / float64(period)
+		variance := 0.0
+		for j := i - period + 1; j <= i; j++ {
+			d := x[j] - mean
+			variance += d * d
+		}
+		out[i] = math.Sqrt(variance/float64(period)) * nbdev
+	}
+	return out
+}
+
+// nanAwareDEMA computes Double EMA (2*EWM - EWM(EWM)) using nanAwareEWM so
+// that NaN-prefixed input does not poison the recursive state.
+func nanAwareDEMA(x []float64, length int) []float64 {
+	ma1 := nanAwareEWM(x, length)
+	ma2 := nanAwareEWM(ma1, length)
+	out := make([]float64, len(x))
+	for i := range out {
+		out[i] = 2*ma1[i] - ma2[i]
+	}
+	return out
+}
+
+// nanAwareTEMA computes Triple EMA (3*ma1 - 3*ma2 + ma3) using nanAwareEWM.
+func nanAwareTEMA(x []float64, length int) []float64 {
+	ma1 := nanAwareEWM(x, length)
+	ma2 := nanAwareEWM(ma1, length)
+	ma3 := nanAwareEWM(ma2, length)
+	out := make([]float64, len(x))
+	for i := range out {
+		out[i] = 3*(ma1[i]-ma2[i]) + ma3[i]
+	}
+	return out
+}
+
 // nanAwareRMA is like RMA but seeds itself from the first non-NaN value.
 func nanAwareRMA(x []float64, length int) []float64 {
 	n := len(x)

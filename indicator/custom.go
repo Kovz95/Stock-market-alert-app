@@ -17,6 +17,8 @@ func MySmoothedRSI(data *OHLCV, params map[string]interface{}) ([]float64, error
 	input := resolveInput(data, params)
 
 	rsi := talib.Rsi(input, period)
-	smoothed := talib.Ema(rsi, smooth)
+	// RSI has leading NaN values; talib.Ema's running state gets permanently
+	// poisoned by them. Use nanAwareEWM which seeds from the first valid bar.
+	smoothed := nanAwareEWM(rsi, smooth)
 	return smoothed, nil
 }
