@@ -458,6 +458,55 @@ func TestEvalConditionCatalogMAAndBollinger(t *testing.T) {
 	_ = result
 }
 
+func TestEvalConditionCatalogPriceCrossAboveMA(t *testing.T) {
+	reg := indicator.NewDefaultRegistry()
+	eval := NewEvaluator(reg)
+
+	// Build data where close crosses above EMA(20) on the last bar:
+	// bars 0..98 are flat below the EMA, bar 99 jumps above it.
+	n := 100
+	open := make([]float64, n)
+	high := make([]float64, n)
+	low := make([]float64, n)
+	close := make([]float64, n)
+	volume := make([]float64, n)
+	for i := 0; i < n; i++ {
+		open[i] = 90.0
+		high[i] = 91.0
+		low[i] = 89.0
+		close[i] = 90.0
+		volume[i] = 1000000
+	}
+	// Last bar jumps to 120 — well above any 20-period EMA of 90
+	close[n-1] = 120.0
+	high[n-1] = 121.0
+	crossData := &indicator.OHLCV{Open: open, High: high, Low: low, Close: close, Volume: volume}
+
+	// price_cross_above_ma: 20 (EMA) — the exact condition the user reported
+	result, err := eval.EvalCondition(crossData, "price_cross_above_ma: 20 (EMA)", nil)
+	if err != nil {
+		t.Fatalf("price_cross_above_ma: 20 (EMA) returned error: %v", err)
+	}
+	if !result {
+		t.Fatal("expected price_cross_above_ma: 20 (EMA) to be true after cross-up")
+	}
+
+	// price_cross_below_ma: 20 (EMA) should be false in the same scenario
+	result, err = eval.EvalCondition(crossData, "price_cross_below_ma: 20 (EMA)", nil)
+	if err != nil {
+		t.Fatalf("price_cross_below_ma: 20 (EMA) returned error: %v", err)
+	}
+	if result {
+		t.Fatal("expected price_cross_below_ma: 20 (EMA) to be false after cross-up")
+	}
+
+	// Also verify SMA variant works
+	_, err = eval.EvalCondition(crossData, "price_cross_above_ma: 20 (SMA)", nil)
+	if err != nil {
+		t.Fatalf("price_cross_above_ma: 20 (SMA) returned error: %v", err)
+	}
+}
+
 func TestEvalConditionCatalogVolume(t *testing.T) {
 	data := testOHLCV(50)
 	reg := indicator.NewDefaultRegistry()
@@ -1106,6 +1155,62 @@ func TestPivotSRKeywordParamsPassThrough(t *testing.T) {
 		if got != wantVal {
 			t.Errorf("param %q = %g, want %g", key, got, wantVal)
 		}
+	}
+}
+
+// TestDiagMaSlopeCurveSlope verifies the exact user-reported condition parses
+// and evaluates without error, and that the params survive remapping correctly.
+func TestDiagMaSlopeCurveSlope(t *testing.T) {
+	const cond = "ma_slope_curve_slope(ma_len=200, slope_lookback=3, ma_type='HMA', smooth_type='SMA', smooth_len=2, norm_mode='ATR', atr_len=14, slope_thr=8, curve_thr=0)[-1] > 0"
+
+	// 1. Parse operand – check every named param survives remapping.
+	op, err := ParseOperand("ma_slope_curve_slope(ma_len=200, slope_lookback=3, ma_type='HMA', smooth_type='SMA', smooth_len=2, norm_mode='ATR', atr_len=14, slope_thr=8, curve_thr=0)[-1]")
+	if err != nil {
+		t.Fatalf("ParseOperand: %v", err)
+	}
+	paramChecks := map[string]interface{}{
+		"ma_len":         200,
+		"slope_lookback": 3,
+		"ma_type":        "HMA",
+		"smooth_type":    "SMA",
+		"smooth_len":     2,
+		"norm_mode":      "ATR",
+		"atr_len":        14,
+		"slope_thr":      8,
+		"curve_thr":      0,
+	}
+	for k, want := range paramChecks {
+		got, ok := op.Params[k]
+		if !ok {
+			t.Errorf("param %q missing after remapPositionalParams", k)
+			continue
+		}
+		if got != want {
+			t.Errorf("param %q = %v (%T), want %v (%T)", k, got, got, want, want)
+		}
+	}
+	if op.Specifier != -1 {
+		t.Errorf("specifier = %d, want -1", op.Specifier)
+	}
+
+	// 2. Evaluate with enough bars – must not error and must not be NaN.
+	data := testOHLCV(300)
+	reg := indicator.NewDefaultRegistry()
+	eval := NewEvaluator(reg)
+
+	series, err := eval.computeSeries(data, op, nil)
+	if err != nil {
+		t.Fatalf("computeSeries: %v", err)
+	}
+	last := series[len(series)-1]
+	if math.IsNaN(last) {
+		t.Fatalf("ma_slope_curve_slope[-1] is NaN with 300 bars – insufficient warmup compensation")
+	}
+
+	// 3. Full EvalCondition must not return an error.
+	_, evalErr := eval.EvalCondition(data, cond, nil)
+	if evalErr != nil {
+		t.Fatalf("EvalCondition returned error: %v", evalErr)
 	}
 }
 

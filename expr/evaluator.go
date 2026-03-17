@@ -25,15 +25,112 @@ func NewEvaluator(registry *indicator.Registry) *Evaluator {
 //
 // Supports both expression form ("close[-1] > 0", "RSI(14)[-1] < 30") and
 // catalog form ("price_above: 0", "price_below: 100") from the scanner/alerts UI.
+// Also handles compound boolean expressions with "and"/"or" such as those
+// produced by catalog expansions like price_cross_above_ma.
 func (e *Evaluator) EvalCondition(data *indicator.OHLCV, condition string, ctx map[string]interface{}) (bool, error) {
 	if expanded := ExpandCatalogCondition(condition); expanded != "" {
 		condition = expanded
 	}
+
+	// Handle compound "and"/"or" expressions (e.g. "(A) and (B)") before
+	// attempting single-comparison parsing, since ParseCondition only handles
+	// one comparison operator at the top level.
+	if result, handled, err := e.tryEvalCompound(data, condition, ctx); handled {
+		return result, err
+	}
+
 	comp, err := ParseCondition(condition)
 	if err != nil {
 		return false, fmt.Errorf("parse condition: %w", err)
 	}
 	return e.evalComparison(data, comp, ctx)
+}
+
+// tryEvalCompound attempts to evaluate a compound boolean expression like
+// "(A) and (B)" or "(A) or (B)". Returns (result, true, err) when a top-level
+// "and"/"or" keyword is found, or (false, false, nil) when none is present.
+func (e *Evaluator) tryEvalCompound(data *indicator.OHLCV, condition string, ctx map[string]interface{}) (bool, bool, error) {
+	op, left, right := splitOnBoolKeyword(condition)
+	if op == "" {
+		return false, false, nil
+	}
+
+	leftResult, err := e.EvalCondition(data, left, ctx)
+	if err != nil {
+		return false, true, fmt.Errorf("left side of %s: %w", op, err)
+	}
+
+	// Short-circuit evaluation
+	if op == "and" && !leftResult {
+		return false, true, nil
+	}
+	if op == "or" && leftResult {
+		return true, true, nil
+	}
+
+	rightResult, err := e.EvalCondition(data, right, ctx)
+	if err != nil {
+		return false, true, fmt.Errorf("right side of %s: %w", op, err)
+	}
+
+	if op == "and" {
+		return leftResult && rightResult, true, nil
+	}
+	return leftResult || rightResult, true, nil
+}
+
+// splitOnBoolKeyword scans s for the first " and " or " or " keyword at
+// paren/bracket depth 0. Returns the keyword and the trimmed left/right
+// sub-expressions with their outer parentheses stripped, or ("", "", "")
+// if no top-level boolean keyword is found.
+func splitOnBoolKeyword(s string) (op, left, right string) {
+	depth := 0
+	lower := strings.ToLower(s)
+	for i := 0; i < len(s); i++ {
+		ch := s[i]
+		if ch == '(' || ch == '[' {
+			depth++
+		} else if ch == ')' || ch == ']' {
+			depth--
+		} else if depth == 0 {
+			if strings.HasPrefix(lower[i:], " and ") {
+				l := stripOuterParens(strings.TrimSpace(s[:i]))
+				r := stripOuterParens(strings.TrimSpace(s[i+5:]))
+				return "and", l, r
+			}
+			if strings.HasPrefix(lower[i:], " or ") {
+				l := stripOuterParens(strings.TrimSpace(s[:i]))
+				r := stripOuterParens(strings.TrimSpace(s[i+4:]))
+				return "or", l, r
+			}
+		}
+	}
+	return "", "", ""
+}
+
+// stripOuterParens removes one layer of surrounding parentheses from s if they
+// are balanced and wrap the entire expression.
+func stripOuterParens(s string) string {
+	s = strings.TrimSpace(s)
+	if len(s) < 2 || s[0] != '(' || s[len(s)-1] != ')' {
+		return s
+	}
+	inner := s[1 : len(s)-1]
+	depth := 0
+	for _, ch := range inner {
+		if ch == '(' {
+			depth++
+		} else if ch == ')' {
+			depth--
+			if depth < 0 {
+				return s
+			}
+		}
+	}
+	if depth != 0 {
+		return s
+	}
+	return inner
 }
 
 // EvalConditionList evaluates a list of conditions with combination logic.

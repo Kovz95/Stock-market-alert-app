@@ -52,19 +52,106 @@ func fMa(src []float64, maType string, maLen int) []float64 {
 }
 
 // fSmooth smooths x by type (None, EMA, SMA, RMA).
+// All variants are NaN-aware: leading NaN values in x do not poison the
+// running sum/state. Output is NaN wherever the window still contains NaN.
 func fSmooth(x []float64, smoothType string, smoothLen int) []float64 {
 	switch smoothType {
 	case "None", "":
 		return x
 	case "EMA":
-		return EWM(x, smoothLen)
+		return nanAwareEWM(x, smoothLen)
 	case "SMA":
-		return talib.Sma(x, smoothLen)
+		return nanAwareSMA(x, smoothLen)
 	case "RMA":
-		return RMA(x, smoothLen)
+		return nanAwareRMA(x, smoothLen)
 	default:
-		return EWM(x, smoothLen)
+		return nanAwareEWM(x, smoothLen)
 	}
+}
+
+// nanAwareSMA computes SMA(period) without propagating NaN through the running
+// sum. Any window that contains at least one NaN produces NaN; once all values
+// in the window are valid, the standard per-window mean is returned.
+func nanAwareSMA(x []float64, period int) []float64 {
+	n := len(x)
+	out := make([]float64, n)
+	for i := 0; i < n; i++ {
+		if i < period-1 {
+			out[i] = math.NaN()
+			continue
+		}
+		sum := 0.0
+		bad := false
+		for j := i - period + 1; j <= i; j++ {
+			if math.IsNaN(x[j]) {
+				bad = true
+				break
+			}
+			sum += x[j]
+		}
+		if bad {
+			out[i] = math.NaN()
+		} else {
+			out[i] = sum / float64(period)
+		}
+	}
+	return out
+}
+
+// nanAwareEWM is like EWM but seeds itself from the first non-NaN value rather
+// than from index 0, so leading NaN values do not poison the recursive state.
+func nanAwareEWM(x []float64, span int) []float64 {
+	n := len(x)
+	out := make([]float64, n)
+	for i := range out {
+		out[i] = math.NaN()
+	}
+	alpha := 2.0 / (float64(span) + 1.0)
+	started := false
+	prev := 0.0
+	for i := 0; i < n; i++ {
+		if math.IsNaN(x[i]) {
+			continue
+		}
+		if !started {
+			prev = x[i]
+			out[i] = prev
+			started = true
+		} else {
+			prev = alpha*x[i] + (1-alpha)*prev
+			out[i] = prev
+		}
+	}
+	return out
+}
+
+// nanAwareRMA is like RMA but seeds itself from the first non-NaN value.
+func nanAwareRMA(x []float64, length int) []float64 {
+	n := len(x)
+	out := make([]float64, n)
+	for i := range out {
+		out[i] = math.NaN()
+	}
+	if length <= 0 {
+		return out
+	}
+	alpha := 1.0 / float64(length)
+	started := false
+	prev := 0.0
+	for i := 0; i < n; i++ {
+		if math.IsNaN(x[i]) {
+			continue
+		}
+		if !started {
+			prev = x[i]
+			out[i] = prev
+			started = true
+		} else {
+			prev = alpha*x[i] + (1-alpha)*prev
+			out[i] = prev
+		}
+	}
+	return out
 }
 
 // maSlopeCurveCalc computes MA, normalized slope, normalized curvature, and signal pulses.

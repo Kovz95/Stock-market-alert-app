@@ -130,7 +130,7 @@ function ScannerTimeframeAndLookback() {
         <Input
           type="number"
           min={0}
-          max={100}
+          max={250}
           className="h-7 w-24"
           value={lookbackInput}
           onChange={(e) => {
@@ -138,7 +138,7 @@ function ScannerTimeframeAndLookback() {
             setLookbackInput(raw);
             const num = raw === "" ? 0 : Number(raw);
             if (!Number.isNaN(num)) {
-              setLookbackDays(Math.max(0, Math.min(100, num)));
+              setLookbackDays(Math.max(0, Math.min(250, num)));
             }
           }}
           onBlur={() => setLookbackInput(String(lookbackDays))}
@@ -169,6 +169,12 @@ function RunScanSection({
   const setResults = useSetAtom(scannerResultsAtom);
   const setScanProgress = useSetAtom(scannerScanProgressAtom);
 
+  const cancelledRef = React.useRef(false);
+
+  const handleCancel = React.useCallback(() => {
+    cancelledRef.current = true;
+  }, []);
+
   const filteredSymbolsForScan = React.useMemo(() => {
     let rows = applyStockDatabaseFilters(metadata, filters);
     if (portfolioId !== "All") {
@@ -186,6 +192,7 @@ function RunScanSection({
       setScanError("Add at least one condition.");
       return;
     }
+    cancelledRef.current = false;
     setScanning(true);
     setScanError(null);
     setResults([]);
@@ -193,6 +200,7 @@ function RunScanSection({
     setScanProgress({ batch: 0, totalBatches: batches.length });
     const allMatches: ScanMatch[] = [];
     for (let i = 0; i < batches.length; i++) {
+      if (cancelledRef.current) break;
       setScanProgress({ batch: i + 1, totalBatches: batches.length });
       const res = await runScan({
         timeframe: timeframeToEnum(timeframe),
@@ -239,6 +247,11 @@ function RunScanSection({
         >
           {scanning ? "Scanning…" : "Run Scan"}
         </Button>
+        {scanning && (
+          <Button variant="outline" onClick={handleCancel}>
+            Cancel
+          </Button>
+        )}
         {scanning && scanProgress && (
           <span className="text-sm text-muted-foreground">
             Scanning batch {scanProgress.batch}/{scanProgress.totalBatches} ({filteredSymbolsForScan.length.toLocaleString()} symbols)…
