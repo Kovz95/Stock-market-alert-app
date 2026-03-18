@@ -415,6 +415,9 @@ export function AddAlertForm() {
 
   const isPending = createAlert.isPending || createAlertsBulk.isPending;
 
+  // Keep each Server Action request comfortably under Next's default 1MB body limit.
+  const BULK_CREATE_BATCH_SIZE = 300;
+
   const buildSharedPayload = (): Omit<CreateAlertInput, "name" | "stockName" | "ticker"> => {
     const conditions = store.get(addAlertConditionsAtom);
     const combinationLogic = store.get(addAlertCombinationLogicAtom);
@@ -504,34 +507,60 @@ export function AddAlertForm() {
       }
       const items = result.symbols.map((sym) => ({
         ticker: sym.symbol,
-        stockName: sym.name,
-        name: name.trim() ? `${sym.name} - ${name.trim()}` : undefined,
+        // Avoid sending large `stockName` payloads from client -> server action.
+        // Server action will fall back to `ticker` as stockName.
+        name: name.trim() ? `${sym.symbol} - ${name.trim()}` : undefined,
         exchange: sym.exchange || undefined,
         country: sym.country || undefined,
       }));
-      setBulkProgress({ creating: true, created: 0, skipped: 0, failed: 0, total: items.length });
-      createAlertsBulk.mutate(
-        { shared, items },
-        {
-          onSuccess: (res) => {
-            setBulkProgress({
-              creating: false,
-              created: res.created,
-              skipped: items.length - res.created - res.failed,
-              failed: res.failed,
-              total: items.length,
-            });
-            if (res.created > 0) toast.success(`Created ${res.created} alert(s).`);
-            if (res.failed > 0) toast.error(`Failed to create ${res.failed} alert(s).`);
-            if (res.errors.length > 0) res.errors.slice(0, 3).forEach((err) => toast.error(err));
-            if (res.created > 0) router.push("/alerts");
-          },
-          onError: (err) => {
-            setBulkProgress(null);
-            toast.error(err.message ?? "Bulk create failed.");
-          },
+
+      setBulkProgress({
+        creating: true,
+        created: 0,
+        skipped: 0,
+        failed: 0,
+        total: items.length,
+      });
+
+      const totalItems = items.length;
+      let createdTotal = 0;
+      let failedTotal = 0;
+      const allErrors: string[] = [];
+
+      try {
+        for (let i = 0; i < items.length; i += BULK_CREATE_BATCH_SIZE) {
+          const batchItems = items.slice(i, i + BULK_CREATE_BATCH_SIZE);
+          const res = await createAlertsBulk.mutateAsync({ shared, items: batchItems });
+
+          createdTotal += res.created;
+          failedTotal += res.failed;
+          if (res.errors?.length) allErrors.push(...res.errors);
+
+          setBulkProgress({
+            creating: true,
+            created: createdTotal,
+            skipped: totalItems - createdTotal - failedTotal,
+            failed: failedTotal,
+            total: totalItems,
+          });
         }
-      );
+
+        setBulkProgress({
+          creating: false,
+          created: createdTotal,
+          skipped: totalItems - createdTotal - failedTotal,
+          failed: failedTotal,
+          total: totalItems,
+        });
+
+        if (createdTotal > 0) toast.success(`Created ${createdTotal} alert(s).`);
+        if (failedTotal > 0) toast.error(`Failed to create ${failedTotal} alert(s).`);
+        if (allErrors.length > 0) allErrors.slice(0, 3).forEach((err) => toast.error(err));
+        if (createdTotal > 0) router.push("/alerts");
+      } catch (err) {
+        setBulkProgress(null);
+        toast.error(err instanceof Error ? err.message : "Bulk create failed.");
+      }
       return;
     }
 
@@ -542,36 +571,60 @@ export function AddAlertForm() {
         return;
       }
       const nameTemplate = name.trim() || undefined;
-      setBulkProgress({ creating: true, created: 0, skipped: 0, failed: 0, total: items.length });
-      createAlertsBulk.mutate(
-        {
-          shared,
-          items: items.map((item) => ({
-            ticker: item.ticker,
-            stockName: item.stockName,
-            name: nameTemplate ? `${item.stockName} - ${nameTemplate}` : undefined,
-          })),
-        },
-        {
-          onSuccess: (res) => {
-            setBulkProgress({
-              creating: false,
-              created: res.created,
-              skipped: items.length - res.created - res.failed,
-              failed: res.failed,
-              total: items.length,
-            });
-            if (res.created > 0) toast.success(`Created ${res.created} alert(s).`);
-            if (res.failed > 0) toast.error(`Failed to create ${res.failed} alert(s).`);
-            if (res.errors.length > 0) res.errors.slice(0, 3).forEach((err) => toast.error(err));
-            if (res.created > 0) router.push("/alerts");
-          },
-          onError: (err) => {
-            setBulkProgress(null);
-            toast.error(err.message ?? "Bulk create failed.");
-          },
+
+      // Keep bulk payload small; server action falls back to `ticker` as stockName.
+      const bulkItems = items.map((item) => ({
+        ticker: item.ticker,
+        name: nameTemplate ? `${item.ticker} - ${nameTemplate}` : undefined,
+      }));
+
+      setBulkProgress({
+        creating: true,
+        created: 0,
+        skipped: 0,
+        failed: 0,
+        total: bulkItems.length,
+      });
+
+      const totalItems = bulkItems.length;
+      let createdTotal = 0;
+      let failedTotal = 0;
+      const allErrors: string[] = [];
+
+      try {
+        for (let i = 0; i < bulkItems.length; i += BULK_CREATE_BATCH_SIZE) {
+          const batchItems = bulkItems.slice(i, i + BULK_CREATE_BATCH_SIZE);
+          const res = await createAlertsBulk.mutateAsync({ shared, items: batchItems });
+
+          createdTotal += res.created;
+          failedTotal += res.failed;
+          if (res.errors?.length) allErrors.push(...res.errors);
+
+          setBulkProgress({
+            creating: true,
+            created: createdTotal,
+            skipped: totalItems - createdTotal - failedTotal,
+            failed: failedTotal,
+            total: totalItems,
+          });
         }
-      );
+
+        setBulkProgress({
+          creating: false,
+          created: createdTotal,
+          skipped: totalItems - createdTotal - failedTotal,
+          failed: failedTotal,
+          total: totalItems,
+        });
+
+        if (createdTotal > 0) toast.success(`Created ${createdTotal} alert(s).`);
+        if (failedTotal > 0) toast.error(`Failed to create ${failedTotal} alert(s).`);
+        if (allErrors.length > 0) allErrors.slice(0, 3).forEach((err) => toast.error(err));
+        if (createdTotal > 0) router.push("/alerts");
+      } catch (err) {
+        setBulkProgress(null);
+        toast.error(err instanceof Error ? err.message : "Bulk create failed.");
+      }
       return;
     }
 
