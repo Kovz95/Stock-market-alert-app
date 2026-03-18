@@ -55,12 +55,9 @@ export const CONDITION_TYPE_OPTIONS = [
 ] as const;
 
 export const TIMEFRAME_OPTIONS = [
-  "Weekly",
-  "Daily",
-  "Hourly",
-  "15 minutes",
-  "5 minutes",
-  "1 minute",
+  { value: "1h", label: "Hourly" },
+  { value: "1d", label: "Daily" },
+  { value: "1wk", label: "Weekly" },
 ] as const;
 
 export const TRIGGERED_FILTER_OPTIONS = [

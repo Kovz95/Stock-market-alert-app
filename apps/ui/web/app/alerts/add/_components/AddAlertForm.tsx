@@ -506,6 +506,8 @@ export function AddAlertForm() {
         ticker: sym.symbol,
         stockName: sym.name,
         name: name.trim() ? `${sym.name} - ${name.trim()}` : undefined,
+        exchange: sym.exchange || undefined,
+        country: sym.country || undefined,
       }));
       setBulkProgress({ creating: true, created: 0, skipped: 0, failed: 0, total: items.length });
       createAlertsBulk.mutate(

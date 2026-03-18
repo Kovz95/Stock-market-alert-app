@@ -750,6 +750,155 @@ func TestParseBoolExpr(t *testing.T) {
 }
 
 // =============================================================================
+// Pipe and Ampersand Operator Tests
+// =============================================================================
+
+func TestSplitOnBoolKeywordPipe(t *testing.T) {
+	tests := []struct {
+		input string
+		op    string
+		left  string
+		right string
+	}{
+		// "|" should behave like " or "
+		{
+			"Close[-1] > 100 | Close[-1] < 50",
+			"or", "Close[-1] > 100", "Close[-1] < 50",
+		},
+		// "&" should behave like " and "
+		{
+			"Close[-1] > 100 & Close[-1] < 200",
+			"and", "Close[-1] > 100", "Close[-1] < 200",
+		},
+		// Pipe with parenthesized sub-expressions
+		{
+			"(Close[-1] > 100) | (Close[-1] < 50)",
+			"or", "Close[-1] > 100", "Close[-1] < 50",
+		},
+		// Ampersand with parenthesized sub-expressions
+		{
+			"(Close[-1] > 100) & (Close[-1] < 200)",
+			"and", "Close[-1] > 100", "Close[-1] < 200",
+		},
+		// Pipe inside parens should NOT be split (depth > 0)
+		{
+			"(Close[-1] > 100 | Close[-1] < 50)",
+			"", "", "",
+		},
+		// " or " keyword still works
+		{
+			"Close[-1] > 100 or Close[-1] < 50",
+			"or", "Close[-1] > 100", "Close[-1] < 50",
+		},
+		// " and " keyword still works
+		{
+			"Close[-1] > 100 and Close[-1] < 200",
+			"and", "Close[-1] > 100", "Close[-1] < 200",
+		},
+	}
+	for _, tt := range tests {
+		op, left, right := splitOnBoolKeyword(tt.input)
+		if op != tt.op {
+			t.Errorf("splitOnBoolKeyword(%q): op = %q, want %q", tt.input, op, tt.op)
+		}
+		if left != tt.left {
+			t.Errorf("splitOnBoolKeyword(%q): left = %q, want %q", tt.input, left, tt.left)
+		}
+		if right != tt.right {
+			t.Errorf("splitOnBoolKeyword(%q): right = %q, want %q", tt.input, right, tt.right)
+		}
+	}
+}
+
+func TestEvalConditionPipeOperator(t *testing.T) {
+	data := testOHLCV(50) // Close[-1] = 125.5
+	reg := indicator.NewDefaultRegistry()
+	eval := NewEvaluator(reg)
+
+	// true | false = true
+	result, err := eval.EvalCondition(data, "(Close[-1] > 100) | (Close[-1] > 200)", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !result {
+		t.Fatal("expected (true | false) to be true")
+	}
+
+	// false | false = false
+	result, err = eval.EvalCondition(data, "(Close[-1] > 200) | (Close[-1] > 300)", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result {
+		t.Fatal("expected (false | false) to be false")
+	}
+}
+
+func TestEvalConditionAmpersandOperator(t *testing.T) {
+	data := testOHLCV(50) // Close[-1] = 125.5
+	reg := indicator.NewDefaultRegistry()
+	eval := NewEvaluator(reg)
+
+	// true & true = true
+	result, err := eval.EvalCondition(data, "(Close[-1] > 100) & (Close[-1] < 200)", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !result {
+		t.Fatal("expected (true & true) to be true")
+	}
+
+	// true & false = false
+	result, err = eval.EvalCondition(data, "(Close[-1] > 100) & (Close[-1] > 200)", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result {
+		t.Fatal("expected (true & false) to be false")
+	}
+}
+
+func TestEvalConditionMixedAndPipe(t *testing.T) {
+	data := testOHLCV(100) // Close[-1] = 150.5
+	reg := indicator.NewDefaultRegistry()
+	eval := NewEvaluator(reg)
+
+	// This is the user's actual EWO condition pattern:
+	// (A and B) | (C and D)
+	// Since splitOnBoolKeyword finds the first top-level operator (left-to-right),
+	// "and" at depth 0 is found first, splitting into:
+	//   left:  (Close[-1] > 100)
+	//   right: (Close[-1] < 200) | (Close[-1] > 300) and (Close[-1] < 50)
+	// Then the right side recurses and finds "|", splitting further.
+	// This tests the recursive evaluation works correctly.
+	cond := "(Close[-1] > 100) and (Close[-1] < 200) | (Close[-1] > 300) and (Close[-1] < 50)"
+	result, err := eval.EvalCondition(data, cond, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Left of first "and": Close[-1] > 100 = true
+	// Right of first "and": "(Close[-1] < 200) | (Close[-1] > 300) and (Close[-1] < 50)"
+	//   which splits on "|": left = "Close[-1] < 200" = true, so short-circuits to true
+	// Overall: true and true = true
+	if !result {
+		t.Fatal("expected mixed and/| condition to be true")
+	}
+}
+
+func TestEvalConditionEWOWithPipe(t *testing.T) {
+	data := testOHLCV(100)
+	reg := indicator.NewDefaultRegistry()
+	eval := NewEvaluator(reg)
+
+	// The exact user condition — just verify it parses and evaluates without error
+	cond := "(ewo(sma1_length=5, sma2_length=35, source='Close', use_percent=True)[-1] > 0) and (ewo(sma1_length=5, sma2_length=35, source='Close', use_percent=True)[-2] <= 0) | (ewo(sma1_length=5, sma2_length=35, source='Close', use_percent=True)[-1] < 0) and (ewo(sma1_length=5, sma2_length=35, source='Close', use_percent=True)[-2] >= 0)"
+	_, err := eval.EvalCondition(data, cond, nil)
+	if err != nil {
+		t.Fatalf("EWO condition with pipe failed: %v", err)
+	}
+}
+
+// =============================================================================
 // Edge Case Tests
 // =============================================================================
 

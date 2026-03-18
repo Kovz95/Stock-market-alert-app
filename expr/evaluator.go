@@ -103,6 +103,17 @@ func splitOnBoolKeyword(s string) (op, left, right string) {
 				r := stripOuterParens(strings.TrimSpace(s[i+4:]))
 				return "or", l, r
 			}
+			// Support "&" as an alias for "and" and "|" as an alias for "or"
+			if ch == '&' {
+				l := stripOuterParens(strings.TrimSpace(s[:i]))
+				r := stripOuterParens(strings.TrimSpace(s[i+1:]))
+				return "and", l, r
+			}
+			if ch == '|' {
+				l := stripOuterParens(strings.TrimSpace(s[:i]))
+				r := stripOuterParens(strings.TrimSpace(s[i+1:]))
+				return "or", l, r
+			}
 		}
 	}
 	return "", "", ""

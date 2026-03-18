@@ -238,7 +238,7 @@ export type BulkCreateResult = {
 
 export async function createAlertsBulk(
   shared: Omit<CreateAlertInput, "name" | "stockName" | "ticker">,
-  items: { ticker: string; stockName: string; name?: string }[]
+  items: { ticker: string; stockName: string; name?: string; exchange?: string; country?: string }[]
 ): Promise<BulkCreateResult> {
   const result: BulkCreateResult = {
     created: 0,
@@ -255,6 +255,8 @@ export async function createAlertsBulk(
         name,
         stockName,
         ticker: item.ticker.trim(),
+        ...(item.exchange && { exchange: item.exchange }),
+        ...(item.country && { country: item.country }),
       });
       if (alert) result.created++;
       else result.failed++;

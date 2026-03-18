@@ -228,9 +228,9 @@ export function DeleteAlertsFilters() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="__all__">All timeframes</SelectItem>
-            {TIMEFRAME_OPTIONS.map((o) => (
-              <SelectItem key={o} value={o}>
-                {o}
+            {TIMEFRAME_OPTIONS.map((opt) => (
+              <SelectItem key={opt.value} value={opt.value}>
+                {opt.label}
               </SelectItem>
             ))}
           </SelectContent>
