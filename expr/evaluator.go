@@ -79,13 +79,25 @@ func (e *Evaluator) tryEvalCompound(data *indicator.OHLCV, condition string, ctx
 	return leftResult || rightResult, true, nil
 }
 
-// splitOnBoolKeyword scans s for the first " and " or " or " keyword at
-// paren/bracket depth 0. Returns the keyword and the trimmed left/right
-// sub-expressions with their outer parentheses stripped, or ("", "", "")
-// if no top-level boolean keyword is found.
+// splitOnBoolKeyword scans s for the lowest-precedence boolean operator at
+// paren/bracket depth 0. OR/| has lower precedence than AND/&, so we split
+// on the last top-level OR first. If no OR is found, we split on the last
+// top-level AND. Splitting on the *last* occurrence (rightmost) makes the
+// parse left-associative: "A or B or C" becomes "(A or B) or C".
+//
+// Returns the keyword and the trimmed left/right sub-expressions with their
+// outer parentheses stripped, or ("", "", "") if no top-level boolean keyword
+// is found.
 func splitOnBoolKeyword(s string) (op, left, right string) {
-	depth := 0
 	lower := strings.ToLower(s)
+
+	// Track the rightmost positions for each operator class.
+	lastOrPos := -1
+	lastOrLen := 0
+	lastAndPos := -1
+	lastAndLen := 0
+
+	depth := 0
 	for i := 0; i < len(s); i++ {
 		ch := s[i]
 		if ch == '(' || ch == '[' {
@@ -93,28 +105,32 @@ func splitOnBoolKeyword(s string) (op, left, right string) {
 		} else if ch == ')' || ch == ']' {
 			depth--
 		} else if depth == 0 {
-			if strings.HasPrefix(lower[i:], " and ") {
-				l := stripOuterParens(strings.TrimSpace(s[:i]))
-				r := stripOuterParens(strings.TrimSpace(s[i+5:]))
-				return "and", l, r
-			}
 			if strings.HasPrefix(lower[i:], " or ") {
-				l := stripOuterParens(strings.TrimSpace(s[:i]))
-				r := stripOuterParens(strings.TrimSpace(s[i+4:]))
-				return "or", l, r
-			}
-			// Support "&" as an alias for "and" and "|" as an alias for "or"
-			if ch == '&' {
-				l := stripOuterParens(strings.TrimSpace(s[:i]))
-				r := stripOuterParens(strings.TrimSpace(s[i+1:]))
-				return "and", l, r
-			}
-			if ch == '|' {
-				l := stripOuterParens(strings.TrimSpace(s[:i]))
-				r := stripOuterParens(strings.TrimSpace(s[i+1:]))
-				return "or", l, r
+				lastOrPos = i
+				lastOrLen = 4 // len(" or ")
+			} else if ch == '|' {
+				lastOrPos = i
+				lastOrLen = 1
+			} else if strings.HasPrefix(lower[i:], " and ") {
+				lastAndPos = i
+				lastAndLen = 5 // len(" and ")
+			} else if ch == '&' {
+				lastAndPos = i
+				lastAndLen = 1
 			}
 		}
+	}
+
+	// Split on OR first (lower precedence), then AND.
+	if lastOrPos >= 0 {
+		l := stripOuterParens(strings.TrimSpace(s[:lastOrPos]))
+		r := stripOuterParens(strings.TrimSpace(s[lastOrPos+lastOrLen:]))
+		return "or", l, r
+	}
+	if lastAndPos >= 0 {
+		l := stripOuterParens(strings.TrimSpace(s[:lastAndPos]))
+		r := stripOuterParens(strings.TrimSpace(s[lastAndPos+lastAndLen:]))
+		return "and", l, r
 	}
 	return "", "", ""
 }

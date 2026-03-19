@@ -863,25 +863,70 @@ func TestEvalConditionMixedAndPipe(t *testing.T) {
 	reg := indicator.NewDefaultRegistry()
 	eval := NewEvaluator(reg)
 
-	// This is the user's actual EWO condition pattern:
+	// Standard boolean precedence: AND binds tighter than OR.
 	// (A and B) | (C and D)
-	// Since splitOnBoolKeyword finds the first top-level operator (left-to-right),
-	// "and" at depth 0 is found first, splitting into:
-	//   left:  (Close[-1] > 100)
-	//   right: (Close[-1] < 200) | (Close[-1] > 300) and (Close[-1] < 50)
-	// Then the right side recurses and finds "|", splitting further.
-	// This tests the recursive evaluation works correctly.
+	// splitOnBoolKeyword splits on the rightmost top-level OR first (lowest precedence),
+	// so the parse tree is: (A and B) OR (C and D).
+
+	// Case 1: (true and true) | (false and false) = true
 	cond := "(Close[-1] > 100) and (Close[-1] < 200) | (Close[-1] > 300) and (Close[-1] < 50)"
 	result, err := eval.EvalCondition(data, cond, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	// Left of first "and": Close[-1] > 100 = true
-	// Right of first "and": "(Close[-1] < 200) | (Close[-1] > 300) and (Close[-1] < 50)"
-	//   which splits on "|": left = "Close[-1] < 200" = true, so short-circuits to true
-	// Overall: true and true = true
+	// Left of "|": (Close[-1] > 100) and (Close[-1] < 200) = true and true = true
+	// Right of "|": (Close[-1] > 300) and (Close[-1] < 50) = false and false = false
+	// Overall: true | false = true
 	if !result {
-		t.Fatal("expected mixed and/| condition to be true")
+		t.Fatal("expected (true and true) | (false and false) to be true")
+	}
+
+	// Case 2: (false and true) | (false and true) = false
+	cond2 := "(Close[-1] > 200) and (Close[-1] < 200) | (Close[-1] > 300) and (Close[-1] < 200)"
+	result2, err := eval.EvalCondition(data, cond2, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result2 {
+		t.Fatal("expected (false and true) | (false and true) to be false")
+	}
+
+	// Case 3: (false and false) | (true and true) = true
+	cond3 := "(Close[-1] > 300) and (Close[-1] < 50) | (Close[-1] > 100) and (Close[-1] < 200)"
+	result3, err := eval.EvalCondition(data, cond3, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !result3 {
+		t.Fatal("expected (false and false) | (true and true) to be true")
+	}
+}
+
+func TestEvalConditionChainedAnd(t *testing.T) {
+	data := testOHLCV(100) // Close[-1] = 150.5
+	reg := indicator.NewDefaultRegistry()
+	eval := NewEvaluator(reg)
+
+	// (true and true) and (false and false) = false
+	// The inner ANDs are at depth > 0 (inside parens), so only the middle AND
+	// is found at depth 0. Both groups are evaluated correctly.
+	cond := "(Close[-1] > 100 and Close[-1] < 200) and (Close[-1] > 300 and Close[-1] < 50)"
+	result, err := eval.EvalCondition(data, cond, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result {
+		t.Fatal("expected (true and true) and (false and false) to be false")
+	}
+
+	// (true and true) and (true and true) = true
+	cond2 := "(Close[-1] > 100 and Close[-1] < 200) and (Close[-1] > 140 and Close[-1] < 160)"
+	result2, err := eval.EvalCondition(data, cond2, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !result2 {
+		t.Fatal("expected (true and true) and (true and true) to be true")
 	}
 }
 
