@@ -11,10 +11,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  alertsExchangeFilterAtom,
   alertsPageAtom,
   alertsSearchAtom,
   alertsTimeframeFilterAtom,
 } from "@/lib/store/alerts";
+import { useFullStockMetadata } from "@/lib/hooks/useStockDatabase";
 
 const DEBOUNCE_MS = 300;
 
@@ -26,14 +28,24 @@ const TIMEFRAME_OPTIONS = [
 ] as const;
 
 export function AlertsSearchBar() {
+  const { data: stockData = [] } = useFullStockMetadata();
   const searchFromStore = useAtomValue(alertsSearchAtom);
   const setSearch = useSetAtom(alertsSearchAtom);
   const setPage = useSetAtom(alertsPageAtom);
   const timeframe = useAtomValue(alertsTimeframeFilterAtom);
   const setTimeframe = useSetAtom(alertsTimeframeFilterAtom);
+  const exchange = useAtomValue(alertsExchangeFilterAtom);
+  const setExchange = useSetAtom(alertsExchangeFilterAtom);
 
   const [inputValue, setInputValue] = useState(searchFromStore);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const exchanges = Array.from(
+    new Set(
+      stockData
+        .map((row) => row.exchange)
+        .filter((value): value is string => typeof value === "string" && value.trim().length > 0)
+    )
+  ).sort((a, b) => a.localeCompare(b));
 
   // Sync store -> input when store changes (e.g. external clear)
   useEffect(() => {
@@ -70,6 +82,14 @@ export function AlertsSearchBar() {
     [setTimeframe, setPage]
   );
 
+  const handleExchangeChange = useCallback(
+    (value: string) => {
+      setExchange(value === "all" ? "" : value);
+      setPage(1);
+    },
+    [setExchange, setPage]
+  );
+
   return (
     <div className="flex items-center gap-2">
       <Select
@@ -87,6 +107,22 @@ export function AlertsSearchBar() {
           ))}
         </SelectContent>
       </Select>
+      <Select
+        value={exchange || "all"}
+        onValueChange={handleExchangeChange}
+      >
+        <SelectTrigger className="w-[170px]">
+          <SelectValue placeholder="All Exchanges" />
+        </SelectTrigger>
+        <SelectContent position="popper" className="h-[400px]">
+          <SelectItem value="all">All Exchanges</SelectItem>
+          {exchanges.map((item) => (
+            <SelectItem key={item} value={item}>
+              {item}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
       <Input
         type="search"
         placeholder="Search by name or ticker..."
@@ -95,12 +131,13 @@ export function AlertsSearchBar() {
         className="max-w-sm"
         aria-label="Search alerts"
       />
-      {(inputValue || timeframe) && (
+      {(inputValue || timeframe || exchange) && (
         <button
           type="button"
           onClick={() => {
             handleClear();
             setTimeframe("");
+            setExchange("");
           }}
           className="text-xs text-muted-foreground hover:text-foreground underline"
         >

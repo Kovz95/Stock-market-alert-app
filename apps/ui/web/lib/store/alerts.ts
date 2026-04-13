@@ -19,19 +19,24 @@ export const alertsSearchAtom = atom("");
 /** Timeframe filter: "" = all, "1h" | "1d" | "1wk" */
 export const alertsTimeframeFilterAtom = atom("");
 
+/** Exchange filter: "" = all (e.g. "NASDAQ", "NYSE", etc.) */
+export const alertsExchangeFilterAtom = atom("");
+
 /** Paginated alerts query; server-side search + pagination. */
 export const alertsPaginatedQueryAtom = atomWithQuery((get) => {
   const page = get(alertsPageAtom);
   const pageSize = get(alertsPageSizeAtom);
   const search = get(alertsSearchAtom);
   const timeframe = get(alertsTimeframeFilterAtom);
+  const exchange = get(alertsExchangeFilterAtom);
   return {
-    queryKey: [...ALERTS_KEY, "paginated", search, timeframe, page, pageSize],
+    queryKey: [...ALERTS_KEY, "paginated", search, timeframe, exchange, page, pageSize],
     queryFn: () =>
       searchAlerts(
         {
           search: search.trim(),
           timeframes: timeframe ? [timeframe] : [],
+          exchanges: exchange ? [exchange] : [],
         },
         page,
         pageSize
