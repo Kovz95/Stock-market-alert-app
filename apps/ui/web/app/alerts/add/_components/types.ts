@@ -26,6 +26,7 @@ export type ConditionCategory =
   | "cci"
   | "atr"
   | "kalman_roc_stoch"
+  | "slow_stoch"
   | "indicator"
   | "custom";
 
@@ -200,6 +201,20 @@ export type CCIConditionType =
 export type ATRConditionType =
   | "atr_compare"
   | "atr_value";
+export type SlowStochConditionType =
+  // K line levels
+  | "slow_stoch_k_oversold"
+  | "slow_stoch_k_overbought"
+  // D line levels
+  | "slow_stoch_d_oversold"
+  | "slow_stoch_d_overbought"
+  // K/D crossovers
+  | "slow_stoch_k_cross_above_d"
+  | "slow_stoch_k_cross_below_d"
+  // Custom comparisons
+  | "slow_stoch_k_compare"
+  | "slow_stoch_d_compare";
+
 export type KalmanROCConditionType =
   // Direction
   | "krs_uptrend"
@@ -321,6 +336,11 @@ export type ConditionParams = {
   atrPeriod?: number;
   atrValue?: number;
   atrOperator?: string;
+  // Slow Stochastic
+  slowStochSmoothK?: number;
+  slowStochSmoothD?: number;
+  slowStochOperator?: string;
+  slowStochLevel?: number;
   // Kalman ROC Stoch
   krsMaType?: string;
   krsSmoothLen?: number;
@@ -987,6 +1007,39 @@ function conditionEntryToExpressionRaw(entry: ConditionEntry): string {
           return "";
       }
     }
+    case "slow_stoch": {
+      const smoothK = params.slowStochSmoothK ?? 14;
+      const smoothD = params.slowStochSmoothD ?? 3;
+      const sArgs = `smooth_k=${smoothK}, smooth_d=${smoothD}`;
+      const kFn = `slow_stoch_k(${sArgs})`;
+      const dFn = `slow_stoch_d(${sArgs})`;
+      switch (type) {
+        case "slow_stoch_k_oversold":
+          return `${kFn}[-1] < 20`;
+        case "slow_stoch_k_overbought":
+          return `${kFn}[-1] > 80`;
+        case "slow_stoch_d_oversold":
+          return `${dFn}[-1] < 20`;
+        case "slow_stoch_d_overbought":
+          return `${dFn}[-1] > 80`;
+        case "slow_stoch_k_cross_above_d":
+          return `(${kFn}[-1] > ${dFn}[-1]) and (${kFn}[-2] <= ${dFn}[-2])`;
+        case "slow_stoch_k_cross_below_d":
+          return `(${kFn}[-1] < ${dFn}[-1]) and (${kFn}[-2] >= ${dFn}[-2])`;
+        case "slow_stoch_k_compare": {
+          const op = params.slowStochOperator ?? "<";
+          const lvl = params.slowStochLevel ?? 20;
+          return `${kFn}[-1] ${op} ${lvl}`;
+        }
+        case "slow_stoch_d_compare": {
+          const op = params.slowStochOperator ?? "<";
+          const lvl = params.slowStochLevel ?? 20;
+          return `${dFn}[-1] ${op} ${lvl}`;
+        }
+        default:
+          return "";
+      }
+    }
     case "kalman_roc_stoch": {
       const maType = params.krsMaType ?? "TEMA";
       const smoothLen = params.krsSmoothLen ?? 12;
@@ -1077,7 +1130,7 @@ export function conditionEntryLabel(entry: ConditionEntry): string {
   }
   const presetCategories: ConditionCategory[] = [
     "donchian", "pivot_sr", "ichimoku", "trend_magic", "supertrend", "sar",
-    "obv_macd", "harsi", "ma_zscore", "ewo", "roc", "willr", "cci", "atr", "kalman_roc_stoch",
+    "obv_macd", "harsi", "ma_zscore", "ewo", "roc", "willr", "cci", "atr", "kalman_roc_stoch", "slow_stoch",
   ];
   if (presetCategories.includes(entry.category)) {
     const expr = conditionEntryToExpression(entry);

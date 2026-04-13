@@ -224,9 +224,20 @@ func EWO(data *OHLCV, params map[string]interface{}) ([]float64, error) {
 	sma1 := talib.Sma(src, sma1Len)
 	sma2 := talib.Sma(src, sma2Len)
 
+	// go-talib returns 0 (not NaN) for the warmup period. Both SMAs must be
+	// fully warmed up before the EWO value is meaningful.
+	warmup := sma2Len - 1 // sma2 has the longer period
+	if sma1Len > sma2Len {
+		warmup = sma1Len - 1
+	}
+
 	n := len(src)
 	out := make([]float64, n)
 	for i := range out {
+		if i < warmup {
+			out[i] = math.NaN()
+			continue
+		}
 		diff := sma1[i] - sma2[i]
 		if usePercent && src[i] != 0 {
 			out[i] = (diff / src[i]) * 100

@@ -11,6 +11,12 @@ import (
 func SMA(data *OHLCV, params map[string]interface{}) ([]float64, error) {
 	period := paramInt(params, "timeperiod", 20)
 	input := resolveInput(data, params)
+	// When input is a computed nested series (e.g. sma(input=ewo(...))), it may
+	// contain NaN from indicator warmup. talib.Sma uses a running sum that is
+	// permanently poisoned by NaN, so fall back to the per-window nanAwareSMA.
+	if _, ok := params["_computed_input"]; ok {
+		return nanAwareSMA(input, period), nil
+	}
 	return talib.Sma(input, period), nil
 }
 

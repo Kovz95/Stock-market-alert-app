@@ -931,16 +931,324 @@ func TestEvalConditionChainedAnd(t *testing.T) {
 }
 
 func TestEvalConditionEWOWithPipe(t *testing.T) {
-	data := testOHLCV(100)
 	reg := indicator.NewDefaultRegistry()
 	eval := NewEvaluator(reg)
 
-	// The exact user condition — just verify it parses and evaluates without error
 	cond := "(ewo(sma1_length=5, sma2_length=35, source='Close', use_percent=True)[-1] > 0) and (ewo(sma1_length=5, sma2_length=35, source='Close', use_percent=True)[-2] <= 0) | (ewo(sma1_length=5, sma2_length=35, source='Close', use_percent=True)[-1] < 0) and (ewo(sma1_length=5, sma2_length=35, source='Close', use_percent=True)[-2] >= 0)"
-	_, err := eval.EvalCondition(data, cond, nil)
-	if err != nil {
-		t.Fatalf("EWO condition with pipe failed: %v", err)
+
+	// Helper to compute EWO and print last few values for diagnostics.
+	dumpEWO := func(label string, data *indicator.OHLCV) {
+		ewo, err := indicator.EWO(data, map[string]interface{}{
+			"sma1_length": 5,
+			"sma2_length": 35,
+			"source":      "Close",
+			"use_percent":  true,
+		})
+		if err != nil {
+			t.Fatalf("%s: EWO error: %v", label, err)
+		}
+		n := len(ewo)
+		t.Logf("%s: EWO[-3]=%.6f  EWO[-2]=%.6f  EWO[-1]=%.6f", label, ewo[n-3], ewo[n-2], ewo[n-1])
 	}
+
+	// --- Scenario 1: Steady uptrend (no zero crossing) -----------------------
+	// SMA(5) > SMA(35) throughout → EWO always positive → condition must be FALSE.
+	t.Run("uptrend_no_crossover", func(t *testing.T) {
+		data := testOHLCV(100) // linearly rising: close = 101, 101.5, 102 ...
+		dumpEWO("uptrend", data)
+		result, err := eval.EvalCondition(data, cond, nil)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if result {
+			t.Fatal("expected false for steady uptrend (no zero crossing), got true")
+		}
+	})
+
+	// --- Scenario 2: Steady downtrend (no zero crossing) ---------------------
+	// SMA(5) < SMA(35) throughout → EWO always negative → condition must be FALSE.
+	t.Run("downtrend_no_crossover", func(t *testing.T) {
+		n := 100
+		close := make([]float64, n)
+		open := make([]float64, n)
+		high := make([]float64, n)
+		low := make([]float64, n)
+		volume := make([]float64, n)
+		for i := 0; i < n; i++ {
+			base := 200.0 - float64(i)*0.5
+			open[i] = base
+			high[i] = base + 2.0
+			low[i] = base - 1.0
+			close[i] = base + 1.0
+			volume[i] = 1000000
+		}
+		data := &indicator.OHLCV{Open: open, High: high, Low: low, Close: close, Volume: volume}
+		dumpEWO("downtrend", data)
+		result, err := eval.EvalCondition(data, cond, nil)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if result {
+			t.Fatal("expected false for steady downtrend (no zero crossing), got true")
+		}
+	})
+
+	// --- Scenario 3: Crossover from negative to positive ---------------------
+	// Price trends down for 70 bars then sharply up for 30 bars. The fast SMA(5)
+	// should cross above SMA(35) near the end → EWO goes from negative to positive.
+	t.Run("cross_above_zero", func(t *testing.T) {
+		n := 100
+		close := make([]float64, n)
+		open := make([]float64, n)
+		high := make([]float64, n)
+		low := make([]float64, n)
+		volume := make([]float64, n)
+		// Downtrend for first 70 bars
+		for i := 0; i < 70; i++ {
+			base := 200.0 - float64(i)*1.0
+			open[i] = base
+			high[i] = base + 2.0
+			low[i] = base - 1.0
+			close[i] = base - 0.5
+			volume[i] = 1000000
+		}
+		// Sharp uptrend for last 30 bars
+		for i := 70; i < n; i++ {
+			base := close[69] + float64(i-69)*3.0
+			open[i] = base - 1.0
+			high[i] = base + 2.0
+			low[i] = base - 2.0
+			close[i] = base
+			volume[i] = 1000000
+		}
+		data := &indicator.OHLCV{Open: open, High: high, Low: low, Close: close, Volume: volume}
+		dumpEWO("cross_above", data)
+		result, err := eval.EvalCondition(data, cond, nil)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		// This MAY or MAY NOT trigger depending on exact crossing location.
+		// The key is that the logic is correct. Log the result.
+		t.Logf("cross_above_zero result: %v", result)
+	})
+
+	// --- Scenario 4: Flat price (EWO ≈ 0, no meaningful cross) ---------------
+	t.Run("flat_no_crossover", func(t *testing.T) {
+		n := 100
+		close := make([]float64, n)
+		open := make([]float64, n)
+		high := make([]float64, n)
+		low := make([]float64, n)
+		volume := make([]float64, n)
+		for i := 0; i < n; i++ {
+			close[i] = 100.0
+			open[i] = 100.0
+			high[i] = 100.5
+			low[i] = 99.5
+			volume[i] = 1000000
+		}
+		data := &indicator.OHLCV{Open: open, High: high, Low: low, Close: close, Volume: volume}
+		dumpEWO("flat", data)
+		result, err := eval.EvalCondition(data, cond, nil)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if result {
+			t.Fatal("expected false for flat price (no crossing), got true")
+		}
+	})
+
+	// --- Scenario 5: Exact zero crossing at [-2] to [-1] -------------------
+	// Create data where EWO[-2] < 0 and EWO[-1] > 0 (cross between last 2 bars).
+	// Strategy: decline for 99 bars, then ONE big spike on bar 99.
+	t.Run("engineered_cross_at_last_bar", func(t *testing.T) {
+		n := 100
+		close := make([]float64, n)
+		open := make([]float64, n)
+		high := make([]float64, n)
+		low := make([]float64, n)
+		volume := make([]float64, n)
+
+		// Slow decline: 100 → ~80 over 99 bars
+		for i := 0; i < 99; i++ {
+			base := 100.0 - float64(i)*0.2
+			close[i] = base
+			open[i] = base + 0.1
+			high[i] = base + 0.5
+			low[i] = base - 0.5
+			volume[i] = 1000000
+		}
+		// Only the very last bar spikes to force SMA(5) above SMA(35) on bar [-1]
+		close[99] = 130.0
+		open[99] = 81.0
+		high[99] = 131.0
+		low[99] = 80.0
+		volume[99] = 2000000
+
+		data := &indicator.OHLCV{Open: open, High: high, Low: low, Close: close, Volume: volume}
+		dumpEWO("engineered_cross_last", data)
+
+		// Also test the individual sub-conditions to understand evaluation
+		sub1 := "ewo(sma1_length=5, sma2_length=35, source='Close', use_percent=True)[-1] > 0"
+		sub2 := "ewo(sma1_length=5, sma2_length=35, source='Close', use_percent=True)[-2] <= 0"
+		sub3 := "ewo(sma1_length=5, sma2_length=35, source='Close', use_percent=True)[-1] < 0"
+		sub4 := "ewo(sma1_length=5, sma2_length=35, source='Close', use_percent=True)[-2] >= 0"
+
+		r1, _ := eval.EvalCondition(data, sub1, nil)
+		r2, _ := eval.EvalCondition(data, sub2, nil)
+		r3, _ := eval.EvalCondition(data, sub3, nil)
+		r4, _ := eval.EvalCondition(data, sub4, nil)
+		t.Logf("  sub1 (ewo[-1] > 0): %v", r1)
+		t.Logf("  sub2 (ewo[-2] <= 0): %v", r2)
+		t.Logf("  sub3 (ewo[-1] < 0): %v", r3)
+		t.Logf("  sub4 (ewo[-2] >= 0): %v", r4)
+		t.Logf("  expected: (sub1 AND sub2) OR (sub3 AND sub4) = (%v AND %v) OR (%v AND %v) = %v",
+			r1, r2, r3, r4, (r1 && r2) || (r3 && r4))
+
+		result, err := eval.EvalCondition(data, cond, nil)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		expected := (r1 && r2) || (r3 && r4)
+		if result != expected {
+			t.Fatalf("compound condition returned %v but sub-conditions say %v — boolean logic bug!", result, expected)
+		}
+		t.Logf("  compound result: %v (matches sub-condition logic: %v)", result, expected)
+	})
+
+	// --- Scenario 6: Short data (< 35 bars) — go-talib SMA warmup zeros ----
+	// go-talib returns 0 (not NaN) for SMA warmup. With only 36 bars,
+	// SMA(35) only has 2 real values; the rest are 0. This could create
+	// false zero crossings at the warmup boundary.
+	t.Run("short_data_warmup_zeros", func(t *testing.T) {
+		n := 36
+		close := make([]float64, n)
+		open := make([]float64, n)
+		high := make([]float64, n)
+		low := make([]float64, n)
+		volume := make([]float64, n)
+		for i := 0; i < n; i++ {
+			base := 100.0 + float64(i)*0.5
+			close[i] = base + 1.0
+			open[i] = base
+			high[i] = base + 2.0
+			low[i] = base - 1.0
+			volume[i] = 1000000
+		}
+		data := &indicator.OHLCV{Open: open, High: high, Low: low, Close: close, Volume: volume}
+		dumpEWO("short_36bars", data)
+		result, err := eval.EvalCondition(data, cond, nil)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		t.Logf("short_data_warmup result: %v", result)
+	})
+
+	// --- Scenario 7a: Downtrending short data — warmup false crossing -------
+	// With downtrending data and only 36 bars, bars 33→34 see a dramatic EWO
+	// shift as SMA(35) warmup kicks in. If that boundary is at [-2]→[-1],
+	// it could falsely trigger a zero crossing.
+	t.Run("short_downtrend_warmup_boundary", func(t *testing.T) {
+		n := 36
+		close := make([]float64, n)
+		open := make([]float64, n)
+		high := make([]float64, n)
+		low := make([]float64, n)
+		volume := make([]float64, n)
+		for i := 0; i < n; i++ {
+			base := 200.0 - float64(i)*1.0 // downtrending
+			close[i] = base
+			open[i] = base + 0.5
+			high[i] = base + 1.0
+			low[i] = base - 1.0
+			volume[i] = 1000000
+		}
+		data := &indicator.OHLCV{Open: open, High: high, Low: low, Close: close, Volume: volume}
+
+		// Print more EWO values around the warmup boundary
+		ewo, _ := indicator.EWO(data, map[string]interface{}{
+			"sma1_length": 5, "sma2_length": 35, "source": "Close", "use_percent": true,
+		})
+		t.Logf("EWO values around warmup boundary (SMA35 starts at index 34):")
+		for i := 32; i < n; i++ {
+			t.Logf("  EWO[%d] = %.6f", i, ewo[i])
+		}
+
+		result, err := eval.EvalCondition(data, cond, nil)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		t.Logf("short_downtrend result: %v", result)
+		// If this is true, go-talib warmup zeros are creating false crossovers!
+	})
+
+	// --- Scenario 7b: Exactly 35 bars downtrending — warmup on [-2]/[-1] ----
+	// With 35 bars, bar[-2]=index33 (SMA35 warmup=0 → EWO huge positive)
+	// and bar[-1]=index34 (SMA35 first real value → EWO negative).
+	// This is a FALSE zero crossing caused by go-talib returning 0 for warmup!
+	t.Run("35bars_downtrend_false_positive", func(t *testing.T) {
+		n := 35
+		close := make([]float64, n)
+		open := make([]float64, n)
+		high := make([]float64, n)
+		low := make([]float64, n)
+		volume := make([]float64, n)
+		for i := 0; i < n; i++ {
+			base := 200.0 - float64(i)*1.0
+			close[i] = base
+			open[i] = base + 0.5
+			high[i] = base + 1.0
+			low[i] = base - 1.0
+			volume[i] = 1000000
+		}
+		data := &indicator.OHLCV{Open: open, High: high, Low: low, Close: close, Volume: volume}
+
+		ewo, _ := indicator.EWO(data, map[string]interface{}{
+			"sma1_length": 5, "sma2_length": 35, "source": "Close", "use_percent": true,
+		})
+		t.Logf("EWO[%d] ([-2]) = %.6f", n-2, ewo[n-2])
+		t.Logf("EWO[%d] ([-1]) = %.6f", n-1, ewo[n-1])
+
+		result, err := eval.EvalCondition(data, cond, nil)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if result {
+			t.Fatal("expected false: warmup NaN should prevent false zero crossing")
+		}
+	})
+
+	// --- Scenario 8: Use testOHLCV(100) — verify it returns false -----------
+	t.Run("original_testOHLCV", func(t *testing.T) {
+		data := testOHLCV(100)
+		dumpEWO("testOHLCV(100)", data)
+
+		sub1 := "ewo(sma1_length=5, sma2_length=35, source='Close', use_percent=True)[-1] > 0"
+		sub2 := "ewo(sma1_length=5, sma2_length=35, source='Close', use_percent=True)[-2] <= 0"
+		sub3 := "ewo(sma1_length=5, sma2_length=35, source='Close', use_percent=True)[-1] < 0"
+		sub4 := "ewo(sma1_length=5, sma2_length=35, source='Close', use_percent=True)[-2] >= 0"
+
+		r1, _ := eval.EvalCondition(data, sub1, nil)
+		r2, _ := eval.EvalCondition(data, sub2, nil)
+		r3, _ := eval.EvalCondition(data, sub3, nil)
+		r4, _ := eval.EvalCondition(data, sub4, nil)
+		t.Logf("  sub1 (ewo[-1] > 0): %v", r1)
+		t.Logf("  sub2 (ewo[-2] <= 0): %v", r2)
+		t.Logf("  sub3 (ewo[-1] < 0): %v", r3)
+		t.Logf("  sub4 (ewo[-2] >= 0): %v", r4)
+
+		result, err := eval.EvalCondition(data, cond, nil)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		expected := (r1 && r2) || (r3 && r4)
+		if result != expected {
+			t.Fatalf("compound result %v != expected %v from sub-conditions — boolean logic bug!", result, expected)
+		}
+		if result {
+			t.Fatal("expected false for steady uptrend data, got true")
+		}
+	})
 }
 
 // =============================================================================

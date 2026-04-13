@@ -34,6 +34,31 @@ func StochD(data *OHLCV, params map[string]interface{}) ([]float64, error) {
 	return d, nil
 }
 
+// SlowStochK returns the Slow Stochastic %K line, matching Pine Script's Slow Stochastic study:
+//
+//	k = sma(stoch(close, high, low, smoothK), 3)
+//
+// Params: smooth_k (int, default 14) — stochastic lookback period; smooth_d (int, default 3) — %D signal period.
+// The inner K smoothing is fixed at 3 to match the standard slow stochastic definition.
+func SlowStochK(data *OHLCV, params map[string]interface{}) ([]float64, error) {
+	smoothK := paramInt(params, "smooth_k", 14)
+	smoothD := paramInt(params, "smooth_d", 3)
+	k, _ := talib.Stoch(data.High, data.Low, data.Close, smoothK, 3, talib.SMA, smoothD, talib.SMA)
+	return k, nil
+}
+
+// SlowStochD returns the Slow Stochastic %D line (signal), matching Pine Script's Slow Stochastic study:
+//
+//	d = sma(k, smoothD)
+//
+// Params: smooth_k (int, default 14) — stochastic lookback period; smooth_d (int, default 3) — %D signal period.
+func SlowStochD(data *OHLCV, params map[string]interface{}) ([]float64, error) {
+	smoothK := paramInt(params, "smooth_k", 14)
+	smoothD := paramInt(params, "smooth_d", 3)
+	_, d := talib.Stoch(data.High, data.Low, data.Close, smoothK, 3, talib.SMA, smoothD, talib.SMA)
+	return d, nil
+}
+
 // StochRsiK returns the Stochastic RSI %K line.
 // Params: timeperiod (int, default 14), fast_k_period (int, default 5), fast_d_period (int, default 3).
 func StochRsiK(data *OHLCV, params map[string]interface{}) ([]float64, error) {

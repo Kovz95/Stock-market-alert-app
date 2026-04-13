@@ -70,6 +70,8 @@ func NewDefaultRegistry() *Registry {
 	r.Register("adx", ADX)
 	r.Register("stoch_k", StochK)
 	r.Register("stoch_d", StochD)
+	r.Register("slow_stoch_k", SlowStochK)
+	r.Register("slow_stoch_d", SlowStochD)
 	r.Register("stoch_rsi_k", StochRsiK)
 	r.Register("stoch_rsi_d", StochRsiD)
 	r.Register("obv", OBV)

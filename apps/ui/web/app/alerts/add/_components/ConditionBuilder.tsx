@@ -45,6 +45,7 @@ import {
   type CCIConditionType,
   type ATRConditionType,
   type KalmanROCConditionType,
+  type SlowStochConditionType,
 } from "./types";
 import { INDICATOR_NAMES } from "./indicatorList";
 
@@ -70,6 +71,7 @@ const CATEGORY_OPTIONS: { value: ConditionCategory; label: string }[] = [
   { value: "cci", label: "CCI" },
   { value: "atr", label: "ATR" },
   { value: "kalman_roc_stoch", label: "Kalman ROC Stoch" },
+  { value: "slow_stoch", label: "Slow Stochastic" },
   { value: "ma_slope_curve", label: "MA Slope + Curvature" },
   { value: "indicator", label: "Any indicator" },
   { value: "custom", label: "Custom expression" },
@@ -289,6 +291,20 @@ const ATR_TYPES: { value: ATRConditionType; label: string }[] = [
   { value: "atr_compare", label: "ATR vs value" },
   { value: "atr_value", label: "Raw value" },
 ];
+const SLOW_STOCH_TYPES: { value: SlowStochConditionType; label: string; group: string }[] = [
+  // K line
+  { value: "slow_stoch_k_oversold", label: "%K oversold (< 20)", group: "%K Levels" },
+  { value: "slow_stoch_k_overbought", label: "%K overbought (> 80)", group: "%K Levels" },
+  { value: "slow_stoch_k_compare", label: "%K custom comparison", group: "%K Levels" },
+  // D line
+  { value: "slow_stoch_d_oversold", label: "%D oversold (< 20)", group: "%D Levels" },
+  { value: "slow_stoch_d_overbought", label: "%D overbought (> 80)", group: "%D Levels" },
+  { value: "slow_stoch_d_compare", label: "%D custom comparison", group: "%D Levels" },
+  // Crossovers
+  { value: "slow_stoch_k_cross_above_d", label: "%K crosses above %D (Bullish)", group: "Crossovers" },
+  { value: "slow_stoch_k_cross_below_d", label: "%K crosses below %D (Bearish)", group: "Crossovers" },
+];
+
 const KALMAN_ROC_STOCH_TYPES: { value: KalmanROCConditionType; label: string; group: string }[] = [
   // Direction
   { value: "krs_uptrend", label: "Uptrend (White)", group: "Direction" },
@@ -438,6 +454,14 @@ function resolveParamsForAdd(
     p.atrValue = p.atrValue ?? 2;
     p.atrOperator = p.atrOperator ?? ">";
   }
+  if (category === "slow_stoch") {
+    p.slowStochSmoothK = p.slowStochSmoothK ?? 14;
+    p.slowStochSmoothD = p.slowStochSmoothD ?? 3;
+    if (type === "slow_stoch_k_compare" || type === "slow_stoch_d_compare") {
+      p.slowStochOperator = p.slowStochOperator ?? "<";
+      p.slowStochLevel = p.slowStochLevel ?? 20;
+    }
+  }
   if (category === "kalman_roc_stoch") {
     p.krsMaType = p.krsMaType ?? "TEMA";
     p.krsSmoothLen = p.krsSmoothLen ?? 12;
@@ -520,7 +544,9 @@ export function ConditionBuilder({ onAdd }: ConditionBuilderProps) {
                                             ? ATR_TYPES
                                             : category === "kalman_roc_stoch"
                                               ? KALMAN_ROC_STOCH_TYPES
-                                              : category === "ma_slope_curve"
+                                              : category === "slow_stoch"
+                                                ? SLOW_STOCH_TYPES
+                                                : category === "ma_slope_curve"
                                                 ? MA_SLOPE_CURVE_TYPES
                                                 : category === "indicator"
                                                   ? []
@@ -560,6 +586,7 @@ export function ConditionBuilder({ onAdd }: ConditionBuilderProps) {
                 else if (v === "cci") setType("cci_compare");
                 else if (v === "atr") setType("atr_compare");
                 else if (v === "kalman_roc_stoch") setType("krs_uptrend");
+                else if (v === "slow_stoch") setType("slow_stoch_k_oversold");
                 else if (v === "ma_slope_curve") setType("slope_positive");
                 else if (v === "indicator") setType("indicator_compare");
               }}
@@ -2056,6 +2083,85 @@ export function ConditionBuilder({ onAdd }: ConditionBuilderProps) {
                         setParams({
                           ...params,
                           atrValue: e.target.value ? Number(e.target.value) : undefined,
+                        })
+                      }
+                    />
+                  </FieldContent>
+                </Field>
+              </>
+            )}
+          </>
+        )}
+
+        {category === "slow_stoch" && (
+          <>
+            <Field>
+              <FieldLabel>%K period (smoothK)</FieldLabel>
+              <FieldContent>
+                <Input
+                  type="number"
+                  min={1}
+                  max={100}
+                  value={params.slowStochSmoothK ?? 14}
+                  onChange={(e) =>
+                    setParams({
+                      ...params,
+                      slowStochSmoothK: e.target.value ? Number(e.target.value) : undefined,
+                    })
+                  }
+                />
+              </FieldContent>
+            </Field>
+            <Field>
+              <FieldLabel>%D period (smoothD)</FieldLabel>
+              <FieldContent>
+                <Input
+                  type="number"
+                  min={1}
+                  max={50}
+                  value={params.slowStochSmoothD ?? 3}
+                  onChange={(e) =>
+                    setParams({
+                      ...params,
+                      slowStochSmoothD: e.target.value ? Number(e.target.value) : undefined,
+                    })
+                  }
+                />
+              </FieldContent>
+            </Field>
+            {(type === "slow_stoch_k_compare" || type === "slow_stoch_d_compare") && (
+              <>
+                <Field>
+                  <FieldLabel>Operator</FieldLabel>
+                  <FieldContent>
+                    <Select
+                      value={params.slowStochOperator ?? "<"}
+                      onValueChange={(v) => setParams({ ...params, slowStochOperator: v })}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value=">">{">"} (above)</SelectItem>
+                        <SelectItem value="<">{"<"} (below)</SelectItem>
+                        <SelectItem value=">=">{">="} (at or above)</SelectItem>
+                        <SelectItem value="<=">{"<="} (at or below)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </FieldContent>
+                </Field>
+                <Field>
+                  <FieldLabel>Level (0–100)</FieldLabel>
+                  <FieldContent>
+                    <Input
+                      type="number"
+                      min={0}
+                      max={100}
+                      value={params.slowStochLevel ?? 20}
+                      onChange={(e) =>
+                        setParams({
+                          ...params,
+                          slowStochLevel: e.target.value ? Number(e.target.value) : undefined,
                         })
                       }
                     />
