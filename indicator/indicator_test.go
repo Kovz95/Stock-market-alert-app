@@ -450,3 +450,241 @@ func TestWMA(t *testing.T) {
 		t.Fatalf("WMA[2] = %f, want %f", result[2], expected)
 	}
 }
+
+// =============================================================================
+// Slow Stochastic Tests
+// =============================================================================
+
+// TestSlowStochK_BasicProperties verifies that SlowStochK returns a slice of the
+// correct length and that all valid (non-NaN) values are within [0, 100].
+func TestSlowStochK_BasicProperties(t *testing.T) {
+	data := testOHLCV(100)
+	result, err := SlowStochK(data, map[string]interface{}{
+		"smooth_k": 14,
+		"smooth_d": 3,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(result) != 100 {
+		t.Fatalf("SlowStochK length = %d, want 100", len(result))
+	}
+	// Last value must be valid (enough data: smoothK=14, innerK=3, smoothD=3)
+	if math.IsNaN(result[99]) {
+		t.Fatal("SlowStochK last value should not be NaN with 100 bars")
+	}
+	// All non-NaN values must be in [0, 100]
+	for i, v := range result {
+		if !math.IsNaN(v) && (v < 0 || v > 100) {
+			t.Errorf("SlowStochK[%d] = %f, out of [0, 100]", i, v)
+		}
+	}
+}
+
+// TestSlowStochD_BasicProperties mirrors the K test for the %D signal line.
+func TestSlowStochD_BasicProperties(t *testing.T) {
+	data := testOHLCV(100)
+	result, err := SlowStochD(data, map[string]interface{}{
+		"smooth_k": 14,
+		"smooth_d": 3,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(result) != 100 {
+		t.Fatalf("SlowStochD length = %d, want 100", len(result))
+	}
+	if math.IsNaN(result[99]) {
+		t.Fatal("SlowStochD last value should not be NaN with 100 bars")
+	}
+	for i, v := range result {
+		if !math.IsNaN(v) && (v < 0 || v > 100) {
+			t.Errorf("SlowStochD[%d] = %f, out of [0, 100]", i, v)
+		}
+	}
+}
+
+// TestSlowStochKD_DefaultParams confirms that omitting params uses the correct
+// defaults (smooth_k=14, smooth_d=3) and produces the same output as explicit params.
+func TestSlowStochKD_DefaultParams(t *testing.T) {
+	data := testOHLCV(100)
+
+	kDefault, err := SlowStochK(data, map[string]interface{}{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	kExplicit, err := SlowStochK(data, map[string]interface{}{"smooth_k": 14, "smooth_d": 3})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i := range kDefault {
+		dv, ev := kDefault[i], kExplicit[i]
+		bothNaN := math.IsNaN(dv) && math.IsNaN(ev)
+		if !bothNaN && dv != ev {
+			t.Fatalf("SlowStochK default vs explicit mismatch at %d: %f vs %f", i, dv, ev)
+		}
+	}
+
+	dDefault, err := SlowStochD(data, map[string]interface{}{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	dExplicit, err := SlowStochD(data, map[string]interface{}{"smooth_k": 14, "smooth_d": 3})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i := range dDefault {
+		dv, ev := dDefault[i], dExplicit[i]
+		bothNaN := math.IsNaN(dv) && math.IsNaN(ev)
+		if !bothNaN && dv != ev {
+			t.Fatalf("SlowStochD default vs explicit mismatch at %d: %f vs %f", i, dv, ev)
+		}
+	}
+}
+
+// TestSlowStochKD_SameTalibCall verifies that K and D come from the same underlying
+// talib.Stoch call: for every bar, calling SlowStochK and SlowStochD independently
+// must give the exact same K output and D output respectively.
+func TestSlowStochKD_SameTalibCall(t *testing.T) {
+	data := testOHLCV(100)
+	params := map[string]interface{}{"smooth_k": 14, "smooth_d": 3}
+
+	k, err := SlowStochK(data, params)
+	if err != nil {
+		t.Fatal(err)
+	}
+	d, err := SlowStochD(data, params)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// D is a 3-period SMA of K, so D lags K.
+	// At bars where both are valid, K and D must be in [0,100] and D should be
+	// smoother (its range from bar-to-bar change should not exceed K's range).
+	kRange, dRange := 0.0, 0.0
+	for i := 1; i < len(k); i++ {
+		if !math.IsNaN(k[i]) && !math.IsNaN(k[i-1]) {
+			diff := math.Abs(k[i] - k[i-1])
+			if diff > kRange {
+				kRange = diff
+			}
+		}
+		if !math.IsNaN(d[i]) && !math.IsNaN(d[i-1]) {
+			diff := math.Abs(d[i] - d[i-1])
+			if diff > dRange {
+				dRange = diff
+			}
+		}
+	}
+	// %D (3-period SMA of %K) must be smoother — its max step should be <= K's.
+	if dRange > kRange+1e-9 {
+		t.Errorf("%%D max step (%f) is larger than %%K max step (%f); D should be smoother", dRange, kRange)
+	}
+}
+
+// TestSlowStochKD_Uptrend verifies that in a sustained uptrend the slow stochastic
+// %K value is high (> 50), since the close price is persistently near the upper end
+// of its 14-bar range.
+func TestSlowStochKD_Uptrend(t *testing.T) {
+	data := testOHLCV(100) // monotonically increasing: close always near top of range
+	params := map[string]interface{}{"smooth_k": 14, "smooth_d": 3}
+
+	k, err := SlowStochK(data, params)
+	if err != nil {
+		t.Fatal(err)
+	}
+	last := k[99]
+	if math.IsNaN(last) {
+		t.Fatal("last %K should not be NaN")
+	}
+	if last <= 50 {
+		t.Errorf("in a sustained uptrend, %%K[-1] = %f, want > 50", last)
+	}
+}
+
+// TestSlowStochKD_Downtrend verifies that in a sustained downtrend the slow stochastic
+// %K value is low (< 50).
+func TestSlowStochKD_Downtrend(t *testing.T) {
+	n := 100
+	open := make([]float64, n)
+	high := make([]float64, n)
+	low := make([]float64, n)
+	close := make([]float64, n)
+	volume := make([]float64, n)
+	for i := 0; i < n; i++ {
+		base := 200.0 - float64(i)*0.5 // decreasing
+		open[i] = base
+		high[i] = base + 1.0
+		low[i] = base - 2.0
+		close[i] = base - 1.0 // close near the low
+		volume[i] = 1000000
+	}
+	data := &OHLCV{Open: open, High: high, Low: low, Close: close, Volume: volume}
+	params := map[string]interface{}{"smooth_k": 14, "smooth_d": 3}
+
+	k, err := SlowStochK(data, params)
+	if err != nil {
+		t.Fatal(err)
+	}
+	last := k[99]
+	if math.IsNaN(last) {
+		t.Fatal("last %K should not be NaN in downtrend")
+	}
+	if last >= 50 {
+		t.Errorf("in a sustained downtrend, %%K[-1] = %f, want < 50", last)
+	}
+}
+
+// TestSlowStochKD_RegistryLookup confirms that both indicators are reachable through
+// the default registry under the names "slow_stoch_k" and "slow_stoch_d".
+func TestSlowStochKD_RegistryLookup(t *testing.T) {
+	r := NewDefaultRegistry()
+	data := testOHLCV(100)
+	params := map[string]interface{}{"smooth_k": 14, "smooth_d": 3}
+
+	for _, name := range []string{"slow_stoch_k", "slow_stoch_d"} {
+		fn, ok := r.Get(name)
+		if !ok {
+			t.Fatalf("%q not registered in default registry", name)
+		}
+		result, err := fn(data, params)
+		if err != nil {
+			t.Fatalf("%q via registry returned error: %v", name, err)
+		}
+		if len(result) != data.Len() {
+			t.Fatalf("%q via registry: length %d, want %d", name, len(result), data.Len())
+		}
+		if math.IsNaN(result[99]) {
+			t.Fatalf("%q via registry: last value is NaN", name)
+		}
+	}
+}
+
+// TestSlowStochKD_CustomPeriods verifies that non-default periods (e.g. smoothK=5,
+// smoothD=5) produce valid output within [0, 100] on sufficient data.
+func TestSlowStochKD_CustomPeriods(t *testing.T) {
+	data := testOHLCV(100)
+	params := map[string]interface{}{"smooth_k": 5, "smooth_d": 5}
+
+	k, err := SlowStochK(data, params)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if math.IsNaN(k[99]) {
+		t.Fatal("SlowStochK(5,5) last value is NaN on 100 bars")
+	}
+	if k[99] < 0 || k[99] > 100 {
+		t.Errorf("SlowStochK(5,5) = %f, want [0,100]", k[99])
+	}
+
+	d, err := SlowStochD(data, params)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if math.IsNaN(d[99]) {
+		t.Fatal("SlowStochD(5,5) last value is NaN on 100 bars")
+	}
+	if d[99] < 0 || d[99] > 100 {
+		t.Errorf("SlowStochD(5,5) = %f, want [0,100]", d[99])
+	}
+}

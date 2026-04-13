@@ -420,6 +420,15 @@ func remapPositionalParams(op *Operand) {
 			op.Params["slow_d_period"] = v
 			delete(op.Params, "_pos_2")
 		}
+	case "slow_stoch_k", "slow_stoch_d":
+		if v, ok := op.Params["period"]; ok {
+			op.Params["smooth_k"] = v
+			delete(op.Params, "period")
+		}
+		if v, ok := op.Params["_pos_1"]; ok {
+			op.Params["smooth_d"] = v
+			delete(op.Params, "_pos_1")
+		}
 	case "stddev":
 		if v, ok := op.Params["_pos_1"]; ok {
 			op.Params["nb_dev"] = v

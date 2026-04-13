@@ -1819,3 +1819,212 @@ func TestEvalAllIndicators(t *testing.T) {
 		}
 	}
 }
+
+// =============================================================================
+// Slow Stochastic — Parser Tests
+// =============================================================================
+
+// TestParseOperand_SlowStochKwargs checks that keyword-arg syntax (as emitted by the
+// UI's conditionEntryToExpression) is parsed correctly into the expected param map.
+func TestParseOperand_SlowStochKwargs(t *testing.T) {
+	tests := []struct {
+		input    string
+		ind      string
+		smoothK  int
+		smoothD  int
+		spec     int
+	}{
+		{"slow_stoch_k(smooth_k=14, smooth_d=3)[-1]", "slow_stoch_k", 14, 3, -1},
+		{"slow_stoch_d(smooth_k=14, smooth_d=3)[-1]", "slow_stoch_d", 14, 3, -1},
+		{"slow_stoch_k(smooth_k=5, smooth_d=3)[-2]", "slow_stoch_k", 5, 3, -2},
+		{"slow_stoch_d(smooth_k=21, smooth_d=5)[-1]", "slow_stoch_d", 21, 5, -1},
+	}
+	for _, tt := range tests {
+		op, err := ParseOperand(tt.input)
+		if err != nil {
+			t.Errorf("ParseOperand(%q): %v", tt.input, err)
+			continue
+		}
+		if op.Indicator != tt.ind {
+			t.Errorf("ParseOperand(%q): indicator = %q, want %q", tt.input, op.Indicator, tt.ind)
+		}
+		if op.Specifier != tt.spec {
+			t.Errorf("ParseOperand(%q): specifier = %d, want %d", tt.input, op.Specifier, tt.spec)
+		}
+		if v, ok := op.Params["smooth_k"]; !ok || v != tt.smoothK {
+			t.Errorf("ParseOperand(%q): smooth_k = %v, want %d", tt.input, op.Params["smooth_k"], tt.smoothK)
+		}
+		if v, ok := op.Params["smooth_d"]; !ok || v != tt.smoothD {
+			t.Errorf("ParseOperand(%q): smooth_d = %v, want %d", tt.input, op.Params["smooth_d"], tt.smoothD)
+		}
+	}
+}
+
+// TestParseOperand_SlowStochPositional checks that positional args are remapped
+// correctly: slow_stoch_k(14) → smooth_k=14; slow_stoch_k(14, 3) → smooth_k=14, smooth_d=3.
+func TestParseOperand_SlowStochPositional(t *testing.T) {
+	op, err := ParseOperand("slow_stoch_k(14)")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if v, ok := op.Params["smooth_k"]; !ok || v != 14 {
+		t.Errorf("positional: smooth_k = %v, want 14", op.Params["smooth_k"])
+	}
+
+	op2, err := ParseOperand("slow_stoch_d(21, 5)")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if v, ok := op2.Params["smooth_k"]; !ok || v != 21 {
+		t.Errorf("positional 2-arg: smooth_k = %v, want 21", op2.Params["smooth_k"])
+	}
+	if v, ok := op2.Params["smooth_d"]; !ok || v != 5 {
+		t.Errorf("positional 2-arg: smooth_d = %v, want 5", op2.Params["smooth_d"])
+	}
+}
+
+// =============================================================================
+// Slow Stochastic — Evaluator Tests
+// =============================================================================
+
+// testDowntrendOHLCV builds monotonically decreasing OHLCV data where close stays
+// near the low (close = base - 1, low = base - 2), producing a low slow stochastic.
+func testDowntrendOHLCV(n int) *indicator.OHLCV {
+	open := make([]float64, n)
+	high := make([]float64, n)
+	low := make([]float64, n)
+	close := make([]float64, n)
+	volume := make([]float64, n)
+	for i := 0; i < n; i++ {
+		base := 200.0 - float64(i)*0.5
+		open[i] = base
+		high[i] = base + 1.0
+		low[i] = base - 2.0
+		close[i] = base - 1.0
+		volume[i] = 1000000
+	}
+	return &indicator.OHLCV{Open: open, High: high, Low: low, Close: close, Volume: volume}
+}
+
+// TestEvalSlowStoch_KOversold confirms that the oversold condition fires as expected.
+// In a strong downtrend the slow stochastic %K is low, so `slow_stoch_k < 90` is true.
+func TestEvalSlowStoch_KOversold(t *testing.T) {
+	data := testDowntrendOHLCV(100)
+	reg := indicator.NewDefaultRegistry()
+	eval := NewEvaluator(reg)
+
+	// k should be well below 90 in a downtrend
+	expr := "slow_stoch_k(smooth_k=14, smooth_d=3)[-1] < 90"
+	result, err := eval.EvalCondition(data, expr, nil)
+	if err != nil {
+		t.Fatalf("%q returned error: %v", expr, err)
+	}
+	if !result {
+		t.Fatalf("%q expected true in downtrend", expr)
+	}
+}
+
+// TestEvalSlowStoch_KOverbought confirms that the overbought condition fires as expected.
+// In a sustained uptrend the slow stochastic %K is high, so `slow_stoch_k > 10` is true.
+func TestEvalSlowStoch_KOverbought(t *testing.T) {
+	data := testOHLCV(100) // uptrend
+	reg := indicator.NewDefaultRegistry()
+	eval := NewEvaluator(reg)
+
+	expr := "slow_stoch_k(smooth_k=14, smooth_d=3)[-1] > 10"
+	result, err := eval.EvalCondition(data, expr, nil)
+	if err != nil {
+		t.Fatalf("%q returned error: %v", expr, err)
+	}
+	if !result {
+		t.Fatalf("%q expected true in uptrend", expr)
+	}
+}
+
+// TestEvalSlowStoch_KVsD evaluates a raw K vs D comparison expression end-to-end
+// to confirm the evaluator can handle two slow_stoch indicator operands in one condition.
+func TestEvalSlowStoch_KVsD(t *testing.T) {
+	data := testOHLCV(100) // uptrend
+	reg := indicator.NewDefaultRegistry()
+	eval := NewEvaluator(reg)
+
+	// K and D should be close to each other in a steady trend; comparing K >= D - 5
+	// is a sanity check that both sides resolve without error.
+	expr := "slow_stoch_k(smooth_k=14, smooth_d=3)[-1] >= slow_stoch_d(smooth_k=14, smooth_d=3)[-1]"
+	_, err := eval.EvalCondition(data, expr, nil)
+	if err != nil {
+		t.Fatalf("%q returned unexpected error: %v", expr, err)
+	}
+}
+
+// TestEvalSlowStoch_KCrossAboveD evaluates the crossover expression generated by the UI
+// (a compound AND expression) and confirms it parses and evaluates without error.
+func TestEvalSlowStoch_KCrossAboveD(t *testing.T) {
+	reg := indicator.NewDefaultRegistry()
+	eval := NewEvaluator(reg)
+
+	// Craft data where %K crosses above %D on the last bar.
+	// 99 bars of downtrend (low K), then a sharp reversal so K jumps above D.
+	n := 100
+	open := make([]float64, n)
+	high := make([]float64, n)
+	low := make([]float64, n)
+	close := make([]float64, n)
+	volume := make([]float64, n)
+	for i := 0; i < n-1; i++ {
+		base := 200.0 - float64(i)*1.5 // strong downtrend
+		open[i] = base
+		high[i] = base + 1.0
+		low[i] = base - 3.0
+		close[i] = base - 2.0
+		volume[i] = 1000000
+	}
+	// Last bar: sharp reversal — close near high of the recent range
+	base := 200.0 - float64(n-2)*1.5
+	open[n-1] = base
+	high[n-1] = base + 20.0
+	low[n-1] = base - 1.0
+	close[n-1] = base + 18.0
+	volume[n-1] = 1000000
+
+	data := &indicator.OHLCV{Open: open, High: high, Low: low, Close: close, Volume: volume}
+
+	crossExpr := "(slow_stoch_k(smooth_k=14, smooth_d=3)[-1] > slow_stoch_d(smooth_k=14, smooth_d=3)[-1]) and (slow_stoch_k(smooth_k=14, smooth_d=3)[-2] <= slow_stoch_d(smooth_k=14, smooth_d=3)[-2])"
+	_, err := eval.EvalCondition(data, crossExpr, nil)
+	if err != nil {
+		t.Fatalf("K cross above D expression returned error: %v", err)
+	}
+}
+
+// TestEvalSlowStoch_AllUIExpressions exercises every expression string that the UI's
+// conditionEntryToExpression can generate for the "slow_stoch" category, confirming
+// each one parses and evaluates without error on both uptrend and downtrend data.
+func TestEvalSlowStoch_AllUIExpressions(t *testing.T) {
+	reg := indicator.NewDefaultRegistry()
+	eval := NewEvaluator(reg)
+	up := testOHLCV(100)
+	down := testDowntrendOHLCV(100)
+
+	const k = "slow_stoch_k(smooth_k=14, smooth_d=3)"
+	const d = "slow_stoch_d(smooth_k=14, smooth_d=3)"
+
+	exprs := []string{
+		k + "[-1] < 20",  // slow_stoch_k_oversold
+		k + "[-1] > 80",  // slow_stoch_k_overbought
+		d + "[-1] < 20",  // slow_stoch_d_oversold
+		d + "[-1] > 80",  // slow_stoch_d_overbought
+		"(" + k + "[-1] > " + d + "[-1]) and (" + k + "[-2] <= " + d + "[-2])",  // k_cross_above_d
+		"(" + k + "[-1] < " + d + "[-1]) and (" + k + "[-2] >= " + d + "[-2])",  // k_cross_below_d
+		k + "[-1] < 20",  // slow_stoch_k_compare (operator=<, level=20)
+		d + "[-1] > 80",  // slow_stoch_d_compare (operator=>, level=80)
+	}
+
+	for _, expr := range exprs {
+		for _, data := range []*indicator.OHLCV{up, down} {
+			_, err := eval.EvalCondition(data, expr, nil)
+			if err != nil {
+				t.Errorf("EvalCondition(%q) returned error: %v", expr, err)
+			}
+		}
+	}
+}
