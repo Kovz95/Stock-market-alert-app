@@ -303,6 +303,15 @@ const SLOW_STOCH_TYPES: { value: SlowStochConditionType; label: string; group: s
   // Crossovers
   { value: "slow_stoch_k_cross_above_d", label: "%K crosses above %D (Bullish)", group: "Crossovers" },
   { value: "slow_stoch_k_cross_below_d", label: "%K crosses below %D (Bearish)", group: "Crossovers" },
+  // Level Crosses
+  { value: "slow_stoch_k_cross_above_oversold", label: "%K crosses above oversold", group: "Level Crosses" },
+  { value: "slow_stoch_k_cross_below_oversold", label: "%K crosses below oversold", group: "Level Crosses" },
+  { value: "slow_stoch_k_cross_above_overbought", label: "%K crosses above overbought", group: "Level Crosses" },
+  { value: "slow_stoch_k_cross_below_overbought", label: "%K crosses below overbought", group: "Level Crosses" },
+  { value: "slow_stoch_d_cross_above_oversold", label: "%D crosses above oversold", group: "Level Crosses" },
+  { value: "slow_stoch_d_cross_below_oversold", label: "%D crosses below oversold", group: "Level Crosses" },
+  { value: "slow_stoch_d_cross_above_overbought", label: "%D crosses above overbought", group: "Level Crosses" },
+  { value: "slow_stoch_d_cross_below_overbought", label: "%D crosses below overbought", group: "Level Crosses" },
 ];
 
 const KALMAN_ROC_STOCH_TYPES: { value: KalmanROCConditionType; label: string; group: string }[] = [
@@ -460,6 +469,18 @@ function resolveParamsForAdd(
     if (type === "slow_stoch_k_compare" || type === "slow_stoch_d_compare") {
       p.slowStochOperator = p.slowStochOperator ?? "<";
       p.slowStochLevel = p.slowStochLevel ?? 20;
+    }
+    if (
+      type.includes("cross_above_oversold") ||
+      type.includes("cross_below_oversold")
+    ) {
+      p.slowStochOversoldLevel = p.slowStochOversoldLevel ?? 20;
+    }
+    if (
+      type.includes("cross_above_overbought") ||
+      type.includes("cross_below_overbought")
+    ) {
+      p.slowStochOverboughtLevel = p.slowStochOverboughtLevel ?? 80;
     }
   }
   if (category === "kalman_roc_stoch") {
@@ -2129,6 +2150,51 @@ export function ConditionBuilder({ onAdd }: ConditionBuilderProps) {
                 />
               </FieldContent>
             </Field>
+            {(type.includes("cross_above_oversold") ||
+              type.includes("cross_below_oversold") ||
+              type.includes("cross_above_overbought") ||
+              type.includes("cross_below_overbought")) && (
+              <>
+                <Field>
+                  <FieldLabel>Oversold level (0–100)</FieldLabel>
+                  <FieldContent>
+                    <Input
+                      type="number"
+                      min={0}
+                      max={100}
+                      value={params.slowStochOversoldLevel ?? 20}
+                      onChange={(e) =>
+                        setParams({
+                          ...params,
+                          slowStochOversoldLevel: e.target.value
+                            ? Number(e.target.value)
+                            : undefined,
+                        })
+                      }
+                    />
+                  </FieldContent>
+                </Field>
+                <Field>
+                  <FieldLabel>Overbought level (0–100)</FieldLabel>
+                  <FieldContent>
+                    <Input
+                      type="number"
+                      min={0}
+                      max={100}
+                      value={params.slowStochOverboughtLevel ?? 80}
+                      onChange={(e) =>
+                        setParams({
+                          ...params,
+                          slowStochOverboughtLevel: e.target.value
+                            ? Number(e.target.value)
+                            : undefined,
+                        })
+                      }
+                    />
+                  </FieldContent>
+                </Field>
+              </>
+            )}
             {(type === "slow_stoch_k_compare" || type === "slow_stoch_d_compare") && (
               <>
                 <Field>

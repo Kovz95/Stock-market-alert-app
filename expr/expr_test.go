@@ -662,9 +662,9 @@ func TestEvalConditionListComplex(t *testing.T) {
 	eval := NewEvaluator(reg)
 
 	conditions := []string{
-		"Close[-1] > 100",  // true (condition 1)
-		"Close[-1] > 200",  // false (condition 2)
-		"Close[-1] < 200",  // true (condition 3)
+		"Close[-1] > 100", // true (condition 1)
+		"Close[-1] > 200", // false (condition 2)
+		"Close[-1] < 200", // true (condition 3)
 	}
 
 	// "1 AND (2 OR 3)" = true AND (false OR true) = true AND true = true
@@ -942,7 +942,7 @@ func TestEvalConditionEWOWithPipe(t *testing.T) {
 			"sma1_length": 5,
 			"sma2_length": 35,
 			"source":      "Close",
-			"use_percent":  true,
+			"use_percent": true,
 		})
 		if err != nil {
 			t.Fatalf("%s: EWO error: %v", label, err)
@@ -1633,8 +1633,8 @@ func TestPivotSRKeywordParamsPassThrough(t *testing.T) {
 		t.Errorf("indicator = %q, want pivot_sr", op.Indicator)
 	}
 	want := map[string]float64{
-		"left_bars":            7,
-		"right_bars":            9,
+		"left_bars":           7,
+		"right_bars":          9,
 		"proximity_threshold": 1.5,
 		"buffer_percent":      0.6,
 	}
@@ -1828,11 +1828,11 @@ func TestEvalAllIndicators(t *testing.T) {
 // UI's conditionEntryToExpression) is parsed correctly into the expected param map.
 func TestParseOperand_SlowStochKwargs(t *testing.T) {
 	tests := []struct {
-		input    string
-		ind      string
-		smoothK  int
-		smoothD  int
-		spec     int
+		input   string
+		ind     string
+		smoothK int
+		smoothD int
+		spec    int
 	}{
 		{"slow_stoch_k(smooth_k=14, smooth_d=3)[-1]", "slow_stoch_k", 14, 3, -1},
 		{"slow_stoch_d(smooth_k=14, smooth_d=3)[-1]", "slow_stoch_d", 14, 3, -1},
@@ -1996,6 +1996,116 @@ func TestEvalSlowStoch_KCrossAboveD(t *testing.T) {
 	}
 }
 
+func testSlowStochCrossAboveOversoldOHLCV() *indicator.OHLCV {
+	n := 60
+	open := make([]float64, n)
+	high := make([]float64, n)
+	low := make([]float64, n)
+	close := make([]float64, n)
+	volume := make([]float64, n)
+
+	for i := 0; i < n-1; i++ {
+		base := 200.0 - float64(i)*2.0
+		open[i] = base
+		high[i] = base + 1.0
+		low[i] = base - 3.0
+		close[i] = base - 2.5
+		volume[i] = 1000000
+	}
+
+	lastBase := close[n-2]
+	open[n-1] = lastBase
+	high[n-1] = lastBase + 30.0
+	low[n-1] = lastBase - 1.0
+	close[n-1] = lastBase + 28.0
+	volume[n-1] = 1500000
+
+	return &indicator.OHLCV{Open: open, High: high, Low: low, Close: close, Volume: volume}
+}
+
+func TestSlowStochLevelCross(t *testing.T) {
+	tests := []struct {
+		name string
+		in   string
+		want string
+	}{
+		{
+			name: "k_cross_above_oversold_explicit",
+			in:   "slow_stoch_k_cross_above_oversold: 20",
+			want: "(slow_stoch_k(smooth_k=14, smooth_d=3)[-1] > 20) and (slow_stoch_k(smooth_k=14, smooth_d=3)[-2] <= 20)",
+		},
+		{
+			name: "k_cross_above_oversold_default",
+			in:   "slow_stoch_k_cross_above_oversold",
+			want: "(slow_stoch_k(smooth_k=14, smooth_d=3)[-1] > 20) and (slow_stoch_k(smooth_k=14, smooth_d=3)[-2] <= 20)",
+		},
+		{
+			name: "k_cross_below_oversold_explicit",
+			in:   "slow_stoch_k_cross_below_oversold: 20",
+			want: "(slow_stoch_k(smooth_k=14, smooth_d=3)[-1] < 20) and (slow_stoch_k(smooth_k=14, smooth_d=3)[-2] >= 20)",
+		},
+		{
+			name: "k_cross_above_overbought_explicit",
+			in:   "slow_stoch_k_cross_above_overbought: 80",
+			want: "(slow_stoch_k(smooth_k=14, smooth_d=3)[-1] > 80) and (slow_stoch_k(smooth_k=14, smooth_d=3)[-2] <= 80)",
+		},
+		{
+			name: "k_cross_below_overbought_explicit",
+			in:   "slow_stoch_k_cross_below_overbought: 80",
+			want: "(slow_stoch_k(smooth_k=14, smooth_d=3)[-1] < 80) and (slow_stoch_k(smooth_k=14, smooth_d=3)[-2] >= 80)",
+		},
+		{
+			name: "d_cross_above_oversold_explicit",
+			in:   "slow_stoch_d_cross_above_oversold: 20",
+			want: "(slow_stoch_d(smooth_k=14, smooth_d=3)[-1] > 20) and (slow_stoch_d(smooth_k=14, smooth_d=3)[-2] <= 20)",
+		},
+		{
+			name: "d_cross_below_oversold_default",
+			in:   "slow_stoch_d_cross_below_oversold",
+			want: "(slow_stoch_d(smooth_k=14, smooth_d=3)[-1] < 20) and (slow_stoch_d(smooth_k=14, smooth_d=3)[-2] >= 20)",
+		},
+		{
+			name: "d_cross_above_overbought_default",
+			in:   "slow_stoch_d_cross_above_overbought",
+			want: "(slow_stoch_d(smooth_k=14, smooth_d=3)[-1] > 80) and (slow_stoch_d(smooth_k=14, smooth_d=3)[-2] <= 80)",
+		},
+		{
+			name: "d_cross_below_overbought_explicit",
+			in:   "slow_stoch_d_cross_below_overbought: 80",
+			want: "(slow_stoch_d(smooth_k=14, smooth_d=3)[-1] < 80) and (slow_stoch_d(smooth_k=14, smooth_d=3)[-2] >= 80)",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := ExpandCatalogCondition(tt.in)
+			if got != tt.want {
+				t.Fatalf("ExpandCatalogCondition(%q) = %q, want %q", tt.in, got, tt.want)
+			}
+		})
+	}
+
+	data := testSlowStochCrossAboveOversoldOHLCV()
+	reg := indicator.NewDefaultRegistry()
+	eval := NewEvaluator(reg)
+
+	result, err := eval.EvalCondition(data, "slow_stoch_k_cross_above_oversold: 20", nil)
+	if err != nil {
+		t.Fatalf("slow_stoch_k_cross_above_oversold returned error: %v", err)
+	}
+	if !result {
+		t.Fatal("expected slow_stoch_k_cross_above_oversold: 20 to be true")
+	}
+
+	result, err = eval.EvalCondition(data, "slow_stoch_k_cross_below_oversold: 20", nil)
+	if err != nil {
+		t.Fatalf("slow_stoch_k_cross_below_oversold returned error: %v", err)
+	}
+	if result {
+		t.Fatal("expected slow_stoch_k_cross_below_oversold: 20 to be false")
+	}
+}
+
 // TestEvalSlowStoch_AllUIExpressions exercises every expression string that the UI's
 // conditionEntryToExpression can generate for the "slow_stoch" category, confirming
 // each one parses and evaluates without error on both uptrend and downtrend data.
@@ -2009,14 +2119,14 @@ func TestEvalSlowStoch_AllUIExpressions(t *testing.T) {
 	const d = "slow_stoch_d(smooth_k=14, smooth_d=3)"
 
 	exprs := []string{
-		k + "[-1] < 20",  // slow_stoch_k_oversold
-		k + "[-1] > 80",  // slow_stoch_k_overbought
-		d + "[-1] < 20",  // slow_stoch_d_oversold
-		d + "[-1] > 80",  // slow_stoch_d_overbought
-		"(" + k + "[-1] > " + d + "[-1]) and (" + k + "[-2] <= " + d + "[-2])",  // k_cross_above_d
-		"(" + k + "[-1] < " + d + "[-1]) and (" + k + "[-2] >= " + d + "[-2])",  // k_cross_below_d
-		k + "[-1] < 20",  // slow_stoch_k_compare (operator=<, level=20)
-		d + "[-1] > 80",  // slow_stoch_d_compare (operator=>, level=80)
+		k + "[-1] < 20", // slow_stoch_k_oversold
+		k + "[-1] > 80", // slow_stoch_k_overbought
+		d + "[-1] < 20", // slow_stoch_d_oversold
+		d + "[-1] > 80", // slow_stoch_d_overbought
+		"(" + k + "[-1] > " + d + "[-1]) and (" + k + "[-2] <= " + d + "[-2])", // k_cross_above_d
+		"(" + k + "[-1] < " + d + "[-1]) and (" + k + "[-2] >= " + d + "[-2])", // k_cross_below_d
+		k + "[-1] < 20", // slow_stoch_k_compare (operator=<, level=20)
+		d + "[-1] > 80", // slow_stoch_d_compare (operator=>, level=80)
 	}
 
 	for _, expr := range exprs {

@@ -203,6 +203,80 @@ func ExpandCatalogCondition(condition string) string {
 			}
 		}
 		return fmt.Sprintf("volume_ratio(20)[-1] < %g", mult)
+
+	// --- Slow Stochastic level crosses (default smooth_k=14, smooth_d=3) ---
+	case "slow_stoch_k_cross_above_oversold":
+		level := 20
+		if v, err := strconv.Atoi(strings.TrimSpace(valueStr)); err == nil && v >= 0 && v <= 100 {
+			level = v
+		}
+		return fmt.Sprintf(
+			"(slow_stoch_k(smooth_k=14, smooth_d=3)[-1] > %d) and (slow_stoch_k(smooth_k=14, smooth_d=3)[-2] <= %d)",
+			level, level,
+		)
+	case "slow_stoch_k_cross_below_oversold":
+		level := 20
+		if v, err := strconv.Atoi(strings.TrimSpace(valueStr)); err == nil && v >= 0 && v <= 100 {
+			level = v
+		}
+		return fmt.Sprintf(
+			"(slow_stoch_k(smooth_k=14, smooth_d=3)[-1] < %d) and (slow_stoch_k(smooth_k=14, smooth_d=3)[-2] >= %d)",
+			level, level,
+		)
+	case "slow_stoch_k_cross_above_overbought":
+		level := 80
+		if v, err := strconv.Atoi(strings.TrimSpace(valueStr)); err == nil && v >= 0 && v <= 100 {
+			level = v
+		}
+		return fmt.Sprintf(
+			"(slow_stoch_k(smooth_k=14, smooth_d=3)[-1] > %d) and (slow_stoch_k(smooth_k=14, smooth_d=3)[-2] <= %d)",
+			level, level,
+		)
+	case "slow_stoch_k_cross_below_overbought":
+		level := 80
+		if v, err := strconv.Atoi(strings.TrimSpace(valueStr)); err == nil && v >= 0 && v <= 100 {
+			level = v
+		}
+		return fmt.Sprintf(
+			"(slow_stoch_k(smooth_k=14, smooth_d=3)[-1] < %d) and (slow_stoch_k(smooth_k=14, smooth_d=3)[-2] >= %d)",
+			level, level,
+		)
+	case "slow_stoch_d_cross_above_oversold":
+		level := 20
+		if v, err := strconv.Atoi(strings.TrimSpace(valueStr)); err == nil && v >= 0 && v <= 100 {
+			level = v
+		}
+		return fmt.Sprintf(
+			"(slow_stoch_d(smooth_k=14, smooth_d=3)[-1] > %d) and (slow_stoch_d(smooth_k=14, smooth_d=3)[-2] <= %d)",
+			level, level,
+		)
+	case "slow_stoch_d_cross_below_oversold":
+		level := 20
+		if v, err := strconv.Atoi(strings.TrimSpace(valueStr)); err == nil && v >= 0 && v <= 100 {
+			level = v
+		}
+		return fmt.Sprintf(
+			"(slow_stoch_d(smooth_k=14, smooth_d=3)[-1] < %d) and (slow_stoch_d(smooth_k=14, smooth_d=3)[-2] >= %d)",
+			level, level,
+		)
+	case "slow_stoch_d_cross_above_overbought":
+		level := 80
+		if v, err := strconv.Atoi(strings.TrimSpace(valueStr)); err == nil && v >= 0 && v <= 100 {
+			level = v
+		}
+		return fmt.Sprintf(
+			"(slow_stoch_d(smooth_k=14, smooth_d=3)[-1] > %d) and (slow_stoch_d(smooth_k=14, smooth_d=3)[-2] <= %d)",
+			level, level,
+		)
+	case "slow_stoch_d_cross_below_overbought":
+		level := 80
+		if v, err := strconv.Atoi(strings.TrimSpace(valueStr)); err == nil && v >= 0 && v <= 100 {
+			level = v
+		}
+		return fmt.Sprintf(
+			"(slow_stoch_d(smooth_k=14, smooth_d=3)[-1] < %d) and (slow_stoch_d(smooth_k=14, smooth_d=3)[-2] >= %d)",
+			level, level,
+		)
 	}
 
 	return ""

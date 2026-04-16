@@ -211,6 +211,16 @@ export type SlowStochConditionType =
   // K/D crossovers
   | "slow_stoch_k_cross_above_d"
   | "slow_stoch_k_cross_below_d"
+  // K line level crosses
+  | "slow_stoch_k_cross_above_oversold"
+  | "slow_stoch_k_cross_below_oversold"
+  | "slow_stoch_k_cross_above_overbought"
+  | "slow_stoch_k_cross_below_overbought"
+  // D line level crosses
+  | "slow_stoch_d_cross_above_oversold"
+  | "slow_stoch_d_cross_below_oversold"
+  | "slow_stoch_d_cross_above_overbought"
+  | "slow_stoch_d_cross_below_overbought"
   // Custom comparisons
   | "slow_stoch_k_compare"
   | "slow_stoch_d_compare";
@@ -341,6 +351,8 @@ export type ConditionParams = {
   slowStochSmoothD?: number;
   slowStochOperator?: string;
   slowStochLevel?: number;
+  slowStochOversoldLevel?: number;
+  slowStochOverboughtLevel?: number;
   // Kalman ROC Stoch
   krsMaType?: string;
   krsSmoothLen?: number;
@@ -1010,6 +1022,8 @@ function conditionEntryToExpressionRaw(entry: ConditionEntry): string {
     case "slow_stoch": {
       const smoothK = params.slowStochSmoothK ?? 14;
       const smoothD = params.slowStochSmoothD ?? 3;
+      const oversold = params.slowStochOversoldLevel ?? 20;
+      const overbought = params.slowStochOverboughtLevel ?? 80;
       const sArgs = `smooth_k=${smoothK}, smooth_d=${smoothD}`;
       const kFn = `slow_stoch_k(${sArgs})`;
       const dFn = `slow_stoch_d(${sArgs})`;
@@ -1026,6 +1040,22 @@ function conditionEntryToExpressionRaw(entry: ConditionEntry): string {
           return `(${kFn}[-1] > ${dFn}[-1]) and (${kFn}[-2] <= ${dFn}[-2])`;
         case "slow_stoch_k_cross_below_d":
           return `(${kFn}[-1] < ${dFn}[-1]) and (${kFn}[-2] >= ${dFn}[-2])`;
+        case "slow_stoch_k_cross_above_oversold":
+          return `(${kFn}[-1] > ${oversold}) and (${kFn}[-2] <= ${oversold})`;
+        case "slow_stoch_k_cross_below_oversold":
+          return `(${kFn}[-1] < ${oversold}) and (${kFn}[-2] >= ${oversold})`;
+        case "slow_stoch_k_cross_above_overbought":
+          return `(${kFn}[-1] > ${overbought}) and (${kFn}[-2] <= ${overbought})`;
+        case "slow_stoch_k_cross_below_overbought":
+          return `(${kFn}[-1] < ${overbought}) and (${kFn}[-2] >= ${overbought})`;
+        case "slow_stoch_d_cross_above_oversold":
+          return `(${dFn}[-1] > ${oversold}) and (${dFn}[-2] <= ${oversold})`;
+        case "slow_stoch_d_cross_below_oversold":
+          return `(${dFn}[-1] < ${oversold}) and (${dFn}[-2] >= ${oversold})`;
+        case "slow_stoch_d_cross_above_overbought":
+          return `(${dFn}[-1] > ${overbought}) and (${dFn}[-2] <= ${overbought})`;
+        case "slow_stoch_d_cross_below_overbought":
+          return `(${dFn}[-1] < ${overbought}) and (${dFn}[-2] >= ${overbought})`;
         case "slow_stoch_k_compare": {
           const op = params.slowStochOperator ?? "<";
           const lvl = params.slowStochLevel ?? 20;
