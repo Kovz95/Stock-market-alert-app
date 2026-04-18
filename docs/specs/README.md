@@ -1,5 +1,13 @@
 # Specs Index
 
+### 03 - Custom Discord Condition Channels
+
+- Folder: `03-spec-custom-discord-condition-channels/`
+- Spec: `03-spec-custom-discord-condition-channels/03-spec-custom-discord-condition-channels.md`
+- Tasks: `03-spec-custom-discord-condition-channels/03-tasks-custom-discord-condition-channels.md`
+- Validation: `03-spec-custom-discord-condition-channels/03-validation-custom-discord-condition-channels.md`
+- Questions: `03-spec-custom-discord-condition-channels/03-questions-1-custom-discord-condition-channels.md`
+
 ### 02 - Scanner Results DataTable
 
 - Folder: `02-spec-scanner-results-datatable/`
