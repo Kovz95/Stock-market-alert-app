@@ -7,6 +7,7 @@
 /* eslint-disable */
 import { BinaryReader, BinaryWriter } from "@bufbuild/protobuf/wire";
 import type { CallContext, CallOptions } from "nice-grpc-common";
+import { Timestamp } from "../../google/protobuf/timestamp";
 
 export const protobufPackage = "stockalert.discord.v1";
 
@@ -110,6 +111,69 @@ export interface ResolveWeeklyChannelForTickerRequest {
 
 export interface SendWeeklyTestMessageRequest {
   channelName: string;
+}
+
+export interface CustomDiscordChannel {
+  name: string;
+  channelName: string;
+  description: string;
+  webhookUrl: string;
+  condition: string;
+  enabled: boolean;
+  createdAt?: Date | undefined;
+}
+
+export interface ListCustomDiscordChannelsRequest {
+}
+
+export interface ListCustomDiscordChannelsResponse {
+  channels: CustomDiscordChannel[];
+}
+
+export interface CreateCustomDiscordChannelRequest {
+  name: string;
+  webhookUrl: string;
+  description: string;
+  condition: string;
+  enabled: boolean;
+}
+
+export interface CreateCustomDiscordChannelResponse {
+  success: boolean;
+  errorMessage: string;
+  channel?: CustomDiscordChannel | undefined;
+}
+
+export interface UpdateCustomDiscordChannelRequest {
+  name: string;
+  webhookUrl?: string | undefined;
+  description?: string | undefined;
+  condition?: string | undefined;
+  enabled?: boolean | undefined;
+}
+
+export interface UpdateCustomDiscordChannelResponse {
+  success: boolean;
+  errorMessage: string;
+  channel?: CustomDiscordChannel | undefined;
+}
+
+export interface DeleteCustomDiscordChannelRequest {
+  name: string;
+}
+
+export interface DeleteCustomDiscordChannelResponse {
+  success: boolean;
+  errorMessage: string;
+}
+
+export interface SendCustomDiscordChannelTestMessageRequest {
+  name: string;
+}
+
+export interface SendCustomDiscordChannelTestMessageResponse {
+  success: boolean;
+  errorMessage: string;
 }
 
 function createBaseGetHourlyDiscordConfigRequest(): GetHourlyDiscordConfigRequest {
@@ -1618,6 +1682,1058 @@ export const SendWeeklyTestMessageRequest: MessageFns<SendWeeklyTestMessageReque
   },
 };
 
+function createBaseCustomDiscordChannel(): CustomDiscordChannel {
+  return {
+    name: "",
+    channelName: "",
+    description: "",
+    webhookUrl: "",
+    condition: "",
+    enabled: false,
+    createdAt: undefined,
+  };
+}
+
+export const CustomDiscordChannel: MessageFns<CustomDiscordChannel> = {
+  encode(message: CustomDiscordChannel, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.name !== "") {
+      writer.uint32(10).string(message.name);
+    }
+    if (message.channelName !== "") {
+      writer.uint32(18).string(message.channelName);
+    }
+    if (message.description !== "") {
+      writer.uint32(26).string(message.description);
+    }
+    if (message.webhookUrl !== "") {
+      writer.uint32(34).string(message.webhookUrl);
+    }
+    if (message.condition !== "") {
+      writer.uint32(42).string(message.condition);
+    }
+    if (message.enabled !== false) {
+      writer.uint32(48).bool(message.enabled);
+    }
+    if (message.createdAt !== undefined) {
+      Timestamp.encode(toTimestamp(message.createdAt), writer.uint32(58).fork()).join();
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): CustomDiscordChannel {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseCustomDiscordChannel();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.name = reader.string();
+          continue;
+        }
+        case 2: {
+          if (tag !== 18) {
+            break;
+          }
+
+          message.channelName = reader.string();
+          continue;
+        }
+        case 3: {
+          if (tag !== 26) {
+            break;
+          }
+
+          message.description = reader.string();
+          continue;
+        }
+        case 4: {
+          if (tag !== 34) {
+            break;
+          }
+
+          message.webhookUrl = reader.string();
+          continue;
+        }
+        case 5: {
+          if (tag !== 42) {
+            break;
+          }
+
+          message.condition = reader.string();
+          continue;
+        }
+        case 6: {
+          if (tag !== 48) {
+            break;
+          }
+
+          message.enabled = reader.bool();
+          continue;
+        }
+        case 7: {
+          if (tag !== 58) {
+            break;
+          }
+
+          message.createdAt = fromTimestamp(Timestamp.decode(reader, reader.uint32()));
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): CustomDiscordChannel {
+    return {
+      name: isSet(object.name) ? globalThis.String(object.name) : "",
+      channelName: isSet(object.channelName)
+        ? globalThis.String(object.channelName)
+        : isSet(object.channel_name)
+        ? globalThis.String(object.channel_name)
+        : "",
+      description: isSet(object.description) ? globalThis.String(object.description) : "",
+      webhookUrl: isSet(object.webhookUrl)
+        ? globalThis.String(object.webhookUrl)
+        : isSet(object.webhook_url)
+        ? globalThis.String(object.webhook_url)
+        : "",
+      condition: isSet(object.condition) ? globalThis.String(object.condition) : "",
+      enabled: isSet(object.enabled) ? globalThis.Boolean(object.enabled) : false,
+      createdAt: isSet(object.createdAt)
+        ? fromJsonTimestamp(object.createdAt)
+        : isSet(object.created_at)
+        ? fromJsonTimestamp(object.created_at)
+        : undefined,
+    };
+  },
+
+  toJSON(message: CustomDiscordChannel): unknown {
+    const obj: any = {};
+    if (message.name !== "") {
+      obj.name = message.name;
+    }
+    if (message.channelName !== "") {
+      obj.channelName = message.channelName;
+    }
+    if (message.description !== "") {
+      obj.description = message.description;
+    }
+    if (message.webhookUrl !== "") {
+      obj.webhookUrl = message.webhookUrl;
+    }
+    if (message.condition !== "") {
+      obj.condition = message.condition;
+    }
+    if (message.enabled !== false) {
+      obj.enabled = message.enabled;
+    }
+    if (message.createdAt !== undefined) {
+      obj.createdAt = message.createdAt.toISOString();
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<CustomDiscordChannel>, I>>(base?: I): CustomDiscordChannel {
+    return CustomDiscordChannel.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<CustomDiscordChannel>, I>>(object: I): CustomDiscordChannel {
+    const message = createBaseCustomDiscordChannel();
+    message.name = object.name ?? "";
+    message.channelName = object.channelName ?? "";
+    message.description = object.description ?? "";
+    message.webhookUrl = object.webhookUrl ?? "";
+    message.condition = object.condition ?? "";
+    message.enabled = object.enabled ?? false;
+    message.createdAt = object.createdAt ?? undefined;
+    return message;
+  },
+};
+
+function createBaseListCustomDiscordChannelsRequest(): ListCustomDiscordChannelsRequest {
+  return {};
+}
+
+export const ListCustomDiscordChannelsRequest: MessageFns<ListCustomDiscordChannelsRequest> = {
+  encode(_: ListCustomDiscordChannelsRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): ListCustomDiscordChannelsRequest {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseListCustomDiscordChannelsRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(_: any): ListCustomDiscordChannelsRequest {
+    return {};
+  },
+
+  toJSON(_: ListCustomDiscordChannelsRequest): unknown {
+    const obj: any = {};
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<ListCustomDiscordChannelsRequest>, I>>(
+    base?: I,
+  ): ListCustomDiscordChannelsRequest {
+    return ListCustomDiscordChannelsRequest.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<ListCustomDiscordChannelsRequest>, I>>(
+    _: I,
+  ): ListCustomDiscordChannelsRequest {
+    const message = createBaseListCustomDiscordChannelsRequest();
+    return message;
+  },
+};
+
+function createBaseListCustomDiscordChannelsResponse(): ListCustomDiscordChannelsResponse {
+  return { channels: [] };
+}
+
+export const ListCustomDiscordChannelsResponse: MessageFns<ListCustomDiscordChannelsResponse> = {
+  encode(message: ListCustomDiscordChannelsResponse, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    for (const v of message.channels) {
+      CustomDiscordChannel.encode(v!, writer.uint32(10).fork()).join();
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): ListCustomDiscordChannelsResponse {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseListCustomDiscordChannelsResponse();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.channels.push(CustomDiscordChannel.decode(reader, reader.uint32()));
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): ListCustomDiscordChannelsResponse {
+    return {
+      channels: globalThis.Array.isArray(object?.channels)
+        ? object.channels.map((e: any) => CustomDiscordChannel.fromJSON(e))
+        : [],
+    };
+  },
+
+  toJSON(message: ListCustomDiscordChannelsResponse): unknown {
+    const obj: any = {};
+    if (message.channels?.length) {
+      obj.channels = message.channels.map((e) => CustomDiscordChannel.toJSON(e));
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<ListCustomDiscordChannelsResponse>, I>>(
+    base?: I,
+  ): ListCustomDiscordChannelsResponse {
+    return ListCustomDiscordChannelsResponse.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<ListCustomDiscordChannelsResponse>, I>>(
+    object: I,
+  ): ListCustomDiscordChannelsResponse {
+    const message = createBaseListCustomDiscordChannelsResponse();
+    message.channels = object.channels?.map((e) => CustomDiscordChannel.fromPartial(e)) || [];
+    return message;
+  },
+};
+
+function createBaseCreateCustomDiscordChannelRequest(): CreateCustomDiscordChannelRequest {
+  return { name: "", webhookUrl: "", description: "", condition: "", enabled: false };
+}
+
+export const CreateCustomDiscordChannelRequest: MessageFns<CreateCustomDiscordChannelRequest> = {
+  encode(message: CreateCustomDiscordChannelRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.name !== "") {
+      writer.uint32(10).string(message.name);
+    }
+    if (message.webhookUrl !== "") {
+      writer.uint32(18).string(message.webhookUrl);
+    }
+    if (message.description !== "") {
+      writer.uint32(26).string(message.description);
+    }
+    if (message.condition !== "") {
+      writer.uint32(34).string(message.condition);
+    }
+    if (message.enabled !== false) {
+      writer.uint32(40).bool(message.enabled);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): CreateCustomDiscordChannelRequest {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseCreateCustomDiscordChannelRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.name = reader.string();
+          continue;
+        }
+        case 2: {
+          if (tag !== 18) {
+            break;
+          }
+
+          message.webhookUrl = reader.string();
+          continue;
+        }
+        case 3: {
+          if (tag !== 26) {
+            break;
+          }
+
+          message.description = reader.string();
+          continue;
+        }
+        case 4: {
+          if (tag !== 34) {
+            break;
+          }
+
+          message.condition = reader.string();
+          continue;
+        }
+        case 5: {
+          if (tag !== 40) {
+            break;
+          }
+
+          message.enabled = reader.bool();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): CreateCustomDiscordChannelRequest {
+    return {
+      name: isSet(object.name) ? globalThis.String(object.name) : "",
+      webhookUrl: isSet(object.webhookUrl)
+        ? globalThis.String(object.webhookUrl)
+        : isSet(object.webhook_url)
+        ? globalThis.String(object.webhook_url)
+        : "",
+      description: isSet(object.description) ? globalThis.String(object.description) : "",
+      condition: isSet(object.condition) ? globalThis.String(object.condition) : "",
+      enabled: isSet(object.enabled) ? globalThis.Boolean(object.enabled) : false,
+    };
+  },
+
+  toJSON(message: CreateCustomDiscordChannelRequest): unknown {
+    const obj: any = {};
+    if (message.name !== "") {
+      obj.name = message.name;
+    }
+    if (message.webhookUrl !== "") {
+      obj.webhookUrl = message.webhookUrl;
+    }
+    if (message.description !== "") {
+      obj.description = message.description;
+    }
+    if (message.condition !== "") {
+      obj.condition = message.condition;
+    }
+    if (message.enabled !== false) {
+      obj.enabled = message.enabled;
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<CreateCustomDiscordChannelRequest>, I>>(
+    base?: I,
+  ): CreateCustomDiscordChannelRequest {
+    return CreateCustomDiscordChannelRequest.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<CreateCustomDiscordChannelRequest>, I>>(
+    object: I,
+  ): CreateCustomDiscordChannelRequest {
+    const message = createBaseCreateCustomDiscordChannelRequest();
+    message.name = object.name ?? "";
+    message.webhookUrl = object.webhookUrl ?? "";
+    message.description = object.description ?? "";
+    message.condition = object.condition ?? "";
+    message.enabled = object.enabled ?? false;
+    return message;
+  },
+};
+
+function createBaseCreateCustomDiscordChannelResponse(): CreateCustomDiscordChannelResponse {
+  return { success: false, errorMessage: "", channel: undefined };
+}
+
+export const CreateCustomDiscordChannelResponse: MessageFns<CreateCustomDiscordChannelResponse> = {
+  encode(message: CreateCustomDiscordChannelResponse, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.success !== false) {
+      writer.uint32(8).bool(message.success);
+    }
+    if (message.errorMessage !== "") {
+      writer.uint32(18).string(message.errorMessage);
+    }
+    if (message.channel !== undefined) {
+      CustomDiscordChannel.encode(message.channel, writer.uint32(26).fork()).join();
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): CreateCustomDiscordChannelResponse {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseCreateCustomDiscordChannelResponse();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 8) {
+            break;
+          }
+
+          message.success = reader.bool();
+          continue;
+        }
+        case 2: {
+          if (tag !== 18) {
+            break;
+          }
+
+          message.errorMessage = reader.string();
+          continue;
+        }
+        case 3: {
+          if (tag !== 26) {
+            break;
+          }
+
+          message.channel = CustomDiscordChannel.decode(reader, reader.uint32());
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): CreateCustomDiscordChannelResponse {
+    return {
+      success: isSet(object.success) ? globalThis.Boolean(object.success) : false,
+      errorMessage: isSet(object.errorMessage)
+        ? globalThis.String(object.errorMessage)
+        : isSet(object.error_message)
+        ? globalThis.String(object.error_message)
+        : "",
+      channel: isSet(object.channel) ? CustomDiscordChannel.fromJSON(object.channel) : undefined,
+    };
+  },
+
+  toJSON(message: CreateCustomDiscordChannelResponse): unknown {
+    const obj: any = {};
+    if (message.success !== false) {
+      obj.success = message.success;
+    }
+    if (message.errorMessage !== "") {
+      obj.errorMessage = message.errorMessage;
+    }
+    if (message.channel !== undefined) {
+      obj.channel = CustomDiscordChannel.toJSON(message.channel);
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<CreateCustomDiscordChannelResponse>, I>>(
+    base?: I,
+  ): CreateCustomDiscordChannelResponse {
+    return CreateCustomDiscordChannelResponse.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<CreateCustomDiscordChannelResponse>, I>>(
+    object: I,
+  ): CreateCustomDiscordChannelResponse {
+    const message = createBaseCreateCustomDiscordChannelResponse();
+    message.success = object.success ?? false;
+    message.errorMessage = object.errorMessage ?? "";
+    message.channel = (object.channel !== undefined && object.channel !== null)
+      ? CustomDiscordChannel.fromPartial(object.channel)
+      : undefined;
+    return message;
+  },
+};
+
+function createBaseUpdateCustomDiscordChannelRequest(): UpdateCustomDiscordChannelRequest {
+  return { name: "", webhookUrl: undefined, description: undefined, condition: undefined, enabled: undefined };
+}
+
+export const UpdateCustomDiscordChannelRequest: MessageFns<UpdateCustomDiscordChannelRequest> = {
+  encode(message: UpdateCustomDiscordChannelRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.name !== "") {
+      writer.uint32(10).string(message.name);
+    }
+    if (message.webhookUrl !== undefined) {
+      writer.uint32(18).string(message.webhookUrl);
+    }
+    if (message.description !== undefined) {
+      writer.uint32(26).string(message.description);
+    }
+    if (message.condition !== undefined) {
+      writer.uint32(34).string(message.condition);
+    }
+    if (message.enabled !== undefined) {
+      writer.uint32(40).bool(message.enabled);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): UpdateCustomDiscordChannelRequest {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseUpdateCustomDiscordChannelRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.name = reader.string();
+          continue;
+        }
+        case 2: {
+          if (tag !== 18) {
+            break;
+          }
+
+          message.webhookUrl = reader.string();
+          continue;
+        }
+        case 3: {
+          if (tag !== 26) {
+            break;
+          }
+
+          message.description = reader.string();
+          continue;
+        }
+        case 4: {
+          if (tag !== 34) {
+            break;
+          }
+
+          message.condition = reader.string();
+          continue;
+        }
+        case 5: {
+          if (tag !== 40) {
+            break;
+          }
+
+          message.enabled = reader.bool();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): UpdateCustomDiscordChannelRequest {
+    return {
+      name: isSet(object.name) ? globalThis.String(object.name) : "",
+      webhookUrl: isSet(object.webhookUrl)
+        ? globalThis.String(object.webhookUrl)
+        : isSet(object.webhook_url)
+        ? globalThis.String(object.webhook_url)
+        : undefined,
+      description: isSet(object.description) ? globalThis.String(object.description) : undefined,
+      condition: isSet(object.condition) ? globalThis.String(object.condition) : undefined,
+      enabled: isSet(object.enabled) ? globalThis.Boolean(object.enabled) : undefined,
+    };
+  },
+
+  toJSON(message: UpdateCustomDiscordChannelRequest): unknown {
+    const obj: any = {};
+    if (message.name !== "") {
+      obj.name = message.name;
+    }
+    if (message.webhookUrl !== undefined) {
+      obj.webhookUrl = message.webhookUrl;
+    }
+    if (message.description !== undefined) {
+      obj.description = message.description;
+    }
+    if (message.condition !== undefined) {
+      obj.condition = message.condition;
+    }
+    if (message.enabled !== undefined) {
+      obj.enabled = message.enabled;
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<UpdateCustomDiscordChannelRequest>, I>>(
+    base?: I,
+  ): UpdateCustomDiscordChannelRequest {
+    return UpdateCustomDiscordChannelRequest.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<UpdateCustomDiscordChannelRequest>, I>>(
+    object: I,
+  ): UpdateCustomDiscordChannelRequest {
+    const message = createBaseUpdateCustomDiscordChannelRequest();
+    message.name = object.name ?? "";
+    message.webhookUrl = object.webhookUrl ?? undefined;
+    message.description = object.description ?? undefined;
+    message.condition = object.condition ?? undefined;
+    message.enabled = object.enabled ?? undefined;
+    return message;
+  },
+};
+
+function createBaseUpdateCustomDiscordChannelResponse(): UpdateCustomDiscordChannelResponse {
+  return { success: false, errorMessage: "", channel: undefined };
+}
+
+export const UpdateCustomDiscordChannelResponse: MessageFns<UpdateCustomDiscordChannelResponse> = {
+  encode(message: UpdateCustomDiscordChannelResponse, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.success !== false) {
+      writer.uint32(8).bool(message.success);
+    }
+    if (message.errorMessage !== "") {
+      writer.uint32(18).string(message.errorMessage);
+    }
+    if (message.channel !== undefined) {
+      CustomDiscordChannel.encode(message.channel, writer.uint32(26).fork()).join();
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): UpdateCustomDiscordChannelResponse {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseUpdateCustomDiscordChannelResponse();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 8) {
+            break;
+          }
+
+          message.success = reader.bool();
+          continue;
+        }
+        case 2: {
+          if (tag !== 18) {
+            break;
+          }
+
+          message.errorMessage = reader.string();
+          continue;
+        }
+        case 3: {
+          if (tag !== 26) {
+            break;
+          }
+
+          message.channel = CustomDiscordChannel.decode(reader, reader.uint32());
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): UpdateCustomDiscordChannelResponse {
+    return {
+      success: isSet(object.success) ? globalThis.Boolean(object.success) : false,
+      errorMessage: isSet(object.errorMessage)
+        ? globalThis.String(object.errorMessage)
+        : isSet(object.error_message)
+        ? globalThis.String(object.error_message)
+        : "",
+      channel: isSet(object.channel) ? CustomDiscordChannel.fromJSON(object.channel) : undefined,
+    };
+  },
+
+  toJSON(message: UpdateCustomDiscordChannelResponse): unknown {
+    const obj: any = {};
+    if (message.success !== false) {
+      obj.success = message.success;
+    }
+    if (message.errorMessage !== "") {
+      obj.errorMessage = message.errorMessage;
+    }
+    if (message.channel !== undefined) {
+      obj.channel = CustomDiscordChannel.toJSON(message.channel);
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<UpdateCustomDiscordChannelResponse>, I>>(
+    base?: I,
+  ): UpdateCustomDiscordChannelResponse {
+    return UpdateCustomDiscordChannelResponse.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<UpdateCustomDiscordChannelResponse>, I>>(
+    object: I,
+  ): UpdateCustomDiscordChannelResponse {
+    const message = createBaseUpdateCustomDiscordChannelResponse();
+    message.success = object.success ?? false;
+    message.errorMessage = object.errorMessage ?? "";
+    message.channel = (object.channel !== undefined && object.channel !== null)
+      ? CustomDiscordChannel.fromPartial(object.channel)
+      : undefined;
+    return message;
+  },
+};
+
+function createBaseDeleteCustomDiscordChannelRequest(): DeleteCustomDiscordChannelRequest {
+  return { name: "" };
+}
+
+export const DeleteCustomDiscordChannelRequest: MessageFns<DeleteCustomDiscordChannelRequest> = {
+  encode(message: DeleteCustomDiscordChannelRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.name !== "") {
+      writer.uint32(10).string(message.name);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): DeleteCustomDiscordChannelRequest {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseDeleteCustomDiscordChannelRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.name = reader.string();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): DeleteCustomDiscordChannelRequest {
+    return { name: isSet(object.name) ? globalThis.String(object.name) : "" };
+  },
+
+  toJSON(message: DeleteCustomDiscordChannelRequest): unknown {
+    const obj: any = {};
+    if (message.name !== "") {
+      obj.name = message.name;
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<DeleteCustomDiscordChannelRequest>, I>>(
+    base?: I,
+  ): DeleteCustomDiscordChannelRequest {
+    return DeleteCustomDiscordChannelRequest.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<DeleteCustomDiscordChannelRequest>, I>>(
+    object: I,
+  ): DeleteCustomDiscordChannelRequest {
+    const message = createBaseDeleteCustomDiscordChannelRequest();
+    message.name = object.name ?? "";
+    return message;
+  },
+};
+
+function createBaseDeleteCustomDiscordChannelResponse(): DeleteCustomDiscordChannelResponse {
+  return { success: false, errorMessage: "" };
+}
+
+export const DeleteCustomDiscordChannelResponse: MessageFns<DeleteCustomDiscordChannelResponse> = {
+  encode(message: DeleteCustomDiscordChannelResponse, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.success !== false) {
+      writer.uint32(8).bool(message.success);
+    }
+    if (message.errorMessage !== "") {
+      writer.uint32(18).string(message.errorMessage);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): DeleteCustomDiscordChannelResponse {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseDeleteCustomDiscordChannelResponse();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 8) {
+            break;
+          }
+
+          message.success = reader.bool();
+          continue;
+        }
+        case 2: {
+          if (tag !== 18) {
+            break;
+          }
+
+          message.errorMessage = reader.string();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): DeleteCustomDiscordChannelResponse {
+    return {
+      success: isSet(object.success) ? globalThis.Boolean(object.success) : false,
+      errorMessage: isSet(object.errorMessage)
+        ? globalThis.String(object.errorMessage)
+        : isSet(object.error_message)
+        ? globalThis.String(object.error_message)
+        : "",
+    };
+  },
+
+  toJSON(message: DeleteCustomDiscordChannelResponse): unknown {
+    const obj: any = {};
+    if (message.success !== false) {
+      obj.success = message.success;
+    }
+    if (message.errorMessage !== "") {
+      obj.errorMessage = message.errorMessage;
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<DeleteCustomDiscordChannelResponse>, I>>(
+    base?: I,
+  ): DeleteCustomDiscordChannelResponse {
+    return DeleteCustomDiscordChannelResponse.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<DeleteCustomDiscordChannelResponse>, I>>(
+    object: I,
+  ): DeleteCustomDiscordChannelResponse {
+    const message = createBaseDeleteCustomDiscordChannelResponse();
+    message.success = object.success ?? false;
+    message.errorMessage = object.errorMessage ?? "";
+    return message;
+  },
+};
+
+function createBaseSendCustomDiscordChannelTestMessageRequest(): SendCustomDiscordChannelTestMessageRequest {
+  return { name: "" };
+}
+
+export const SendCustomDiscordChannelTestMessageRequest: MessageFns<SendCustomDiscordChannelTestMessageRequest> = {
+  encode(message: SendCustomDiscordChannelTestMessageRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.name !== "") {
+      writer.uint32(10).string(message.name);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): SendCustomDiscordChannelTestMessageRequest {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseSendCustomDiscordChannelTestMessageRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.name = reader.string();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): SendCustomDiscordChannelTestMessageRequest {
+    return { name: isSet(object.name) ? globalThis.String(object.name) : "" };
+  },
+
+  toJSON(message: SendCustomDiscordChannelTestMessageRequest): unknown {
+    const obj: any = {};
+    if (message.name !== "") {
+      obj.name = message.name;
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<SendCustomDiscordChannelTestMessageRequest>, I>>(
+    base?: I,
+  ): SendCustomDiscordChannelTestMessageRequest {
+    return SendCustomDiscordChannelTestMessageRequest.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<SendCustomDiscordChannelTestMessageRequest>, I>>(
+    object: I,
+  ): SendCustomDiscordChannelTestMessageRequest {
+    const message = createBaseSendCustomDiscordChannelTestMessageRequest();
+    message.name = object.name ?? "";
+    return message;
+  },
+};
+
+function createBaseSendCustomDiscordChannelTestMessageResponse(): SendCustomDiscordChannelTestMessageResponse {
+  return { success: false, errorMessage: "" };
+}
+
+export const SendCustomDiscordChannelTestMessageResponse: MessageFns<SendCustomDiscordChannelTestMessageResponse> = {
+  encode(
+    message: SendCustomDiscordChannelTestMessageResponse,
+    writer: BinaryWriter = new BinaryWriter(),
+  ): BinaryWriter {
+    if (message.success !== false) {
+      writer.uint32(8).bool(message.success);
+    }
+    if (message.errorMessage !== "") {
+      writer.uint32(18).string(message.errorMessage);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): SendCustomDiscordChannelTestMessageResponse {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseSendCustomDiscordChannelTestMessageResponse();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 8) {
+            break;
+          }
+
+          message.success = reader.bool();
+          continue;
+        }
+        case 2: {
+          if (tag !== 18) {
+            break;
+          }
+
+          message.errorMessage = reader.string();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): SendCustomDiscordChannelTestMessageResponse {
+    return {
+      success: isSet(object.success) ? globalThis.Boolean(object.success) : false,
+      errorMessage: isSet(object.errorMessage)
+        ? globalThis.String(object.errorMessage)
+        : isSet(object.error_message)
+        ? globalThis.String(object.error_message)
+        : "",
+    };
+  },
+
+  toJSON(message: SendCustomDiscordChannelTestMessageResponse): unknown {
+    const obj: any = {};
+    if (message.success !== false) {
+      obj.success = message.success;
+    }
+    if (message.errorMessage !== "") {
+      obj.errorMessage = message.errorMessage;
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<SendCustomDiscordChannelTestMessageResponse>, I>>(
+    base?: I,
+  ): SendCustomDiscordChannelTestMessageResponse {
+    return SendCustomDiscordChannelTestMessageResponse.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<SendCustomDiscordChannelTestMessageResponse>, I>>(
+    object: I,
+  ): SendCustomDiscordChannelTestMessageResponse {
+    const message = createBaseSendCustomDiscordChannelTestMessageResponse();
+    message.success = object.success ?? false;
+    message.errorMessage = object.errorMessage ?? "";
+    return message;
+  },
+};
+
 export type DiscordConfigServiceDefinition = typeof DiscordConfigServiceDefinition;
 export const DiscordConfigServiceDefinition = {
   name: "DiscordConfigService",
@@ -1746,6 +2862,47 @@ export const DiscordConfigServiceDefinition = {
       responseStream: false,
       options: {},
     },
+    /** Custom condition channels */
+    listCustomDiscordChannels: {
+      name: "ListCustomDiscordChannels",
+      requestType: ListCustomDiscordChannelsRequest,
+      requestStream: false,
+      responseType: ListCustomDiscordChannelsResponse,
+      responseStream: false,
+      options: {},
+    },
+    createCustomDiscordChannel: {
+      name: "CreateCustomDiscordChannel",
+      requestType: CreateCustomDiscordChannelRequest,
+      requestStream: false,
+      responseType: CreateCustomDiscordChannelResponse,
+      responseStream: false,
+      options: {},
+    },
+    updateCustomDiscordChannel: {
+      name: "UpdateCustomDiscordChannel",
+      requestType: UpdateCustomDiscordChannelRequest,
+      requestStream: false,
+      responseType: UpdateCustomDiscordChannelResponse,
+      responseStream: false,
+      options: {},
+    },
+    deleteCustomDiscordChannel: {
+      name: "DeleteCustomDiscordChannel",
+      requestType: DeleteCustomDiscordChannelRequest,
+      requestStream: false,
+      responseType: DeleteCustomDiscordChannelResponse,
+      responseStream: false,
+      options: {},
+    },
+    sendCustomDiscordChannelTestMessage: {
+      name: "SendCustomDiscordChannelTestMessage",
+      requestType: SendCustomDiscordChannelTestMessageRequest,
+      requestStream: false,
+      responseType: SendCustomDiscordChannelTestMessageResponse,
+      responseStream: false,
+      options: {},
+    },
   },
 } as const;
 
@@ -1813,6 +2970,27 @@ export interface DiscordConfigServiceImplementation<CallContextExt = {}> {
     request: SendWeeklyTestMessageRequest,
     context: CallContext & CallContextExt,
   ): Promise<DeepPartial<SendHourlyTestMessageResponse>>;
+  /** Custom condition channels */
+  listCustomDiscordChannels(
+    request: ListCustomDiscordChannelsRequest,
+    context: CallContext & CallContextExt,
+  ): Promise<DeepPartial<ListCustomDiscordChannelsResponse>>;
+  createCustomDiscordChannel(
+    request: CreateCustomDiscordChannelRequest,
+    context: CallContext & CallContextExt,
+  ): Promise<DeepPartial<CreateCustomDiscordChannelResponse>>;
+  updateCustomDiscordChannel(
+    request: UpdateCustomDiscordChannelRequest,
+    context: CallContext & CallContextExt,
+  ): Promise<DeepPartial<UpdateCustomDiscordChannelResponse>>;
+  deleteCustomDiscordChannel(
+    request: DeleteCustomDiscordChannelRequest,
+    context: CallContext & CallContextExt,
+  ): Promise<DeepPartial<DeleteCustomDiscordChannelResponse>>;
+  sendCustomDiscordChannelTestMessage(
+    request: SendCustomDiscordChannelTestMessageRequest,
+    context: CallContext & CallContextExt,
+  ): Promise<DeepPartial<SendCustomDiscordChannelTestMessageResponse>>;
 }
 
 export interface DiscordConfigServiceClient<CallOptionsExt = {}> {
@@ -1879,6 +3057,27 @@ export interface DiscordConfigServiceClient<CallOptionsExt = {}> {
     request: DeepPartial<SendWeeklyTestMessageRequest>,
     options?: CallOptions & CallOptionsExt,
   ): Promise<SendHourlyTestMessageResponse>;
+  /** Custom condition channels */
+  listCustomDiscordChannels(
+    request: DeepPartial<ListCustomDiscordChannelsRequest>,
+    options?: CallOptions & CallOptionsExt,
+  ): Promise<ListCustomDiscordChannelsResponse>;
+  createCustomDiscordChannel(
+    request: DeepPartial<CreateCustomDiscordChannelRequest>,
+    options?: CallOptions & CallOptionsExt,
+  ): Promise<CreateCustomDiscordChannelResponse>;
+  updateCustomDiscordChannel(
+    request: DeepPartial<UpdateCustomDiscordChannelRequest>,
+    options?: CallOptions & CallOptionsExt,
+  ): Promise<UpdateCustomDiscordChannelResponse>;
+  deleteCustomDiscordChannel(
+    request: DeepPartial<DeleteCustomDiscordChannelRequest>,
+    options?: CallOptions & CallOptionsExt,
+  ): Promise<DeleteCustomDiscordChannelResponse>;
+  sendCustomDiscordChannelTestMessage(
+    request: DeepPartial<SendCustomDiscordChannelTestMessageRequest>,
+    options?: CallOptions & CallOptionsExt,
+  ): Promise<SendCustomDiscordChannelTestMessageResponse>;
 }
 
 type Builtin = Date | Function | Uint8Array | string | number | boolean | undefined;
@@ -1892,6 +3091,28 @@ export type DeepPartial<T> = T extends Builtin ? T
 type KeysOfUnion<T> = T extends T ? keyof T : never;
 export type Exact<P, I extends P> = P extends Builtin ? P
   : P & { [K in keyof P]: Exact<P[K], I[K]> } & { [K in Exclude<keyof I, KeysOfUnion<P>>]: never };
+
+function toTimestamp(date: Date): Timestamp {
+  const seconds = Math.trunc(date.getTime() / 1_000);
+  const nanos = (date.getTime() % 1_000) * 1_000_000;
+  return { seconds, nanos };
+}
+
+function fromTimestamp(t: Timestamp): Date {
+  let millis = (t.seconds || 0) * 1_000;
+  millis += (t.nanos || 0) / 1_000_000;
+  return new globalThis.Date(millis);
+}
+
+function fromJsonTimestamp(o: any): Date {
+  if (o instanceof globalThis.Date) {
+    return o;
+  } else if (typeof o === "string") {
+    return new globalThis.Date(o);
+  } else {
+    return fromTimestamp(Timestamp.fromJSON(o));
+  }
+}
 
 function isSet(value: any): boolean {
   return value !== null && value !== undefined;

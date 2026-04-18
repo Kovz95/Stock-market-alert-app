@@ -19,21 +19,26 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	DiscordConfigService_GetHourlyDiscordConfig_FullMethodName        = "/stockalert.discord.v1.DiscordConfigService/GetHourlyDiscordConfig"
-	DiscordConfigService_CopyDailyToHourly_FullMethodName             = "/stockalert.discord.v1.DiscordConfigService/CopyDailyToHourly"
-	DiscordConfigService_UpdateHourlyChannelWebhook_FullMethodName    = "/stockalert.discord.v1.DiscordConfigService/UpdateHourlyChannelWebhook"
-	DiscordConfigService_ResolveHourlyChannelForTicker_FullMethodName = "/stockalert.discord.v1.DiscordConfigService/ResolveHourlyChannelForTicker"
-	DiscordConfigService_SendHourlyTestMessage_FullMethodName         = "/stockalert.discord.v1.DiscordConfigService/SendHourlyTestMessage"
-	DiscordConfigService_GetDailyDiscordConfig_FullMethodName         = "/stockalert.discord.v1.DiscordConfigService/GetDailyDiscordConfig"
-	DiscordConfigService_CopyBaseToDaily_FullMethodName               = "/stockalert.discord.v1.DiscordConfigService/CopyBaseToDaily"
-	DiscordConfigService_UpdateDailyChannelWebhook_FullMethodName     = "/stockalert.discord.v1.DiscordConfigService/UpdateDailyChannelWebhook"
-	DiscordConfigService_ResolveDailyChannelForTicker_FullMethodName  = "/stockalert.discord.v1.DiscordConfigService/ResolveDailyChannelForTicker"
-	DiscordConfigService_SendDailyTestMessage_FullMethodName          = "/stockalert.discord.v1.DiscordConfigService/SendDailyTestMessage"
-	DiscordConfigService_GetWeeklyDiscordConfig_FullMethodName        = "/stockalert.discord.v1.DiscordConfigService/GetWeeklyDiscordConfig"
-	DiscordConfigService_CopyBaseToWeekly_FullMethodName              = "/stockalert.discord.v1.DiscordConfigService/CopyBaseToWeekly"
-	DiscordConfigService_UpdateWeeklyChannelWebhook_FullMethodName    = "/stockalert.discord.v1.DiscordConfigService/UpdateWeeklyChannelWebhook"
-	DiscordConfigService_ResolveWeeklyChannelForTicker_FullMethodName = "/stockalert.discord.v1.DiscordConfigService/ResolveWeeklyChannelForTicker"
-	DiscordConfigService_SendWeeklyTestMessage_FullMethodName         = "/stockalert.discord.v1.DiscordConfigService/SendWeeklyTestMessage"
+	DiscordConfigService_GetHourlyDiscordConfig_FullMethodName              = "/stockalert.discord.v1.DiscordConfigService/GetHourlyDiscordConfig"
+	DiscordConfigService_CopyDailyToHourly_FullMethodName                   = "/stockalert.discord.v1.DiscordConfigService/CopyDailyToHourly"
+	DiscordConfigService_UpdateHourlyChannelWebhook_FullMethodName          = "/stockalert.discord.v1.DiscordConfigService/UpdateHourlyChannelWebhook"
+	DiscordConfigService_ResolveHourlyChannelForTicker_FullMethodName       = "/stockalert.discord.v1.DiscordConfigService/ResolveHourlyChannelForTicker"
+	DiscordConfigService_SendHourlyTestMessage_FullMethodName               = "/stockalert.discord.v1.DiscordConfigService/SendHourlyTestMessage"
+	DiscordConfigService_GetDailyDiscordConfig_FullMethodName               = "/stockalert.discord.v1.DiscordConfigService/GetDailyDiscordConfig"
+	DiscordConfigService_CopyBaseToDaily_FullMethodName                     = "/stockalert.discord.v1.DiscordConfigService/CopyBaseToDaily"
+	DiscordConfigService_UpdateDailyChannelWebhook_FullMethodName           = "/stockalert.discord.v1.DiscordConfigService/UpdateDailyChannelWebhook"
+	DiscordConfigService_ResolveDailyChannelForTicker_FullMethodName        = "/stockalert.discord.v1.DiscordConfigService/ResolveDailyChannelForTicker"
+	DiscordConfigService_SendDailyTestMessage_FullMethodName                = "/stockalert.discord.v1.DiscordConfigService/SendDailyTestMessage"
+	DiscordConfigService_GetWeeklyDiscordConfig_FullMethodName              = "/stockalert.discord.v1.DiscordConfigService/GetWeeklyDiscordConfig"
+	DiscordConfigService_CopyBaseToWeekly_FullMethodName                    = "/stockalert.discord.v1.DiscordConfigService/CopyBaseToWeekly"
+	DiscordConfigService_UpdateWeeklyChannelWebhook_FullMethodName          = "/stockalert.discord.v1.DiscordConfigService/UpdateWeeklyChannelWebhook"
+	DiscordConfigService_ResolveWeeklyChannelForTicker_FullMethodName       = "/stockalert.discord.v1.DiscordConfigService/ResolveWeeklyChannelForTicker"
+	DiscordConfigService_SendWeeklyTestMessage_FullMethodName               = "/stockalert.discord.v1.DiscordConfigService/SendWeeklyTestMessage"
+	DiscordConfigService_ListCustomDiscordChannels_FullMethodName           = "/stockalert.discord.v1.DiscordConfigService/ListCustomDiscordChannels"
+	DiscordConfigService_CreateCustomDiscordChannel_FullMethodName          = "/stockalert.discord.v1.DiscordConfigService/CreateCustomDiscordChannel"
+	DiscordConfigService_UpdateCustomDiscordChannel_FullMethodName          = "/stockalert.discord.v1.DiscordConfigService/UpdateCustomDiscordChannel"
+	DiscordConfigService_DeleteCustomDiscordChannel_FullMethodName          = "/stockalert.discord.v1.DiscordConfigService/DeleteCustomDiscordChannel"
+	DiscordConfigService_SendCustomDiscordChannelTestMessage_FullMethodName = "/stockalert.discord.v1.DiscordConfigService/SendCustomDiscordChannelTestMessage"
 )
 
 // DiscordConfigServiceClient is the client API for DiscordConfigService service.
@@ -58,6 +63,12 @@ type DiscordConfigServiceClient interface {
 	UpdateWeeklyChannelWebhook(ctx context.Context, in *UpdateWeeklyChannelWebhookRequest, opts ...grpc.CallOption) (*UpdateHourlyChannelWebhookResponse, error)
 	ResolveWeeklyChannelForTicker(ctx context.Context, in *ResolveWeeklyChannelForTickerRequest, opts ...grpc.CallOption) (*ResolveHourlyChannelForTickerResponse, error)
 	SendWeeklyTestMessage(ctx context.Context, in *SendWeeklyTestMessageRequest, opts ...grpc.CallOption) (*SendHourlyTestMessageResponse, error)
+	// Custom condition channels
+	ListCustomDiscordChannels(ctx context.Context, in *ListCustomDiscordChannelsRequest, opts ...grpc.CallOption) (*ListCustomDiscordChannelsResponse, error)
+	CreateCustomDiscordChannel(ctx context.Context, in *CreateCustomDiscordChannelRequest, opts ...grpc.CallOption) (*CreateCustomDiscordChannelResponse, error)
+	UpdateCustomDiscordChannel(ctx context.Context, in *UpdateCustomDiscordChannelRequest, opts ...grpc.CallOption) (*UpdateCustomDiscordChannelResponse, error)
+	DeleteCustomDiscordChannel(ctx context.Context, in *DeleteCustomDiscordChannelRequest, opts ...grpc.CallOption) (*DeleteCustomDiscordChannelResponse, error)
+	SendCustomDiscordChannelTestMessage(ctx context.Context, in *SendCustomDiscordChannelTestMessageRequest, opts ...grpc.CallOption) (*SendCustomDiscordChannelTestMessageResponse, error)
 }
 
 type discordConfigServiceClient struct {
@@ -218,6 +229,56 @@ func (c *discordConfigServiceClient) SendWeeklyTestMessage(ctx context.Context, 
 	return out, nil
 }
 
+func (c *discordConfigServiceClient) ListCustomDiscordChannels(ctx context.Context, in *ListCustomDiscordChannelsRequest, opts ...grpc.CallOption) (*ListCustomDiscordChannelsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListCustomDiscordChannelsResponse)
+	err := c.cc.Invoke(ctx, DiscordConfigService_ListCustomDiscordChannels_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *discordConfigServiceClient) CreateCustomDiscordChannel(ctx context.Context, in *CreateCustomDiscordChannelRequest, opts ...grpc.CallOption) (*CreateCustomDiscordChannelResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CreateCustomDiscordChannelResponse)
+	err := c.cc.Invoke(ctx, DiscordConfigService_CreateCustomDiscordChannel_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *discordConfigServiceClient) UpdateCustomDiscordChannel(ctx context.Context, in *UpdateCustomDiscordChannelRequest, opts ...grpc.CallOption) (*UpdateCustomDiscordChannelResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(UpdateCustomDiscordChannelResponse)
+	err := c.cc.Invoke(ctx, DiscordConfigService_UpdateCustomDiscordChannel_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *discordConfigServiceClient) DeleteCustomDiscordChannel(ctx context.Context, in *DeleteCustomDiscordChannelRequest, opts ...grpc.CallOption) (*DeleteCustomDiscordChannelResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(DeleteCustomDiscordChannelResponse)
+	err := c.cc.Invoke(ctx, DiscordConfigService_DeleteCustomDiscordChannel_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *discordConfigServiceClient) SendCustomDiscordChannelTestMessage(ctx context.Context, in *SendCustomDiscordChannelTestMessageRequest, opts ...grpc.CallOption) (*SendCustomDiscordChannelTestMessageResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SendCustomDiscordChannelTestMessageResponse)
+	err := c.cc.Invoke(ctx, DiscordConfigService_SendCustomDiscordChannelTestMessage_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // DiscordConfigServiceServer is the server API for DiscordConfigService service.
 // All implementations must embed UnimplementedDiscordConfigServiceServer
 // for forward compatibility.
@@ -240,6 +301,12 @@ type DiscordConfigServiceServer interface {
 	UpdateWeeklyChannelWebhook(context.Context, *UpdateWeeklyChannelWebhookRequest) (*UpdateHourlyChannelWebhookResponse, error)
 	ResolveWeeklyChannelForTicker(context.Context, *ResolveWeeklyChannelForTickerRequest) (*ResolveHourlyChannelForTickerResponse, error)
 	SendWeeklyTestMessage(context.Context, *SendWeeklyTestMessageRequest) (*SendHourlyTestMessageResponse, error)
+	// Custom condition channels
+	ListCustomDiscordChannels(context.Context, *ListCustomDiscordChannelsRequest) (*ListCustomDiscordChannelsResponse, error)
+	CreateCustomDiscordChannel(context.Context, *CreateCustomDiscordChannelRequest) (*CreateCustomDiscordChannelResponse, error)
+	UpdateCustomDiscordChannel(context.Context, *UpdateCustomDiscordChannelRequest) (*UpdateCustomDiscordChannelResponse, error)
+	DeleteCustomDiscordChannel(context.Context, *DeleteCustomDiscordChannelRequest) (*DeleteCustomDiscordChannelResponse, error)
+	SendCustomDiscordChannelTestMessage(context.Context, *SendCustomDiscordChannelTestMessageRequest) (*SendCustomDiscordChannelTestMessageResponse, error)
 	mustEmbedUnimplementedDiscordConfigServiceServer()
 }
 
@@ -294,6 +361,21 @@ func (UnimplementedDiscordConfigServiceServer) ResolveWeeklyChannelForTicker(con
 }
 func (UnimplementedDiscordConfigServiceServer) SendWeeklyTestMessage(context.Context, *SendWeeklyTestMessageRequest) (*SendHourlyTestMessageResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method SendWeeklyTestMessage not implemented")
+}
+func (UnimplementedDiscordConfigServiceServer) ListCustomDiscordChannels(context.Context, *ListCustomDiscordChannelsRequest) (*ListCustomDiscordChannelsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListCustomDiscordChannels not implemented")
+}
+func (UnimplementedDiscordConfigServiceServer) CreateCustomDiscordChannel(context.Context, *CreateCustomDiscordChannelRequest) (*CreateCustomDiscordChannelResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method CreateCustomDiscordChannel not implemented")
+}
+func (UnimplementedDiscordConfigServiceServer) UpdateCustomDiscordChannel(context.Context, *UpdateCustomDiscordChannelRequest) (*UpdateCustomDiscordChannelResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method UpdateCustomDiscordChannel not implemented")
+}
+func (UnimplementedDiscordConfigServiceServer) DeleteCustomDiscordChannel(context.Context, *DeleteCustomDiscordChannelRequest) (*DeleteCustomDiscordChannelResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method DeleteCustomDiscordChannel not implemented")
+}
+func (UnimplementedDiscordConfigServiceServer) SendCustomDiscordChannelTestMessage(context.Context, *SendCustomDiscordChannelTestMessageRequest) (*SendCustomDiscordChannelTestMessageResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SendCustomDiscordChannelTestMessage not implemented")
 }
 func (UnimplementedDiscordConfigServiceServer) mustEmbedUnimplementedDiscordConfigServiceServer() {}
 func (UnimplementedDiscordConfigServiceServer) testEmbeddedByValue()                              {}
@@ -586,6 +668,96 @@ func _DiscordConfigService_SendWeeklyTestMessage_Handler(srv interface{}, ctx co
 	return interceptor(ctx, in, info, handler)
 }
 
+func _DiscordConfigService_ListCustomDiscordChannels_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListCustomDiscordChannelsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DiscordConfigServiceServer).ListCustomDiscordChannels(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: DiscordConfigService_ListCustomDiscordChannels_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DiscordConfigServiceServer).ListCustomDiscordChannels(ctx, req.(*ListCustomDiscordChannelsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _DiscordConfigService_CreateCustomDiscordChannel_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateCustomDiscordChannelRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DiscordConfigServiceServer).CreateCustomDiscordChannel(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: DiscordConfigService_CreateCustomDiscordChannel_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DiscordConfigServiceServer).CreateCustomDiscordChannel(ctx, req.(*CreateCustomDiscordChannelRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _DiscordConfigService_UpdateCustomDiscordChannel_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateCustomDiscordChannelRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DiscordConfigServiceServer).UpdateCustomDiscordChannel(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: DiscordConfigService_UpdateCustomDiscordChannel_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DiscordConfigServiceServer).UpdateCustomDiscordChannel(ctx, req.(*UpdateCustomDiscordChannelRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _DiscordConfigService_DeleteCustomDiscordChannel_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteCustomDiscordChannelRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DiscordConfigServiceServer).DeleteCustomDiscordChannel(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: DiscordConfigService_DeleteCustomDiscordChannel_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DiscordConfigServiceServer).DeleteCustomDiscordChannel(ctx, req.(*DeleteCustomDiscordChannelRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _DiscordConfigService_SendCustomDiscordChannelTestMessage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SendCustomDiscordChannelTestMessageRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DiscordConfigServiceServer).SendCustomDiscordChannelTestMessage(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: DiscordConfigService_SendCustomDiscordChannelTestMessage_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DiscordConfigServiceServer).SendCustomDiscordChannelTestMessage(ctx, req.(*SendCustomDiscordChannelTestMessageRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // DiscordConfigService_ServiceDesc is the grpc.ServiceDesc for DiscordConfigService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -652,6 +824,26 @@ var DiscordConfigService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SendWeeklyTestMessage",
 			Handler:    _DiscordConfigService_SendWeeklyTestMessage_Handler,
+		},
+		{
+			MethodName: "ListCustomDiscordChannels",
+			Handler:    _DiscordConfigService_ListCustomDiscordChannels_Handler,
+		},
+		{
+			MethodName: "CreateCustomDiscordChannel",
+			Handler:    _DiscordConfigService_CreateCustomDiscordChannel_Handler,
+		},
+		{
+			MethodName: "UpdateCustomDiscordChannel",
+			Handler:    _DiscordConfigService_UpdateCustomDiscordChannel_Handler,
+		},
+		{
+			MethodName: "DeleteCustomDiscordChannel",
+			Handler:    _DiscordConfigService_DeleteCustomDiscordChannel_Handler,
+		},
+		{
+			MethodName: "SendCustomDiscordChannelTestMessage",
+			Handler:    _DiscordConfigService_SendCustomDiscordChannelTestMessage_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

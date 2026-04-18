@@ -9,6 +9,7 @@ package discordv1
 import (
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
@@ -1017,11 +1018,647 @@ func (x *SendWeeklyTestMessageRequest) GetChannelName() string {
 	return ""
 }
 
+type CustomDiscordChannel struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	ChannelName   string                 `protobuf:"bytes,2,opt,name=channel_name,json=channelName,proto3" json:"channel_name,omitempty"`
+	Description   string                 `protobuf:"bytes,3,opt,name=description,proto3" json:"description,omitempty"`
+	WebhookUrl    string                 `protobuf:"bytes,4,opt,name=webhook_url,json=webhookUrl,proto3" json:"webhook_url,omitempty"`
+	Condition     string                 `protobuf:"bytes,5,opt,name=condition,proto3" json:"condition,omitempty"`
+	Enabled       bool                   `protobuf:"varint,6,opt,name=enabled,proto3" json:"enabled,omitempty"`
+	CreatedAt     *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CustomDiscordChannel) Reset() {
+	*x = CustomDiscordChannel{}
+	mi := &file_discord_v1_discord_proto_msgTypes[21]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CustomDiscordChannel) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CustomDiscordChannel) ProtoMessage() {}
+
+func (x *CustomDiscordChannel) ProtoReflect() protoreflect.Message {
+	mi := &file_discord_v1_discord_proto_msgTypes[21]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CustomDiscordChannel.ProtoReflect.Descriptor instead.
+func (*CustomDiscordChannel) Descriptor() ([]byte, []int) {
+	return file_discord_v1_discord_proto_rawDescGZIP(), []int{21}
+}
+
+func (x *CustomDiscordChannel) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *CustomDiscordChannel) GetChannelName() string {
+	if x != nil {
+		return x.ChannelName
+	}
+	return ""
+}
+
+func (x *CustomDiscordChannel) GetDescription() string {
+	if x != nil {
+		return x.Description
+	}
+	return ""
+}
+
+func (x *CustomDiscordChannel) GetWebhookUrl() string {
+	if x != nil {
+		return x.WebhookUrl
+	}
+	return ""
+}
+
+func (x *CustomDiscordChannel) GetCondition() string {
+	if x != nil {
+		return x.Condition
+	}
+	return ""
+}
+
+func (x *CustomDiscordChannel) GetEnabled() bool {
+	if x != nil {
+		return x.Enabled
+	}
+	return false
+}
+
+func (x *CustomDiscordChannel) GetCreatedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.CreatedAt
+	}
+	return nil
+}
+
+type ListCustomDiscordChannelsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListCustomDiscordChannelsRequest) Reset() {
+	*x = ListCustomDiscordChannelsRequest{}
+	mi := &file_discord_v1_discord_proto_msgTypes[22]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListCustomDiscordChannelsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListCustomDiscordChannelsRequest) ProtoMessage() {}
+
+func (x *ListCustomDiscordChannelsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_discord_v1_discord_proto_msgTypes[22]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListCustomDiscordChannelsRequest.ProtoReflect.Descriptor instead.
+func (*ListCustomDiscordChannelsRequest) Descriptor() ([]byte, []int) {
+	return file_discord_v1_discord_proto_rawDescGZIP(), []int{22}
+}
+
+type ListCustomDiscordChannelsResponse struct {
+	state         protoimpl.MessageState  `protogen:"open.v1"`
+	Channels      []*CustomDiscordChannel `protobuf:"bytes,1,rep,name=channels,proto3" json:"channels,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListCustomDiscordChannelsResponse) Reset() {
+	*x = ListCustomDiscordChannelsResponse{}
+	mi := &file_discord_v1_discord_proto_msgTypes[23]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListCustomDiscordChannelsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListCustomDiscordChannelsResponse) ProtoMessage() {}
+
+func (x *ListCustomDiscordChannelsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_discord_v1_discord_proto_msgTypes[23]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListCustomDiscordChannelsResponse.ProtoReflect.Descriptor instead.
+func (*ListCustomDiscordChannelsResponse) Descriptor() ([]byte, []int) {
+	return file_discord_v1_discord_proto_rawDescGZIP(), []int{23}
+}
+
+func (x *ListCustomDiscordChannelsResponse) GetChannels() []*CustomDiscordChannel {
+	if x != nil {
+		return x.Channels
+	}
+	return nil
+}
+
+type CreateCustomDiscordChannelRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	WebhookUrl    string                 `protobuf:"bytes,2,opt,name=webhook_url,json=webhookUrl,proto3" json:"webhook_url,omitempty"`
+	Description   string                 `protobuf:"bytes,3,opt,name=description,proto3" json:"description,omitempty"`
+	Condition     string                 `protobuf:"bytes,4,opt,name=condition,proto3" json:"condition,omitempty"`
+	Enabled       bool                   `protobuf:"varint,5,opt,name=enabled,proto3" json:"enabled,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CreateCustomDiscordChannelRequest) Reset() {
+	*x = CreateCustomDiscordChannelRequest{}
+	mi := &file_discord_v1_discord_proto_msgTypes[24]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreateCustomDiscordChannelRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreateCustomDiscordChannelRequest) ProtoMessage() {}
+
+func (x *CreateCustomDiscordChannelRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_discord_v1_discord_proto_msgTypes[24]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreateCustomDiscordChannelRequest.ProtoReflect.Descriptor instead.
+func (*CreateCustomDiscordChannelRequest) Descriptor() ([]byte, []int) {
+	return file_discord_v1_discord_proto_rawDescGZIP(), []int{24}
+}
+
+func (x *CreateCustomDiscordChannelRequest) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *CreateCustomDiscordChannelRequest) GetWebhookUrl() string {
+	if x != nil {
+		return x.WebhookUrl
+	}
+	return ""
+}
+
+func (x *CreateCustomDiscordChannelRequest) GetDescription() string {
+	if x != nil {
+		return x.Description
+	}
+	return ""
+}
+
+func (x *CreateCustomDiscordChannelRequest) GetCondition() string {
+	if x != nil {
+		return x.Condition
+	}
+	return ""
+}
+
+func (x *CreateCustomDiscordChannelRequest) GetEnabled() bool {
+	if x != nil {
+		return x.Enabled
+	}
+	return false
+}
+
+type CreateCustomDiscordChannelResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Success       bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
+	ErrorMessage  string                 `protobuf:"bytes,2,opt,name=error_message,json=errorMessage,proto3" json:"error_message,omitempty"`
+	Channel       *CustomDiscordChannel  `protobuf:"bytes,3,opt,name=channel,proto3" json:"channel,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CreateCustomDiscordChannelResponse) Reset() {
+	*x = CreateCustomDiscordChannelResponse{}
+	mi := &file_discord_v1_discord_proto_msgTypes[25]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreateCustomDiscordChannelResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreateCustomDiscordChannelResponse) ProtoMessage() {}
+
+func (x *CreateCustomDiscordChannelResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_discord_v1_discord_proto_msgTypes[25]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreateCustomDiscordChannelResponse.ProtoReflect.Descriptor instead.
+func (*CreateCustomDiscordChannelResponse) Descriptor() ([]byte, []int) {
+	return file_discord_v1_discord_proto_rawDescGZIP(), []int{25}
+}
+
+func (x *CreateCustomDiscordChannelResponse) GetSuccess() bool {
+	if x != nil {
+		return x.Success
+	}
+	return false
+}
+
+func (x *CreateCustomDiscordChannelResponse) GetErrorMessage() string {
+	if x != nil {
+		return x.ErrorMessage
+	}
+	return ""
+}
+
+func (x *CreateCustomDiscordChannelResponse) GetChannel() *CustomDiscordChannel {
+	if x != nil {
+		return x.Channel
+	}
+	return nil
+}
+
+type UpdateCustomDiscordChannelRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	WebhookUrl    *string                `protobuf:"bytes,2,opt,name=webhook_url,json=webhookUrl,proto3,oneof" json:"webhook_url,omitempty"`
+	Description   *string                `protobuf:"bytes,3,opt,name=description,proto3,oneof" json:"description,omitempty"`
+	Condition     *string                `protobuf:"bytes,4,opt,name=condition,proto3,oneof" json:"condition,omitempty"`
+	Enabled       *bool                  `protobuf:"varint,5,opt,name=enabled,proto3,oneof" json:"enabled,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UpdateCustomDiscordChannelRequest) Reset() {
+	*x = UpdateCustomDiscordChannelRequest{}
+	mi := &file_discord_v1_discord_proto_msgTypes[26]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UpdateCustomDiscordChannelRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpdateCustomDiscordChannelRequest) ProtoMessage() {}
+
+func (x *UpdateCustomDiscordChannelRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_discord_v1_discord_proto_msgTypes[26]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpdateCustomDiscordChannelRequest.ProtoReflect.Descriptor instead.
+func (*UpdateCustomDiscordChannelRequest) Descriptor() ([]byte, []int) {
+	return file_discord_v1_discord_proto_rawDescGZIP(), []int{26}
+}
+
+func (x *UpdateCustomDiscordChannelRequest) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *UpdateCustomDiscordChannelRequest) GetWebhookUrl() string {
+	if x != nil && x.WebhookUrl != nil {
+		return *x.WebhookUrl
+	}
+	return ""
+}
+
+func (x *UpdateCustomDiscordChannelRequest) GetDescription() string {
+	if x != nil && x.Description != nil {
+		return *x.Description
+	}
+	return ""
+}
+
+func (x *UpdateCustomDiscordChannelRequest) GetCondition() string {
+	if x != nil && x.Condition != nil {
+		return *x.Condition
+	}
+	return ""
+}
+
+func (x *UpdateCustomDiscordChannelRequest) GetEnabled() bool {
+	if x != nil && x.Enabled != nil {
+		return *x.Enabled
+	}
+	return false
+}
+
+type UpdateCustomDiscordChannelResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Success       bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
+	ErrorMessage  string                 `protobuf:"bytes,2,opt,name=error_message,json=errorMessage,proto3" json:"error_message,omitempty"`
+	Channel       *CustomDiscordChannel  `protobuf:"bytes,3,opt,name=channel,proto3" json:"channel,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UpdateCustomDiscordChannelResponse) Reset() {
+	*x = UpdateCustomDiscordChannelResponse{}
+	mi := &file_discord_v1_discord_proto_msgTypes[27]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UpdateCustomDiscordChannelResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpdateCustomDiscordChannelResponse) ProtoMessage() {}
+
+func (x *UpdateCustomDiscordChannelResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_discord_v1_discord_proto_msgTypes[27]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpdateCustomDiscordChannelResponse.ProtoReflect.Descriptor instead.
+func (*UpdateCustomDiscordChannelResponse) Descriptor() ([]byte, []int) {
+	return file_discord_v1_discord_proto_rawDescGZIP(), []int{27}
+}
+
+func (x *UpdateCustomDiscordChannelResponse) GetSuccess() bool {
+	if x != nil {
+		return x.Success
+	}
+	return false
+}
+
+func (x *UpdateCustomDiscordChannelResponse) GetErrorMessage() string {
+	if x != nil {
+		return x.ErrorMessage
+	}
+	return ""
+}
+
+func (x *UpdateCustomDiscordChannelResponse) GetChannel() *CustomDiscordChannel {
+	if x != nil {
+		return x.Channel
+	}
+	return nil
+}
+
+type DeleteCustomDiscordChannelRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DeleteCustomDiscordChannelRequest) Reset() {
+	*x = DeleteCustomDiscordChannelRequest{}
+	mi := &file_discord_v1_discord_proto_msgTypes[28]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DeleteCustomDiscordChannelRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeleteCustomDiscordChannelRequest) ProtoMessage() {}
+
+func (x *DeleteCustomDiscordChannelRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_discord_v1_discord_proto_msgTypes[28]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeleteCustomDiscordChannelRequest.ProtoReflect.Descriptor instead.
+func (*DeleteCustomDiscordChannelRequest) Descriptor() ([]byte, []int) {
+	return file_discord_v1_discord_proto_rawDescGZIP(), []int{28}
+}
+
+func (x *DeleteCustomDiscordChannelRequest) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+type DeleteCustomDiscordChannelResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Success       bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
+	ErrorMessage  string                 `protobuf:"bytes,2,opt,name=error_message,json=errorMessage,proto3" json:"error_message,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DeleteCustomDiscordChannelResponse) Reset() {
+	*x = DeleteCustomDiscordChannelResponse{}
+	mi := &file_discord_v1_discord_proto_msgTypes[29]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DeleteCustomDiscordChannelResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeleteCustomDiscordChannelResponse) ProtoMessage() {}
+
+func (x *DeleteCustomDiscordChannelResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_discord_v1_discord_proto_msgTypes[29]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeleteCustomDiscordChannelResponse.ProtoReflect.Descriptor instead.
+func (*DeleteCustomDiscordChannelResponse) Descriptor() ([]byte, []int) {
+	return file_discord_v1_discord_proto_rawDescGZIP(), []int{29}
+}
+
+func (x *DeleteCustomDiscordChannelResponse) GetSuccess() bool {
+	if x != nil {
+		return x.Success
+	}
+	return false
+}
+
+func (x *DeleteCustomDiscordChannelResponse) GetErrorMessage() string {
+	if x != nil {
+		return x.ErrorMessage
+	}
+	return ""
+}
+
+type SendCustomDiscordChannelTestMessageRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SendCustomDiscordChannelTestMessageRequest) Reset() {
+	*x = SendCustomDiscordChannelTestMessageRequest{}
+	mi := &file_discord_v1_discord_proto_msgTypes[30]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SendCustomDiscordChannelTestMessageRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SendCustomDiscordChannelTestMessageRequest) ProtoMessage() {}
+
+func (x *SendCustomDiscordChannelTestMessageRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_discord_v1_discord_proto_msgTypes[30]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SendCustomDiscordChannelTestMessageRequest.ProtoReflect.Descriptor instead.
+func (*SendCustomDiscordChannelTestMessageRequest) Descriptor() ([]byte, []int) {
+	return file_discord_v1_discord_proto_rawDescGZIP(), []int{30}
+}
+
+func (x *SendCustomDiscordChannelTestMessageRequest) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+type SendCustomDiscordChannelTestMessageResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Success       bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
+	ErrorMessage  string                 `protobuf:"bytes,2,opt,name=error_message,json=errorMessage,proto3" json:"error_message,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SendCustomDiscordChannelTestMessageResponse) Reset() {
+	*x = SendCustomDiscordChannelTestMessageResponse{}
+	mi := &file_discord_v1_discord_proto_msgTypes[31]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SendCustomDiscordChannelTestMessageResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SendCustomDiscordChannelTestMessageResponse) ProtoMessage() {}
+
+func (x *SendCustomDiscordChannelTestMessageResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_discord_v1_discord_proto_msgTypes[31]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SendCustomDiscordChannelTestMessageResponse.ProtoReflect.Descriptor instead.
+func (*SendCustomDiscordChannelTestMessageResponse) Descriptor() ([]byte, []int) {
+	return file_discord_v1_discord_proto_rawDescGZIP(), []int{31}
+}
+
+func (x *SendCustomDiscordChannelTestMessageResponse) GetSuccess() bool {
+	if x != nil {
+		return x.Success
+	}
+	return false
+}
+
+func (x *SendCustomDiscordChannelTestMessageResponse) GetErrorMessage() string {
+	if x != nil {
+		return x.ErrorMessage
+	}
+	return ""
+}
+
 var File_discord_v1_discord_proto protoreflect.FileDescriptor
 
 const file_discord_v1_discord_proto_rawDesc = "" +
 	"\n" +
-	"\x18discord/v1/discord.proto\x12\x15stockalert.discord.v1\"\x1f\n" +
+	"\x18discord/v1/discord.proto\x12\x15stockalert.discord.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\x1f\n" +
 	"\x1dGetHourlyDiscordConfigRequest\"\x8c\x01\n" +
 	"\x11HourlyChannelInfo\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12!\n" +
@@ -1078,7 +1715,58 @@ const file_discord_v1_discord_proto_rawDesc = "" +
 	"$ResolveWeeklyChannelForTickerRequest\x12\x16\n" +
 	"\x06ticker\x18\x01 \x01(\tR\x06ticker\"A\n" +
 	"\x1cSendWeeklyTestMessageRequest\x12!\n" +
-	"\fchannel_name\x18\x01 \x01(\tR\vchannelName2\xaa\x10\n" +
+	"\fchannel_name\x18\x01 \x01(\tR\vchannelName\"\x83\x02\n" +
+	"\x14CustomDiscordChannel\x12\x12\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name\x12!\n" +
+	"\fchannel_name\x18\x02 \x01(\tR\vchannelName\x12 \n" +
+	"\vdescription\x18\x03 \x01(\tR\vdescription\x12\x1f\n" +
+	"\vwebhook_url\x18\x04 \x01(\tR\n" +
+	"webhookUrl\x12\x1c\n" +
+	"\tcondition\x18\x05 \x01(\tR\tcondition\x12\x18\n" +
+	"\aenabled\x18\x06 \x01(\bR\aenabled\x129\n" +
+	"\n" +
+	"created_at\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\"\"\n" +
+	" ListCustomDiscordChannelsRequest\"l\n" +
+	"!ListCustomDiscordChannelsResponse\x12G\n" +
+	"\bchannels\x18\x01 \x03(\v2+.stockalert.discord.v1.CustomDiscordChannelR\bchannels\"\xb2\x01\n" +
+	"!CreateCustomDiscordChannelRequest\x12\x12\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name\x12\x1f\n" +
+	"\vwebhook_url\x18\x02 \x01(\tR\n" +
+	"webhookUrl\x12 \n" +
+	"\vdescription\x18\x03 \x01(\tR\vdescription\x12\x1c\n" +
+	"\tcondition\x18\x04 \x01(\tR\tcondition\x12\x18\n" +
+	"\aenabled\x18\x05 \x01(\bR\aenabled\"\xaa\x01\n" +
+	"\"CreateCustomDiscordChannelResponse\x12\x18\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\x12#\n" +
+	"\rerror_message\x18\x02 \x01(\tR\ferrorMessage\x12E\n" +
+	"\achannel\x18\x03 \x01(\v2+.stockalert.discord.v1.CustomDiscordChannelR\achannel\"\x80\x02\n" +
+	"!UpdateCustomDiscordChannelRequest\x12\x12\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name\x12$\n" +
+	"\vwebhook_url\x18\x02 \x01(\tH\x00R\n" +
+	"webhookUrl\x88\x01\x01\x12%\n" +
+	"\vdescription\x18\x03 \x01(\tH\x01R\vdescription\x88\x01\x01\x12!\n" +
+	"\tcondition\x18\x04 \x01(\tH\x02R\tcondition\x88\x01\x01\x12\x1d\n" +
+	"\aenabled\x18\x05 \x01(\bH\x03R\aenabled\x88\x01\x01B\x0e\n" +
+	"\f_webhook_urlB\x0e\n" +
+	"\f_descriptionB\f\n" +
+	"\n" +
+	"_conditionB\n" +
+	"\n" +
+	"\b_enabled\"\xaa\x01\n" +
+	"\"UpdateCustomDiscordChannelResponse\x12\x18\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\x12#\n" +
+	"\rerror_message\x18\x02 \x01(\tR\ferrorMessage\x12E\n" +
+	"\achannel\x18\x03 \x01(\v2+.stockalert.discord.v1.CustomDiscordChannelR\achannel\"7\n" +
+	"!DeleteCustomDiscordChannelRequest\x12\x12\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name\"c\n" +
+	"\"DeleteCustomDiscordChannelResponse\x12\x18\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\x12#\n" +
+	"\rerror_message\x18\x02 \x01(\tR\ferrorMessage\"@\n" +
+	"*SendCustomDiscordChannelTestMessageRequest\x12\x12\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name\"l\n" +
+	"+SendCustomDiscordChannelTestMessageResponse\x12\x18\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\x12#\n" +
+	"\rerror_message\x18\x02 \x01(\tR\ferrorMessage2\xa6\x16\n" +
 	"\x14DiscordConfigService\x12\x85\x01\n" +
 	"\x16GetHourlyDiscordConfig\x124.stockalert.discord.v1.GetHourlyDiscordConfigRequest\x1a5.stockalert.discord.v1.GetHourlyDiscordConfigResponse\x12v\n" +
 	"\x11CopyDailyToHourly\x12/.stockalert.discord.v1.CopyDailyToHourlyRequest\x1a0.stockalert.discord.v1.CopyDailyToHourlyResponse\x12\x91\x01\n" +
@@ -1094,7 +1782,12 @@ const file_discord_v1_discord_proto_rawDesc = "" +
 	"\x10CopyBaseToWeekly\x12..stockalert.discord.v1.CopyBaseToWeeklyRequest\x1a0.stockalert.discord.v1.CopyDailyToHourlyResponse\x12\x91\x01\n" +
 	"\x1aUpdateWeeklyChannelWebhook\x128.stockalert.discord.v1.UpdateWeeklyChannelWebhookRequest\x1a9.stockalert.discord.v1.UpdateHourlyChannelWebhookResponse\x12\x9a\x01\n" +
 	"\x1dResolveWeeklyChannelForTicker\x12;.stockalert.discord.v1.ResolveWeeklyChannelForTickerRequest\x1a<.stockalert.discord.v1.ResolveHourlyChannelForTickerResponse\x12\x82\x01\n" +
-	"\x15SendWeeklyTestMessage\x123.stockalert.discord.v1.SendWeeklyTestMessageRequest\x1a4.stockalert.discord.v1.SendHourlyTestMessageResponseB\xc7\x01\n" +
+	"\x15SendWeeklyTestMessage\x123.stockalert.discord.v1.SendWeeklyTestMessageRequest\x1a4.stockalert.discord.v1.SendHourlyTestMessageResponse\x12\x8e\x01\n" +
+	"\x19ListCustomDiscordChannels\x127.stockalert.discord.v1.ListCustomDiscordChannelsRequest\x1a8.stockalert.discord.v1.ListCustomDiscordChannelsResponse\x12\x91\x01\n" +
+	"\x1aCreateCustomDiscordChannel\x128.stockalert.discord.v1.CreateCustomDiscordChannelRequest\x1a9.stockalert.discord.v1.CreateCustomDiscordChannelResponse\x12\x91\x01\n" +
+	"\x1aUpdateCustomDiscordChannel\x128.stockalert.discord.v1.UpdateCustomDiscordChannelRequest\x1a9.stockalert.discord.v1.UpdateCustomDiscordChannelResponse\x12\x91\x01\n" +
+	"\x1aDeleteCustomDiscordChannel\x128.stockalert.discord.v1.DeleteCustomDiscordChannelRequest\x1a9.stockalert.discord.v1.DeleteCustomDiscordChannelResponse\x12\xac\x01\n" +
+	"#SendCustomDiscordChannelTestMessage\x12A.stockalert.discord.v1.SendCustomDiscordChannelTestMessageRequest\x1aB.stockalert.discord.v1.SendCustomDiscordChannelTestMessageResponseB\xc7\x01\n" +
 	"\x19com.stockalert.discord.v1B\fDiscordProtoP\x01Z&stockalert/gen/go/discord/v1;discordv1\xa2\x02\x03SDX\xaa\x02\x15Stockalert.Discord.V1\xca\x02\x15Stockalert\\Discord\\V1\xe2\x02!Stockalert\\Discord\\V1\\GPBMetadata\xea\x02\x17Stockalert::Discord::V1b\x06proto3"
 
 var (
@@ -1109,67 +1802,93 @@ func file_discord_v1_discord_proto_rawDescGZIP() []byte {
 	return file_discord_v1_discord_proto_rawDescData
 }
 
-var file_discord_v1_discord_proto_msgTypes = make([]protoimpl.MessageInfo, 21)
+var file_discord_v1_discord_proto_msgTypes = make([]protoimpl.MessageInfo, 32)
 var file_discord_v1_discord_proto_goTypes = []any{
-	(*GetHourlyDiscordConfigRequest)(nil),         // 0: stockalert.discord.v1.GetHourlyDiscordConfigRequest
-	(*HourlyChannelInfo)(nil),                     // 1: stockalert.discord.v1.HourlyChannelInfo
-	(*GetHourlyDiscordConfigResponse)(nil),        // 2: stockalert.discord.v1.GetHourlyDiscordConfigResponse
-	(*CopyDailyToHourlyRequest)(nil),              // 3: stockalert.discord.v1.CopyDailyToHourlyRequest
-	(*CopyDailyToHourlyResponse)(nil),             // 4: stockalert.discord.v1.CopyDailyToHourlyResponse
-	(*UpdateHourlyChannelWebhookRequest)(nil),     // 5: stockalert.discord.v1.UpdateHourlyChannelWebhookRequest
-	(*UpdateHourlyChannelWebhookResponse)(nil),    // 6: stockalert.discord.v1.UpdateHourlyChannelWebhookResponse
-	(*ResolveHourlyChannelForTickerRequest)(nil),  // 7: stockalert.discord.v1.ResolveHourlyChannelForTickerRequest
-	(*ResolveHourlyChannelForTickerResponse)(nil), // 8: stockalert.discord.v1.ResolveHourlyChannelForTickerResponse
-	(*SendHourlyTestMessageRequest)(nil),          // 9: stockalert.discord.v1.SendHourlyTestMessageRequest
-	(*SendHourlyTestMessageResponse)(nil),         // 10: stockalert.discord.v1.SendHourlyTestMessageResponse
-	(*GetDailyDiscordConfigRequest)(nil),          // 11: stockalert.discord.v1.GetDailyDiscordConfigRequest
-	(*CopyBaseToDailyRequest)(nil),                // 12: stockalert.discord.v1.CopyBaseToDailyRequest
-	(*UpdateDailyChannelWebhookRequest)(nil),      // 13: stockalert.discord.v1.UpdateDailyChannelWebhookRequest
-	(*ResolveDailyChannelForTickerRequest)(nil),   // 14: stockalert.discord.v1.ResolveDailyChannelForTickerRequest
-	(*SendDailyTestMessageRequest)(nil),           // 15: stockalert.discord.v1.SendDailyTestMessageRequest
-	(*GetWeeklyDiscordConfigRequest)(nil),         // 16: stockalert.discord.v1.GetWeeklyDiscordConfigRequest
-	(*CopyBaseToWeeklyRequest)(nil),               // 17: stockalert.discord.v1.CopyBaseToWeeklyRequest
-	(*UpdateWeeklyChannelWebhookRequest)(nil),     // 18: stockalert.discord.v1.UpdateWeeklyChannelWebhookRequest
-	(*ResolveWeeklyChannelForTickerRequest)(nil),  // 19: stockalert.discord.v1.ResolveWeeklyChannelForTickerRequest
-	(*SendWeeklyTestMessageRequest)(nil),          // 20: stockalert.discord.v1.SendWeeklyTestMessageRequest
+	(*GetHourlyDiscordConfigRequest)(nil),               // 0: stockalert.discord.v1.GetHourlyDiscordConfigRequest
+	(*HourlyChannelInfo)(nil),                           // 1: stockalert.discord.v1.HourlyChannelInfo
+	(*GetHourlyDiscordConfigResponse)(nil),              // 2: stockalert.discord.v1.GetHourlyDiscordConfigResponse
+	(*CopyDailyToHourlyRequest)(nil),                    // 3: stockalert.discord.v1.CopyDailyToHourlyRequest
+	(*CopyDailyToHourlyResponse)(nil),                   // 4: stockalert.discord.v1.CopyDailyToHourlyResponse
+	(*UpdateHourlyChannelWebhookRequest)(nil),           // 5: stockalert.discord.v1.UpdateHourlyChannelWebhookRequest
+	(*UpdateHourlyChannelWebhookResponse)(nil),          // 6: stockalert.discord.v1.UpdateHourlyChannelWebhookResponse
+	(*ResolveHourlyChannelForTickerRequest)(nil),        // 7: stockalert.discord.v1.ResolveHourlyChannelForTickerRequest
+	(*ResolveHourlyChannelForTickerResponse)(nil),       // 8: stockalert.discord.v1.ResolveHourlyChannelForTickerResponse
+	(*SendHourlyTestMessageRequest)(nil),                // 9: stockalert.discord.v1.SendHourlyTestMessageRequest
+	(*SendHourlyTestMessageResponse)(nil),               // 10: stockalert.discord.v1.SendHourlyTestMessageResponse
+	(*GetDailyDiscordConfigRequest)(nil),                // 11: stockalert.discord.v1.GetDailyDiscordConfigRequest
+	(*CopyBaseToDailyRequest)(nil),                      // 12: stockalert.discord.v1.CopyBaseToDailyRequest
+	(*UpdateDailyChannelWebhookRequest)(nil),            // 13: stockalert.discord.v1.UpdateDailyChannelWebhookRequest
+	(*ResolveDailyChannelForTickerRequest)(nil),         // 14: stockalert.discord.v1.ResolveDailyChannelForTickerRequest
+	(*SendDailyTestMessageRequest)(nil),                 // 15: stockalert.discord.v1.SendDailyTestMessageRequest
+	(*GetWeeklyDiscordConfigRequest)(nil),               // 16: stockalert.discord.v1.GetWeeklyDiscordConfigRequest
+	(*CopyBaseToWeeklyRequest)(nil),                     // 17: stockalert.discord.v1.CopyBaseToWeeklyRequest
+	(*UpdateWeeklyChannelWebhookRequest)(nil),           // 18: stockalert.discord.v1.UpdateWeeklyChannelWebhookRequest
+	(*ResolveWeeklyChannelForTickerRequest)(nil),        // 19: stockalert.discord.v1.ResolveWeeklyChannelForTickerRequest
+	(*SendWeeklyTestMessageRequest)(nil),                // 20: stockalert.discord.v1.SendWeeklyTestMessageRequest
+	(*CustomDiscordChannel)(nil),                        // 21: stockalert.discord.v1.CustomDiscordChannel
+	(*ListCustomDiscordChannelsRequest)(nil),            // 22: stockalert.discord.v1.ListCustomDiscordChannelsRequest
+	(*ListCustomDiscordChannelsResponse)(nil),           // 23: stockalert.discord.v1.ListCustomDiscordChannelsResponse
+	(*CreateCustomDiscordChannelRequest)(nil),           // 24: stockalert.discord.v1.CreateCustomDiscordChannelRequest
+	(*CreateCustomDiscordChannelResponse)(nil),          // 25: stockalert.discord.v1.CreateCustomDiscordChannelResponse
+	(*UpdateCustomDiscordChannelRequest)(nil),           // 26: stockalert.discord.v1.UpdateCustomDiscordChannelRequest
+	(*UpdateCustomDiscordChannelResponse)(nil),          // 27: stockalert.discord.v1.UpdateCustomDiscordChannelResponse
+	(*DeleteCustomDiscordChannelRequest)(nil),           // 28: stockalert.discord.v1.DeleteCustomDiscordChannelRequest
+	(*DeleteCustomDiscordChannelResponse)(nil),          // 29: stockalert.discord.v1.DeleteCustomDiscordChannelResponse
+	(*SendCustomDiscordChannelTestMessageRequest)(nil),  // 30: stockalert.discord.v1.SendCustomDiscordChannelTestMessageRequest
+	(*SendCustomDiscordChannelTestMessageResponse)(nil), // 31: stockalert.discord.v1.SendCustomDiscordChannelTestMessageResponse
+	(*timestamppb.Timestamp)(nil),                       // 32: google.protobuf.Timestamp
 }
 var file_discord_v1_discord_proto_depIdxs = []int32{
 	1,  // 0: stockalert.discord.v1.GetHourlyDiscordConfigResponse.channels:type_name -> stockalert.discord.v1.HourlyChannelInfo
-	0,  // 1: stockalert.discord.v1.DiscordConfigService.GetHourlyDiscordConfig:input_type -> stockalert.discord.v1.GetHourlyDiscordConfigRequest
-	3,  // 2: stockalert.discord.v1.DiscordConfigService.CopyDailyToHourly:input_type -> stockalert.discord.v1.CopyDailyToHourlyRequest
-	5,  // 3: stockalert.discord.v1.DiscordConfigService.UpdateHourlyChannelWebhook:input_type -> stockalert.discord.v1.UpdateHourlyChannelWebhookRequest
-	7,  // 4: stockalert.discord.v1.DiscordConfigService.ResolveHourlyChannelForTicker:input_type -> stockalert.discord.v1.ResolveHourlyChannelForTickerRequest
-	9,  // 5: stockalert.discord.v1.DiscordConfigService.SendHourlyTestMessage:input_type -> stockalert.discord.v1.SendHourlyTestMessageRequest
-	11, // 6: stockalert.discord.v1.DiscordConfigService.GetDailyDiscordConfig:input_type -> stockalert.discord.v1.GetDailyDiscordConfigRequest
-	12, // 7: stockalert.discord.v1.DiscordConfigService.CopyBaseToDaily:input_type -> stockalert.discord.v1.CopyBaseToDailyRequest
-	13, // 8: stockalert.discord.v1.DiscordConfigService.UpdateDailyChannelWebhook:input_type -> stockalert.discord.v1.UpdateDailyChannelWebhookRequest
-	14, // 9: stockalert.discord.v1.DiscordConfigService.ResolveDailyChannelForTicker:input_type -> stockalert.discord.v1.ResolveDailyChannelForTickerRequest
-	15, // 10: stockalert.discord.v1.DiscordConfigService.SendDailyTestMessage:input_type -> stockalert.discord.v1.SendDailyTestMessageRequest
-	16, // 11: stockalert.discord.v1.DiscordConfigService.GetWeeklyDiscordConfig:input_type -> stockalert.discord.v1.GetWeeklyDiscordConfigRequest
-	17, // 12: stockalert.discord.v1.DiscordConfigService.CopyBaseToWeekly:input_type -> stockalert.discord.v1.CopyBaseToWeeklyRequest
-	18, // 13: stockalert.discord.v1.DiscordConfigService.UpdateWeeklyChannelWebhook:input_type -> stockalert.discord.v1.UpdateWeeklyChannelWebhookRequest
-	19, // 14: stockalert.discord.v1.DiscordConfigService.ResolveWeeklyChannelForTicker:input_type -> stockalert.discord.v1.ResolveWeeklyChannelForTickerRequest
-	20, // 15: stockalert.discord.v1.DiscordConfigService.SendWeeklyTestMessage:input_type -> stockalert.discord.v1.SendWeeklyTestMessageRequest
-	2,  // 16: stockalert.discord.v1.DiscordConfigService.GetHourlyDiscordConfig:output_type -> stockalert.discord.v1.GetHourlyDiscordConfigResponse
-	4,  // 17: stockalert.discord.v1.DiscordConfigService.CopyDailyToHourly:output_type -> stockalert.discord.v1.CopyDailyToHourlyResponse
-	6,  // 18: stockalert.discord.v1.DiscordConfigService.UpdateHourlyChannelWebhook:output_type -> stockalert.discord.v1.UpdateHourlyChannelWebhookResponse
-	8,  // 19: stockalert.discord.v1.DiscordConfigService.ResolveHourlyChannelForTicker:output_type -> stockalert.discord.v1.ResolveHourlyChannelForTickerResponse
-	10, // 20: stockalert.discord.v1.DiscordConfigService.SendHourlyTestMessage:output_type -> stockalert.discord.v1.SendHourlyTestMessageResponse
-	2,  // 21: stockalert.discord.v1.DiscordConfigService.GetDailyDiscordConfig:output_type -> stockalert.discord.v1.GetHourlyDiscordConfigResponse
-	4,  // 22: stockalert.discord.v1.DiscordConfigService.CopyBaseToDaily:output_type -> stockalert.discord.v1.CopyDailyToHourlyResponse
-	6,  // 23: stockalert.discord.v1.DiscordConfigService.UpdateDailyChannelWebhook:output_type -> stockalert.discord.v1.UpdateHourlyChannelWebhookResponse
-	8,  // 24: stockalert.discord.v1.DiscordConfigService.ResolveDailyChannelForTicker:output_type -> stockalert.discord.v1.ResolveHourlyChannelForTickerResponse
-	10, // 25: stockalert.discord.v1.DiscordConfigService.SendDailyTestMessage:output_type -> stockalert.discord.v1.SendHourlyTestMessageResponse
-	2,  // 26: stockalert.discord.v1.DiscordConfigService.GetWeeklyDiscordConfig:output_type -> stockalert.discord.v1.GetHourlyDiscordConfigResponse
-	4,  // 27: stockalert.discord.v1.DiscordConfigService.CopyBaseToWeekly:output_type -> stockalert.discord.v1.CopyDailyToHourlyResponse
-	6,  // 28: stockalert.discord.v1.DiscordConfigService.UpdateWeeklyChannelWebhook:output_type -> stockalert.discord.v1.UpdateHourlyChannelWebhookResponse
-	8,  // 29: stockalert.discord.v1.DiscordConfigService.ResolveWeeklyChannelForTicker:output_type -> stockalert.discord.v1.ResolveHourlyChannelForTickerResponse
-	10, // 30: stockalert.discord.v1.DiscordConfigService.SendWeeklyTestMessage:output_type -> stockalert.discord.v1.SendHourlyTestMessageResponse
-	16, // [16:31] is the sub-list for method output_type
-	1,  // [1:16] is the sub-list for method input_type
-	1,  // [1:1] is the sub-list for extension type_name
-	1,  // [1:1] is the sub-list for extension extendee
-	0,  // [0:1] is the sub-list for field type_name
+	32, // 1: stockalert.discord.v1.CustomDiscordChannel.created_at:type_name -> google.protobuf.Timestamp
+	21, // 2: stockalert.discord.v1.ListCustomDiscordChannelsResponse.channels:type_name -> stockalert.discord.v1.CustomDiscordChannel
+	21, // 3: stockalert.discord.v1.CreateCustomDiscordChannelResponse.channel:type_name -> stockalert.discord.v1.CustomDiscordChannel
+	21, // 4: stockalert.discord.v1.UpdateCustomDiscordChannelResponse.channel:type_name -> stockalert.discord.v1.CustomDiscordChannel
+	0,  // 5: stockalert.discord.v1.DiscordConfigService.GetHourlyDiscordConfig:input_type -> stockalert.discord.v1.GetHourlyDiscordConfigRequest
+	3,  // 6: stockalert.discord.v1.DiscordConfigService.CopyDailyToHourly:input_type -> stockalert.discord.v1.CopyDailyToHourlyRequest
+	5,  // 7: stockalert.discord.v1.DiscordConfigService.UpdateHourlyChannelWebhook:input_type -> stockalert.discord.v1.UpdateHourlyChannelWebhookRequest
+	7,  // 8: stockalert.discord.v1.DiscordConfigService.ResolveHourlyChannelForTicker:input_type -> stockalert.discord.v1.ResolveHourlyChannelForTickerRequest
+	9,  // 9: stockalert.discord.v1.DiscordConfigService.SendHourlyTestMessage:input_type -> stockalert.discord.v1.SendHourlyTestMessageRequest
+	11, // 10: stockalert.discord.v1.DiscordConfigService.GetDailyDiscordConfig:input_type -> stockalert.discord.v1.GetDailyDiscordConfigRequest
+	12, // 11: stockalert.discord.v1.DiscordConfigService.CopyBaseToDaily:input_type -> stockalert.discord.v1.CopyBaseToDailyRequest
+	13, // 12: stockalert.discord.v1.DiscordConfigService.UpdateDailyChannelWebhook:input_type -> stockalert.discord.v1.UpdateDailyChannelWebhookRequest
+	14, // 13: stockalert.discord.v1.DiscordConfigService.ResolveDailyChannelForTicker:input_type -> stockalert.discord.v1.ResolveDailyChannelForTickerRequest
+	15, // 14: stockalert.discord.v1.DiscordConfigService.SendDailyTestMessage:input_type -> stockalert.discord.v1.SendDailyTestMessageRequest
+	16, // 15: stockalert.discord.v1.DiscordConfigService.GetWeeklyDiscordConfig:input_type -> stockalert.discord.v1.GetWeeklyDiscordConfigRequest
+	17, // 16: stockalert.discord.v1.DiscordConfigService.CopyBaseToWeekly:input_type -> stockalert.discord.v1.CopyBaseToWeeklyRequest
+	18, // 17: stockalert.discord.v1.DiscordConfigService.UpdateWeeklyChannelWebhook:input_type -> stockalert.discord.v1.UpdateWeeklyChannelWebhookRequest
+	19, // 18: stockalert.discord.v1.DiscordConfigService.ResolveWeeklyChannelForTicker:input_type -> stockalert.discord.v1.ResolveWeeklyChannelForTickerRequest
+	20, // 19: stockalert.discord.v1.DiscordConfigService.SendWeeklyTestMessage:input_type -> stockalert.discord.v1.SendWeeklyTestMessageRequest
+	22, // 20: stockalert.discord.v1.DiscordConfigService.ListCustomDiscordChannels:input_type -> stockalert.discord.v1.ListCustomDiscordChannelsRequest
+	24, // 21: stockalert.discord.v1.DiscordConfigService.CreateCustomDiscordChannel:input_type -> stockalert.discord.v1.CreateCustomDiscordChannelRequest
+	26, // 22: stockalert.discord.v1.DiscordConfigService.UpdateCustomDiscordChannel:input_type -> stockalert.discord.v1.UpdateCustomDiscordChannelRequest
+	28, // 23: stockalert.discord.v1.DiscordConfigService.DeleteCustomDiscordChannel:input_type -> stockalert.discord.v1.DeleteCustomDiscordChannelRequest
+	30, // 24: stockalert.discord.v1.DiscordConfigService.SendCustomDiscordChannelTestMessage:input_type -> stockalert.discord.v1.SendCustomDiscordChannelTestMessageRequest
+	2,  // 25: stockalert.discord.v1.DiscordConfigService.GetHourlyDiscordConfig:output_type -> stockalert.discord.v1.GetHourlyDiscordConfigResponse
+	4,  // 26: stockalert.discord.v1.DiscordConfigService.CopyDailyToHourly:output_type -> stockalert.discord.v1.CopyDailyToHourlyResponse
+	6,  // 27: stockalert.discord.v1.DiscordConfigService.UpdateHourlyChannelWebhook:output_type -> stockalert.discord.v1.UpdateHourlyChannelWebhookResponse
+	8,  // 28: stockalert.discord.v1.DiscordConfigService.ResolveHourlyChannelForTicker:output_type -> stockalert.discord.v1.ResolveHourlyChannelForTickerResponse
+	10, // 29: stockalert.discord.v1.DiscordConfigService.SendHourlyTestMessage:output_type -> stockalert.discord.v1.SendHourlyTestMessageResponse
+	2,  // 30: stockalert.discord.v1.DiscordConfigService.GetDailyDiscordConfig:output_type -> stockalert.discord.v1.GetHourlyDiscordConfigResponse
+	4,  // 31: stockalert.discord.v1.DiscordConfigService.CopyBaseToDaily:output_type -> stockalert.discord.v1.CopyDailyToHourlyResponse
+	6,  // 32: stockalert.discord.v1.DiscordConfigService.UpdateDailyChannelWebhook:output_type -> stockalert.discord.v1.UpdateHourlyChannelWebhookResponse
+	8,  // 33: stockalert.discord.v1.DiscordConfigService.ResolveDailyChannelForTicker:output_type -> stockalert.discord.v1.ResolveHourlyChannelForTickerResponse
+	10, // 34: stockalert.discord.v1.DiscordConfigService.SendDailyTestMessage:output_type -> stockalert.discord.v1.SendHourlyTestMessageResponse
+	2,  // 35: stockalert.discord.v1.DiscordConfigService.GetWeeklyDiscordConfig:output_type -> stockalert.discord.v1.GetHourlyDiscordConfigResponse
+	4,  // 36: stockalert.discord.v1.DiscordConfigService.CopyBaseToWeekly:output_type -> stockalert.discord.v1.CopyDailyToHourlyResponse
+	6,  // 37: stockalert.discord.v1.DiscordConfigService.UpdateWeeklyChannelWebhook:output_type -> stockalert.discord.v1.UpdateHourlyChannelWebhookResponse
+	8,  // 38: stockalert.discord.v1.DiscordConfigService.ResolveWeeklyChannelForTicker:output_type -> stockalert.discord.v1.ResolveHourlyChannelForTickerResponse
+	10, // 39: stockalert.discord.v1.DiscordConfigService.SendWeeklyTestMessage:output_type -> stockalert.discord.v1.SendHourlyTestMessageResponse
+	23, // 40: stockalert.discord.v1.DiscordConfigService.ListCustomDiscordChannels:output_type -> stockalert.discord.v1.ListCustomDiscordChannelsResponse
+	25, // 41: stockalert.discord.v1.DiscordConfigService.CreateCustomDiscordChannel:output_type -> stockalert.discord.v1.CreateCustomDiscordChannelResponse
+	27, // 42: stockalert.discord.v1.DiscordConfigService.UpdateCustomDiscordChannel:output_type -> stockalert.discord.v1.UpdateCustomDiscordChannelResponse
+	29, // 43: stockalert.discord.v1.DiscordConfigService.DeleteCustomDiscordChannel:output_type -> stockalert.discord.v1.DeleteCustomDiscordChannelResponse
+	31, // 44: stockalert.discord.v1.DiscordConfigService.SendCustomDiscordChannelTestMessage:output_type -> stockalert.discord.v1.SendCustomDiscordChannelTestMessageResponse
+	25, // [25:45] is the sub-list for method output_type
+	5,  // [5:25] is the sub-list for method input_type
+	5,  // [5:5] is the sub-list for extension type_name
+	5,  // [5:5] is the sub-list for extension extendee
+	0,  // [0:5] is the sub-list for field type_name
 }
 
 func init() { file_discord_v1_discord_proto_init() }
@@ -1177,13 +1896,14 @@ func file_discord_v1_discord_proto_init() {
 	if File_discord_v1_discord_proto != nil {
 		return
 	}
+	file_discord_v1_discord_proto_msgTypes[26].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_discord_v1_discord_proto_rawDesc), len(file_discord_v1_discord_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   21,
+			NumMessages:   32,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

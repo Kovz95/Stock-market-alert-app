@@ -4,6 +4,8 @@ package stockalert.discord.v1;
 
 option go_package = "stockalert/gen/go/discord/v1;discordv1";
 
+import "google/protobuf/timestamp.proto";
+
 // Hourly Discord config and channel management.
 
 message GetHourlyDiscordConfigRequest {}
@@ -85,6 +87,63 @@ message UpdateWeeklyChannelWebhookRequest {
 message ResolveWeeklyChannelForTickerRequest { string ticker = 1; }
 message SendWeeklyTestMessageRequest { string channel_name = 1; }
 
+// ---------------------------------------------------------------------------
+// Custom Discord Channels (condition-keyed)
+// ---------------------------------------------------------------------------
+
+message CustomDiscordChannel {
+  string name = 1;
+  string channel_name = 2;
+  string description = 3;
+  string webhook_url = 4;
+  string condition = 5;
+  bool enabled = 6;
+  google.protobuf.Timestamp created_at = 7;
+}
+
+message ListCustomDiscordChannelsRequest {}
+message ListCustomDiscordChannelsResponse {
+  repeated CustomDiscordChannel channels = 1;
+}
+
+message CreateCustomDiscordChannelRequest {
+  string name = 1;
+  string webhook_url = 2;
+  string description = 3;
+  string condition = 4;
+  bool enabled = 5;
+}
+message CreateCustomDiscordChannelResponse {
+  bool success = 1;
+  string error_message = 2;
+  CustomDiscordChannel channel = 3;
+}
+
+message UpdateCustomDiscordChannelRequest {
+  string name = 1;
+  optional string webhook_url = 2;
+  optional string description = 3;
+  optional string condition = 4;
+  optional bool enabled = 5;
+}
+message UpdateCustomDiscordChannelResponse {
+  bool success = 1;
+  string error_message = 2;
+  CustomDiscordChannel channel = 3;
+}
+
+message DeleteCustomDiscordChannelRequest { string name = 1; }
+message DeleteCustomDiscordChannelResponse {
+  bool success = 1;
+  string error_message = 2;
+}
+
+message SendCustomDiscordChannelTestMessageRequest { string name = 1; }
+message SendCustomDiscordChannelTestMessageResponse {
+  bool success = 1;
+  string error_message = 2;
+}
+
 service DiscordConfigService {
   // Hourly
   rpc GetHourlyDiscordConfig(GetHourlyDiscordConfigRequest) returns (GetHourlyDiscordConfigResponse);
@@ -106,4 +165,11 @@ service DiscordConfigService {
   rpc UpdateWeeklyChannelWebhook(UpdateWeeklyChannelWebhookRequest) returns (UpdateHourlyChannelWebhookResponse);
   rpc ResolveWeeklyChannelForTicker(ResolveWeeklyChannelForTickerRequest) returns (ResolveHourlyChannelForTickerResponse);
   rpc SendWeeklyTestMessage(SendWeeklyTestMessageRequest) returns (SendHourlyTestMessageResponse);
+
+  // Custom condition channels
+  rpc ListCustomDiscordChannels(ListCustomDiscordChannelsRequest) returns (ListCustomDiscordChannelsResponse);
+  rpc CreateCustomDiscordChannel(CreateCustomDiscordChannelRequest) returns (CreateCustomDiscordChannelResponse);
+  rpc UpdateCustomDiscordChannel(UpdateCustomDiscordChannelRequest) returns (UpdateCustomDiscordChannelResponse);
+  rpc DeleteCustomDiscordChannel(DeleteCustomDiscordChannelRequest) returns (DeleteCustomDiscordChannelResponse);
+  rpc SendCustomDiscordChannelTestMessage(SendCustomDiscordChannelTestMessageRequest) returns (SendCustomDiscordChannelTestMessageResponse);
 }
