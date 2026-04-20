@@ -37,7 +37,9 @@ import {
   ChevronsLeftIcon,
   ChevronsRightIcon,
   DownloadIcon,
+  Trash2Icon,
 } from "lucide-react";
+import { DeleteTickerDialog } from "./DeleteTickerDialog";
 
 function escapeCsv(s: string | number | undefined): string {
   if (s === undefined || s === null) return "";
@@ -127,13 +129,32 @@ function StockDatabaseTableComponent({
   const onSearchChange = onSearchChangeProp ?? setSearchInputAtom;
   const [sorting, setSorting] = React.useState<SortingState>([{ id: "symbol", desc: false }]);
   const [pagination, setPagination] = React.useState({ pageIndex: 0, pageSize: 50 });
+  const [tickerToDelete, setTickerToDelete] = React.useState<string | null>(null);
+
+  const actionsColumn = React.useMemo<ColumnDef<FullStockMetadataRow>>(() => ({
+    id: "actions",
+    header: "Actions",
+    enableSorting: false,
+    cell: ({ row }) => (
+      <Button
+        variant="ghost"
+        size="icon"
+        className="text-muted-foreground hover:text-destructive"
+        aria-label={`Delete ${row.original.symbol}`}
+        onClick={() => setTickerToDelete(row.original.symbol)}
+      >
+        <Trash2Icon className="size-4" />
+      </Button>
+    ),
+  }), []);
 
   const columns = React.useMemo<ColumnDef<FullStockMetadataRow>[]>(() => {
     const cols = [...baseColumns];
     if (assetTypeFilter === "All" || assetTypeFilter === "Stocks") cols.push(...rbicsColumns);
     if (assetTypeFilter === "All" || assetTypeFilter === "ETFs") cols.push(...etfColumns);
+    cols.push(actionsColumn);
     return cols;
-  }, [assetTypeFilter]);
+  }, [assetTypeFilter, actionsColumn]);
 
   const table = useReactTable({
     data,
@@ -268,6 +289,8 @@ function StockDatabaseTableComponent({
           </Button>
         </div>
       </div>
+
+      <DeleteTickerDialog ticker={tickerToDelete} onClose={() => setTickerToDelete(null)} />
     </div>
   );
 }

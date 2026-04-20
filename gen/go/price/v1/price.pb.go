@@ -2129,6 +2129,355 @@ func (x *UpdatePricesProgress) GetErrorMessage() string {
 	return ""
 }
 
+// TickerDeletionCounts holds per-table row counts for a ticker deletion (preview or actual).
+type TickerDeletionCounts struct {
+	state            protoimpl.MessageState `protogen:"open.v1"`
+	StockMetadata    int64                  `protobuf:"varint,1,opt,name=stock_metadata,json=stockMetadata,proto3" json:"stock_metadata,omitempty"`    // 0 or 1
+	TickerMetadata   int64                  `protobuf:"varint,2,opt,name=ticker_metadata,json=tickerMetadata,proto3" json:"ticker_metadata,omitempty"` // 0 or 1
+	DailyPrices      int64                  `protobuf:"varint,3,opt,name=daily_prices,json=dailyPrices,proto3" json:"daily_prices,omitempty"`
+	HourlyPrices     int64                  `protobuf:"varint,4,opt,name=hourly_prices,json=hourlyPrices,proto3" json:"hourly_prices,omitempty"`
+	WeeklyPrices     int64                  `protobuf:"varint,5,opt,name=weekly_prices,json=weeklyPrices,proto3" json:"weekly_prices,omitempty"`
+	ContinuousPrices int64                  `protobuf:"varint,6,opt,name=continuous_prices,json=continuousPrices,proto3" json:"continuous_prices,omitempty"`
+	DailyMoveStats   int64                  `protobuf:"varint,7,opt,name=daily_move_stats,json=dailyMoveStats,proto3" json:"daily_move_stats,omitempty"`
+	FuturesMetadata  int64                  `protobuf:"varint,8,opt,name=futures_metadata,json=futuresMetadata,proto3" json:"futures_metadata,omitempty"` // 0 or 1
+	AlertsDirect     int64                  `protobuf:"varint,9,opt,name=alerts_direct,json=alertsDirect,proto3" json:"alerts_direct,omitempty"`          // alerts where ticker = $1
+	AlertsRatio      int64                  `protobuf:"varint,10,opt,name=alerts_ratio,json=alertsRatio,proto3" json:"alerts_ratio,omitempty"`            // alerts where ticker1 = $1 OR ticker2 = $1
+	AlertAudits      int64                  `protobuf:"varint,11,opt,name=alert_audits,json=alertAudits,proto3" json:"alert_audits,omitempty"`
+	PortfolioStocks  int64                  `protobuf:"varint,12,opt,name=portfolio_stocks,json=portfolioStocks,proto3" json:"portfolio_stocks,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *TickerDeletionCounts) Reset() {
+	*x = TickerDeletionCounts{}
+	mi := &file_price_v1_price_proto_msgTypes[28]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TickerDeletionCounts) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TickerDeletionCounts) ProtoMessage() {}
+
+func (x *TickerDeletionCounts) ProtoReflect() protoreflect.Message {
+	mi := &file_price_v1_price_proto_msgTypes[28]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TickerDeletionCounts.ProtoReflect.Descriptor instead.
+func (*TickerDeletionCounts) Descriptor() ([]byte, []int) {
+	return file_price_v1_price_proto_rawDescGZIP(), []int{28}
+}
+
+func (x *TickerDeletionCounts) GetStockMetadata() int64 {
+	if x != nil {
+		return x.StockMetadata
+	}
+	return 0
+}
+
+func (x *TickerDeletionCounts) GetTickerMetadata() int64 {
+	if x != nil {
+		return x.TickerMetadata
+	}
+	return 0
+}
+
+func (x *TickerDeletionCounts) GetDailyPrices() int64 {
+	if x != nil {
+		return x.DailyPrices
+	}
+	return 0
+}
+
+func (x *TickerDeletionCounts) GetHourlyPrices() int64 {
+	if x != nil {
+		return x.HourlyPrices
+	}
+	return 0
+}
+
+func (x *TickerDeletionCounts) GetWeeklyPrices() int64 {
+	if x != nil {
+		return x.WeeklyPrices
+	}
+	return 0
+}
+
+func (x *TickerDeletionCounts) GetContinuousPrices() int64 {
+	if x != nil {
+		return x.ContinuousPrices
+	}
+	return 0
+}
+
+func (x *TickerDeletionCounts) GetDailyMoveStats() int64 {
+	if x != nil {
+		return x.DailyMoveStats
+	}
+	return 0
+}
+
+func (x *TickerDeletionCounts) GetFuturesMetadata() int64 {
+	if x != nil {
+		return x.FuturesMetadata
+	}
+	return 0
+}
+
+func (x *TickerDeletionCounts) GetAlertsDirect() int64 {
+	if x != nil {
+		return x.AlertsDirect
+	}
+	return 0
+}
+
+func (x *TickerDeletionCounts) GetAlertsRatio() int64 {
+	if x != nil {
+		return x.AlertsRatio
+	}
+	return 0
+}
+
+func (x *TickerDeletionCounts) GetAlertAudits() int64 {
+	if x != nil {
+		return x.AlertAudits
+	}
+	return 0
+}
+
+func (x *TickerDeletionCounts) GetPortfolioStocks() int64 {
+	if x != nil {
+		return x.PortfolioStocks
+	}
+	return 0
+}
+
+type PreviewDeleteTickerRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Ticker        string                 `protobuf:"bytes,1,opt,name=ticker,proto3" json:"ticker,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PreviewDeleteTickerRequest) Reset() {
+	*x = PreviewDeleteTickerRequest{}
+	mi := &file_price_v1_price_proto_msgTypes[29]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PreviewDeleteTickerRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PreviewDeleteTickerRequest) ProtoMessage() {}
+
+func (x *PreviewDeleteTickerRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_price_v1_price_proto_msgTypes[29]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PreviewDeleteTickerRequest.ProtoReflect.Descriptor instead.
+func (*PreviewDeleteTickerRequest) Descriptor() ([]byte, []int) {
+	return file_price_v1_price_proto_rawDescGZIP(), []int{29}
+}
+
+func (x *PreviewDeleteTickerRequest) GetTicker() string {
+	if x != nil {
+		return x.Ticker
+	}
+	return ""
+}
+
+type PreviewDeleteTickerResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Ticker        string                 `protobuf:"bytes,1,opt,name=ticker,proto3" json:"ticker,omitempty"`
+	Exists        bool                   `protobuf:"varint,2,opt,name=exists,proto3" json:"exists,omitempty"`
+	Counts        *TickerDeletionCounts  `protobuf:"bytes,3,opt,name=counts,proto3" json:"counts,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PreviewDeleteTickerResponse) Reset() {
+	*x = PreviewDeleteTickerResponse{}
+	mi := &file_price_v1_price_proto_msgTypes[30]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PreviewDeleteTickerResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PreviewDeleteTickerResponse) ProtoMessage() {}
+
+func (x *PreviewDeleteTickerResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_price_v1_price_proto_msgTypes[30]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PreviewDeleteTickerResponse.ProtoReflect.Descriptor instead.
+func (*PreviewDeleteTickerResponse) Descriptor() ([]byte, []int) {
+	return file_price_v1_price_proto_rawDescGZIP(), []int{30}
+}
+
+func (x *PreviewDeleteTickerResponse) GetTicker() string {
+	if x != nil {
+		return x.Ticker
+	}
+	return ""
+}
+
+func (x *PreviewDeleteTickerResponse) GetExists() bool {
+	if x != nil {
+		return x.Exists
+	}
+	return false
+}
+
+func (x *PreviewDeleteTickerResponse) GetCounts() *TickerDeletionCounts {
+	if x != nil {
+		return x.Counts
+	}
+	return nil
+}
+
+type DeleteTickerRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Ticker        string                 `protobuf:"bytes,1,opt,name=ticker,proto3" json:"ticker,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DeleteTickerRequest) Reset() {
+	*x = DeleteTickerRequest{}
+	mi := &file_price_v1_price_proto_msgTypes[31]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DeleteTickerRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeleteTickerRequest) ProtoMessage() {}
+
+func (x *DeleteTickerRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_price_v1_price_proto_msgTypes[31]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeleteTickerRequest.ProtoReflect.Descriptor instead.
+func (*DeleteTickerRequest) Descriptor() ([]byte, []int) {
+	return file_price_v1_price_proto_rawDescGZIP(), []int{31}
+}
+
+func (x *DeleteTickerRequest) GetTicker() string {
+	if x != nil {
+		return x.Ticker
+	}
+	return ""
+}
+
+type DeleteTickerResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Success       bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
+	ErrorMessage  string                 `protobuf:"bytes,2,opt,name=error_message,json=errorMessage,proto3" json:"error_message,omitempty"`
+	Ticker        string                 `protobuf:"bytes,3,opt,name=ticker,proto3" json:"ticker,omitempty"`
+	Counts        *TickerDeletionCounts  `protobuf:"bytes,4,opt,name=counts,proto3" json:"counts,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DeleteTickerResponse) Reset() {
+	*x = DeleteTickerResponse{}
+	mi := &file_price_v1_price_proto_msgTypes[32]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DeleteTickerResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeleteTickerResponse) ProtoMessage() {}
+
+func (x *DeleteTickerResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_price_v1_price_proto_msgTypes[32]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeleteTickerResponse.ProtoReflect.Descriptor instead.
+func (*DeleteTickerResponse) Descriptor() ([]byte, []int) {
+	return file_price_v1_price_proto_rawDescGZIP(), []int{32}
+}
+
+func (x *DeleteTickerResponse) GetSuccess() bool {
+	if x != nil {
+		return x.Success
+	}
+	return false
+}
+
+func (x *DeleteTickerResponse) GetErrorMessage() string {
+	if x != nil {
+		return x.ErrorMessage
+	}
+	return ""
+}
+
+func (x *DeleteTickerResponse) GetTicker() string {
+	if x != nil {
+		return x.Ticker
+	}
+	return ""
+}
+
+func (x *DeleteTickerResponse) GetCounts() *TickerDeletionCounts {
+	if x != nil {
+		return x.Counts
+	}
+	return nil
+}
+
 var File_price_v1_price_proto protoreflect.FileDescriptor
 
 const file_price_v1_price_proto_rawDesc = "" +
@@ -2310,7 +2659,34 @@ const file_price_v1_price_proto_rawDesc = "" +
 	"\x0ftickers_updated\x18\x04 \x01(\x05R\x0etickersUpdated\x12%\n" +
 	"\x0etickers_failed\x18\x05 \x01(\x05R\rtickersFailed\x12\x12\n" +
 	"\x04done\x18\x06 \x01(\bR\x04done\x12#\n" +
-	"\rerror_message\x18\a \x01(\tR\ferrorMessage*g\n" +
+	"\rerror_message\x18\a \x01(\tR\ferrorMessage\"\xeb\x03\n" +
+	"\x14TickerDeletionCounts\x12%\n" +
+	"\x0estock_metadata\x18\x01 \x01(\x03R\rstockMetadata\x12'\n" +
+	"\x0fticker_metadata\x18\x02 \x01(\x03R\x0etickerMetadata\x12!\n" +
+	"\fdaily_prices\x18\x03 \x01(\x03R\vdailyPrices\x12#\n" +
+	"\rhourly_prices\x18\x04 \x01(\x03R\fhourlyPrices\x12#\n" +
+	"\rweekly_prices\x18\x05 \x01(\x03R\fweeklyPrices\x12+\n" +
+	"\x11continuous_prices\x18\x06 \x01(\x03R\x10continuousPrices\x12(\n" +
+	"\x10daily_move_stats\x18\a \x01(\x03R\x0edailyMoveStats\x12)\n" +
+	"\x10futures_metadata\x18\b \x01(\x03R\x0ffuturesMetadata\x12#\n" +
+	"\ralerts_direct\x18\t \x01(\x03R\falertsDirect\x12!\n" +
+	"\falerts_ratio\x18\n" +
+	" \x01(\x03R\valertsRatio\x12!\n" +
+	"\falert_audits\x18\v \x01(\x03R\valertAudits\x12)\n" +
+	"\x10portfolio_stocks\x18\f \x01(\x03R\x0fportfolioStocks\"4\n" +
+	"\x1aPreviewDeleteTickerRequest\x12\x16\n" +
+	"\x06ticker\x18\x01 \x01(\tR\x06ticker\"\x90\x01\n" +
+	"\x1bPreviewDeleteTickerResponse\x12\x16\n" +
+	"\x06ticker\x18\x01 \x01(\tR\x06ticker\x12\x16\n" +
+	"\x06exists\x18\x02 \x01(\bR\x06exists\x12A\n" +
+	"\x06counts\x18\x03 \x01(\v2).stockalert.price.v1.TickerDeletionCountsR\x06counts\"-\n" +
+	"\x13DeleteTickerRequest\x12\x16\n" +
+	"\x06ticker\x18\x01 \x01(\tR\x06ticker\"\xb0\x01\n" +
+	"\x14DeleteTickerResponse\x12\x18\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\x12#\n" +
+	"\rerror_message\x18\x02 \x01(\tR\ferrorMessage\x12\x16\n" +
+	"\x06ticker\x18\x03 \x01(\tR\x06ticker\x12A\n" +
+	"\x06counts\x18\x04 \x01(\v2).stockalert.price.v1.TickerDeletionCountsR\x06counts*g\n" +
 	"\tTimeframe\x12\x19\n" +
 	"\x15TIMEFRAME_UNSPECIFIED\x10\x00\x12\x14\n" +
 	"\x10TIMEFRAME_HOURLY\x10\x01\x12\x13\n" +
@@ -2320,7 +2696,8 @@ const file_price_v1_price_proto_rawDesc = "" +
 	"\x16DAY_FILTER_UNSPECIFIED\x10\x00\x12\x12\n" +
 	"\x0eDAY_FILTER_ALL\x10\x01\x12\x17\n" +
 	"\x13DAY_FILTER_WEEKDAYS\x10\x02\x12\x17\n" +
-	"\x13DAY_FILTER_WEEKENDS\x10\x032\xdf\b\n" +
+	"\x13DAY_FILTER_WEEKENDS\x10\x032\xbe\n" +
+	"\n" +
 	"\fPriceService\x12x\n" +
 	"\x13GetStockMetadataMap\x12/.stockalert.price.v1.GetStockMetadataMapRequest\x1a0.stockalert.price.v1.GetStockMetadataMapResponse\x12{\n" +
 	"\x14GetFullStockMetadata\x120.stockalert.price.v1.GetFullStockMetadataRequest\x1a1.stockalert.price.v1.GetFullStockMetadataResponse\x12o\n" +
@@ -2331,7 +2708,9 @@ const file_price_v1_price_proto_rawDesc = "" +
 	"\x0fScanStaleHourly\x12+.stockalert.price.v1.ScanStaleHourlyRequest\x1a,.stockalert.price.v1.ScanStaleHourlyResponse\x12{\n" +
 	"\x14GetHourlyDataQuality\x120.stockalert.price.v1.GetHourlyDataQualityRequest\x1a1.stockalert.price.v1.GetHourlyDataQualityResponse\x12T\n" +
 	"\aRunScan\x12#.stockalert.price.v1.RunScanRequest\x1a$.stockalert.price.v1.RunScanResponse\x12e\n" +
-	"\fUpdatePrices\x12(.stockalert.price.v1.UpdatePricesRequest\x1a).stockalert.price.v1.UpdatePricesProgress0\x01B\xb7\x01\n" +
+	"\fUpdatePrices\x12(.stockalert.price.v1.UpdatePricesRequest\x1a).stockalert.price.v1.UpdatePricesProgress0\x01\x12x\n" +
+	"\x13PreviewDeleteTicker\x12/.stockalert.price.v1.PreviewDeleteTickerRequest\x1a0.stockalert.price.v1.PreviewDeleteTickerResponse\x12c\n" +
+	"\fDeleteTicker\x12(.stockalert.price.v1.DeleteTickerRequest\x1a).stockalert.price.v1.DeleteTickerResponseB\xb7\x01\n" +
 	"\x17com.stockalert.price.v1B\n" +
 	"PriceProtoP\x01Z\"stockalert/gen/go/price/v1;pricev1\xa2\x02\x03SPX\xaa\x02\x13Stockalert.Price.V1\xca\x02\x13Stockalert\\Price\\V1\xe2\x02\x1fStockalert\\Price\\V1\\GPBMetadata\xea\x02\x15Stockalert::Price::V1b\x06proto3"
 
@@ -2348,7 +2727,7 @@ func file_price_v1_price_proto_rawDescGZIP() []byte {
 }
 
 var file_price_v1_price_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_price_v1_price_proto_msgTypes = make([]protoimpl.MessageInfo, 28)
+var file_price_v1_price_proto_msgTypes = make([]protoimpl.MessageInfo, 33)
 var file_price_v1_price_proto_goTypes = []any{
 	(Timeframe)(0),                       // 0: stockalert.price.v1.Timeframe
 	(DayFilter)(0),                       // 1: stockalert.price.v1.DayFilter
@@ -2380,61 +2759,72 @@ var file_price_v1_price_proto_goTypes = []any{
 	(*RunScanResponse)(nil),              // 27: stockalert.price.v1.RunScanResponse
 	(*UpdatePricesRequest)(nil),          // 28: stockalert.price.v1.UpdatePricesRequest
 	(*UpdatePricesProgress)(nil),         // 29: stockalert.price.v1.UpdatePricesProgress
-	(*timestamppb.Timestamp)(nil),        // 30: google.protobuf.Timestamp
+	(*TickerDeletionCounts)(nil),         // 30: stockalert.price.v1.TickerDeletionCounts
+	(*PreviewDeleteTickerRequest)(nil),   // 31: stockalert.price.v1.PreviewDeleteTickerRequest
+	(*PreviewDeleteTickerResponse)(nil),  // 32: stockalert.price.v1.PreviewDeleteTickerResponse
+	(*DeleteTickerRequest)(nil),          // 33: stockalert.price.v1.DeleteTickerRequest
+	(*DeleteTickerResponse)(nil),         // 34: stockalert.price.v1.DeleteTickerResponse
+	(*timestamppb.Timestamp)(nil),        // 35: google.protobuf.Timestamp
 }
 var file_price_v1_price_proto_depIdxs = []int32{
 	2,  // 0: stockalert.price.v1.GetStockMetadataMapResponse.items:type_name -> stockalert.price.v1.StockMetadata
-	30, // 1: stockalert.price.v1.FullStockMetadata.last_updated:type_name -> google.protobuf.Timestamp
+	35, // 1: stockalert.price.v1.FullStockMetadata.last_updated:type_name -> google.protobuf.Timestamp
 	5,  // 2: stockalert.price.v1.GetFullStockMetadataResponse.items:type_name -> stockalert.price.v1.FullStockMetadata
-	30, // 3: stockalert.price.v1.DatabaseStats.hourly_min:type_name -> google.protobuf.Timestamp
-	30, // 4: stockalert.price.v1.DatabaseStats.hourly_max:type_name -> google.protobuf.Timestamp
-	30, // 5: stockalert.price.v1.DatabaseStats.daily_min:type_name -> google.protobuf.Timestamp
-	30, // 6: stockalert.price.v1.DatabaseStats.daily_max:type_name -> google.protobuf.Timestamp
-	30, // 7: stockalert.price.v1.DatabaseStats.weekly_min:type_name -> google.protobuf.Timestamp
-	30, // 8: stockalert.price.v1.DatabaseStats.weekly_max:type_name -> google.protobuf.Timestamp
+	35, // 3: stockalert.price.v1.DatabaseStats.hourly_min:type_name -> google.protobuf.Timestamp
+	35, // 4: stockalert.price.v1.DatabaseStats.hourly_max:type_name -> google.protobuf.Timestamp
+	35, // 5: stockalert.price.v1.DatabaseStats.daily_min:type_name -> google.protobuf.Timestamp
+	35, // 6: stockalert.price.v1.DatabaseStats.daily_max:type_name -> google.protobuf.Timestamp
+	35, // 7: stockalert.price.v1.DatabaseStats.weekly_min:type_name -> google.protobuf.Timestamp
+	35, // 8: stockalert.price.v1.DatabaseStats.weekly_max:type_name -> google.protobuf.Timestamp
 	8,  // 9: stockalert.price.v1.GetDatabaseStatsResponse.stats:type_name -> stockalert.price.v1.DatabaseStats
-	30, // 10: stockalert.price.v1.PriceRow.time:type_name -> google.protobuf.Timestamp
+	35, // 10: stockalert.price.v1.PriceRow.time:type_name -> google.protobuf.Timestamp
 	0,  // 11: stockalert.price.v1.LoadPriceDataRequest.timeframe:type_name -> stockalert.price.v1.Timeframe
-	30, // 12: stockalert.price.v1.LoadPriceDataRequest.start_date:type_name -> google.protobuf.Timestamp
-	30, // 13: stockalert.price.v1.LoadPriceDataRequest.end_date:type_name -> google.protobuf.Timestamp
+	35, // 12: stockalert.price.v1.LoadPriceDataRequest.start_date:type_name -> google.protobuf.Timestamp
+	35, // 13: stockalert.price.v1.LoadPriceDataRequest.end_date:type_name -> google.protobuf.Timestamp
 	1,  // 14: stockalert.price.v1.LoadPriceDataRequest.day_filter:type_name -> stockalert.price.v1.DayFilter
 	11, // 15: stockalert.price.v1.LoadPriceDataResponse.rows:type_name -> stockalert.price.v1.PriceRow
-	30, // 16: stockalert.price.v1.StaleTickerRow.last_update:type_name -> google.protobuf.Timestamp
+	35, // 16: stockalert.price.v1.StaleTickerRow.last_update:type_name -> google.protobuf.Timestamp
 	14, // 17: stockalert.price.v1.ScanStaleDailyResponse.rows:type_name -> stockalert.price.v1.StaleTickerRow
 	14, // 18: stockalert.price.v1.ScanStaleWeeklyResponse.rows:type_name -> stockalert.price.v1.StaleTickerRow
-	30, // 19: stockalert.price.v1.StaleHourlyRow.last_hour:type_name -> google.protobuf.Timestamp
+	35, // 19: stockalert.price.v1.StaleHourlyRow.last_hour:type_name -> google.protobuf.Timestamp
 	19, // 20: stockalert.price.v1.ScanStaleHourlyResponse.rows:type_name -> stockalert.price.v1.StaleHourlyRow
-	30, // 21: stockalert.price.v1.ScanStaleHourlyResponse.latest_hour:type_name -> google.protobuf.Timestamp
-	30, // 22: stockalert.price.v1.GetHourlyDataQualityResponse.oldest_stale:type_name -> google.protobuf.Timestamp
+	35, // 21: stockalert.price.v1.ScanStaleHourlyResponse.latest_hour:type_name -> google.protobuf.Timestamp
+	35, // 22: stockalert.price.v1.GetHourlyDataQualityResponse.oldest_stale:type_name -> google.protobuf.Timestamp
 	0,  // 23: stockalert.price.v1.RunScanRequest.timeframe:type_name -> stockalert.price.v1.Timeframe
 	24, // 24: stockalert.price.v1.RunScanRequest.symbol_filter:type_name -> stockalert.price.v1.SymbolFilter
 	26, // 25: stockalert.price.v1.RunScanResponse.matches:type_name -> stockalert.price.v1.ScanMatch
 	0,  // 26: stockalert.price.v1.UpdatePricesRequest.timeframe:type_name -> stockalert.price.v1.Timeframe
-	3,  // 27: stockalert.price.v1.PriceService.GetStockMetadataMap:input_type -> stockalert.price.v1.GetStockMetadataMapRequest
-	6,  // 28: stockalert.price.v1.PriceService.GetFullStockMetadata:input_type -> stockalert.price.v1.GetFullStockMetadataRequest
-	9,  // 29: stockalert.price.v1.PriceService.GetDatabaseStats:input_type -> stockalert.price.v1.GetDatabaseStatsRequest
-	12, // 30: stockalert.price.v1.PriceService.LoadPriceData:input_type -> stockalert.price.v1.LoadPriceDataRequest
-	15, // 31: stockalert.price.v1.PriceService.ScanStaleDaily:input_type -> stockalert.price.v1.ScanStaleDailyRequest
-	17, // 32: stockalert.price.v1.PriceService.ScanStaleWeekly:input_type -> stockalert.price.v1.ScanStaleWeeklyRequest
-	20, // 33: stockalert.price.v1.PriceService.ScanStaleHourly:input_type -> stockalert.price.v1.ScanStaleHourlyRequest
-	22, // 34: stockalert.price.v1.PriceService.GetHourlyDataQuality:input_type -> stockalert.price.v1.GetHourlyDataQualityRequest
-	25, // 35: stockalert.price.v1.PriceService.RunScan:input_type -> stockalert.price.v1.RunScanRequest
-	28, // 36: stockalert.price.v1.PriceService.UpdatePrices:input_type -> stockalert.price.v1.UpdatePricesRequest
-	4,  // 37: stockalert.price.v1.PriceService.GetStockMetadataMap:output_type -> stockalert.price.v1.GetStockMetadataMapResponse
-	7,  // 38: stockalert.price.v1.PriceService.GetFullStockMetadata:output_type -> stockalert.price.v1.GetFullStockMetadataResponse
-	10, // 39: stockalert.price.v1.PriceService.GetDatabaseStats:output_type -> stockalert.price.v1.GetDatabaseStatsResponse
-	13, // 40: stockalert.price.v1.PriceService.LoadPriceData:output_type -> stockalert.price.v1.LoadPriceDataResponse
-	16, // 41: stockalert.price.v1.PriceService.ScanStaleDaily:output_type -> stockalert.price.v1.ScanStaleDailyResponse
-	18, // 42: stockalert.price.v1.PriceService.ScanStaleWeekly:output_type -> stockalert.price.v1.ScanStaleWeeklyResponse
-	21, // 43: stockalert.price.v1.PriceService.ScanStaleHourly:output_type -> stockalert.price.v1.ScanStaleHourlyResponse
-	23, // 44: stockalert.price.v1.PriceService.GetHourlyDataQuality:output_type -> stockalert.price.v1.GetHourlyDataQualityResponse
-	27, // 45: stockalert.price.v1.PriceService.RunScan:output_type -> stockalert.price.v1.RunScanResponse
-	29, // 46: stockalert.price.v1.PriceService.UpdatePrices:output_type -> stockalert.price.v1.UpdatePricesProgress
-	37, // [37:47] is the sub-list for method output_type
-	27, // [27:37] is the sub-list for method input_type
-	27, // [27:27] is the sub-list for extension type_name
-	27, // [27:27] is the sub-list for extension extendee
-	0,  // [0:27] is the sub-list for field type_name
+	30, // 27: stockalert.price.v1.PreviewDeleteTickerResponse.counts:type_name -> stockalert.price.v1.TickerDeletionCounts
+	30, // 28: stockalert.price.v1.DeleteTickerResponse.counts:type_name -> stockalert.price.v1.TickerDeletionCounts
+	3,  // 29: stockalert.price.v1.PriceService.GetStockMetadataMap:input_type -> stockalert.price.v1.GetStockMetadataMapRequest
+	6,  // 30: stockalert.price.v1.PriceService.GetFullStockMetadata:input_type -> stockalert.price.v1.GetFullStockMetadataRequest
+	9,  // 31: stockalert.price.v1.PriceService.GetDatabaseStats:input_type -> stockalert.price.v1.GetDatabaseStatsRequest
+	12, // 32: stockalert.price.v1.PriceService.LoadPriceData:input_type -> stockalert.price.v1.LoadPriceDataRequest
+	15, // 33: stockalert.price.v1.PriceService.ScanStaleDaily:input_type -> stockalert.price.v1.ScanStaleDailyRequest
+	17, // 34: stockalert.price.v1.PriceService.ScanStaleWeekly:input_type -> stockalert.price.v1.ScanStaleWeeklyRequest
+	20, // 35: stockalert.price.v1.PriceService.ScanStaleHourly:input_type -> stockalert.price.v1.ScanStaleHourlyRequest
+	22, // 36: stockalert.price.v1.PriceService.GetHourlyDataQuality:input_type -> stockalert.price.v1.GetHourlyDataQualityRequest
+	25, // 37: stockalert.price.v1.PriceService.RunScan:input_type -> stockalert.price.v1.RunScanRequest
+	28, // 38: stockalert.price.v1.PriceService.UpdatePrices:input_type -> stockalert.price.v1.UpdatePricesRequest
+	31, // 39: stockalert.price.v1.PriceService.PreviewDeleteTicker:input_type -> stockalert.price.v1.PreviewDeleteTickerRequest
+	33, // 40: stockalert.price.v1.PriceService.DeleteTicker:input_type -> stockalert.price.v1.DeleteTickerRequest
+	4,  // 41: stockalert.price.v1.PriceService.GetStockMetadataMap:output_type -> stockalert.price.v1.GetStockMetadataMapResponse
+	7,  // 42: stockalert.price.v1.PriceService.GetFullStockMetadata:output_type -> stockalert.price.v1.GetFullStockMetadataResponse
+	10, // 43: stockalert.price.v1.PriceService.GetDatabaseStats:output_type -> stockalert.price.v1.GetDatabaseStatsResponse
+	13, // 44: stockalert.price.v1.PriceService.LoadPriceData:output_type -> stockalert.price.v1.LoadPriceDataResponse
+	16, // 45: stockalert.price.v1.PriceService.ScanStaleDaily:output_type -> stockalert.price.v1.ScanStaleDailyResponse
+	18, // 46: stockalert.price.v1.PriceService.ScanStaleWeekly:output_type -> stockalert.price.v1.ScanStaleWeeklyResponse
+	21, // 47: stockalert.price.v1.PriceService.ScanStaleHourly:output_type -> stockalert.price.v1.ScanStaleHourlyResponse
+	23, // 48: stockalert.price.v1.PriceService.GetHourlyDataQuality:output_type -> stockalert.price.v1.GetHourlyDataQualityResponse
+	27, // 49: stockalert.price.v1.PriceService.RunScan:output_type -> stockalert.price.v1.RunScanResponse
+	29, // 50: stockalert.price.v1.PriceService.UpdatePrices:output_type -> stockalert.price.v1.UpdatePricesProgress
+	32, // 51: stockalert.price.v1.PriceService.PreviewDeleteTicker:output_type -> stockalert.price.v1.PreviewDeleteTickerResponse
+	34, // 52: stockalert.price.v1.PriceService.DeleteTicker:output_type -> stockalert.price.v1.DeleteTickerResponse
+	41, // [41:53] is the sub-list for method output_type
+	29, // [29:41] is the sub-list for method input_type
+	29, // [29:29] is the sub-list for extension type_name
+	29, // [29:29] is the sub-list for extension extendee
+	0,  // [0:29] is the sub-list for field type_name
 }
 
 func init() { file_price_v1_price_proto_init() }
@@ -2449,7 +2839,7 @@ func file_price_v1_price_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_price_v1_price_proto_rawDesc), len(file_price_v1_price_proto_rawDesc)),
 			NumEnums:      2,
-			NumMessages:   28,
+			NumMessages:   33,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

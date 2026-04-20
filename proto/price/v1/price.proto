@@ -247,6 +247,41 @@ message UpdatePricesProgress {
   string error_message = 7;       // set if an error occurred
 }
 
+// TickerDeletionCounts holds per-table row counts for a ticker deletion (preview or actual).
+message TickerDeletionCounts {
+  int64 stock_metadata    = 1;  // 0 or 1
+  int64 ticker_metadata   = 2;  // 0 or 1
+  int64 daily_prices      = 3;
+  int64 hourly_prices     = 4;
+  int64 weekly_prices     = 5;
+  int64 continuous_prices = 6;
+  int64 daily_move_stats  = 7;
+  int64 futures_metadata  = 8;  // 0 or 1
+  int64 alerts_direct     = 9;  // alerts where ticker = $1
+  int64 alerts_ratio      = 10; // alerts where ticker1 = $1 OR ticker2 = $1
+  int64 alert_audits      = 11;
+  int64 portfolio_stocks  = 12;
+}
+
+message PreviewDeleteTickerRequest {
+  string ticker = 1;
+}
+message PreviewDeleteTickerResponse {
+  string               ticker = 1;
+  bool                 exists = 2;
+  TickerDeletionCounts counts = 3;
+}
+
+message DeleteTickerRequest {
+  string ticker = 1;
+}
+message DeleteTickerResponse {
+  bool                 success       = 1;
+  string               error_message = 2;
+  string               ticker        = 3;
+  TickerDeletionCounts counts        = 4;
+}
+
 // PriceService provides read-only access to the price database and on-demand updates.
 service PriceService {
   rpc GetStockMetadataMap(GetStockMetadataMapRequest) returns (GetStockMetadataMapResponse);
@@ -259,4 +294,6 @@ service PriceService {
   rpc GetHourlyDataQuality(GetHourlyDataQualityRequest) returns (GetHourlyDataQualityResponse);
   rpc RunScan(RunScanRequest) returns (RunScanResponse);
   rpc UpdatePrices(UpdatePricesRequest) returns (stream UpdatePricesProgress);
+  rpc PreviewDeleteTicker(PreviewDeleteTickerRequest) returns (PreviewDeleteTickerResponse);
+  rpc DeleteTicker(DeleteTickerRequest) returns (DeleteTickerResponse);
 }

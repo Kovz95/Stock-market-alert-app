@@ -29,6 +29,8 @@ const (
 	PriceService_GetHourlyDataQuality_FullMethodName = "/stockalert.price.v1.PriceService/GetHourlyDataQuality"
 	PriceService_RunScan_FullMethodName              = "/stockalert.price.v1.PriceService/RunScan"
 	PriceService_UpdatePrices_FullMethodName         = "/stockalert.price.v1.PriceService/UpdatePrices"
+	PriceService_PreviewDeleteTicker_FullMethodName  = "/stockalert.price.v1.PriceService/PreviewDeleteTicker"
+	PriceService_DeleteTicker_FullMethodName         = "/stockalert.price.v1.PriceService/DeleteTicker"
 )
 
 // PriceServiceClient is the client API for PriceService service.
@@ -47,6 +49,8 @@ type PriceServiceClient interface {
 	GetHourlyDataQuality(ctx context.Context, in *GetHourlyDataQualityRequest, opts ...grpc.CallOption) (*GetHourlyDataQualityResponse, error)
 	RunScan(ctx context.Context, in *RunScanRequest, opts ...grpc.CallOption) (*RunScanResponse, error)
 	UpdatePrices(ctx context.Context, in *UpdatePricesRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[UpdatePricesProgress], error)
+	PreviewDeleteTicker(ctx context.Context, in *PreviewDeleteTickerRequest, opts ...grpc.CallOption) (*PreviewDeleteTickerResponse, error)
+	DeleteTicker(ctx context.Context, in *DeleteTickerRequest, opts ...grpc.CallOption) (*DeleteTickerResponse, error)
 }
 
 type priceServiceClient struct {
@@ -166,6 +170,26 @@ func (c *priceServiceClient) UpdatePrices(ctx context.Context, in *UpdatePricesR
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
 type PriceService_UpdatePricesClient = grpc.ServerStreamingClient[UpdatePricesProgress]
 
+func (c *priceServiceClient) PreviewDeleteTicker(ctx context.Context, in *PreviewDeleteTickerRequest, opts ...grpc.CallOption) (*PreviewDeleteTickerResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(PreviewDeleteTickerResponse)
+	err := c.cc.Invoke(ctx, PriceService_PreviewDeleteTicker_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *priceServiceClient) DeleteTicker(ctx context.Context, in *DeleteTickerRequest, opts ...grpc.CallOption) (*DeleteTickerResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(DeleteTickerResponse)
+	err := c.cc.Invoke(ctx, PriceService_DeleteTicker_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // PriceServiceServer is the server API for PriceService service.
 // All implementations must embed UnimplementedPriceServiceServer
 // for forward compatibility.
@@ -182,6 +206,8 @@ type PriceServiceServer interface {
 	GetHourlyDataQuality(context.Context, *GetHourlyDataQualityRequest) (*GetHourlyDataQualityResponse, error)
 	RunScan(context.Context, *RunScanRequest) (*RunScanResponse, error)
 	UpdatePrices(*UpdatePricesRequest, grpc.ServerStreamingServer[UpdatePricesProgress]) error
+	PreviewDeleteTicker(context.Context, *PreviewDeleteTickerRequest) (*PreviewDeleteTickerResponse, error)
+	DeleteTicker(context.Context, *DeleteTickerRequest) (*DeleteTickerResponse, error)
 	mustEmbedUnimplementedPriceServiceServer()
 }
 
@@ -221,6 +247,12 @@ func (UnimplementedPriceServiceServer) RunScan(context.Context, *RunScanRequest)
 }
 func (UnimplementedPriceServiceServer) UpdatePrices(*UpdatePricesRequest, grpc.ServerStreamingServer[UpdatePricesProgress]) error {
 	return status.Error(codes.Unimplemented, "method UpdatePrices not implemented")
+}
+func (UnimplementedPriceServiceServer) PreviewDeleteTicker(context.Context, *PreviewDeleteTickerRequest) (*PreviewDeleteTickerResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method PreviewDeleteTicker not implemented")
+}
+func (UnimplementedPriceServiceServer) DeleteTicker(context.Context, *DeleteTickerRequest) (*DeleteTickerResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method DeleteTicker not implemented")
 }
 func (UnimplementedPriceServiceServer) mustEmbedUnimplementedPriceServiceServer() {}
 func (UnimplementedPriceServiceServer) testEmbeddedByValue()                      {}
@@ -416,6 +448,42 @@ func _PriceService_UpdatePrices_Handler(srv interface{}, stream grpc.ServerStrea
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
 type PriceService_UpdatePricesServer = grpc.ServerStreamingServer[UpdatePricesProgress]
 
+func _PriceService_PreviewDeleteTicker_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(PreviewDeleteTickerRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PriceServiceServer).PreviewDeleteTicker(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PriceService_PreviewDeleteTicker_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PriceServiceServer).PreviewDeleteTicker(ctx, req.(*PreviewDeleteTickerRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PriceService_DeleteTicker_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteTickerRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PriceServiceServer).DeleteTicker(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PriceService_DeleteTicker_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PriceServiceServer).DeleteTicker(ctx, req.(*DeleteTickerRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // PriceService_ServiceDesc is the grpc.ServiceDesc for PriceService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -458,6 +526,14 @@ var PriceService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "RunScan",
 			Handler:    _PriceService_RunScan_Handler,
+		},
+		{
+			MethodName: "PreviewDeleteTicker",
+			Handler:    _PriceService_PreviewDeleteTicker_Handler,
+		},
+		{
+			MethodName: "DeleteTicker",
+			Handler:    _PriceService_DeleteTicker_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

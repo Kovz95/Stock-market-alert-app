@@ -1,7 +1,89 @@
 "use server";
 
 import { priceClient } from "@/lib/grpc/channel";
-import type { FullStockMetadata } from "../../../../gen/ts/price/v1/price";
+import type { FullStockMetadata, TickerDeletionCounts as ProtoTickerDeletionCounts } from "../../../../gen/ts/price/v1/price";
+
+export type TickerDeletionCounts = {
+  stockMetadata: number;
+  tickerMetadata: number;
+  dailyPrices: number;
+  hourlyPrices: number;
+  weeklyPrices: number;
+  continuousPrices: number;
+  dailyMoveStats: number;
+  futuresMetadata: number;
+  alertsDirect: number;
+  alertsRatio: number;
+  alertAudits: number;
+  portfolioStocks: number;
+};
+
+export type PreviewDeleteTickerResult = {
+  ticker: string;
+  exists: boolean;
+  counts: TickerDeletionCounts;
+};
+
+export type DeleteTickerResult = {
+  success: boolean;
+  errorMessage?: string;
+  ticker: string;
+  counts: TickerDeletionCounts;
+};
+
+function zeroCounts(): TickerDeletionCounts {
+  return {
+    stockMetadata: 0,
+    tickerMetadata: 0,
+    dailyPrices: 0,
+    hourlyPrices: 0,
+    weeklyPrices: 0,
+    continuousPrices: 0,
+    dailyMoveStats: 0,
+    futuresMetadata: 0,
+    alertsDirect: 0,
+    alertsRatio: 0,
+    alertAudits: 0,
+    portfolioStocks: 0,
+  };
+}
+
+function toDeletionCounts(proto: ProtoTickerDeletionCounts | undefined): TickerDeletionCounts {
+  if (!proto) return zeroCounts();
+  return {
+    stockMetadata: Number(proto.stockMetadata),
+    tickerMetadata: Number(proto.tickerMetadata),
+    dailyPrices: Number(proto.dailyPrices),
+    hourlyPrices: Number(proto.hourlyPrices),
+    weeklyPrices: Number(proto.weeklyPrices),
+    continuousPrices: Number(proto.continuousPrices),
+    dailyMoveStats: Number(proto.dailyMoveStats),
+    futuresMetadata: Number(proto.futuresMetadata),
+    alertsDirect: Number(proto.alertsDirect),
+    alertsRatio: Number(proto.alertsRatio),
+    alertAudits: Number(proto.alertAudits),
+    portfolioStocks: Number(proto.portfolioStocks),
+  };
+}
+
+export async function previewDeleteTicker(ticker: string): Promise<PreviewDeleteTickerResult> {
+  const res = await priceClient.previewDeleteTicker({ ticker });
+  return {
+    ticker: res.ticker,
+    exists: res.exists,
+    counts: toDeletionCounts(res.counts),
+  };
+}
+
+export async function deleteTicker(ticker: string): Promise<DeleteTickerResult> {
+  const res = await priceClient.deleteTicker({ ticker });
+  return {
+    success: res.success,
+    errorMessage: res.errorMessage || undefined,
+    ticker: res.ticker,
+    counts: toDeletionCounts(res.counts),
+  };
+}
 
 /**
  * One row of full stock metadata (table columns + flattened ETF fields from raw_payload).

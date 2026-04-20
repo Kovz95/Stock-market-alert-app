@@ -357,6 +357,48 @@ export interface UpdatePricesProgress {
   errorMessage: string;
 }
 
+/** TickerDeletionCounts holds per-table row counts for a ticker deletion (preview or actual). */
+export interface TickerDeletionCounts {
+  /** 0 or 1 */
+  stockMetadata: number;
+  /** 0 or 1 */
+  tickerMetadata: number;
+  dailyPrices: number;
+  hourlyPrices: number;
+  weeklyPrices: number;
+  continuousPrices: number;
+  dailyMoveStats: number;
+  /** 0 or 1 */
+  futuresMetadata: number;
+  /** alerts where ticker = $1 */
+  alertsDirect: number;
+  /** alerts where ticker1 = $1 OR ticker2 = $1 */
+  alertsRatio: number;
+  alertAudits: number;
+  portfolioStocks: number;
+}
+
+export interface PreviewDeleteTickerRequest {
+  ticker: string;
+}
+
+export interface PreviewDeleteTickerResponse {
+  ticker: string;
+  exists: boolean;
+  counts?: TickerDeletionCounts | undefined;
+}
+
+export interface DeleteTickerRequest {
+  ticker: string;
+}
+
+export interface DeleteTickerResponse {
+  success: boolean;
+  errorMessage: string;
+  ticker: string;
+  counts?: TickerDeletionCounts | undefined;
+}
+
 function createBaseStockMetadata(): StockMetadata {
   return { symbol: "", name: "", exchange: "", isin: "" };
 }
@@ -3917,6 +3959,627 @@ export const UpdatePricesProgress: MessageFns<UpdatePricesProgress> = {
   },
 };
 
+function createBaseTickerDeletionCounts(): TickerDeletionCounts {
+  return {
+    stockMetadata: 0,
+    tickerMetadata: 0,
+    dailyPrices: 0,
+    hourlyPrices: 0,
+    weeklyPrices: 0,
+    continuousPrices: 0,
+    dailyMoveStats: 0,
+    futuresMetadata: 0,
+    alertsDirect: 0,
+    alertsRatio: 0,
+    alertAudits: 0,
+    portfolioStocks: 0,
+  };
+}
+
+export const TickerDeletionCounts: MessageFns<TickerDeletionCounts> = {
+  encode(message: TickerDeletionCounts, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.stockMetadata !== 0) {
+      writer.uint32(8).int64(message.stockMetadata);
+    }
+    if (message.tickerMetadata !== 0) {
+      writer.uint32(16).int64(message.tickerMetadata);
+    }
+    if (message.dailyPrices !== 0) {
+      writer.uint32(24).int64(message.dailyPrices);
+    }
+    if (message.hourlyPrices !== 0) {
+      writer.uint32(32).int64(message.hourlyPrices);
+    }
+    if (message.weeklyPrices !== 0) {
+      writer.uint32(40).int64(message.weeklyPrices);
+    }
+    if (message.continuousPrices !== 0) {
+      writer.uint32(48).int64(message.continuousPrices);
+    }
+    if (message.dailyMoveStats !== 0) {
+      writer.uint32(56).int64(message.dailyMoveStats);
+    }
+    if (message.futuresMetadata !== 0) {
+      writer.uint32(64).int64(message.futuresMetadata);
+    }
+    if (message.alertsDirect !== 0) {
+      writer.uint32(72).int64(message.alertsDirect);
+    }
+    if (message.alertsRatio !== 0) {
+      writer.uint32(80).int64(message.alertsRatio);
+    }
+    if (message.alertAudits !== 0) {
+      writer.uint32(88).int64(message.alertAudits);
+    }
+    if (message.portfolioStocks !== 0) {
+      writer.uint32(96).int64(message.portfolioStocks);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): TickerDeletionCounts {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseTickerDeletionCounts();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 8) {
+            break;
+          }
+
+          message.stockMetadata = longToNumber(reader.int64());
+          continue;
+        }
+        case 2: {
+          if (tag !== 16) {
+            break;
+          }
+
+          message.tickerMetadata = longToNumber(reader.int64());
+          continue;
+        }
+        case 3: {
+          if (tag !== 24) {
+            break;
+          }
+
+          message.dailyPrices = longToNumber(reader.int64());
+          continue;
+        }
+        case 4: {
+          if (tag !== 32) {
+            break;
+          }
+
+          message.hourlyPrices = longToNumber(reader.int64());
+          continue;
+        }
+        case 5: {
+          if (tag !== 40) {
+            break;
+          }
+
+          message.weeklyPrices = longToNumber(reader.int64());
+          continue;
+        }
+        case 6: {
+          if (tag !== 48) {
+            break;
+          }
+
+          message.continuousPrices = longToNumber(reader.int64());
+          continue;
+        }
+        case 7: {
+          if (tag !== 56) {
+            break;
+          }
+
+          message.dailyMoveStats = longToNumber(reader.int64());
+          continue;
+        }
+        case 8: {
+          if (tag !== 64) {
+            break;
+          }
+
+          message.futuresMetadata = longToNumber(reader.int64());
+          continue;
+        }
+        case 9: {
+          if (tag !== 72) {
+            break;
+          }
+
+          message.alertsDirect = longToNumber(reader.int64());
+          continue;
+        }
+        case 10: {
+          if (tag !== 80) {
+            break;
+          }
+
+          message.alertsRatio = longToNumber(reader.int64());
+          continue;
+        }
+        case 11: {
+          if (tag !== 88) {
+            break;
+          }
+
+          message.alertAudits = longToNumber(reader.int64());
+          continue;
+        }
+        case 12: {
+          if (tag !== 96) {
+            break;
+          }
+
+          message.portfolioStocks = longToNumber(reader.int64());
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): TickerDeletionCounts {
+    return {
+      stockMetadata: isSet(object.stockMetadata)
+        ? globalThis.Number(object.stockMetadata)
+        : isSet(object.stock_metadata)
+        ? globalThis.Number(object.stock_metadata)
+        : 0,
+      tickerMetadata: isSet(object.tickerMetadata)
+        ? globalThis.Number(object.tickerMetadata)
+        : isSet(object.ticker_metadata)
+        ? globalThis.Number(object.ticker_metadata)
+        : 0,
+      dailyPrices: isSet(object.dailyPrices)
+        ? globalThis.Number(object.dailyPrices)
+        : isSet(object.daily_prices)
+        ? globalThis.Number(object.daily_prices)
+        : 0,
+      hourlyPrices: isSet(object.hourlyPrices)
+        ? globalThis.Number(object.hourlyPrices)
+        : isSet(object.hourly_prices)
+        ? globalThis.Number(object.hourly_prices)
+        : 0,
+      weeklyPrices: isSet(object.weeklyPrices)
+        ? globalThis.Number(object.weeklyPrices)
+        : isSet(object.weekly_prices)
+        ? globalThis.Number(object.weekly_prices)
+        : 0,
+      continuousPrices: isSet(object.continuousPrices)
+        ? globalThis.Number(object.continuousPrices)
+        : isSet(object.continuous_prices)
+        ? globalThis.Number(object.continuous_prices)
+        : 0,
+      dailyMoveStats: isSet(object.dailyMoveStats)
+        ? globalThis.Number(object.dailyMoveStats)
+        : isSet(object.daily_move_stats)
+        ? globalThis.Number(object.daily_move_stats)
+        : 0,
+      futuresMetadata: isSet(object.futuresMetadata)
+        ? globalThis.Number(object.futuresMetadata)
+        : isSet(object.futures_metadata)
+        ? globalThis.Number(object.futures_metadata)
+        : 0,
+      alertsDirect: isSet(object.alertsDirect)
+        ? globalThis.Number(object.alertsDirect)
+        : isSet(object.alerts_direct)
+        ? globalThis.Number(object.alerts_direct)
+        : 0,
+      alertsRatio: isSet(object.alertsRatio)
+        ? globalThis.Number(object.alertsRatio)
+        : isSet(object.alerts_ratio)
+        ? globalThis.Number(object.alerts_ratio)
+        : 0,
+      alertAudits: isSet(object.alertAudits)
+        ? globalThis.Number(object.alertAudits)
+        : isSet(object.alert_audits)
+        ? globalThis.Number(object.alert_audits)
+        : 0,
+      portfolioStocks: isSet(object.portfolioStocks)
+        ? globalThis.Number(object.portfolioStocks)
+        : isSet(object.portfolio_stocks)
+        ? globalThis.Number(object.portfolio_stocks)
+        : 0,
+    };
+  },
+
+  toJSON(message: TickerDeletionCounts): unknown {
+    const obj: any = {};
+    if (message.stockMetadata !== 0) {
+      obj.stockMetadata = Math.round(message.stockMetadata);
+    }
+    if (message.tickerMetadata !== 0) {
+      obj.tickerMetadata = Math.round(message.tickerMetadata);
+    }
+    if (message.dailyPrices !== 0) {
+      obj.dailyPrices = Math.round(message.dailyPrices);
+    }
+    if (message.hourlyPrices !== 0) {
+      obj.hourlyPrices = Math.round(message.hourlyPrices);
+    }
+    if (message.weeklyPrices !== 0) {
+      obj.weeklyPrices = Math.round(message.weeklyPrices);
+    }
+    if (message.continuousPrices !== 0) {
+      obj.continuousPrices = Math.round(message.continuousPrices);
+    }
+    if (message.dailyMoveStats !== 0) {
+      obj.dailyMoveStats = Math.round(message.dailyMoveStats);
+    }
+    if (message.futuresMetadata !== 0) {
+      obj.futuresMetadata = Math.round(message.futuresMetadata);
+    }
+    if (message.alertsDirect !== 0) {
+      obj.alertsDirect = Math.round(message.alertsDirect);
+    }
+    if (message.alertsRatio !== 0) {
+      obj.alertsRatio = Math.round(message.alertsRatio);
+    }
+    if (message.alertAudits !== 0) {
+      obj.alertAudits = Math.round(message.alertAudits);
+    }
+    if (message.portfolioStocks !== 0) {
+      obj.portfolioStocks = Math.round(message.portfolioStocks);
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<TickerDeletionCounts>, I>>(base?: I): TickerDeletionCounts {
+    return TickerDeletionCounts.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<TickerDeletionCounts>, I>>(object: I): TickerDeletionCounts {
+    const message = createBaseTickerDeletionCounts();
+    message.stockMetadata = object.stockMetadata ?? 0;
+    message.tickerMetadata = object.tickerMetadata ?? 0;
+    message.dailyPrices = object.dailyPrices ?? 0;
+    message.hourlyPrices = object.hourlyPrices ?? 0;
+    message.weeklyPrices = object.weeklyPrices ?? 0;
+    message.continuousPrices = object.continuousPrices ?? 0;
+    message.dailyMoveStats = object.dailyMoveStats ?? 0;
+    message.futuresMetadata = object.futuresMetadata ?? 0;
+    message.alertsDirect = object.alertsDirect ?? 0;
+    message.alertsRatio = object.alertsRatio ?? 0;
+    message.alertAudits = object.alertAudits ?? 0;
+    message.portfolioStocks = object.portfolioStocks ?? 0;
+    return message;
+  },
+};
+
+function createBasePreviewDeleteTickerRequest(): PreviewDeleteTickerRequest {
+  return { ticker: "" };
+}
+
+export const PreviewDeleteTickerRequest: MessageFns<PreviewDeleteTickerRequest> = {
+  encode(message: PreviewDeleteTickerRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.ticker !== "") {
+      writer.uint32(10).string(message.ticker);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): PreviewDeleteTickerRequest {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBasePreviewDeleteTickerRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.ticker = reader.string();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): PreviewDeleteTickerRequest {
+    return { ticker: isSet(object.ticker) ? globalThis.String(object.ticker) : "" };
+  },
+
+  toJSON(message: PreviewDeleteTickerRequest): unknown {
+    const obj: any = {};
+    if (message.ticker !== "") {
+      obj.ticker = message.ticker;
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<PreviewDeleteTickerRequest>, I>>(base?: I): PreviewDeleteTickerRequest {
+    return PreviewDeleteTickerRequest.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<PreviewDeleteTickerRequest>, I>>(object: I): PreviewDeleteTickerRequest {
+    const message = createBasePreviewDeleteTickerRequest();
+    message.ticker = object.ticker ?? "";
+    return message;
+  },
+};
+
+function createBasePreviewDeleteTickerResponse(): PreviewDeleteTickerResponse {
+  return { ticker: "", exists: false, counts: undefined };
+}
+
+export const PreviewDeleteTickerResponse: MessageFns<PreviewDeleteTickerResponse> = {
+  encode(message: PreviewDeleteTickerResponse, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.ticker !== "") {
+      writer.uint32(10).string(message.ticker);
+    }
+    if (message.exists !== false) {
+      writer.uint32(16).bool(message.exists);
+    }
+    if (message.counts !== undefined) {
+      TickerDeletionCounts.encode(message.counts, writer.uint32(26).fork()).join();
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): PreviewDeleteTickerResponse {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBasePreviewDeleteTickerResponse();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.ticker = reader.string();
+          continue;
+        }
+        case 2: {
+          if (tag !== 16) {
+            break;
+          }
+
+          message.exists = reader.bool();
+          continue;
+        }
+        case 3: {
+          if (tag !== 26) {
+            break;
+          }
+
+          message.counts = TickerDeletionCounts.decode(reader, reader.uint32());
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): PreviewDeleteTickerResponse {
+    return {
+      ticker: isSet(object.ticker) ? globalThis.String(object.ticker) : "",
+      exists: isSet(object.exists) ? globalThis.Boolean(object.exists) : false,
+      counts: isSet(object.counts) ? TickerDeletionCounts.fromJSON(object.counts) : undefined,
+    };
+  },
+
+  toJSON(message: PreviewDeleteTickerResponse): unknown {
+    const obj: any = {};
+    if (message.ticker !== "") {
+      obj.ticker = message.ticker;
+    }
+    if (message.exists !== false) {
+      obj.exists = message.exists;
+    }
+    if (message.counts !== undefined) {
+      obj.counts = TickerDeletionCounts.toJSON(message.counts);
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<PreviewDeleteTickerResponse>, I>>(base?: I): PreviewDeleteTickerResponse {
+    return PreviewDeleteTickerResponse.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<PreviewDeleteTickerResponse>, I>>(object: I): PreviewDeleteTickerResponse {
+    const message = createBasePreviewDeleteTickerResponse();
+    message.ticker = object.ticker ?? "";
+    message.exists = object.exists ?? false;
+    message.counts = (object.counts !== undefined && object.counts !== null)
+      ? TickerDeletionCounts.fromPartial(object.counts)
+      : undefined;
+    return message;
+  },
+};
+
+function createBaseDeleteTickerRequest(): DeleteTickerRequest {
+  return { ticker: "" };
+}
+
+export const DeleteTickerRequest: MessageFns<DeleteTickerRequest> = {
+  encode(message: DeleteTickerRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.ticker !== "") {
+      writer.uint32(10).string(message.ticker);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): DeleteTickerRequest {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseDeleteTickerRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.ticker = reader.string();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): DeleteTickerRequest {
+    return { ticker: isSet(object.ticker) ? globalThis.String(object.ticker) : "" };
+  },
+
+  toJSON(message: DeleteTickerRequest): unknown {
+    const obj: any = {};
+    if (message.ticker !== "") {
+      obj.ticker = message.ticker;
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<DeleteTickerRequest>, I>>(base?: I): DeleteTickerRequest {
+    return DeleteTickerRequest.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<DeleteTickerRequest>, I>>(object: I): DeleteTickerRequest {
+    const message = createBaseDeleteTickerRequest();
+    message.ticker = object.ticker ?? "";
+    return message;
+  },
+};
+
+function createBaseDeleteTickerResponse(): DeleteTickerResponse {
+  return { success: false, errorMessage: "", ticker: "", counts: undefined };
+}
+
+export const DeleteTickerResponse: MessageFns<DeleteTickerResponse> = {
+  encode(message: DeleteTickerResponse, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.success !== false) {
+      writer.uint32(8).bool(message.success);
+    }
+    if (message.errorMessage !== "") {
+      writer.uint32(18).string(message.errorMessage);
+    }
+    if (message.ticker !== "") {
+      writer.uint32(26).string(message.ticker);
+    }
+    if (message.counts !== undefined) {
+      TickerDeletionCounts.encode(message.counts, writer.uint32(34).fork()).join();
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): DeleteTickerResponse {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseDeleteTickerResponse();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 8) {
+            break;
+          }
+
+          message.success = reader.bool();
+          continue;
+        }
+        case 2: {
+          if (tag !== 18) {
+            break;
+          }
+
+          message.errorMessage = reader.string();
+          continue;
+        }
+        case 3: {
+          if (tag !== 26) {
+            break;
+          }
+
+          message.ticker = reader.string();
+          continue;
+        }
+        case 4: {
+          if (tag !== 34) {
+            break;
+          }
+
+          message.counts = TickerDeletionCounts.decode(reader, reader.uint32());
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): DeleteTickerResponse {
+    return {
+      success: isSet(object.success) ? globalThis.Boolean(object.success) : false,
+      errorMessage: isSet(object.errorMessage)
+        ? globalThis.String(object.errorMessage)
+        : isSet(object.error_message)
+        ? globalThis.String(object.error_message)
+        : "",
+      ticker: isSet(object.ticker) ? globalThis.String(object.ticker) : "",
+      counts: isSet(object.counts) ? TickerDeletionCounts.fromJSON(object.counts) : undefined,
+    };
+  },
+
+  toJSON(message: DeleteTickerResponse): unknown {
+    const obj: any = {};
+    if (message.success !== false) {
+      obj.success = message.success;
+    }
+    if (message.errorMessage !== "") {
+      obj.errorMessage = message.errorMessage;
+    }
+    if (message.ticker !== "") {
+      obj.ticker = message.ticker;
+    }
+    if (message.counts !== undefined) {
+      obj.counts = TickerDeletionCounts.toJSON(message.counts);
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<DeleteTickerResponse>, I>>(base?: I): DeleteTickerResponse {
+    return DeleteTickerResponse.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<DeleteTickerResponse>, I>>(object: I): DeleteTickerResponse {
+    const message = createBaseDeleteTickerResponse();
+    message.success = object.success ?? false;
+    message.errorMessage = object.errorMessage ?? "";
+    message.ticker = object.ticker ?? "";
+    message.counts = (object.counts !== undefined && object.counts !== null)
+      ? TickerDeletionCounts.fromPartial(object.counts)
+      : undefined;
+    return message;
+  },
+};
+
 /** PriceService provides read-only access to the price database and on-demand updates. */
 export type PriceServiceDefinition = typeof PriceServiceDefinition;
 export const PriceServiceDefinition = {
@@ -4003,6 +4666,22 @@ export const PriceServiceDefinition = {
       responseStream: true,
       options: {},
     },
+    previewDeleteTicker: {
+      name: "PreviewDeleteTicker",
+      requestType: PreviewDeleteTickerRequest,
+      requestStream: false,
+      responseType: PreviewDeleteTickerResponse,
+      responseStream: false,
+      options: {},
+    },
+    deleteTicker: {
+      name: "DeleteTicker",
+      requestType: DeleteTickerRequest,
+      requestStream: false,
+      responseType: DeleteTickerResponse,
+      responseStream: false,
+      options: {},
+    },
   },
 } as const;
 
@@ -4044,6 +4723,14 @@ export interface PriceServiceImplementation<CallContextExt = {}> {
     request: UpdatePricesRequest,
     context: CallContext & CallContextExt,
   ): ServerStreamingMethodResult<DeepPartial<UpdatePricesProgress>>;
+  previewDeleteTicker(
+    request: PreviewDeleteTickerRequest,
+    context: CallContext & CallContextExt,
+  ): Promise<DeepPartial<PreviewDeleteTickerResponse>>;
+  deleteTicker(
+    request: DeleteTickerRequest,
+    context: CallContext & CallContextExt,
+  ): Promise<DeepPartial<DeleteTickerResponse>>;
 }
 
 export interface PriceServiceClient<CallOptionsExt = {}> {
@@ -4084,6 +4771,14 @@ export interface PriceServiceClient<CallOptionsExt = {}> {
     request: DeepPartial<UpdatePricesRequest>,
     options?: CallOptions & CallOptionsExt,
   ): AsyncIterable<UpdatePricesProgress>;
+  previewDeleteTicker(
+    request: DeepPartial<PreviewDeleteTickerRequest>,
+    options?: CallOptions & CallOptionsExt,
+  ): Promise<PreviewDeleteTickerResponse>;
+  deleteTicker(
+    request: DeepPartial<DeleteTickerRequest>,
+    options?: CallOptions & CallOptionsExt,
+  ): Promise<DeleteTickerResponse>;
 }
 
 type Builtin = Date | Function | Uint8Array | string | number | boolean | undefined;
