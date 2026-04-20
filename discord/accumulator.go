@@ -5,6 +5,13 @@ import (
 	"sync"
 )
 
+// AccumFlusher is the minimal interface for queuing and flushing Discord embeds.
+// *Accumulator satisfies it; tests can inject a recording fake.
+type AccumFlusher interface {
+	Add(webhookURL string, embed Embed)
+	FlushAll() (sent int, errors int)
+}
+
 // Accumulator collects Discord embeds grouped by webhook URL during alert checks.
 // Nothing is sent until FlushAll() is called; then embeds are sent in batches of
 // up to 10 per webhook (Discord's per-message limit), with rate limiting between

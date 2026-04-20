@@ -124,20 +124,25 @@ func main() {
 	updater := price.NewUpdater(queries, fmpClient, logger, cfg.FMPDailyConcurrency, cfg.FMPWeeklyConcurrency, cfg.FMPHourlyConcurrency)
 	statusMgr := status.NewManager(queries, logger)
 
+	portfolioResolver := discord.NewPortfolioResolver(pool, discord.DefaultResolverTTL, logger)
+	customChannelResolver := discord.NewCustomChannelResolver(pool, discord.DefaultResolverTTL, logger)
+
 	common := &handler.Common{
-		Queries:       queries,
-		Checker:       checker,
-		Router:        router,
-		Accum:         accum,
-		Notifier:      notifier,
-		Updater:       updater,
-		Status:        statusMgr,
-		Logger:        logger,
-		JobTimeout:    cfg.JobTimeout(),
-		WebhookDaily:  cfg.DiscordWebhookDaily,
-		WebhookWeekly: cfg.DiscordWebhookWeekly,
-		WebhookHourly: cfg.DiscordWebhookHourly,
-		ShadowDir:     "",
+		Queries:        queries,
+		Checker:        checker,
+		Router:         router,
+		Accum:          accum,
+		Notifier:       notifier,
+		Updater:        updater,
+		Status:         statusMgr,
+		Logger:         logger,
+		JobTimeout:     cfg.JobTimeout(),
+		Portfolios:     portfolioResolver,
+		CustomChannels: customChannelResolver,
+		WebhookDaily:   cfg.DiscordWebhookDaily,
+		WebhookWeekly:  cfg.DiscordWebhookWeekly,
+		WebhookHourly:  cfg.DiscordWebhookHourly,
+		ShadowDir:      "",
 	}
 	if cfg.ShadowMode {
 		common.ShadowDir = cfg.ShadowOutputDir

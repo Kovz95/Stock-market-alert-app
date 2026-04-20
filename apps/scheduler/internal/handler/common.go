@@ -42,15 +42,17 @@ type ShadowOutput struct {
 
 // Common holds shared dependencies for all job handlers.
 type Common struct {
-	Queries    *db.Queries
-	Checker    *alert.Checker
-	Router     *discord.Router
-	Accum      *discord.Accumulator
-	Notifier   *discord.Notifier
-	Updater    *price.Updater
-	Status     *status.Manager
-	Logger     *slog.Logger
-	JobTimeout time.Duration
+	Queries        *db.Queries
+	Checker        *alert.Checker
+	Router         discord.WebhookRouter
+	Accum          discord.AccumFlusher
+	Notifier       *discord.Notifier
+	Updater        *price.Updater
+	Status         *status.Manager
+	Logger         *slog.Logger
+	JobTimeout     time.Duration
+	Portfolios     *discord.PortfolioResolver
+	CustomChannels *discord.CustomChannelResolver
 
 	// Discord webhooks for status (start/complete/error). Empty = no status notifications.
 	WebhookDaily  string
@@ -199,36 +201,7 @@ func (c *Common) Execute(ctx context.Context, exchange, timeframe string, status
 		if c.ShadowDir != "" {
 			shadowTriggered = append(shadowTriggered, ShadowRecord{AlertID: result.AlertID, Ticker: ticker})
 		}
-		webhookURL := c.Router.ResolveWebhookURL(
-			ticker,
-			timeframe,
-			exchange,
-			a.IsRatio.Bool && a.IsRatio.Valid,
-		)
-		conditions := []string{}
-		if result.Triggered {
-			if parsed, err := alert.ExtractConditions(a.Conditions); err == nil && len(parsed) > 0 {
-				conditions = parsed
-			} else {
-				conditions = []string{"Conditions met"}
-			}
-		}
-		embed := discord.FormatAlertEmbed(discord.AlertInfo{
-			Ticker:     ticker,
-			StockName:  textStr(a.StockName),
-			Action:     textStr(a.Action),
-			Timeframe:  timeframe,
-			Exchange:   textStr(a.Exchange),
-			Economy:    c.Router.GetEconomy(ticker),
-			ISIN:       c.Router.GetISIN(ticker),
-			Conditions: conditions,
-		})
-		c.Accum.Add(webhookURL, embed)
-		logger.Debug("alert triggered",
-			"alert_id", result.AlertID,
-			"ticker", ticker,
-			"webhook_url", webhookURL,
-		)
+		c.dispatchTriggered(ctx, a, result, exchange, timeframe)
 	}
 	stats, err := c.Checker.CheckAlerts(ctx, alerts, timeframe, onTriggered)
 	if err != nil {
@@ -261,6 +234,80 @@ func (c *Common) Execute(ctx context.Context, exchange, timeframe string, status
 	c.Accum.FlushAll()
 	c.reportSuccess(ctx, runTime, start, exchange, timeframe, priceStats, alertStats, statusNotifier)
 	return priceStats, alertStats, nil
+}
+
+// dispatchTriggered builds a Discord embed for a triggered alert and fans it out to
+// every unique destination: the economy-routed webhook, portfolio webhooks, and custom
+// channel webhooks. Dedup is local to this call via a seen map.
+func (c *Common) dispatchTriggered(ctx context.Context, a db.Alert, result alert.CheckResult, exchange, timeframe string) {
+	logger := c.Logger.With("exchange", exchange, "timeframe", timeframe)
+	ticker := alertPrimaryTicker(&a)
+
+	webhookURL := c.Router.ResolveWebhookURL(
+		ticker,
+		timeframe,
+		exchange,
+		a.IsRatio.Bool && a.IsRatio.Valid,
+	)
+	conditions := []string{}
+	if result.Triggered {
+		if parsed, err := alert.ExtractConditions(a.Conditions); err == nil && len(parsed) > 0 {
+			conditions = parsed
+		} else {
+			conditions = []string{"Conditions met"}
+		}
+	}
+	embed := discord.FormatAlertEmbed(discord.AlertInfo{
+		Ticker:     ticker,
+		StockName:  textStr(a.StockName),
+		Action:     textStr(a.Action),
+		Timeframe:  timeframe,
+		Exchange:   textStr(a.Exchange),
+		Economy:    c.Router.GetEconomy(ticker),
+		ISIN:       c.Router.GetISIN(ticker),
+		Conditions: conditions,
+	})
+
+	// Fan-out with per-call URL dedup.
+	seen := make(map[string]bool)
+	addURL := func(url string) {
+		if url == "" || seen[url] {
+			return
+		}
+		seen[url] = true
+		c.Accum.Add(url, embed)
+	}
+
+	// 1. Economy-routed webhook (existing behavior).
+	addURL(webhookURL)
+
+	// 2. Portfolio webhooks.
+	if c.Portfolios != nil {
+		portfolioURLs, err := c.Portfolios.ResolveWebhooks(ctx, ticker)
+		if err != nil {
+			logger.Warn("portfolio resolver error", "error", err, "ticker", ticker)
+		}
+		for _, u := range portfolioURLs {
+			addURL(u)
+		}
+	}
+
+	// 3. Custom channel webhooks.
+	if c.CustomChannels != nil {
+		customURLs, err := c.CustomChannels.ResolveWebhooks(ctx, conditions)
+		if err != nil {
+			logger.Warn("custom channel resolver error", "error", err)
+		}
+		for _, u := range customURLs {
+			addURL(u)
+		}
+	}
+
+	logger.Debug("alert triggered",
+		"alert_id", result.AlertID,
+		"ticker", ticker,
+		"destinations", len(seen),
+	)
 }
 
 func (c *Common) reportSuccess(ctx context.Context, runTime, start time.Time, exchange, timeframe string, priceStats *discord.PriceStats, alertStats *discord.AlertStats, statusNotifier *discord.StatusNotifier) {

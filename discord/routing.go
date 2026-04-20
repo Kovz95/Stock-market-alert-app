@@ -11,6 +11,14 @@ import (
 	db "stockalert/database/generated"
 )
 
+// WebhookRouter resolves the Discord webhook URL for an alert and provides
+// ticker metadata lookups. *Router satisfies this interface.
+type WebhookRouter interface {
+	ResolveWebhookURL(ticker, timeframe, exchange string, isRatio bool) string
+	GetEconomy(ticker string) string
+	GetISIN(ticker string) string
+}
+
 // Router determines which Discord webhook URL to use for a given alert
 // based on its economy classification, asset type (ETF), and timeframe.
 //
