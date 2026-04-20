@@ -1,5 +1,13 @@
 # Specs Index
 
+### 06 - Discord Webhook Visibility
+
+- Folder: `06-spec-discord-webhook-visibility/`
+- Spec: `06-spec-discord-webhook-visibility/06-spec-discord-webhook-visibility.md`
+- Tasks: `06-spec-discord-webhook-visibility/06-tasks-discord-webhook-visibility.md`
+- Validation: `06-spec-discord-webhook-visibility/06-validation-discord-webhook-visibility.md`
+- Questions: `06-spec-discord-webhook-visibility/06-questions-1-discord-webhook-visibility.md`
+
 ### 05 - Scheduler Portfolio + Custom Channel Fan-out
 
 - Folder: `05-spec-scheduler-portfolio-custom-fanout/`
