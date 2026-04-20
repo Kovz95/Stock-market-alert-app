@@ -1,5 +1,21 @@
 # Specs Index
 
+### 05 - Scheduler Portfolio + Custom Channel Fan-out
+
+- Folder: `05-spec-scheduler-portfolio-custom-fanout/`
+- Spec: `05-spec-scheduler-portfolio-custom-fanout/05-spec-scheduler-portfolio-custom-fanout.md`
+- Tasks: `05-spec-scheduler-portfolio-custom-fanout/05-tasks-scheduler-portfolio-custom-fanout.md`
+- Validation: `05-spec-scheduler-portfolio-custom-fanout/05-validation-scheduler-portfolio-custom-fanout.md`
+- Questions: `05-spec-scheduler-portfolio-custom-fanout/05-questions-1-scheduler-portfolio-custom-fanout.md`
+
+### 04 - Remove Tickers
+
+- Folder: `04-spec-remove-tickers/`
+- Spec: `04-spec-remove-tickers/04-spec-remove-tickers.md`
+- Tasks: `04-spec-remove-tickers/04-tasks-remove-tickers.md`
+- Validation: `04-spec-remove-tickers/04-validation-remove-tickers.md`
+- Questions: `04-spec-remove-tickers/04-questions-1-remove-tickers.md`
+
 ### 03 - Custom Discord Condition Channels
 
 - Folder: `03-spec-custom-discord-condition-channels/`
