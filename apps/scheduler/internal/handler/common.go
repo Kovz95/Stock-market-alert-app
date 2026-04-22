@@ -331,7 +331,8 @@ func sinceDateForTimeframe(timeframe string) time.Time {
 	case "hourly":
 		return now.AddDate(0, 0, -7)
 	case "weekly":
-		return now.AddDate(0, 0, -365)
+		// keep aligned with scanLookbackDaysWeekly in apps/grpc/price_service/scan.go
+		return now.AddDate(0, 0, -2000)
 	default:
 		return now.AddDate(0, 0, -365)
 	}

@@ -126,7 +126,7 @@ function ScannerTimeframeAndLookback() {
         </Select>
       </div>
       <div className="space-y-2">
-        <Label className="text-xs">Lookback days</Label>
+        <Label className="text-xs">Lookback bars</Label>
         <Input
           type="number"
           min={0}
@@ -143,6 +143,7 @@ function ScannerTimeframeAndLookback() {
           }}
           onBlur={() => setLookbackInput(String(lookbackDays))}
         />
+        <p className="text-xs text-muted-foreground">Number of bars of the selected timeframe (e.g. 10 weekly bars = 10 weeks).</p>
       </div>
     </div>
   );

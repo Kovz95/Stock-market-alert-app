@@ -1,5 +1,13 @@
 # Specs Index
 
+### 07 - Scanner Weekly Fixes
+
+- Folder: `07-spec-scanner-weekly-fixes/`
+- Spec: `07-spec-scanner-weekly-fixes/07-spec-scanner-weekly-fixes.md`
+- Tasks: `07-spec-scanner-weekly-fixes/07-tasks-scanner-weekly-fixes.md`
+- Validation: `07-spec-scanner-weekly-fixes/07-validation-scanner-weekly-fixes.md`
+- Questions: `07-spec-scanner-weekly-fixes/07-questions-1-scanner-weekly-fixes.md`
+
 ### 06 - Discord Webhook Visibility
 
 - Folder: `06-spec-discord-webhook-visibility/`

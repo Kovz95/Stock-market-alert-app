@@ -16,8 +16,11 @@ import (
 )
 
 const (
-	scanLookbackDays    = 400 // ~280 trading days; enough for SMA(200) + buffer
-	scanMinBars         = 50
+	scanLookbackDaysDaily  = 400  // ~280 trading days; supports SMA(200) + buffer
+	// keep aligned with sinceDateForTimeframe("weekly") in apps/scheduler/internal/handler/common.go
+	scanLookbackDaysWeekly = 2000 // ~285 weekly bars; supports SMA(200) weekly + buffer
+	scanLookbackDaysHourly = 90   // ~60 trading days × 6.5h ≈ 390 hourly bars
+	scanMinBars            = 50
 	scanMaxConcurrency  = 20
 	scanMaxTickersCap   = 20000
 	scanMaxLookback     = 250
@@ -295,7 +298,7 @@ func (s *Server) scanOneTicker(
 }
 
 func (s *Server) loadDailyOHLCV(ctx context.Context, q *db.Queries, ticker string) *indicator.OHLCV {
-	since := time.Now().AddDate(0, 0, -scanLookbackDays)
+	since := time.Now().AddDate(0, 0, -scanLookbackDaysDaily)
 	rows, err := q.GetDailyPricesBatch(ctx, db.GetDailyPricesBatchParams{
 		Tickers:   []string{ticker},
 		SinceDate: pgtype.Date{Time: since, Valid: true},
@@ -307,7 +310,7 @@ func (s *Server) loadDailyOHLCV(ctx context.Context, q *db.Queries, ticker strin
 }
 
 func (s *Server) loadHourlyOHLCV(ctx context.Context, q *db.Queries, ticker string) *indicator.OHLCV {
-	since := time.Now().AddDate(0, 0, -scanLookbackDays)
+	since := time.Now().AddDate(0, 0, -scanLookbackDaysHourly)
 	rows, err := q.GetHourlyPricesBatch(ctx, db.GetHourlyPricesBatchParams{
 		Tickers: []string{ticker},
 		SinceTs: pgtype.Timestamptz{Time: since, Valid: true},
@@ -319,12 +322,24 @@ func (s *Server) loadHourlyOHLCV(ctx context.Context, q *db.Queries, ticker stri
 }
 
 func (s *Server) loadWeeklyOHLCV(ctx context.Context, q *db.Queries, ticker string) *indicator.OHLCV {
-	since := time.Now().AddDate(0, 0, -scanLookbackDays)
+	since := time.Now().AddDate(0, 0, -scanLookbackDaysWeekly)
 	rows, err := q.GetWeeklyPricesBatch(ctx, db.GetWeeklyPricesBatchParams{
 		Tickers:   []string{ticker},
 		SinceDate: pgtype.Date{Time: since, Valid: true},
 	})
 	if err != nil || len(rows) == 0 {
+		return nil
+	}
+	today := time.Now().UTC().Truncate(24 * time.Hour)
+	filtered := rows[:0]
+	for _, r := range rows {
+		if r.WeekEnding.Valid && r.WeekEnding.Time.After(today) {
+			continue
+		}
+		filtered = append(filtered, r)
+	}
+	rows = filtered
+	if len(rows) == 0 {
 		return nil
 	}
 	return rowsToOHLCVWeekly(rows)
